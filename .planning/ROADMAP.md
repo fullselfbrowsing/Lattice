@@ -51,8 +51,8 @@ Plans:
   4. The contract verdict that downstream receipts will sign is fully determined by the combined output of pre-flight proof plus tripwire evaluation, with no other source of verdict truth.
 **Plans**: 2 plans
 Plans:
-- [ ] 08-01-PLAN.md — Pure tripwire kernel: inv builder, defaultPiiDetectors with Luhn, evaluateTripwires + TripwireEvidence + path resolver (Wave 1)
-- [ ] 08-02-PLAN.md — Runtime wiring: TripwireViolationError + isTerminal + "tripwire" stage + runWithConfig integration + public exports (Wave 2)
+- [x] 08-01-PLAN.md — Pure tripwire kernel: inv builder, defaultPiiDetectors with Luhn, evaluateTripwires + TripwireEvidence + path resolver (Wave 1)
+- [x] 08-02-PLAN.md — Runtime wiring: TripwireViolationError + isTerminal + "tripwire" stage + runWithConfig integration + public exports (Wave 2)
 
 ### Phase 9: Canonical JSON, Ed25519 Signing, and Receipt Issuance
 **Goal**: Every `ai.run` (success or failure) issues a `CapabilityReceipt` that is RFC 8785-canonicalized, signed over the redacted form with Node 24 WebCrypto Ed25519 in a DSSE-shaped envelope, carries `kid` plus model.observed fingerprint, and can be verified by a pure `verifyReceipt` against a `KeySet`.

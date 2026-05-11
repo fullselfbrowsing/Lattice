@@ -33,6 +33,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] Phase 5 tools, replay, and observability: Standard Schema local tools, explicit MCP-like tool imports, artifact-backed tool results, replay envelopes, offline replay, live rerun warnings, default redaction, and structured event/tracing hooks.
 - [x] Phase 6 work-inbox showcase: executable public API example with message, photo, transcript, PDF/policy artifacts, structured action output, route/context/packaging inspection, offline replay, and adversarial fixtures.
 - [x] Phase 7 capability contracts, pre-flight proof, and cost accounting: optional `contract` on `ai.run` (budget + qualityFloor + reserved invariants), pure preflight evaluator wired into the deterministic router, typed `no-contract-match` failure with `noRouteReasons[]`, normalized `Usage` on every `RunSuccess` and `RunFailure`, per-1k pricing on capability catalog entries, openai-compat pricing constructor option, and `createFakeProvider({ capabilities })`. (CONTRACT-01..06 + COST-01..03)
+- [x] Phase 8 tripwire invariants with terminal semantics: fluent `inv` builder (`mustCite`, `fieldFromTable`, `noPII`, `matches`) backed by Standard Schema; pure `evaluateTripwires` kernel with `defaultPiiDetectors` (email, US SSN, Luhn credit card, US phone); `"tripwire"` execution stage between validation and persistence; `TripwireViolationError` carrying `terminal: true` with structured `TripwireEvidence`; `isTerminal()` predicate consulted by the fallback chain so violations are NOT retried; `usage` populated on tripwire failures. (TRIP-01..05)
 
 ### Active
 
@@ -112,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-11 — Phase 7 (Capability Contracts) complete; Phase 8 next*
+*Last updated: 2026-05-11 — Phases 7-8 complete; Phase 9 (Receipts) next*

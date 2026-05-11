@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Capability Receipts
 status: in_progress
-stopped_at: Phase 7 complete; Phase 8 (Tripwire Invariants) next.
-last_updated: "2026-05-11T21:03:55.674Z"
+stopped_at: Phases 7-8 complete; Phase 9 (Receipts) next.
+last_updated: "2026-05-11T21:31:31.448Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 14
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
+  percent: 29
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 8 — Tripwire Invariants with Terminal Semantics (next to plan/execute)
+**Current focus:** Phase 08 — Tripwire Invariants with Terminal Semantics
 
 ## Current Position
 
-Phase: 8
+Phase: 9
 Plan: Not started
-Status: Phase 7 complete; ready to plan Phase 8
-Last activity: 2026-05-11 — Phase 07 verified, all 9 REQ-IDs satisfied, 110/110 tests pass
+Status: Executing Phase 08
+Last activity: 2026-05-11
 
 Progress: [█░░░░░░░░░] 14%
 
@@ -46,6 +46,7 @@ Progress: [█░░░░░░░░░] 14%
 |-------|-------|-------|----------|
 | (v1.1 phases not started) | 0 | 0 | — |
 | 07 | 4 | - | - |
+| 08 | 2 | - | - |
 
 **Recent Trend:**
 
