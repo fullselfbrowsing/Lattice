@@ -7,3 +7,12 @@ export type {
   InvariantDeclaration,
   QualityFloorInvariant,
 } from "./contract.js";
+export {
+  estimateRouteCost,
+  evaluateContractAgainstRoute,
+} from "./preflight.js";
+export type {
+  ContractPreflightResult,
+  EstimateRouteCostInput,
+  EvaluateContractInput,
+} from "./preflight.js";

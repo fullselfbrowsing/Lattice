@@ -15,6 +15,11 @@ function baseCapability(overrides: Partial<ModelCapability> = {}): ModelCapabili
   };
 }
 
+function unpricedCapability(): ModelCapability {
+  const { pricing: _pricing, ...rest } = defaultCapabilityForProvider("test");
+  return rest;
+}
+
 describe("evaluateContractAgainstRoute", () => {
   it("Test 1: budget pass — pricing comfortably under the declared budget returns ok=true", () => {
     const capability = baseCapability({
@@ -41,7 +46,7 @@ describe("evaluateContractAgainstRoute", () => {
   });
 
   it("Test 3: budget unpriced with budget declared — rejects with 'pricing unknown' message", () => {
-    const capability = baseCapability({ pricing: undefined });
+    const capability = unpricedCapability();
     const result = evaluateContractAgainstRoute(
       contract({ budget: { maxCostUsd: 0.05 } }),
       { capability, estimatedInputTokens: 100, estimatedOutputTokens: 256 },
@@ -53,7 +58,7 @@ describe("evaluateContractAgainstRoute", () => {
   });
 
   it("Test 4: budget unpriced with no budget declared — ok=true", () => {
-    const capability = baseCapability({ pricing: undefined });
+    const capability = unpricedCapability();
     const result = evaluateContractAgainstRoute(contract({}), {
       capability,
       estimatedInputTokens: 100,
@@ -146,7 +151,7 @@ describe("evaluateContractAgainstRoute", () => {
     expect(cost).not.toBeNull();
     expect(cost).toBeCloseTo(0.001512, 6);
 
-    const unpriced = baseCapability({ pricing: undefined });
+    const unpriced = unpricedCapability();
     const noCost = estimateRouteCost({
       capability: unpriced,
       estimatedInputTokens: 1000,
