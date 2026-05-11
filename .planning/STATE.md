@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Capability Receipts
 status: in_progress
-stopped_at: Phases 7-8 complete; Phase 9 (Receipts) next.
-last_updated: "2026-05-11T21:31:31.448Z"
+stopped_at: Phases 7-9 complete; Phase 10 (Replay Envelope Integration) next.
+last_updated: "2026-05-11T22:15:46.905Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 29
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 10
+  percent: 43
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 9
+Phase: 10
 Plan: Not started
 Status: Executing Phase 08
 Last activity: 2026-05-11
@@ -47,6 +47,7 @@ Progress: [█░░░░░░░░░] 14%
 | (v1.1 phases not started) | 0 | 0 | — |
 | 07 | 4 | - | - |
 | 08 | 2 | - | - |
+| 09 | 4 | - | - |
 
 **Recent Trend:**
 
