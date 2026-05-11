@@ -22,6 +22,7 @@ export type ExecutionStageKind =
   | "tool-execution"
   | "execution"
   | "validation"
+  | "tripwire"
   | "persistence"
   | "replay";
 
@@ -326,6 +327,12 @@ function createDefaultStages(
     {
       id: "stage:validation",
       kind: "validation",
+      status: skipped ? "skipped" : "pending",
+      warnings: [],
+    },
+    {
+      id: "stage:tripwire",
+      kind: "tripwire",
       status: skipped ? "skipped" : "pending",
       warnings: [],
     },
