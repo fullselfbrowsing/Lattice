@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 
+import canonicalize from "canonicalize";
+
+import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
 import { inv } from "../contract/invariants.js";
 import { createFakeProvider } from "../providers/fake.js";
 import type { ModelCapability } from "../providers/provider.js";
+import { createMemoryKeySet } from "../receipts/keyset.js";
+import {
+  createInMemorySigner,
+  generateEd25519KeyPairJwk,
+} from "../receipts/sign.js";
+import type { ReceiptSigner } from "../receipts/types.js";
+import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import { createAI } from "./create-ai.js";
 
@@ -475,5 +485,335 @@ describe("Phase 8 tripwire integration", () => {
       // status. It must NOT be 'completed' or 'failed'.
       expect(["pending", "skipped"]).toContain(tripwire?.status);
     }
+  });
+});
+
+describe("Phase 9 receipts integration", () => {
+  async function makeSignerAndKeySet(
+    kid = "phase-9-test",
+  ): Promise<{
+    signer: ReceiptSigner;
+    keySet: ReturnType<typeof createMemoryKeySet>;
+    publicKeyJwk: JsonWebKey;
+  }> {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([
+      { kid, publicKeyJwk, state: "active" },
+    ]);
+    return { signer, keySet, publicKeyJwk };
+  }
+
+  it("T1: receipt is undefined when signer is not configured", async () => {
+    const ai = createAI({ providers: [createFakeProvider()] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeUndefined();
+  });
+
+  it("T2: success receipt is emitted when signer is configured", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeDefined();
+    expect(result.receipt?.payloadType).toBe(
+      "application/vnd.lattice.receipt+json",
+    );
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("success");
+    }
+  });
+
+  it("T3: no-contract-match emits a receipt with verdict 'no-contract-match' and noRouteReasons", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fake"),
+          modelId: "fake:priced",
+          pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.001 },
+        },
+      ],
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ budget: { maxCostUsd: 0.0000001 } }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no-contract-match");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("no-contract-match");
+      expect(verifyResult.body.noRouteReasons).toBeDefined();
+      expect((verifyResult.body.noRouteReasons ?? []).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("T4: tripwire-violated emits a receipt with verdict 'tripwire-violated' and tripwireEvidence", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (
+      verifyResult.ok &&
+      !result.ok &&
+      result.error.kind === "tripwire-violated"
+    ) {
+      expect(verifyResult.body.contractVerdict).toBe("tripwire-violated");
+      expect(verifyResult.body.tripwireEvidence).toBeDefined();
+      expect(verifyResult.body.tripwireEvidence?.kind).toBe(
+        result.error.evidence.kind,
+      );
+    }
+  });
+
+  it("T5: validation-failed emits a receipt with verdict 'validation-failed'", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: 42 as unknown as string },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("validation");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("validation-failed");
+    }
+  });
+
+  it("T6: execution-failed (no executable adapter) emits a receipt", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    // ProviderRef without execute → adapter lookup fails.
+    const ai = createAI({ providers: ["fake"], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      // Either execution_unavailable or no_route depending on routing; both
+      // are execution-failed verdict surfaces in receipts.
+      expect(["execution_unavailable", "no_route"]).toContain(
+        result.error.kind,
+      );
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("execution-failed");
+    }
+  });
+
+  it("T7: execution-failed (provider_execution) emits a receipt", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      response: () => {
+        throw new Error("simulated provider boom");
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("provider_execution");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("execution-failed");
+    }
+  });
+
+  it("T8: receipt body carries model.requested matching the route", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok && result.ok) {
+      expect(verifyResult.body.model.observed).toBeNull();
+      const selected = result.plan.kind === "execution-plan"
+        ? result.plan.route.selected?.modelId ?? ""
+        : "";
+      expect(verifyResult.body.model.requested).toBe(selected);
+    }
+  });
+
+  it("T9: receipt body carries inputHashes for each artifact", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const a1 = artifact.text("first artifact");
+    const a2 = artifact.text("second artifact");
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [a1, a2],
+    });
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.inputHashes).toHaveLength(2);
+      for (const hash of verifyResult.body.inputHashes) {
+        expect(hash).toMatch(/^[a-f0-9]{64}$/u);
+      }
+    }
+  });
+
+  it("T10: receipt body carries outputHash on success but null on tripwire-violated", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const aiSuccess = createAI({
+      providers: [createFakeProvider()],
+      signer,
+    });
+    const successResult = await aiSuccess.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(successResult.ok).toBe(true);
+    const successVerify = await verifyReceipt(successResult.receipt!, keySet);
+    expect(successVerify.ok).toBe(true);
+    if (successVerify.ok) {
+      expect(successVerify.body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+    }
+
+    const tripProvider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact bob@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const aiTrip = createAI({ providers: [tripProvider], signer });
+    const tripResult = await aiTrip.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(tripResult.ok).toBe(false);
+    const tripVerify = await verifyReceipt(tripResult.receipt!, keySet);
+    expect(tripVerify.ok).toBe(true);
+    if (tripVerify.ok) {
+      expect(tripVerify.body.outputHash).toBeNull();
+    }
+  });
+
+  it("T11: receipt body carries contractHash matching canonicalize(contract)", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const c = contract({ budget: { maxCostUsd: 1 } });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: c,
+    });
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      const canonical = canonicalize(c);
+      expect(canonical).toBeDefined();
+      const bytes = new TextEncoder().encode(canonical!);
+      const ab = new Uint8Array(bytes.byteLength);
+      ab.set(bytes);
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        ab.buffer as ArrayBuffer,
+      );
+      const expectedHex = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      expect(verifyResult.body.contractHash).toBe(expectedHex);
+    }
+  });
+
+  it("T12: signer failure does not crash ai.run (receipt is undefined)", async () => {
+    const failingSigner: ReceiptSigner = {
+      kid: "boom",
+      publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+      async sign(): Promise<Uint8Array> {
+        throw new Error("signer always throws");
+      },
+    };
+    const ai = createAI({
+      providers: [createFakeProvider()],
+      signer: failingSigner,
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.outputs).toBeDefined();
+    }
+    expect(result.receipt).toBeUndefined();
+  });
+
+  it("T13: 100 receipts issue in under 5 seconds total (property test)", async () => {
+    const { signer } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const start = Date.now();
+    for (let i = 0; i < 100; i += 1) {
+      const result = await ai.run({
+        task: "x",
+        outputs: { text: "text" as const },
+      });
+      expect(result.receipt).toBeDefined();
+    }
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(5000);
   });
 });
