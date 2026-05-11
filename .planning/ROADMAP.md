@@ -107,7 +107,11 @@ Plans:
   2. The gate compares this run's `usage.costUsd` and `qualityFloor` score against the last green baseline (baseline-relative, not absolute thresholds) and exits non-zero on any regression so CI fails the build.
   3. Quality-floor metrics that use an LLM judge run with `N=3` repetitions, aggregate via median to reduce judge variance, and cache outputs on disk by `hash(fixtureId, model_fingerprint, judge_prompt)` so reruns of the same baseline do not re-spend judge tokens.
   4. Quality-floor gates are layered by determinism class — exact (string/hash equality), then semantic-cheap (schema match), then semantic-expensive (LLM judge) — and failures on cheaper layers short-circuit.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Receipt walker + baseline loader/comparator + Judge interface + judge cache + shared eval types (Wave 1)
+- [ ] 12-02-PLAN.md — runEvalSession orchestrator: layered determinism (Exact -> Semantic-cheap -> Judge) + baseline-relative cost/quality gates + N=3 median + cache (Wave 2)
+- [ ] 12-03-PLAN.md — `lattice eval` citty subcommand: argv parsing, exit-code mapping, stdout JSON / stderr human, --init-baseline writer (Wave 3)
 
 ### Phase 13: Showcase Update and Milestone Validation
 **Goal**: The work-inbox showcase exercises contracts, tripwires, signed receipts, `lattice repro`, and `lattice eval` end-to-end against deterministic fixtures, and a milestone-level validation pass confirms every v1.1 requirement is satisfied by observable behavior.
@@ -131,7 +135,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
 | 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
 | 11. lattice CLI — repro and verify | v1.1 | 3/3 | Complete    | 2026-05-11 |
-| 12. lattice eval CI Gate | v1.1 | 0/TBD | Not started | - |
+| 12. lattice eval CI Gate | v1.1 | 0/3 | Not started | - |
 | 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |
 
 ## Completed Milestone Summary
