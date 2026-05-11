@@ -96,6 +96,25 @@ export type {
   StoredArtifactPayloadDescriptor,
 } from "../storage/storage.js";
 export type {
+  CapabilityReceiptBody,
+  ContractVerdict,
+  KeyEntry,
+  KeySet,
+  KeyState,
+  ReceiptEnvelope,
+  ReceiptModel,
+  ReceiptRedaction,
+  ReceiptRoute,
+  ReceiptSignature,
+  ReceiptSigner,
+  ReceiptUsageCanonical,
+  VerifyError,
+  VerifyErrorKind,
+  VerifyFail,
+  VerifyOk,
+  VerifyResult,
+} from "../receipts/types.js";
+export type {
   RunEvent,
   RunEventKind,
   RunEventSink,

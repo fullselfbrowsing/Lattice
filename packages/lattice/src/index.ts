@@ -8,6 +8,12 @@ export {
 } from "./contract/preflight.js";
 export { evaluateTripwires } from "./contract/tripwire.js";
 export { output } from "./outputs/contracts.js";
+export { createMemoryKeySet } from "./receipts/keyset.js";
+export {
+  createInMemorySigner,
+  generateEd25519KeyPairJwk,
+} from "./receipts/sign.js";
+export { verifyReceipt } from "./receipts/verify.js";
 export { isTerminal } from "./results/errors.js";
 export {
   createAISdkProvider,
@@ -49,13 +55,18 @@ export type {
   BudgetInvariant,
   CapabilityContract,
   CapabilityContractInput,
+  CapabilityReceiptBody,
   ContractRejectReasonCode,
+  ContractVerdict,
   ExecutionPlanStub,
   FieldFromTableInvariant,
   InferOutput,
   InferOutputMap,
   InvariantDeclaration,
   InvariantOptions,
+  KeyEntry,
+  KeySet,
+  KeyState,
   LatticeConfig,
   LatticeRunError,
   MatchesInvariant,
@@ -72,6 +83,13 @@ export type {
   ProviderRunRequest,
   ProviderRunResponse,
   QualityFloorInvariant,
+  ReceiptEnvelope,
+  ReceiptModel,
+  ReceiptRedaction,
+  ReceiptRoute,
+  ReceiptSignature,
+  ReceiptSigner,
+  ReceiptUsageCanonical,
   RunFailure,
   RunResult,
   RunSuccess,
@@ -85,4 +103,9 @@ export type {
   TripwireViolationError,
   Usage,
   ValidationIssue,
+  VerifyError,
+  VerifyErrorKind,
+  VerifyFail,
+  VerifyOk,
+  VerifyResult,
 } from "./runtime/public-types.js";
