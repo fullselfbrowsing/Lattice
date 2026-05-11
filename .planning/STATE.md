@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Capability Receipts
 status: in_progress
-stopped_at: Phase 7 executing — plans 07-01 and 07-02 complete, 07-03 next.
-last_updated: "2026-05-11T19:41:53.010Z"
-last_activity: 2026-05-11 -- Phase 07 execution in progress
+stopped_at: Phase 7 complete; Phase 8 (Tripwire Invariants) next.
+last_updated: "2026-05-11T21:03:55.674Z"
+last_activity: 2026-05-11
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 4
+  percent: 14
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 07 — Capability Contracts, Pre-flight Proof, and Cost Accounting
+**Current focus:** Phase 8 — Tripwire Invariants with Terminal Semantics (next to plan/execute)
 
 ## Current Position
 
-Phase: 07 (Capability Contracts, Pre-flight Proof, and Cost Accounting) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 07
-Last activity: 2026-05-11 -- Phase 07 execution started
+Phase: 8
+Plan: Not started
+Status: Phase 7 complete; ready to plan Phase 8
+Last activity: 2026-05-11 — Phase 07 verified, all 9 REQ-IDs satisfied, 110/110 tests pass
 
-Progress: [          ] 0%
+Progress: [█░░░░░░░░░] 14%
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [          ] 0%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | (v1.1 phases not started) | 0 | 0 | — |
+| 07 | 4 | - | - |
 
 **Recent Trend:**
 
