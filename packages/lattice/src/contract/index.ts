@@ -15,6 +15,10 @@ export type {
   MustCiteInvariant,
   NoPiiInvariant,
 } from "./invariants.js";
+export { defaultPiiDetectors } from "./pii-detectors.js";
+export type { PiiDetector, PiiDetectorResult } from "./pii-detectors.js";
+export { evaluateTripwires } from "./tripwire.js";
+export type { TripwireEvidence, TripwireResult } from "./tripwire.js";
 export {
   estimateRouteCost,
   evaluateContractAgainstRoute,
