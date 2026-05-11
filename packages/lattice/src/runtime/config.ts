@@ -4,6 +4,7 @@ import type {
   ProviderRef,
   ProviderRegistryInput,
 } from "../providers/provider.js";
+import type { ReceiptSigner } from "../receipts/types.js";
 import type { SessionStore } from "../sessions/session.js";
 import type { StorageLike } from "../storage/storage.js";
 import type { RunEventSink, TracerLike } from "../tracing/tracing.js";
@@ -15,6 +16,12 @@ export interface LatticeConfig {
   readonly defaults?: { readonly policy?: PolicySpec };
   readonly tracing?: TracerLike | false;
   readonly events?: RunEventSink | readonly RunEventSink[];
+  /**
+   * Phase 9 — when configured, every terminal branch of `ai.run` emits a
+   * signed `CapabilityReceipt` attached to `RunResult.receipt`. When absent,
+   * no receipts are issued and `RunResult.receipt` is undefined.
+   */
+  readonly signer?: ReceiptSigner;
 }
 
 export type NormalizedProviderEntry = ProviderRef | ProviderAdapter;
@@ -26,6 +33,7 @@ export interface NormalizedLatticeConfig {
   readonly defaults: { readonly policy?: PolicySpec };
   readonly tracing?: TracerLike;
   readonly events: readonly RunEventSink[];
+  readonly signer?: ReceiptSigner;
 }
 
 export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeConfig {
@@ -36,6 +44,7 @@ export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeCo
     sessions?: SessionStore;
     tracing?: TracerLike;
     events: readonly RunEventSink[];
+    signer?: ReceiptSigner;
   } = {
     providers: normalizeProviders(config.providers),
     defaults: config.defaults ?? {},
@@ -52,6 +61,10 @@ export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeCo
 
   if (config.tracing !== undefined && config.tracing !== false) {
     normalized.tracing = config.tracing;
+  }
+
+  if (config.signer !== undefined) {
+    normalized.signer = config.signer;
   }
 
   return normalized;

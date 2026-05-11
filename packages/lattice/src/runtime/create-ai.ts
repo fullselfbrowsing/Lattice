@@ -1,7 +1,9 @@
+import canonicalize from "canonicalize";
+
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
 import type { CapabilityContract } from "../contract/contract.js";
-import { evaluateTripwires } from "../contract/tripwire.js";
+import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 import {
   buildContextPack,
   type ContextPack,
@@ -15,6 +17,7 @@ import {
   withPlanStatus,
   type ExecutionPlan,
   type ProviderAttemptRecord,
+  type RouteRejectReason,
   type SelectedRoute,
   type UsageRecord,
 } from "../plan/plan.js";
@@ -26,10 +29,18 @@ import type {
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
+import { createReceipt } from "../receipts/receipt.js";
+import type {
+  ContractVerdict,
+  ReceiptEnvelope,
+  ReceiptModel,
+  ReceiptRoute,
+} from "../receipts/types.js";
 import { createCapabilityCatalog } from "../routing/catalog.js";
 import { routeDeterministically } from "../routing/router.js";
 import type { RunResult } from "../results/result.js";
 import type { SessionRecord, SessionRef } from "../sessions/session.js";
+import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { runTool, type ToolCallResult, type ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
 import {
@@ -152,6 +163,23 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         r.code === "contract-privacy-mismatch",
     );
     const isContractFailure = contractReasons.length > 0;
+    const receipt = await maybeIssueReceipt(normalized, {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: intent.artifacts ?? [],
+      contractVerdict: isContractFailure
+        ? "no-contract-match"
+        : "execution-failed",
+      model: {
+        requested: intent.overrides?.model ?? "",
+        observed: null,
+      },
+      route: { providerId: "", capabilityId: "", attemptNumber: 0 },
+      usage: ZERO_USAGE,
+      ...(isContractFailure
+        ? { noRouteReasons: plan.route.noRouteReasons }
+        : {}),
+    });
     const failure: RunResult<TOutputs> = isContractFailure
       ? {
           ok: false as const,
@@ -163,6 +191,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
+          ...(receipt !== undefined ? { receipt } : {}),
         }
       : {
           ok: false as const,
@@ -174,6 +203,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
+          ...(receipt !== undefined ? { receipt } : {}),
         };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
@@ -302,11 +332,27 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           metadata: { error: validation.error.message },
         }));
         if (index === routes.length - 1) {
+          const receipt = await maybeIssueReceipt(normalized, {
+            runId,
+            ...(intent.contract !== undefined
+              ? { contract: intent.contract }
+              : {}),
+            artifacts: built.artifacts,
+            contractVerdict: "validation-failed",
+            model: { requested: route.modelId, observed: null },
+            route: {
+              providerId: route.providerId,
+              capabilityId: route.modelId,
+              attemptNumber: attempts.length,
+            },
+            usage: normalizeAdapterUsage(response),
+          });
           return {
             ...validation,
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
+            ...(receipt !== undefined ? { receipt } : {}),
           };
         }
         lastError = new Error(validation.error.message);
@@ -362,6 +408,22 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               },
             }),
           );
+          const receipt = await maybeIssueReceipt(normalized, {
+            runId,
+            ...(intent.contract !== undefined
+              ? { contract: intent.contract }
+              : {}),
+            artifacts: built.artifacts,
+            contractVerdict: "tripwire-violated",
+            model: { requested: route.modelId, observed: null },
+            route: {
+              providerId: route.providerId,
+              capabilityId: route.modelId,
+              attemptNumber: attempts.length,
+            },
+            usage: normalizeAdapterUsage(response),
+            tripwireEvidence: tripwireResult.evidence,
+          });
           // TERMINAL by design — isTerminal(error) === true; fallback chain
           // bypassed via early return before the `for` loop advances.
           return {
@@ -376,6 +438,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
+            ...(receipt !== undefined ? { receipt } : {}),
           };
         }
       }
@@ -427,12 +490,32 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: completedPlan.id,
       }));
 
+      const successValidation = validation as Extract<
+        typeof validation,
+        { ok: true }
+      >;
+      const receipt = await maybeIssueReceipt(normalized, {
+        runId,
+        ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+        artifacts: built.artifacts,
+        contractVerdict: "success",
+        model: { requested: route.modelId, observed: null },
+        route: {
+          providerId: route.providerId,
+          capabilityId: route.modelId,
+          attemptNumber: attempts.length,
+        },
+        usage: normalizeAdapterUsage(response),
+        outputs: JSON.stringify(successValidation.outputs),
+      });
+
       return {
         ...validation,
         artifacts: artifactRefs,
         usage: normalizeAdapterUsage(response),
         plan: completedPlan,
         events,
+        ...(receipt !== undefined ? { receipt } : {}),
       };
     } catch (error) {
       const completedAt = new Date().toISOString();
@@ -451,6 +534,19 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   }
 
   if (!anyExecutableAdapter) {
+    const receipt = await maybeIssueReceipt(normalized, {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: built.artifacts,
+      contractVerdict: "execution-failed",
+      model: { requested: selected.modelId, observed: null },
+      route: {
+        providerId: selected.providerId,
+        capabilityId: selected.modelId,
+        attemptNumber: 0,
+      },
+      usage: ZERO_USAGE,
+    });
     return {
       ok: false,
       error: {
@@ -460,6 +556,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       usage: { ...ZERO_USAGE },
       plan,
       events,
+      ...(receipt !== undefined ? { receipt } : {}),
     };
   }
 
@@ -475,6 +572,20 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     },
   }));
 
+  const receipt = await maybeIssueReceipt(normalized, {
+    runId,
+    ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+    artifacts: built.artifacts,
+    contractVerdict: "execution-failed",
+    model: { requested: selected.modelId, observed: null },
+    route: {
+      providerId: selected.providerId,
+      capabilityId: selected.modelId,
+      attemptNumber: attempts.length,
+    },
+    usage: UNMEASURED_USAGE,
+  });
+
   return {
     ok: false,
     error: {
@@ -486,6 +597,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
     events,
+    ...(receipt !== undefined ? { receipt } : {}),
   };
 }
 
@@ -783,4 +895,98 @@ function normalizeAdapterUsage(response: ProviderRunResponse): Usage {
     completionTokens: response.usage?.outputTokens ?? 0,
     costUsd: response.usage?.costUsd ?? null,
   };
+}
+
+/**
+ * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
+ * hex digests in declaration order. Missing/undefined values produce an
+ * empty string so the array length matches `artifacts.length` exactly.
+ */
+async function hashInputArtifacts(
+  artifacts: readonly ArtifactInput[],
+): Promise<readonly string[]> {
+  const out: string[] = [];
+  for (const artifact of artifacts) {
+    const fp = await fingerprintArtifactValue(
+      (artifact as { readonly value?: unknown }).value,
+    );
+    out.push(fp?.value ?? "");
+  }
+  return out;
+}
+
+/**
+ * Phase 9 — SHA-256 hex of `canonicalize(contract)` for the receipt's
+ * contractHash field. Returns null when no contract is attached or when
+ * canonicalize cannot serialize the input.
+ */
+async function sha256HexOfCanonicalContract(
+  contract: unknown,
+): Promise<string | null> {
+  if (contract === undefined || contract === null) return null;
+  const canonical = canonicalize(contract);
+  if (canonical === undefined) return null;
+  const bytes = new TextEncoder().encode(canonical);
+  const ab = new Uint8Array(bytes.byteLength);
+  ab.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", ab.buffer as ArrayBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+interface MaybeIssueReceiptInput {
+  readonly runId: string;
+  readonly contract?: CapabilityContract;
+  readonly artifacts: readonly ArtifactInput[];
+  readonly contractVerdict: ContractVerdict;
+  readonly model: ReceiptModel;
+  readonly route: ReceiptRoute;
+  readonly usage: Usage;
+  readonly outputs?: unknown;
+  readonly noRouteReasons?: readonly RouteRejectReason[];
+  readonly tripwireEvidence?: TripwireEvidence;
+}
+
+/**
+ * Phase 9 — issue a signed receipt at a terminal branch when a signer is
+ * configured. Signer failures degrade gracefully to `undefined` so a faulty
+ * signer never crashes `ai.run`.
+ */
+async function maybeIssueReceipt(
+  normalized: NormalizedLatticeConfig,
+  input: MaybeIssueReceiptInput,
+): Promise<ReceiptEnvelope | undefined> {
+  if (normalized.signer === undefined) return undefined;
+  try {
+    const inputHashes = await hashInputArtifacts(input.artifacts);
+    const outputHash =
+      input.outputs === undefined
+        ? null
+        : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
+    const contractHash = await sha256HexOfCanonicalContract(input.contract);
+    return await createReceipt(
+      {
+        runId: input.runId,
+        model: input.model,
+        route: input.route,
+        usage: input.usage,
+        contractVerdict: input.contractVerdict,
+        contractHash,
+        inputHashes,
+        outputHash,
+        ...(input.noRouteReasons !== undefined
+          ? { noRouteReasons: input.noRouteReasons }
+          : {}),
+        ...(input.tripwireEvidence !== undefined
+          ? { tripwireEvidence: input.tripwireEvidence }
+          : {}),
+      },
+      normalized.signer,
+    );
+  } catch {
+    // Receipt emission is best-effort. A signer failure must NOT crash
+    // ai.run — the run result already encodes the verdict.
+    return undefined;
+  }
 }
