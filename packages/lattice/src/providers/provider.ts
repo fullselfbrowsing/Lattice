@@ -27,8 +27,31 @@ export type ProviderTransportMode =
 export type ProviderLatencyClass = "interactive" | "batch";
 
 export interface ProviderPricingHint {
+  /** @deprecated prefer `inputPer1kTokens` — kept for backward compatibility */
   readonly inputCostPer1M?: number;
+  /** @deprecated prefer `outputPer1kTokens` — kept for backward compatibility */
   readonly outputCostPer1M?: number;
+  /** Per-1000-prompt-token cost in USD. Preferred field for Phase 7+ pricing. */
+  readonly inputPer1kTokens?: number;
+  /** Per-1000-completion-token cost in USD. Preferred field for Phase 7+ pricing. */
+  readonly outputPer1kTokens?: number;
+}
+
+/**
+ * Normalized per-run usage at the result layer.
+ *
+ * `costUsd` is `number | null` (not optional, not `0`) so downstream
+ * consumers can distinguish "free" (`0`) from "unmeasured" (`null`) when
+ * provider pricing is unknown — see 07-CONTEXT.md "Cost Normalization & Usage".
+ *
+ * Distinct from `UsageRecord` on `ProviderAttemptRecord`: `UsageRecord`
+ * is the per-attempt record, `Usage` is the per-run normalized shape
+ * surfaced on `RunSuccess` / `RunFailure`.
+ */
+export interface Usage {
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  readonly costUsd: number | null;
 }
 
 export interface ProviderDataPolicyHints {
