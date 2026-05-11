@@ -16,6 +16,14 @@ export type {
   ArtifactTransformKind,
 } from "../artifacts/lineage.js";
 export type {
+  BudgetInvariant,
+  CapabilityContract,
+  CapabilityContractInput,
+  ContractRejectReasonCode,
+  InvariantDeclaration,
+  QualityFloorInvariant,
+} from "../contract/contract.js";
+export type {
   InferOutput,
   InferOutputMap,
 } from "../outputs/infer.js";
@@ -52,6 +60,7 @@ export type {
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderTransportMode,
+  Usage,
 } from "../providers/provider.js";
 export type {
   ReplayEnvelope,
