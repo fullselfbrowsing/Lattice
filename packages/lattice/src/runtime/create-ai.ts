@@ -1,5 +1,6 @@
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
+import type { CapabilityContract } from "../contract/contract.js";
 import {
   buildContextPack,
   type ContextPack,
@@ -18,7 +19,12 @@ import {
 } from "../plan/plan.js";
 import { mergePolicy, type PolicySpec } from "../policy/policy.js";
 import { packageArtifactsForProvider } from "../providers/packaging.js";
-import type { ProviderAdapter, ProviderRunRequest } from "../providers/provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  Usage,
+} from "../providers/provider.js";
 import { createCapabilityCatalog } from "../routing/catalog.js";
 import { routeDeterministically } from "../routing/router.js";
 import type { RunResult } from "../results/result.js";
@@ -70,7 +76,11 @@ export interface RunIntent<TOutputs extends OutputContractMap> {
   readonly overrides?: RuntimeOverrides;
   readonly tools?: readonly ToolDefinition<any>[];
   readonly toolInputs?: Record<string, unknown>;
+  readonly contract?: CapabilityContract;
 }
+
+const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: 0 };
+const UNMEASURED_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
 
 export interface AI {
   session(id: string): SessionRef;
@@ -133,20 +143,41 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const selected = plan.route.selected;
 
   if (selected === undefined) {
-    const failure = {
-      ok: false as const,
-      error: {
-        kind: "no_route" as const,
-        message: "No route satisfied the run requirements.",
-        reasons: plan.route.noRouteReasons.map((reason) => reason.message),
-      },
-      plan,
-      events,
-    };
+    const contractReasons = plan.route.noRouteReasons.filter(
+      (r) =>
+        r.code === "contract-budget-exceeded" ||
+        r.code === "contract-quality-floor" ||
+        r.code === "contract-modality-missing" ||
+        r.code === "contract-privacy-mismatch",
+    );
+    const isContractFailure = contractReasons.length > 0;
+    const failure: RunResult<TOutputs> = isContractFailure
+      ? {
+          ok: false as const,
+          error: {
+            kind: "no-contract-match" as const,
+            message: "No route satisfies the contract.",
+            noRouteReasons: plan.route.noRouteReasons,
+          },
+          usage: { ...ZERO_USAGE },
+          plan,
+          events,
+        }
+      : {
+          ok: false as const,
+          error: {
+            kind: "no_route" as const,
+            message: "No route satisfied the run requirements.",
+            reasons: plan.route.noRouteReasons.map((reason) => reason.message),
+          },
+          usage: { ...ZERO_USAGE },
+          plan,
+          events,
+        };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
       planId: plan.id,
-      metadata: { reason: "no-route" },
+      metadata: { reason: isContractFailure ? "no-contract-match" : "no-route" },
     }));
 
     return failure;
@@ -272,6 +303,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         if (index === routes.length - 1) {
           return {
             ...validation,
+            usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
           };
@@ -326,6 +358,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       return {
         ...validation,
         artifacts: artifactRefs,
+        usage: normalizeAdapterUsage(response),
         plan: completedPlan,
         events,
       };
@@ -352,6 +385,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         kind: "execution_unavailable",
         message: "No Phase 1 provider adapter with execute() is configured.",
       },
+      usage: { ...ZERO_USAGE },
       plan,
       events,
     };
@@ -377,6 +411,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       providerId: selected.providerId,
       modelId: selected.modelId,
     },
+    usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
     events,
   };
@@ -408,6 +443,7 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
       ? { provider: intent.overrides.provider }
       : {}),
     ...(intent.overrides?.model !== undefined ? { model: intent.overrides.model } : {}),
+    ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
   });
   const contextPack = buildContextPack({
     task: intent.task,
@@ -656,4 +692,23 @@ function createRunId(): string {
   }
 
   return `run:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Normalize an adapter response into the `RunResult.usage` shape.
+ *
+ * Prefers `ProviderRunResponse.normalizedUsage` (the Phase 7 shape emitted by
+ * openai / openai-compat / ai-sdk / fake adapters). Falls back to mapping the
+ * legacy `UsageRecord` (inputTokens / outputTokens) so v1.0 adapters that have
+ * not yet been re-rolled still surface a usable Usage value.
+ */
+function normalizeAdapterUsage(response: ProviderRunResponse): Usage {
+  if (response.normalizedUsage !== undefined) {
+    return response.normalizedUsage;
+  }
+  return {
+    promptTokens: response.usage?.inputTokens ?? 0,
+    completionTokens: response.usage?.outputTokens ?? 0,
+    costUsd: response.usage?.costUsd ?? null,
+  };
 }

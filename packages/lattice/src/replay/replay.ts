@@ -2,6 +2,7 @@ import type { ArtifactRef } from "../artifacts/artifact.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { InferOutputMap } from "../outputs/infer.js";
 import type { ExecutionPlan, UsageRecord } from "../plan/plan.js";
+import type { Usage } from "../providers/provider.js";
 import type { RunResult } from "../results/result.js";
 import type { AI, RunIntent } from "../runtime/create-ai.js";
 import type { RunEvent } from "../tracing/tracing.js";
@@ -50,6 +51,7 @@ export function createReplayEnvelope<TOutputs extends OutputContractMap>(
 export async function replayOffline<TOutputs extends OutputContractMap>(
   envelope: ReplayEnvelope<TOutputs>,
 ): Promise<RunResult<TOutputs>> {
+  const replayedUsage = envelopeUsage(envelope);
   if (envelope.outputs === undefined) {
     return {
       ok: false,
@@ -57,6 +59,7 @@ export async function replayOffline<TOutputs extends OutputContractMap>(
         kind: "execution_unavailable",
         message: "Replay envelope does not contain successful outputs.",
       },
+      usage: replayedUsage,
       plan: envelope.plan,
       events: envelope.events,
     };
@@ -66,8 +69,20 @@ export async function replayOffline<TOutputs extends OutputContractMap>(
     ok: true,
     outputs: envelope.outputs,
     artifacts: envelope.artifacts,
+    usage: replayedUsage,
     plan: envelope.plan,
     events: envelope.events,
+  };
+}
+
+function envelopeUsage(envelope: ReplayEnvelope<OutputContractMap>): Usage {
+  if (envelope.usage === undefined) {
+    return { promptTokens: 0, completionTokens: 0, costUsd: null };
+  }
+  return {
+    promptTokens: envelope.usage.inputTokens ?? 0,
+    completionTokens: envelope.usage.outputTokens ?? 0,
+    costUsd: envelope.usage.costUsd ?? null,
   };
 }
 

@@ -60,6 +60,7 @@ export async function validateOutputMap<TOutputs extends OutputContractMap>(
           ["output"]: name,
           issues: issue.issues,
         },
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
         raw: rawOutputs,
         partialOutputs: outputs,
         plan,
@@ -73,6 +74,7 @@ export async function validateOutputMap<TOutputs extends OutputContractMap>(
     ok: true,
     outputs: outputs as InferOutputMap<TOutputs>,
     artifacts: [],
+    usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
     plan,
   };
 }
