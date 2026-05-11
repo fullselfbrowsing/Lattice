@@ -9,6 +9,7 @@ import {
   generateEd25519KeyPairJwk,
   inv,
   isTerminal,
+  materializeReplayEnvelope,
   verifyReceipt,
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
@@ -24,11 +25,13 @@ import type {
   KeySet,
   KeyState,
   MatchesInvariant,
+  MaterializationError,
   MustCiteInvariant,
   NoPiiInvariant,
   QualityFloorInvariant,
   ReceiptEnvelope,
   ReceiptSigner,
+  ReplayEnvelope,
   TripwireEvidence,
   TripwireResult,
   TripwireViolationError,
@@ -261,6 +264,38 @@ describe("Phase 9 public surface", () => {
     void _verifyResult;
     void _verifyError;
     void _verdict;
+    expect(true).toBe(true);
+  });
+});
+
+describe("Phase 10 public surface", () => {
+  it("materializeReplayEnvelope is exported as a function", () => {
+    expect(typeof materializeReplayEnvelope).toBe("function");
+  });
+
+  it("type-only: MaterializationError discriminated union compiles", () => {
+    const verifyFailed: MaterializationError = {
+      kind: "verify-failed",
+      message: "x",
+    };
+    const loadFailed: MaterializationError = {
+      kind: "artifact-load-failed",
+      message: "x",
+    };
+    const malformed: MaterializationError = {
+      kind: "envelope-malformed",
+      message: "x",
+    };
+    expect([verifyFailed.kind, loadFailed.kind, malformed.kind]).toEqual([
+      "verify-failed",
+      "artifact-load-failed",
+      "envelope-malformed",
+    ]);
+  });
+
+  it("type-only: ReplayEnvelope carries optional receipt and contract fields", () => {
+    const _env: ReplayEnvelope | undefined = undefined;
+    void _env;
     expect(true).toBe(true);
   });
 });
