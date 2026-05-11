@@ -17,7 +17,7 @@ Phase numbering continues from v1.0 (which ended at Phase 6). v1.1 starts at Pha
 - [ ] **Phase 7: Capability Contracts, Pre-flight Proof, and Cost Accounting** — Optional `contract` field on `ai.run` with budget/qualityFloor, deterministic pre-flight refusal with typed `no-contract-match`, and normalized `usage` on every `RunResult`.
 - [ ] **Phase 8: Tripwire Invariants with Terminal Semantics** — Fluent invariant builder, post-execution evaluation stage, typed `tripwire-violated` failures that the fallback chain refuses to retry.
 - [ ] **Phase 9: Canonical JSON, Ed25519 Signing, and Receipt Issuance** — RFC 8785 JCS canonicalization, redact-then-sign DSSE envelope, `kid`/`KeySet` rotation surface, pure `verifyReceipt`, receipts on success and failure.
-- [ ] **Phase 10: Receipts inside the Replay Envelope** — Embed `receipt?` and `contract?` into `ReplayEnvelope` so a single receipt is sufficient to materialize an offline replay.
+- [x] **Phase 10: Receipts inside the Replay Envelope** — Embed `receipt?` and `contract?` into `ReplayEnvelope` so a single receipt is sufficient to materialize an offline replay. (completed 2026-05-11)
 - [ ] **Phase 11: lattice CLI — repro and verify** — New `packages/lattice-cli` workspace shipping the `lattice` bin via citty with lazy subcommands for `lattice repro` and `lattice verify`.
 - [ ] **Phase 12: lattice eval CI Gate** — `lattice eval` discovers receipts, replays via `replayOffline`, gates baseline-relative cost/quality regressions with judge caching and layered determinism classes.
 - [ ] **Phase 13: Showcase Update and Milestone Validation** — Extend the work-inbox showcase end-to-end across contracts, tripwires, receipts, repro, and eval; close v1.1.
@@ -78,7 +78,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `ReplayEnvelope` accepts optional `receipt?` and `contract?` fields and round-trips through `createReplayEnvelope` / `replayOffline` without losing receipt verifiability.
   2. Given only a `CapabilityReceipt` and content-addressed artifact bodies, the runtime can materialize a `ReplayEnvelope` and run `replayOffline(envelope)` to a deterministic result whose output hashes match the receipt.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [x] 10-01-PLAN.md — Augment ReplayEnvelope with receipt?/contract?, add materializeReplayEnvelope + MaterializationError, prove round-trip (Wave 1)
 
 ### Phase 11: lattice CLI — repro and verify
 **Goal**: A new `packages/lattice-cli` workspace publishes the `lattice` bin with `repro` and `verify` subcommands that go through the runtime via public exports only; redaction defaults are inherited from the signed receipt.
@@ -123,7 +125,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 7. Capability Contracts, Pre-flight Proof, and Cost Accounting | v1.1 | 0/TBD | Not started | - |
 | 8. Tripwire Invariants with Terminal Semantics | v1.1 | 0/2 | Not started | - |
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
-| 10. Receipts inside the Replay Envelope | v1.1 | 0/TBD | Not started | - |
+| 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
 | 11. lattice CLI — repro and verify | v1.1 | 0/TBD | Not started | - |
 | 12. lattice eval CI Gate | v1.1 | 0/TBD | Not started | - |
 | 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |

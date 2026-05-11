@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Capability Receipts
 status: in_progress
-stopped_at: Phases 7-9 complete; Phase 10 (Replay Envelope Integration) next.
-last_updated: "2026-05-11T22:15:46.905Z"
+stopped_at: Phases 7-10 complete; Phase 11 (lattice CLI) next.
+last_updated: "2026-05-11T22:27:44.808Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 43
+  completed_phases: 4
+  total_plans: 11
+  completed_plans: 11
+  percent: 57
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 08 — Tripwire Invariants with Terminal Semantics
+**Current focus:** Phase 10 — Receipts inside the Replay Envelope
 
 ## Current Position
 
-Phase: 10
+Phase: 11
 Plan: Not started
-Status: Executing Phase 08
+Status: Executing Phase 10
 Last activity: 2026-05-11
 
 Progress: [█░░░░░░░░░] 14%
@@ -48,6 +48,7 @@ Progress: [█░░░░░░░░░] 14%
 | 07 | 4 | - | - |
 | 08 | 2 | - | - |
 | 09 | 4 | - | - |
+| 10 | 1 | - | - |
 
 **Recent Trend:**
 

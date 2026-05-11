@@ -35,6 +35,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] Phase 7 capability contracts, pre-flight proof, and cost accounting: optional `contract` on `ai.run` (budget + qualityFloor + reserved invariants), pure preflight evaluator wired into the deterministic router, typed `no-contract-match` failure with `noRouteReasons[]`, normalized `Usage` on every `RunSuccess` and `RunFailure`, per-1k pricing on capability catalog entries, openai-compat pricing constructor option, and `createFakeProvider({ capabilities })`. (CONTRACT-01..06 + COST-01..03)
 - [x] Phase 8 tripwire invariants with terminal semantics: fluent `inv` builder (`mustCite`, `fieldFromTable`, `noPII`, `matches`) backed by Standard Schema; pure `evaluateTripwires` kernel with `defaultPiiDetectors` (email, US SSN, Luhn credit card, US phone); `"tripwire"` execution stage between validation and persistence; `TripwireViolationError` carrying `terminal: true` with structured `TripwireEvidence`; `isTerminal()` predicate consulted by the fallback chain so violations are NOT retried; `usage` populated on tripwire failures. (TRIP-01..05)
 - [x] Phase 9 canonical JSON, Ed25519 signing, and receipt issuance: signed `CapabilityReceipt` emitted on every `ai.run` (success and failure) when `LatticeConfig.signer` is configured; RFC 8785 JCS canonicalization via `canonicalize@3.0.0`; DSSE-shaped envelope with PAE; Node 24 WebCrypto Ed25519 (`@noble/ed25519@3.1.0` parity oracle dev-only); redact-then-sign ordering enforced structurally with `redactions[]` manifest and `redactionPolicyId` signed; `kid` + `KeySet` (active/retired/revoked); pure `verifyReceipt` returning typed `VerifyResult` with 6 error kinds; `costUsd` serialized as I-JSON string inside receipts. (RECEIPT-01..08, RECEIPT-10)
+- [x] Phase 10 receipts inside the replay envelope: `ReplayEnvelope.receipt?` and `ReplayEnvelope.contract?` additive optional fields (type-only imports); pure async `materializeReplayEnvelope(receipt, { artifactLoader, keySet, ... })` that verifies the receipt BEFORE loading any artifacts; `MaterializationError` discriminated by kind `verify-failed | artifact-load-failed | envelope-malformed`; round-trip property test asserts `createReceipt → materializeReplayEnvelope → replayOffline` preserves `outputHash`. (RECEIPT-09)
 
 ### Active
 
@@ -114,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-11 — Phases 7-9 complete; Phase 10 (Replay Envelope Integration) next*
+*Last updated: 2026-05-11 — Phases 7-10 complete; Phase 11 (lattice CLI) next*
