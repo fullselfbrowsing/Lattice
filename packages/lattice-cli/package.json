@@ -1,0 +1,36 @@
+{
+  "name": "lattice-cli",
+  "version": "0.0.0",
+  "description": "Lattice CLI — repro and verify signed capability receipts",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "lattice": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "types": "./dist/cli.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && vitest run",
+    "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "lattice": "workspace:*",
+    "citty": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
