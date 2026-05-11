@@ -112,3 +112,150 @@ describe("Phase 7 contract + cost integration", () => {
     }
   });
 });
+
+describe("Phase 7 end-to-end integration", () => {
+  it("E1: modality reject — contract requiredModalities:[video] on text-only fake yields no-contract-match with contract-modality-missing", async () => {
+    const provider = createFakeProvider({
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fake"),
+          modelId: "fake:text-only",
+          inputModalities: ["text"],
+          outputModalities: ["text"],
+        },
+      ],
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ requiredModalities: ["video"] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no-contract-match");
+      if (result.error.kind === "no-contract-match") {
+        expect(
+          result.error.noRouteReasons.some((r) => r.code === "contract-modality-missing"),
+        ).toBe(true);
+      }
+      expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0, costUsd: 0 });
+    }
+  });
+
+  it("E2: privacy reject — contract requiredPrivacy:restricted on standard-only fake yields no-contract-match with contract-privacy-mismatch", async () => {
+    const provider = createFakeProvider({
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fake"),
+          modelId: "fake:standard-only",
+          dataPolicy: { privacy: ["standard"] },
+        },
+      ],
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ requiredPrivacy: "restricted" }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no-contract-match");
+      if (result.error.kind === "no-contract-match") {
+        expect(
+          result.error.noRouteReasons.some((r) => r.code === "contract-privacy-mismatch"),
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("E3: budget reject — contract budget=0 on priced fake yields no-contract-match (integration-level safety net)", async () => {
+    const provider = createFakeProvider({
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fake"),
+          modelId: "fake:priced",
+          pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.001 },
+        },
+      ],
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ budget: { maxCostUsd: 0 } }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no-contract-match");
+    }
+  });
+
+  it("E4: success populates usage from normalizedUsage", async () => {
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "hello" },
+        normalizedUsage: { promptTokens: 10, completionTokens: 5, costUsd: 0.0001 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, costUsd: 0.0001 });
+    }
+  });
+
+  it("E5: v1.0 backward compatibility — no contract field, default fake yields RunSuccess with present usage (costUsd null)", async () => {
+    const ai = createAI({ providers: [createFakeProvider()] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.usage).toBeDefined();
+      expect(result.usage.costUsd).toBeNull();
+      expect(typeof result.usage.promptTokens).toBe("number");
+      expect(typeof result.usage.completionTokens).toBe("number");
+    }
+  });
+
+  it("E6: no-route still works without contract — fake with no structured output and structured-output request returns no_route (not no-contract-match)", async () => {
+    const provider = createFakeProvider({
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fake"),
+          modelId: "fake:text-only-unstructured",
+          inputModalities: ["text"],
+          outputModalities: ["text"],
+          structuredOutput: false,
+        },
+      ],
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: {
+        text: "text" as const,
+        action: {
+          "~standard": {
+            version: 1,
+            vendor: "test",
+            validate: (_v: unknown) => ({ value: _v }),
+          },
+        } as never,
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no_route");
+      // Sanity: still carries usage even on the no-route branch (zero, per design)
+      expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0, costUsd: 0 });
+    }
+  });
+});
