@@ -1,6 +1,7 @@
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
 import type { CapabilityContract } from "../contract/contract.js";
+import { evaluateTripwires } from "../contract/tripwire.js";
 import {
   buildContextPack,
   type ContextPack,
@@ -312,6 +313,73 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         continue;
       }
 
+      // Phase 8 tripwire evaluation — TRIP-02, TRIP-03, TRIP-04, TRIP-05.
+      // Runs ONLY when output schema validation succeeded (we are inside the
+      // `validation.ok === true` branch). First violation aborts the run
+      // and short-circuits the fallback chain (terminal by construction —
+      // see the early return below).
+      const invariants = intent.contract?.invariants ?? [];
+      if (invariants.length > 0) {
+        // validation.ok === true was just verified; narrow to the success
+        // shape so we can hand the validated outputs to the evaluator.
+        const validatedSuccess = validation as Extract<typeof validation, { ok: true }>;
+        const tripwireResult = await evaluateTripwires(
+          validatedSuccess.outputs,
+          invariants,
+        );
+        if (!tripwireResult.ok) {
+          const tripwireFailedAt = new Date().toISOString();
+          attempts.push({
+            ...succeededAttempt,
+            status: "failed",
+            error: tripwireResult.evidence.message,
+            completedAt: tripwireFailedAt,
+          });
+          const failedPlan = withPlanStatus(plan, "failed", {
+            stages: markStage(
+              markStage(
+                markStage(plan.stages, "execution", "completed"),
+                "validation",
+                "completed",
+              ),
+              "tripwire",
+              "failed",
+              { invariantId: tripwireResult.evidence.invariantId },
+            ),
+            attempts,
+          });
+          await emitEvent(
+            normalized,
+            events,
+            createRunEvent("run.failed", {
+              runId,
+              planId: failedPlan.id,
+              providerId: route.providerId,
+              modelId: route.modelId,
+              metadata: {
+                reason: "tripwire-violated",
+                invariantId: tripwireResult.evidence.invariantId,
+              },
+            }),
+          );
+          // TERMINAL by design — isTerminal(error) === true; fallback chain
+          // bypassed via early return before the `for` loop advances.
+          return {
+            ok: false,
+            error: {
+              kind: "tripwire-violated" as const,
+              message: tripwireResult.evidence.message,
+              invariantId: tripwireResult.evidence.invariantId,
+              evidence: tripwireResult.evidence,
+              terminal: true as const,
+            },
+            usage: normalizeAdapterUsage(response),
+            plan: failedPlan,
+            events,
+          };
+        }
+      }
+
       attempts.push(succeededAttempt);
       const artifactRefs =
         response.artifactRefs !== undefined
@@ -321,15 +389,19 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         stages: markStage(
           markStage(
             markStage(
-              markStage(plan.stages, "execution", "completed"),
-              "validation",
+              markStage(
+                markStage(plan.stages, "execution", "completed"),
+                "validation",
+                "completed",
+              ),
+              "persistence",
               "completed",
             ),
-            "persistence",
-            "completed",
+            "tool-execution",
+            built.toolResults.length > 0 ? "completed" : "skipped",
           ),
-          "tool-execution",
-          built.toolResults.length > 0 ? "completed" : "skipped",
+          "tripwire",
+          invariants.length > 0 ? "completed" : "skipped",
         ),
         attempts,
       });

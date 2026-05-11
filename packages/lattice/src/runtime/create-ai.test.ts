@@ -323,7 +323,9 @@ describe("Phase 8 tripwire integration", () => {
     if (!result.ok) {
       expect(result.error.kind).toBe("tripwire-violated");
       // Plan should record exactly one attempt — provider B never reached.
-      expect(result.plan.attempts).toHaveLength(1);
+      if (result.plan.kind === "execution-plan") {
+        expect(result.plan.attempts).toHaveLength(1);
+      }
       // No fallback.activated event emitted.
       const fallbackEvents = (result.events ?? []).filter(
         (event) => event.kind === "fallback.activated",
@@ -404,7 +406,10 @@ describe("Phase 8 tripwire integration", () => {
     const ai = createAI({ providers: [provider] });
     const result = await ai.run({
       task: "x",
-      outputs: { text: "text" as const },
+      outputs: {
+        text: "text" as const,
+        citations: { kind: "citations" as const },
+      },
       contract: contract({ invariants: [inv.mustCite("artifact-1")] }),
     });
     expect(result.ok).toBe(true);
