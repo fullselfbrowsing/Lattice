@@ -30,9 +30,15 @@ describe("lattice CLI bin smoke test", () => {
     expect(stderr).toMatch(/not-implemented/);
   });
 
-  it("verify stub exits 2 with a not-implemented message", () => {
+  // Plan 11-02 replaces the verify stub with the real handler. Pointing at a
+  // non-existent receipt path now exercises the load-failure branch (exit 2)
+  // with a `FAIL kind=...-load-failed` message — distinct from the
+  // not-implemented stub. The default keyset path is usually absent during
+  // CI, so keyset-load-failed is the most common outcome; either *-load-failed
+  // kind is acceptable here. Exit code 2 is still the contract.
+  it("verify subcommand exits 2 with a FAIL load-failed message when paths are absent", () => {
     const { status, stderr } = runBin(["verify", "./fixture.json"]);
     expect(status).toBe(2);
-    expect(stderr).toMatch(/not-implemented/);
+    expect(stderr).toMatch(/^FAIL kind=(keyset|receipt)-load-failed reason=/m);
   });
 });
