@@ -6,12 +6,18 @@ settings:
 
 catalogs:
   default:
+    '@noble/ed25519':
+      specifier: 3.1.0
+      version: 3.1.0
     '@standard-schema/spec':
       specifier: 1.1.0
       version: 1.1.0
     '@types/node':
       specifier: 24.12.2
       version: 24.12.2
+    canonicalize:
+      specifier: 3.0.0
+      version: 3.0.0
     mime:
       specifier: 4.1.0
       version: 4.1.0
@@ -53,10 +59,16 @@ importers:
       '@standard-schema/spec':
         specifier: 'catalog:'
         version: 1.1.0
+      canonicalize:
+        specifier: 'catalog:'
+        version: 3.0.0
       mime:
         specifier: 'catalog:'
         version: 4.1.0
     devDependencies:
+      '@noble/ed25519':
+        specifier: 'catalog:'
+        version: 3.1.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.12.2
@@ -245,6 +257,9 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@noble/ed25519@3.1.0':
+    resolution: {integrity: sha512-pfcObRY3CtvwfaG9Mt5XqZdKmAQppl37tHUeuBhDUbiwJBCVY4/A4lbMvb1xKhMDx96AqAqZpMWuBX1HulhX4g==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -634,6 +649,11 @@ packages:
   camelcase@5.3.1:
     resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
     engines: {node: '>=6'}
+
+  canonicalize@3.0.0:
+    resolution: {integrity: sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -1992,6 +2012,8 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
+  '@noble/ed25519@3.1.0': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -2279,6 +2301,8 @@ snapshots:
       quick-lru: 4.0.1
 
   camelcase@5.3.1: {}
+
+  canonicalize@3.0.0: {}
 
   chai@6.2.2: {}
 

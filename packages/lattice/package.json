@@ -41,9 +41,11 @@
   },
   "dependencies": {
     "@standard-schema/spec": "catalog:",
+    "canonicalize": "catalog:",
     "mime": "catalog:"
   },
   "devDependencies": {
+    "@noble/ed25519": "catalog:",
     "@types/node": "catalog:",
     "zod": "catalog:"
   }

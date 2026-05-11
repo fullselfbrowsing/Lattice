@@ -2,8 +2,10 @@ packages:
   - "packages/*"
 
 catalog:
+  "@noble/ed25519": 3.1.0
   "@standard-schema/spec": 1.1.0
   "@types/node": 24.12.2
+  canonicalize: 3.0.0
   mime: 4.1.0
   zod: 4.3.6
   typescript: 6.0.3
