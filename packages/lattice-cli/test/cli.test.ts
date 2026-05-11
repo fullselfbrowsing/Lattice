@@ -24,10 +24,18 @@ describe("lattice CLI bin smoke test", () => {
     expect(stdout).toMatch(/verify/);
   });
 
-  it("repro stub exits 2 with a not-implemented message", () => {
+  // Plan 11-03 replaced the repro stub with the real handler. Calling repro
+  // with a bare id against an empty cwd exercises the load-failure branch
+  // (exit 2) with a `FAIL kind=...-load-failed` message — distinct from the
+  // earlier not-implemented stub. The default fixtures dir / receipts dir
+  // are usually absent during CI, so receipt-load-failed (or keyset-load-failed
+  // if the default keyset path happens to exist) is the most common outcome;
+  // any *-load-failed kind is acceptable here. Exit code 2 is still the
+  // contract.
+  it("repro subcommand exits 2 with a FAIL load-failed message when paths are absent", () => {
     const { status, stderr } = runBin(["repro", "abc"]);
     expect(status).toBe(2);
-    expect(stderr).toMatch(/not-implemented/);
+    expect(stderr).toMatch(/^FAIL kind=(receipt|keyset)-load-failed reason=/m);
   });
 
   // Plan 11-02 replaces the verify stub with the real handler. Pointing at a

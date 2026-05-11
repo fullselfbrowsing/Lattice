@@ -17,11 +17,13 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  artifact,
   createAI,
   createFakeProvider,
   createInMemorySigner,
   generateEd25519KeyPairJwk,
   verifyReceipt,
+  type ArtifactInput,
   type KeyEntry,
   type ReceiptEnvelope,
 } from "lattice";
@@ -62,13 +64,17 @@ interface ReproFixture {
   readonly kid: string;
 }
 
-async function makeReproFixture(kid = "lattice-cli-repro-test"): Promise<ReproFixture> {
+async function makeReproFixture(
+  kid = "lattice-cli-repro-test",
+  artifacts: readonly ArtifactInput[] = [],
+): Promise<ReproFixture> {
   const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
   const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
   const ai = createAI({ providers: [createFakeProvider()], signer });
   const result = await ai.run({
     task: "lattice-cli-repro-fixture",
     outputs: { text: "text" as const },
+    artifacts,
   });
   if (!result.ok) {
     throw new Error(
@@ -234,7 +240,10 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
 
   it("Test 3 (verify-failed): tampered signature -> exit 2 with FAIL kind=verify-failed", async () => {
     const fixture = await makeReproFixture("verify-fail-kid");
-    // Flip signature bytes BEFORE writing.
+    // Seed with the valid envelope (side-channel verify succeeds), THEN
+    // overwrite the on-disk receipt with a tampered signature. This avoids
+    // tripping the seedSandbox helper's own side-channel verify.
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
     const sig = fixture.envelope.signatures[0]!;
     const sigBytes = Buffer.from(sig.sig, "base64");
     sigBytes[0] = (sigBytes[0]! ^ 0x01) & 0xff;
@@ -242,8 +251,7 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
       ...fixture.envelope,
       signatures: [{ keyid: sig.keyid, sig: sigBytes.toString("base64") }],
     };
-    const tamperedFixture: ReproFixture = { ...fixture, envelope: tampered };
-    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(tamperedFixture);
+    await writeJson(receiptPath, tampered);
 
     const { deps, bag } = captureDeps();
     await runRepro(
@@ -258,7 +266,12 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
   });
 
   it("Test 4 (artifact-load-failed): missing fixture file -> exit 2 with FAIL kind=artifact-load-failed", async () => {
-    const fixture = await makeReproFixture("missing-art-kid");
+    // Use an input artifact so the receipt has a non-empty inputHashes —
+    // otherwise the materializer has nothing to load and we'd never hit
+    // the artifact-load-failed branch.
+    const fixture = await makeReproFixture("missing-art-kid", [
+      artifact.text("input-bytes-for-fixture-load-test"),
+    ]);
     const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture, {
       fixtureBytes: null,
     });
