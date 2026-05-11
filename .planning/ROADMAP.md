@@ -92,7 +92,11 @@ Plans:
   3. `lattice verify <receipt-path>` verifies signature and structural integrity without running anything and prints a typed verdict.
   4. The CLI uses `citty@0.2.2` with lazy subcommand loading so `lattice repro` does not transitively load eval/judge dependencies, and a depcheck gate prevents the runtime package from importing CLI-only deps.
   5. CLI output is redacted by default — only the redacted fields from the signed receipt are surfaced; there is no `--unsafe-unredacted` flag in v1.1.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 11-01-PLAN.md — Bootstrap lattice-cli workspace + citty bin entry with lazy subcommand stubs + depcheck gate (Wave 1)
+- [ ] 11-02-PLAN.md — `lattice verify` subcommand + keyset loader, tested via mock argv (Wave 2)
+- [ ] 11-03-PLAN.md — `lattice repro` subcommand + filesystem artifact loader + receipt id-or-path resolver, tested via mock argv (Wave 2)
 
 ### Phase 12: lattice eval CI Gate
 **Goal**: `lattice eval` walks a fixture directory of receipts, replays each via `replayOffline`, and gates baseline-relative cost-per-task and quality-floor regressions with judge caching, layered determinism classes, and a CI-friendly non-zero exit on regression.
@@ -126,7 +130,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 8. Tripwire Invariants with Terminal Semantics | v1.1 | 0/2 | Not started | - |
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
 | 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
-| 11. lattice CLI — repro and verify | v1.1 | 0/TBD | Not started | - |
+| 11. lattice CLI — repro and verify | v1.1 | 0/3 | Not started | - |
 | 12. lattice eval CI Gate | v1.1 | 0/TBD | Not started | - |
 | 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |
 
