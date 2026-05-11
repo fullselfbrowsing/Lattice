@@ -1,4 +1,6 @@
 import type { ArtifactInput } from "../artifacts/artifact.js";
+import type { CapabilityContract } from "../contract/contract.js";
+import { evaluateContractAgainstRoute } from "../contract/preflight.js";
 import type { OutputContract, OutputContractMap } from "../outputs/contracts.js";
 import type { PolicySpec } from "../policy/policy.js";
 import type {
@@ -21,6 +23,7 @@ export interface RouteRequest {
   readonly policy?: PolicySpec;
   readonly provider?: string;
   readonly model?: string;
+  readonly contract?: CapabilityContract;
 }
 
 export function routeDeterministically(
@@ -43,6 +46,7 @@ export function routeDeterministically(
         ...(request.policy !== undefined ? { policy: request.policy } : {}),
         ...(request.provider !== undefined ? { provider: request.provider } : {}),
         ...(request.model !== undefined ? { model: request.model } : {}),
+        ...(request.contract !== undefined ? { contract: request.contract } : {}),
         index,
       }),
     )
@@ -90,6 +94,7 @@ function evaluateCapability(
     readonly policy?: PolicySpec;
     readonly provider?: string;
     readonly model?: string;
+    readonly contract?: CapabilityContract;
     readonly index: number;
   },
 ): RouteCandidate {
@@ -150,6 +155,19 @@ function evaluateCapability(
 
   const estimates = estimateRoute(capability, input.estimatedInputTokens);
   addPolicyRejectReasons(reasons, capability, estimates, input.policy);
+
+  // Phase 7 contract preflight — reuse the router's own output-token estimate
+  // so preflight and the router agree on the projected output size (one source
+  // of truth, consumed by Phase 9 receipts).
+  const contractResult = evaluateContractAgainstRoute(input.contract, {
+    capability,
+    estimatedInputTokens: input.estimatedInputTokens,
+    estimatedOutputTokens: estimates.outputTokens,
+  });
+  for (const reason of contractResult.reasons) {
+    reasons.push(reason);
+  }
+
   const score = scoreCapability(capability, estimates, input.index);
 
   return {
