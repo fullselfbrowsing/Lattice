@@ -64,7 +64,12 @@ Plans:
   3. Redaction always runs before signing — the signed canonical form binds the redacted body, not the cleartext; the `redactions[]` manifest declares what was elided.
   4. `verifyReceipt(envelope, keySet)` is a pure function returning a typed success or typed verification failure, and accepts a `KeySet` whose entries can be `active | retired | revoked` looked up by `kid`.
   5. Receipts are emitted on both success and failure runs (failure receipts carry `contractVerdict: 'tripwire-violated' | 'no-contract-match' | 'execution-failed'`), and are produced only when `LatticeConfig.signer` is configured; when absent, receipts are not emitted.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 09-01-PLAN.md — Receipt types, RFC 8785 canonicalize wrapper, redactor, KeySet (Wave 1)
+- [ ] 09-02-PLAN.md — DSSE envelope + WebCrypto Ed25519 signer + @noble parity oracle (Wave 1)
+- [ ] 09-03-PLAN.md — createReceipt redact-then-sign pipeline + pure verifyReceipt (Wave 2)
+- [ ] 09-04-PLAN.md — Runtime wiring (signer, terminal-branch receipts) + public surface (Wave 3)
 
 ### Phase 10: Receipts inside the Replay Envelope
 **Goal**: A `ReplayEnvelope` carries optional `receipt` and `contract` fields so that a single receipt is sufficient to materialize an offline replay session deterministically.
