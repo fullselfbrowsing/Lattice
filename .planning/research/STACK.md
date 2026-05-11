@@ -1,268 +1,266 @@
-# Technology Stack
+# Technology Stack — v1.1 Capability Receipts
 
-**Project:** Lattice  
-**Research dimension:** Stack for a TypeScript-first AI runtime SDK  
-**Researched:** 2026-04-22  
-**Overall confidence:** HIGH for TypeScript/package architecture, provider/MCP direction, validation, and testing; MEDIUM for exact adapter choices where fast-moving AI SDK and MCP package boundaries are still evolving.
+**Project:** Lattice
+**Research dimension:** Stack additions for Capability Contracts, signed Ed25519 receipts, `lattice` CLI (`repro`, `eval`), and CI regression gates
+**Researched:** 2026-05-11
+**Confidence:** HIGH
 
-## Recommendation
+This document only enumerates stack changes for the v1.1 Capability Receipts milestone. The v1.0 baseline (pnpm 10.33 workspace, Node 24, TypeScript 6 strict + `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess`, ESM-only `lattice` package, `tsdown` build, `vitest` tests, `@standard-schema/spec`, Zod 4 catalog dependency, `mime`) is taken as given.
 
-Build Lattice as a small, ESM-first TypeScript SDK with its own capability/artifact/session/router abstractions. Reuse existing provider surfaces behind adapters, but do not expose them in the public API. The core should depend on web-standard primitives, Zod 4/Standard Schema, OpenTelemetry, and a deterministic internal routing model. Provider breadth should come from AI SDK providers and OpenAI-compatible HTTP targets, including LiteLLM, not from hand-writing dozens of provider SDKs.
-
-The public package should feel like one install:
-
-```bash
-pnpm add lattice zod
-```
-
-Internally, keep provider, MCP, storage, and media packages modular:
-
-```text
-packages/
-  lattice/                 # umbrella package; public createAI/session/run/artifact/branch/replay API
-  core/                        # artifacts, run graph, execution plan, router, context packer contracts
-  provider-ai-sdk/             # AI SDK LanguageModel/ImageModel/EmbeddingModel adapter
-  provider-openai-compatible/  # direct OpenAI-compatible HTTP adapter; works with LiteLLM/OpenRouter/local gateways
-  provider-openai/             # first-party OpenAI adapter for Responses, files, realtime/audio edge cases
-  mcp/                         # MCP client/server bridge and tool/resource/prompt normalization
-  storage-sqlite/              # optional local replay/session/artifact index
-  media-node/                  # optional Node image/audio/PDF transforms
-```
+---
 
 ## Recommended Stack
 
-### Runtime and Language
+### Core Additions
 
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Node.js | 24.x Active LTS | Primary server/runtime target | Target Node `>=24`; test Node 24 and 25. Node 24 is the stable LTS line and has modern Web APIs needed by an SDK: `fetch`, `Blob`, streams, `FormData`, `crypto`, and native ESM maturity. Do not target Node 18; it is too old for a 2026 SDK. | HIGH |
-| TypeScript | `6.0.3` | Source language and public type contract | Use TypeScript 6, `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, and `moduleResolution: "bundler"` for source. Also run a CI job against the TypeScript 7 native preview once the package surface stabilizes, because TS 6 is explicitly a bridge to TS 7. | HIGH |
-| Package format | ESM-first with CJS compatibility where cheap | SDK distribution | Publish ESM as the primary format with explicit `exports`. Add CJS only for the umbrella package and key Node adapters if `publint` and `@arethetypeswrong/cli` verify the package shape. Avoid UMD/IIFE. | HIGH |
-| Web standard APIs | Native Node/Web APIs | Artifact transport and provider IO | Model `Artifact` payloads around `Blob`, `File`, `ReadableStream`, `ArrayBuffer`, URL references, and metadata rather than Node-only `Buffer` types. Keep `Buffer` support as a Node adapter detail. | HIGH |
+| Concern | Recommendation | Version (May 2026) | Rationale |
+|---|---|---|---|
+| Ed25519 signing/verification | **Node 24 WebCrypto** (`globalThis.crypto.subtle`) as the runtime path, with a tiny adapter so callers can inject an alternate signer | Built-in (Node `>=24.0.0`, Ed25519 marked stable since v23.5 / v22.13) | Zero new dependency, no audit surface added, ESM-native, isomorphic with browser SubtleCrypto, supports `generateKey`, `sign`, `verify`, `importKey`, `exportKey` in `raw`/`pkcs8`/`spki`/`jwk` formats. Matches Lattice's "one umbrella package with modular internals" constraint and the Node 24 floor already declared in `packages/lattice/package.json`. |
+| Ed25519 fallback / structural test fixtures | **`@noble/ed25519`** as an *optional* devDependency for tests and as a documented escape hatch for environments without WebCrypto Ed25519 (older bundlers, edge runtimes that lag) | `3.1.0` (audited Mar–Apr 2026) | ESM-only, ~3.9 KB gzipped, zero runtime dependencies, audited (paulmillr noble suite). Used **only** in tests for cross-implementation signature parity vectors; not exported from the public package. |
+| JSON canonicalization (signed payload bytes) | **`canonicalize`** (RFC 8785 / JCS) | `3.0.0` (released 2026-04-07) | Tiny (single file), TypeScript types included, zero deps, 100% RFC 8785 test-vector compliant. JCS is the right substrate because (a) Lattice already emits stable execution-plan JSON, replay envelopes, and metadata JSON — every adjacent artifact is JSON-shaped, (b) JCS is deterministic for any I-JSON value Lattice already produces, (c) it's debuggable in plain text (essential for `lattice repro` and CI diff failure output), (d) it composes naturally with `crypto.subtle.digest('SHA-256', ...)` which Lattice already uses for fingerprints. CBOR (RFC 8949 §4.2 deterministic encoding) would force a binary wire format and a new dependency without a real win for receipts that humans must read in CI logs. |
+| CLI argument / subcommand parser | **`citty`** (unjs) | `0.2.2` (released 2026-04-01, ESM-only) | Declarative `defineCommand` API (`repro` and `eval` map cleanly to subcommands), lazy subcommand loading (keeps `lattice repro` cold-start cheap), `Resolvable<T>` for dynamic command trees, native `node:util.parseArgs` under the hood (no custom parser to audit), TypeScript-first with strict typed args, ~34 KB unpacked / 3 KB gzip, ESM-only — matches Lattice's `"type": "module"` and `sideEffects: false` constraints. Commander 13 was the runner-up but its option-coercion model (everything is a string unless you write a coercer) is awkward under `exactOptionalPropertyTypes` and it ships CJS dual builds that confuse the `attw --profile esm-only` lint already in `packages/lattice` scripts. |
+| Invariant DSL | **Standard Schema-shaped invariants** with a thin declarative builder layer | Reuses existing `@standard-schema/spec@1.1.0` (already in catalog) | Standard Schema is already the contract for outputs (`packages/lattice/src/outputs/validate.ts`) and tools (`packages/lattice/src/tools/tools.ts`). Reusing the same shape for `inv.semantic(schema)` and `inv.policy(...)` keeps one validator interface across outputs, tools, and contracts — one `~standard.validate` entry point, one Zod-or-anything escape hatch, one TypeScript inference path. A small builder façade (`inv.mustCite()`, `inv.maxToxicity(x)`, `inv.matches(schema)`) compiles **down** to Standard Schema validators, so the DSL stays ergonomic without introducing a parallel validation engine. |
+| Receipt envelope shape | **DSSE-inspired envelope** (`payloadType`, `payload`, `signatures[]`) with PAE-style pre-auth encoding | No new dependency; ~80 LOC implementation against WebCrypto + `canonicalize` | DSSE (in-toto / sigstore) is the industry-standard "boring" envelope for signed JSON attestations. Adopting its shape costs nothing, makes Lattice receipts inspectable by existing tooling, and gives a documented answer to "what does the signed payload bytes look like?" — namely `PAE("DSSEv1", "application/vnd.lattice.receipt+json", canonicalize(receipt))`. We **do not** add the `@sigstore/*` dependencies — they pull in Fulcio/Rekor/OCI machinery Lattice does not need. |
+| CLI bin wiring | **`tsdown` shebang auto-bin** | Already `0.21.9` in catalog | tsdown automatically writes `package.json#bin` for any entry chunk that contains `#!/usr/bin/env node`. No new build tool. One new entry in `tsdown.config.ts` (`src/cli/index.ts`) and a `"bin": { "lattice": "./dist/cli.js" }` field that tsdown maintains. |
+| CI regression assertions | **Reuse `vitest@4.1.5`** (already in catalog) with a thin `defineLatticeEval()` helper that wraps `expect()` and emits a structured JSON report | Already in catalog | `lattice eval` should not become a new test runner. Instead it loads receipts + fixtures, drives `ai.run` in replay or live mode, and asserts cost-per-task / quality-floor / invariant gates. Surfacing this via vitest means CI integrations (GitHub Actions matrix, JUnit reporters, Vitest's built-in `--reporter=junit`) work for free. For non-vitest consumers, `lattice eval` exits non-zero with a stable JSON report on stdout — that is the contract. |
 
-### Package Manager, Monorepo, and Release
+### Supporting Libraries (already in workspace, listed for completeness)
 
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| pnpm | `10.33.0` | Package manager/workspaces | Use pnpm workspaces plus catalogs in `pnpm-workspace.yaml` for dependency version control. It fits a multi-package SDK and avoids dependency duplication. | HIGH |
-| Changesets | `@changesets/cli@2.31.0` | Versioning/changelogs/publishing | Use Changesets from day one. Lattice will need semver discipline across core, adapters, and storage/media packages; Changesets is the standard monorepo release workflow. | HIGH |
-| Turborepo | `turbo@2.9.6` | Task graph/cache | Use Turbo only for package task orchestration (`build`, `test`, `typecheck`, `lint`). Do not let it become an architecture dependency. pnpm remains the workspace authority. | MEDIUM |
-| tsdown | `0.21.9` | Library bundling | Use `tsdown` for package builds because it is library-focused, supports declaration output and multiple formats, and is aligned with Rolldown. Keep `tsc --noEmit` as the source of type correctness. | MEDIUM |
-| publint | `0.3.18` | Package publication lint | Run in CI before publish to catch bad `exports`, missing files, and invalid package metadata. | HIGH |
-| @arethetypeswrong/cli | `0.18.2` | Type package verification | Run in CI for every public package. This is critical if the project publishes mixed ESM/CJS and declaration files. | HIGH |
-| TypeDoc | `0.28.19` | API reference | Generate API docs from public packages after the API stops changing weekly. Do not use TypeDoc as a substitute for authored conceptual docs. | MEDIUM |
+| Library | Role in v1.1 |
+|---|---|
+| `@standard-schema/spec@1.1.0` (catalog) | Backing validators for invariants |
+| `zod@4.3.6` (catalog, dev) | Authoring path for invariant schemas in tests and docs; not required at runtime |
+| `mime@4.1.0` (catalog) | Unchanged; receipts reuse existing artifact mime annotations |
+| `vitest@4.1.5` (catalog) | Backbone of `lattice eval`'s assertion + reporter surface |
+| `tsdown@0.21.9` (catalog) | Builds new `bin/lattice` entry chunk; auto-injects bin field |
+| `publint@0.3.18` + `@arethetypeswrong/cli@0.18.2` | Existing lint pipeline must continue to pass after the `bin` entry is added |
 
-### Core Provider Surface
+### Development Tools
 
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Vercel AI SDK core | `ai@6.0.168` | Provider/model abstraction, streaming, structured generation, image/embedding APIs | Use as an internal adapter layer, not as Lattice's public API. AI SDK 6 has provider registry, custom providers, OpenAI-compatible provider support, tools/MCP work, standard JSON schema support, and broad TypeScript adoption. It should accelerate provider coverage while Lattice owns capability routing, artifact packing, replay, and execution plans. | HIGH |
-| AI SDK provider contracts | `@ai-sdk/provider@3.0.8`, `@ai-sdk/provider-utils@4.0.23` | Adapter boundary | Build `provider-ai-sdk` against provider contracts, but wrap every call in Lattice's own `ProviderAdapter` interface so breaking AI SDK changes do not leak to users. | MEDIUM |
-| AI SDK OpenAI-compatible provider | `@ai-sdk/openai-compatible@2.0.41` | OpenAI-compatible gateway integration | Support it for LiteLLM/OpenRouter/local gateways when the AI SDK path is enough. Use direct OpenAI-compatible HTTP for cases requiring full request/response journaling or provider-specific artifact transport. | HIGH |
-| OpenAI JS SDK | `openai@6.34.0` | First-party OpenAI Responses/files/audio/realtime support | Use a dedicated OpenAI adapter for OpenAI-specific capabilities, especially Responses API, files, structured outputs, realtime/audio, request IDs, retries, and raw response access. Do not make `openai` a core dependency of the entire SDK. | HIGH |
-| LiteLLM | Gateway, Docker stable tags; Python package not embedded | Broad provider gateway and routing infra | Reuse LiteLLM through OpenAI-compatible HTTP as an optional deployment target. Do not vendor or require the Python SDK. Let LiteLLM provide team-level virtual keys, cost tracking, and broad provider proxying; let Lattice provide per-run artifact/context/routing plans. | HIGH |
-| OpenAI-compatible API shape | Protocol contract, not a library | Provider interoperability | Define a first-class `OpenAICompatibleProvider` adapter. It should work with LiteLLM, OpenRouter, vLLM, Ollama-compatible proxies, and self-hosted gateways. Log raw request/response envelopes for replay. | HIGH |
+| Tool | Purpose | Notes |
+|---|---|---|
+| `node --test` snapshot of WebCrypto Ed25519 keypair | Generate fixed test keys for receipt unit tests | Avoid embedding a real production private key; generate per-test or load from `fixtures/keys/*.jwk` |
+| `vitest --typecheck` (already wired) | Enforce strict typing on the new `Contract`, `Receipt`, `Invariant` types | Existing `test:types` script extends to new modules |
+| `attw --pack . --profile esm-only` (already wired) | Verify the new `bin` and any new subpath exports remain ESM-only and properly typed | Already in `lint:packages` |
 
-**Provider strategy:** Start with three adapters:
+---
 
-1. `provider-openai` using `openai@6.34.0`
-2. `provider-ai-sdk` using `ai@6.0.168` and selected provider packages
-3. `provider-openai-compatible` using `fetch` directly plus optional AI SDK OpenAI-compatible provider
+## Installation
 
-Do not start by building native adapters for Anthropic, Google, Bedrock, Groq, xAI, etc. That duplicates the least differentiated part of the product.
-
-### MCP-Native Tool and Context Integration
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Official MCP TypeScript SDK | `@modelcontextprotocol/sdk@1.29.0` stable; split packages `@modelcontextprotocol/client/server/node/hono/express@2.0.0-alpha.2` | MCP clients, servers, tools, resources, prompts, transports | Use the official MCP TypeScript SDK behind `@lattice/mcp`. For v0.1, prefer stable `@modelcontextprotocol/sdk@1.29.0`. Track the split v2 packages, but do not make alpha packages part of the stable Lattice API until they leave alpha. | MEDIUM |
-| MCP transports | stdio, Streamable HTTP, legacy SSE fallback | Tool/context connectivity | Support stdio and Streamable HTTP first. SSE fallback can be adapter-only for legacy servers. Treat MCP resources/prompts/tool results as `Artifact`s so they can be packed, replayed, and traced like provider outputs. | HIGH |
-| Standard Schema | `@standard-schema/spec@1.1.0`, `@standard-schema/utils@0.3.0` | Tool/output schema interoperability | Accept Standard Schema at Lattice boundaries. This lets users bring Zod, Valibot, ArkType, or compatible validators without custom adapters. Use Zod as the documented default. | HIGH |
-
-**MCP rule:** Lattice should be an MCP client and optionally expose runs/tools as an MCP server, but MCP should not be the only plugin API. Internal capabilities still need richer artifact, policy, budget, and replay metadata than MCP tool calls provide.
-
-### Validation, Schemas, and Structured Outputs
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Zod | `4.3.6` | Default public schema and runtime validation | Use Zod 4 as the primary documented schema library. It is TypeScript-first, stable, supports metadata, codecs, and native JSON Schema conversion. Require `strict` TypeScript. | HIGH |
-| Standard Schema | `@standard-schema/spec@1.1.0` | Schema-library-neutral public input | Accept any Standard Schema for output schemas, tool inputs, artifact metadata, and policy objects. Normalize internally to a Lattice schema descriptor. | HIGH |
-| AJV | `8.18.0` | JSON Schema runtime validation | Use AJV for validating provider-compatible JSON Schema and replay fixtures after converting from Zod/Standard Schema. Keep it internal; do not ask users to learn AJV. | HIGH |
-| Valibot | `1.3.1` | Lightweight schema alternative | Support through Standard Schema only. Do not document it as the default. | MEDIUM |
-| ArkType | `2.2.0` | Type-syntax schema alternative | Support through Standard Schema only. Useful for advanced TS users, but not the main docs path. | MEDIUM |
-| Effect Schema | `effect@3.21.1`, `@effect/schema@0.75.5` | Advanced functional schema/effects | Do not use as the default. Effect is powerful but would impose a programming model on a small SDK. Support via Standard Schema/adapter if user demand appears. | MEDIUM |
-| zod-to-json-schema | `3.25.2` | Legacy Zod-to-JSON-Schema conversion | Do not use for new core work. Zod 4 has native `z.toJSONSchema()`. Add compatibility only if a downstream tool still requires it. | HIGH |
-
-**Schema policy:** Public APIs accept Zod and Standard Schema. Provider adapters receive JSON Schema after normalization and compatibility checks. Store both the original schema reference metadata and emitted JSON Schema in execution plans for replay/debugging.
-
-### Context Packing and Token Accounting
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Internal context packer | N/A | Live context, summary, archive split | Build this in Lattice core. It is a core differentiator and should not be delegated to LangChain/LangGraph/Agents SDK memory abstractions. | HIGH |
-| Provider-reported usage | N/A | Final cost/token accounting | Prefer provider-reported usage for actual billing and execution plans. Tokenizers are estimates, not ground truth across providers. | HIGH |
-| js-tiktoken / tiktoken | `js-tiktoken@1.0.21`, `tiktoken@1.0.22` | OpenAI-style token estimates | Use optional OpenAI-family token estimation where helpful. Keep it pluggable because multimodal context cost depends on provider packaging rules. | MEDIUM |
-| gpt-tokenizer | `3.4.0` | Alternative tokenizer | Do not use initially unless it handles a model family needed by the showcase better than tiktoken. | LOW |
-
-**Context rule:** Build a deterministic context budgeter that records why each artifact/message was included, compressed, transformed, or archived. The budgeter should operate on Lattice `ArtifactRef`s and provider capability metadata, not raw chat messages.
-
-### Artifact Transport and Media Processing
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| file-type | `22.0.1` | MIME/type sniffing | Use for artifact ingestion validation. Never trust filename extension alone. | HIGH |
-| mime | `4.1.0` | MIME lookup | Use as a fallback lookup helper, not as authoritative validation. | HIGH |
-| sharp | `0.34.5` | Image resize/format conversion | Use in optional `media-node` adapter for screenshots/photos. Keep optional because it has native dependencies and may not work in all edge runtimes. | HIGH |
-| pdfjs-dist | `5.6.205` | PDF parsing/rendering primitives | Use for PDF page extraction/rendering when needed. Keep behind optional package. | MEDIUM |
-| pdf-parse | `2.4.5` | Simple PDF text extraction | Use for low-friction text extraction in Node examples, but do not rely on it for high-fidelity PDF layout. | MEDIUM |
-| music-metadata | `11.12.3` | Audio metadata | Use for duration/codec metadata before transcription routing. | MEDIUM |
-| ffmpeg-static + execa | `ffmpeg-static@5.3.0`, `execa@9.6.1` | Audio/video transcoding | Provide an optional local transform package. Do not bundle FFmpeg in core; native binaries are too heavy and platform-sensitive. | MEDIUM |
-| @aws-sdk/client-s3 | `3.1034.0` | Object storage adapter | Optional artifact store adapter only. Core should accept signed URLs and upload IDs without requiring AWS. | MEDIUM |
-
-**Artifact rule:** Store raw artifacts by reference, not by copying bytes through every stage. Each transform should produce a new `Artifact` with parent links, content hash, MIME, size, provider packaging form, and redaction/privacy flags.
-
-### Sessions, Replay, and Storage
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| In-memory store | N/A | Default dev/session store | Include in core for tests and quickstarts. Clearly document that it is not durable. | HIGH |
-| Filesystem store | Node `fs` | Local artifact bytes and replay fixtures | Use for first showcase and SDK tests. Store JSONL execution events plus artifact blobs by content hash. | HIGH |
-| SQLite adapter | `better-sqlite3@12.9.0` | Durable local sessions/replay index | Build optional `storage-sqlite` for local apps and reproducible replay. It is simple, fast, and does not require running infrastructure. | HIGH |
-| Postgres adapter | `postgres@3.4.9` or `pg@8.20.0` | Future production persistence | Defer until there is a hosted/control-plane milestone or a strong user request. Use a storage interface now so it can be added later. | MEDIUM |
-| Prisma | Not recommended | ORM | Do not use in the SDK core. It is too heavy for a library runtime and adds codegen/install friction. | HIGH |
-| Drizzle/Kysely | `drizzle-orm@0.45.2`, `kysely@0.28.16` | Typed SQL | Do not use initially. Handwritten SQL for the small SQLite adapter is more transparent and avoids tying storage plugins to a query builder. Revisit for Postgres adapter only. | MEDIUM |
-
-**Replay rule:** Replay must capture normalized Lattice events, not provider SDK objects. Provider raw request/response envelopes are attachments to the event log. This keeps replay stable if provider SDKs change.
-
-### Observability, Plans, and Diagnostics
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| OpenTelemetry JS | `@opentelemetry/api@1.9.1`, `@opentelemetry/sdk-node@0.215.0`, `@opentelemetry/exporter-trace-otlp-http@0.215.0` | Tracing hooks/export | Use OpenTelemetry as the tracing substrate. Do not invent a proprietary trace API. Emit spans for route selection, context packing, artifact transforms, provider calls, fallback, schema validation, and replay. | HIGH |
-| pino | `10.3.1` | Optional logger adapter | Core should accept a minimal logger interface. Provide a pino adapter for Node apps, but avoid a hard logger dependency in core. | MEDIUM |
-| Langfuse / LangSmith | `@langfuse/tracing@5.2.0`, `langsmith@0.5.21` | AI observability integrations | Do not bake in. Add exporters after core OTel spans and execution plans are stable. | MEDIUM |
-
-**Plan model:** Execution plans are first-class data. They should include selected provider/model, alternatives scored and rejected, context budget decisions, artifact transforms, validation path, retries/fallbacks, cost/latency estimates, final usage, and source raw event IDs.
-
-### Testing and Quality
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| Vitest | `4.1.5` | Unit/integration tests | Use Vitest for all package tests. It handles TypeScript/ESM better than Jest for this SDK shape. | HIGH |
-| @vitest/coverage-v8 | `4.1.5` | Coverage | Use V8 coverage in CI. Gate only critical packages at first to avoid false precision during early design. | HIGH |
-| fast-check | `4.7.0` | Property-based tests | Use for router determinism, context budget invariants, artifact graph invariants, and replay idempotency. | HIGH |
-| MSW | `2.13.4` | Fetch-level provider mocks | Use for fetch-based provider adapters and examples. | MEDIUM |
-| Nock | `14.0.13` | Node HTTP mocks | Use sparingly for SDKs that do not expose fetch cleanly. Prefer MSW/fake servers for web-standard request paths. | MEDIUM |
-| Playwright | `1.59.1` | Showcase/e2e testing | Use only for the multimodal work inbox demo or docs examples with UI. Not needed for core SDK tests. | MEDIUM |
-| Knip | `6.6.0` | Dead code/dependency checks | Run in CI to keep the SDK small and avoid adapter dependencies leaking into core. | HIGH |
-| ESLint | `10.2.1` | Lint | Use ESLint flat config. Keep rules focused on correctness and package boundaries. | HIGH |
-| Prettier | `3.8.3` | Formatting | Use for formatting; no custom style debates. | HIGH |
-| oxlint | `1.61.0` | Fast lint supplement | Optional once repository size justifies it. Do not introduce until ESLint rules are stable. | LOW |
-
-### CLI, Config, and Developer Experience
-
-| Technology | Current version checked | Purpose | Recommendation | Confidence |
-|------------|-------------------------|---------|----------------|------------|
-| tsx | `4.21.0` | Local TS execution | Use for examples/scripts. Do not use it as the production runtime. | HIGH |
-| commander | `14.0.3` or cac `7.0.0` | CLI argument parsing | Use `commander` if a CLI is needed for replay inspection and fixture generation. Keep CLI separate from core. | MEDIUM |
-| dotenv | `17.4.2` | Local env loading | Use only in examples/dev CLI. Core must not load `.env` implicitly. | HIGH |
-| jose | `6.2.2` | OAuth/JWT helpers | Use inside MCP/auth adapters when needed. Do not make auth a core dependency until remote MCP auth is implemented. | MEDIUM |
-
-## What Not To Use
-
-| Avoid | Why | Use Instead | Confidence |
-|-------|-----|-------------|------------|
-| LangChain/LangGraph as the core runtime | They solve orchestration/agent graph problems, but Lattice's differentiator is a tiny capability runtime with artifact/context/routing plans. Depending on them would pull the public model toward chains/graphs. | Own core runtime; optional adapters later. | HIGH |
-| OpenAI Agents SDK as the core runtime | It is strong for OpenAI agent loops, sessions, tracing, MCP, and voice, but Lattice is intentionally not a multi-agent framework and must route across providers/artifact packaging rules. | Use `openai` JS SDK for OpenAI adapter; study Agents SDK patterns for sessions/tracing/voice. | HIGH |
-| LiteLLM Python SDK embedded in Lattice | Lattice is TypeScript-first. Embedding Python adds process/deployment complexity and hides provider envelopes. | Treat LiteLLM as an optional OpenAI-compatible gateway target. | HIGH |
-| Provider SDK sprawl in core | Direct dependencies on every provider make install size, auth, errors, and upgrades unmanageable. | Provider adapter packages plus AI SDK/OpenAI-compatible reuse. | HIGH |
-| Proprietary plugin protocol | MCP is now the standard integration protocol for tools/context. A custom plugin surface would isolate the ecosystem. | MCP client/server bridge plus internal capability metadata. | HIGH |
-| Zod 3 or `zod-to-json-schema` as the default | Zod 4 is stable and has native JSON Schema conversion. Third-party conversion adds compatibility risk. | Zod 4 `z.toJSONSchema()` plus AJV verification. | HIGH |
-| Prisma in the SDK | Heavy install, codegen, and runtime assumptions do not fit a small embeddable SDK. | Storage interface, filesystem, and optional SQLite adapter. | HIGH |
-| Required native media dependencies in core | `sharp`, FFmpeg, and SQLite are useful but create platform friction. | Optional Node packages. | HIGH |
-| Opaque AI-selected routing in v0.1 | It conflicts with the project requirement for deterministic, inspectable routing. | Capability matrix + policy scoring + explicit fallbacks. | HIGH |
-| Global mutable provider configuration as the main API | Hard to replay, branch, test, or explain. | Explicit `createAI({ providers, policy, storage, tracing })`. | HIGH |
-
-## Initial Install Sets
-
-### Core Workspace
+No new runtime dependencies are added to `packages/lattice/package.json`. The only catalog/devDependency change required:
 
 ```bash
-pnpm add zod @standard-schema/spec ajv lru-cache p-limit nanoid eventsource-parser
-pnpm add -D typescript vitest @vitest/coverage-v8 fast-check eslint prettier knip publint @arethetypeswrong/cli tsdown tsx @changesets/cli typedoc turbo
+# Workspace root: extend the pnpm catalog
+# pnpm-workspace.yaml additions
+#   "@noble/ed25519": 3.1.0          # devDependency for cross-impl parity tests only
+#   citty: 0.2.2                     # runtime dep of lattice package (CLI)
+#   canonicalize: 3.0.0              # runtime dep of lattice package (receipts)
+
+pnpm -F lattice add citty@catalog: canonicalize@catalog:
+pnpm -F lattice add -D @noble/ed25519@catalog:
 ```
 
-### Provider Adapters
+Resulting `packages/lattice/package.json` deltas:
 
-```bash
-pnpm add ai @ai-sdk/provider @ai-sdk/provider-utils @ai-sdk/openai-compatible openai
-pnpm add @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
+```jsonc
+{
+  "dependencies": {
+    "@standard-schema/spec": "catalog:",
+    "canonicalize": "catalog:",
+    "citty": "catalog:",
+    "mime": "catalog:"
+  },
+  "devDependencies": {
+    "@noble/ed25519": "catalog:",
+    "@types/node": "catalog:",
+    "zod": "catalog:"
+  },
+  "bin": {
+    "lattice": "./dist/cli.js"
+  },
+  "exports": {
+    ".":          { "types": "./dist/index.d.ts",    "import": "./dist/index.js" },
+    "./receipts": { "types": "./dist/receipts.d.ts", "import": "./dist/receipts.js" },
+    "./cli":      { "types": "./dist/cli.d.ts",      "import": "./dist/cli.js" }
+  }
+}
 ```
 
-Only install direct provider packages when an adapter needs them. Keep the umbrella package from depending on all provider packages.
+The `./receipts` subpath export is recommended so consumers can verify receipts without dragging in the CLI's `citty` graph, preserving tree-shakability for downstream apps that only need verification (e.g., a webhook endpoint that validates inbound receipts).
 
-### MCP Adapter
+---
 
-```bash
-pnpm add @modelcontextprotocol/sdk
+## Alternatives Considered
+
+| Recommended | Alternative | Why Not (for v1.1) |
+|---|---|---|
+| Node 24 WebCrypto Ed25519 | `@noble/ed25519@3.1.0` as the primary signer | Adds a dependency where Node 24 already ships a stable, standardized, free implementation. Pulling in `@noble/ed25519` for runtime would also force a `noble-hashes` peer for the sync path, growing the dependency closure for zero functional gain. We still ship it as a dev-only parity oracle. |
+| Node 24 WebCrypto Ed25519 | `@noble/curves@2.x` (omnibus EC bundle) | Larger attack surface and ~10× the code of `@noble/ed25519` without needing any of the extra primitives (ristretto255, x25519, ed25519ph, hash-to-curve). The noble project itself recommends `@noble/ed25519` when only basic Ed25519 is required. |
+| `canonicalize@3.0.0` | `@truestamp/canonify` | Comparable RFC 8785 conformance and passes the same test vectors, but `canonicalize` has the longer track record (Erdtman, the JCS RFC's reference author, maintains it), smaller surface, and is already the de-facto JCS package in the JS ecosystem. |
+| `canonicalize@3.0.0` | `json-canonicalize` | Solid alternative; we pick `canonicalize` for provenance (RFC author) and zero-dep posture. Either would work; the choice is reversible. |
+| `canonicalize@3.0.0` (JCS / JSON) | CBOR deterministic encoding (RFC 8949 §4.2, e.g., `cbor-x`) | Binary, opaque in CI logs, harder to diff in failure output, forces consumers to add a CBOR decoder to verify receipts, and provides no measurable size win at receipt scales (a typical Lattice receipt is a few KB of JSON metadata, dominated by hashes and string IDs that CBOR cannot compress further than gzip already does). The use case for deterministic CBOR is constrained-device telemetry, not developer-facing audit artifacts. |
+| `citty@0.2.2` | `commander@13.x` | Commander is mature but ships dual CJS/ESM, has weaker TS inference under `exactOptionalPropertyTypes`, and lacks declarative subcommand lazy loading. Its option coercion (every option arrives as `string \| undefined` unless you write a custom parser) fights `noUncheckedIndexedAccess`. |
+| `citty@0.2.2` | `cac` | Lighter than commander but smaller community, fewer recent releases, and no native lazy-subcommand story. Citty's unjs maintenance cadence and ESM-only stance fit better. |
+| `citty@0.2.2` | `oclif` / `stricli` | Both are framework-grade — plugin systems, command discovery, scaffolding. Vast overkill for two subcommands and would dwarf the `lattice` package on install size. |
+| `citty@0.2.2` | Hand-rolled `node:util.parseArgs` | Tempting (zero deps, native), and we will **use it underneath** because citty already wraps it. Writing a subcommand router by hand for `repro` and `eval` plus help generation plus arg type coercion is ~150 LOC of code we don't want to own. Citty is ~3 KB gzip — cheaper than the bug surface of a custom parser. |
+| Standard Schema-shaped invariants | A bespoke fluent DSL (e.g., `inv.mustCite().withSeverity('hard')`) backed by its own evaluator | Forking validation logic from Standard Schema would create two parallel validation engines inside Lattice and break the "outputs, tools, and contracts all speak the same validator" property. The Standard Schema-shaped approach **wraps** a fluent builder over Standard Schema, getting the best of both: builder ergonomics at authoring time, one validator surface at runtime. |
+| DSSE-shaped envelope | JWS (RFC 7515) / JWT | JWS is fine for JOSE shops but ties payload encoding to base64url and brings JWA/JWK ambiguity. DSSE was explicitly designed to replace JWS for software-supply-chain attestations and has cleaner semantics for "sign this canonical JSON payload of media type X." No JOSE library needed. |
+
+---
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|---|---|---|
+| Heavy crypto frameworks (`node-forge`, `jose`, full PKI stacks) | Lattice only needs Ed25519 sign/verify + SHA-256. Pulling in JOSE-style frameworks adds RSA, ECDSA P-256/384/521, AES-KW, PBKDF2 surface area and audit weight that v1.1 does not require. | Node 24 WebCrypto (`crypto.subtle`) directly. |
+| `sodium-native` / `libsodium-wrappers` | Native bindings, install-time toolchain dependency, mismatched browser story, and overlaps WebCrypto entirely. | Node 24 WebCrypto. |
+| `commander` v12 or earlier | CJS/ESM dual builds, weaker TS types, no lazy subcommands. | `citty@0.2.2`. |
+| `yargs` | Heavy (~200 KB), CJS-leaning, parser-heavy, more configurability than two subcommands need. | `citty@0.2.2`. |
+| `oclif` | Plugin/scaffolding framework — wrong tier for `lattice repro` + `lattice eval`. | `citty@0.2.2`. |
+| `cbor-x` / any CBOR codec for receipts | Opaque payloads defeat the "every Lattice run must be inspectable" constraint from `PROJECT.md`. | `canonicalize` JSON (RFC 8785). |
+| `protobufjs` for receipts | Adds schema-compilation toolchain, hides field meanings in numeric tags, no humans-can-read property. | Same — stay JSON. |
+| Re-exporting `@noble/ed25519` from the public package | Users would inherit a runtime dep we don't need; also forks the signature implementation between Node and browser. | Keep `@noble/ed25519` as devDep only. Receipts produced and verified via WebCrypto end-to-end. |
+| A second validation engine for invariants | Forks contracts from outputs/tools and doubles the maintenance surface. | Standard Schema-shaped invariants, with Zod 4 as the convenient authoring path. |
+| `@sigstore/sign`, `@sigstore/verify`, `cosign` integration | v1.1 needs **local** signed receipts, not a public transparency log. Sigstore brings Fulcio/Rekor/OCI dependencies and a network trust model that is out of scope. | DSSE-shaped envelope with locally-managed Ed25519 keys; sigstore integration can be a v1.2 add-on without changing the envelope. |
+| Custom canonicalization (sorting keys ourselves) | Easy to get subtly wrong (Unicode code-point ordering, number serialization edge cases per ECMAScript spec) — and any bug invalidates every signed receipt. | `canonicalize@3.0.0` with RFC 8785 conformance. |
+
+---
+
+## Stack Patterns by Variant
+
+**If a downstream consumer needs to verify receipts in a browser / edge runtime:**
+- Import only `lattice/receipts` (verify-only entry).
+- Use the same WebCrypto path — every modern browser and most edge runtimes (Cloudflare Workers, Deno Deploy, Vercel Edge) now ship WebCrypto Ed25519.
+- Because `lattice/receipts` carries only `canonicalize` as a real runtime dep, the verifier closure is single-digit KB.
+
+**If a Lattice deployment is locked to Node <23.5 (no stable WebCrypto Ed25519):**
+- Out of scope for v1.1 (package.json sets `engines.node >=24`), but the WebCrypto-shaped adapter makes it trivial to wire `@noble/ed25519` as the implementation — one factory function swap, no contract change.
+
+**If a Lattice user wants to author invariants without Zod:**
+- They pass any Standard Schema-compatible validator (Valibot, ArkType, or a hand-written `~standard.validate`). The `inv.matches(schema)` builder accepts the spec, not the library.
+
+**If a CI job already runs vitest:**
+- `lattice eval --reporter=vitest` returns vitest-compatible JSON; CI can route it to existing PR comment bots.
+
+**If a CI job does not run vitest:**
+- `lattice eval --reporter=json` emits a stable JSON shape `{ runs, regressions, costDelta, qualityDelta, exitCode }`. Non-zero exit on regression.
+
+---
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---|---|---|
+| `citty@0.2.2` | Node `>=18.10` (uses `node:util.parseArgs`). Node 24 is fully supported. | ESM-only — matches our `"type": "module"`. |
+| `canonicalize@3.0.0` | Any modern JS runtime; no Node version floor required by the package itself. | Pairs cleanly with `crypto.subtle.digest('SHA-256', ...)`. |
+| `@noble/ed25519@3.1.0` | Node `>=20.19`, all modern browsers. | DevDep only in our use; the Node 24 floor in our package is comfortably above the package's floor. |
+| Node 24 WebCrypto Ed25519 | Stable since v23.5 / v22.13; available in all v24.x. | Algorithm name is the literal string `"Ed25519"`; `subtle.sign`, `subtle.verify`, `subtle.generateKey`, `subtle.importKey`, `subtle.exportKey` all supported. |
+| `tsdown@0.21.9` (catalog) | Auto-detects `#!/usr/bin/env node` shebang and writes `bin` field. | No new tooling needed for the CLI build. |
+| `vitest@4.1.5` (catalog) | Vitest 4 ships built-in visual-regression hooks and stable snapshot semantics in CI (`process.env.CI` → snapshots fail rather than write). | We rely only on the long-stable `expect()`, `describe()`, snapshot, and JSON reporter surfaces — nothing v4-specific is required, so a future downgrade is safe. |
+
+---
+
+## Build & Wiring Notes
+
+### CLI entry
+
+```ts
+// packages/lattice/src/cli/index.ts
+#!/usr/bin/env node
+import { defineCommand, runMain } from "citty";
+
+const main = defineCommand({
+  meta: { name: "lattice", version: LATTICE_VERSION, description: "Lattice CLI" },
+  subCommands: {
+    repro: () => import("./repro.js").then((m) => m.default),
+    eval:  () => import("./eval.js").then((m) => m.default),
+  },
+});
+
+runMain(main);
 ```
 
-Track these, but do not depend on them in the stable API until non-alpha:
+- The shebang triggers tsdown's auto-`bin` field on build.
+- `subCommands` use citty's `Resolvable<T>` dynamic import to keep `lattice repro` from loading the eval runner (and vice versa) — relevant because `lattice eval` will transitively load vitest.
 
-```bash
-pnpm add @modelcontextprotocol/client@next @modelcontextprotocol/server@next @modelcontextprotocol/node@next
+### Receipt envelope
+
+```ts
+// packages/lattice/src/receipts/envelope.ts
+import canonicalize from "canonicalize";
+
+const PAE = (type: string, body: string): Uint8Array => {
+  const enc = new TextEncoder();
+  const parts = ["DSSEv1", `${type.length}`, type, `${body.length}`, body];
+  return enc.encode(parts.join(" "));
+};
+
+export const signReceipt = async (
+  receipt: ReceiptPayload,
+  privateKey: CryptoKey,
+): Promise<DsseEnvelope> => {
+  const payload = canonicalize(receipt);           // RFC 8785
+  if (payload === undefined) throw new Error("...");
+  const sig = await crypto.subtle.sign(
+    "Ed25519",
+    privateKey,
+    PAE("application/vnd.lattice.receipt+json", payload),
+  );
+  return {
+    payloadType: "application/vnd.lattice.receipt+json",
+    payload: btoa(payload),
+    signatures: [{ keyid, sig: bufToB64(sig) }],
+  };
+};
 ```
 
-### Optional Media and Storage
+- All bytes are derived deterministically: same receipt → same canonical payload → same signed bytes.
+- Verification reverses the steps using `crypto.subtle.verify("Ed25519", ...)`.
+- No `Buffer` usage — `TextEncoder` + `btoa` keep the path isomorphic between Node 24 and browsers.
 
-```bash
-pnpm add file-type mime
-pnpm add -D msw nock
-pnpm add sharp pdfjs-dist pdf-parse music-metadata
-pnpm add better-sqlite3
+### Invariant DSL
+
+```ts
+// packages/lattice/src/contracts/invariants.ts
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+
+export interface Invariant<T = unknown> {
+  readonly kind: "semantic" | "policy" | "schema";
+  readonly id: string;
+  readonly severity: "hard" | "soft";
+  readonly check: (value: T) => InvariantResult | Promise<InvariantResult>;
+}
+
+export const inv = {
+  matches: <T>(schema: StandardSchemaV1<unknown, T>, opts?: InvOpts) =>
+    schemaInvariant(schema, opts),
+  mustCite: (opts?: InvOpts) => semanticInvariant(/* ...precanned ... */),
+  maxToxicity: (threshold: number, opts?: InvOpts) => policyInvariant(/* ... */),
+};
 ```
 
-## Roadmap Implications
+- The fluent surface (`inv.mustCite()`) compiles down to `Invariant`s whose `check` ultimately delegates to a Standard Schema `~standard.validate`.
+- Tripwire mid-stream evaluation calls `check(partial)` on streamed chunks; a `hard` failure aborts the run via the existing typed run-event mechanism.
 
-1. **Foundation phase:** Set up pnpm monorepo, strict TypeScript 6, package exports, Vitest, build/publish verification, and core public API skeleton. Do this before any provider work.
-2. **Artifact and plan phase:** Implement `Artifact`, `ArtifactRef`, execution events, deterministic replay log, and plan shape. Provider adapters depend on these contracts.
-3. **Provider adapter phase:** Implement OpenAI, AI SDK, and OpenAI-compatible adapters. Prove LiteLLM through the OpenAI-compatible path rather than a native dependency.
-4. **Context/router phase:** Build capability matrix, scoring, context packer, and deterministic fallback using fake providers and property tests before using real providers heavily.
-5. **MCP phase:** Add MCP client ingestion for tools/resources/prompts and expose tool results as artifacts. Add MCP server mode later.
-6. **Media/storage phase:** Add optional Node packages for image/PDF/audio transforms and SQLite replay/session persistence.
-
-## Confidence Assessment
-
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Runtime baseline | HIGH | Node 24 Active LTS and TypeScript 6 are current official targets; OpenAI SDK requires Node 20+ and modern runtimes. |
-| Provider reuse | HIGH | AI SDK and LiteLLM both explicitly target multi-provider/OpenAI-compatible use. The exact adapter API may move, so keep it internal. |
-| MCP | MEDIUM | Official TypeScript SDK is Tier 1, but package boundaries are changing: stable v1 package exists while split v2 packages are alpha. |
-| Validation | HIGH | Zod 4 stable, Standard Schema is designed for cross-library validation, and MCP docs are adopting Standard Schema language. |
-| Media stack | MEDIUM | Libraries are current, but PDF/audio/video transforms vary by platform and provider requirements. Keep optional. |
-| Storage | HIGH for local SQLite/filesystem; MEDIUM for future Postgres | v0.1 should stay embeddable; production storage can be added behind interfaces. |
-| Observability | HIGH | OpenTelemetry is the right substrate; AI-specific exporters should remain optional. |
+---
 
 ## Sources
 
-- TypeScript 6 announcement: https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/
-- Node.js release status: https://nodejs.org/en/about/previous-releases
-- AI SDK 6 announcement: https://vercel.com/blog/ai-sdk-6/
-- AI SDK provider management: https://ai-sdk.dev/docs/ai-sdk-core/provider-management
-- OpenAI JavaScript/TypeScript SDK: https://github.com/openai/openai-node
-- OpenAI Responses migration guide: https://developers.openai.com/api/docs/guides/migrate-to-responses
-- OpenAI Agents SDK TypeScript docs: https://openai.github.io/openai-agents-js/
-- LiteLLM README/docs entry: https://github.com/BerriAI/litellm
-- MCP SDK overview: https://modelcontextprotocol.io/docs/sdk
-- MCP TypeScript SDK repository: https://github.com/modelcontextprotocol/typescript-sdk
-- MCP TypeScript SDK reference: https://ts.sdk.modelcontextprotocol.io/
-- Standard Schema spec: https://standardschema.dev/schema
-- Zod docs: https://zod.dev/
-- Zod JSON Schema docs: https://zod.dev/json-schema
-- tsdown docs: https://tsdown.dev/guide/
-- pnpm docs: https://pnpm.io/
-- Changesets repository: https://github.com/changesets/changesets
-- Vitest docs: https://v4.vitest.dev/
-- fast-check docs: https://fast-check.dev/
+- [Node.js v24 WebCrypto API documentation — Ed25519 marked stable since v23.5 / v22.13, full sign/verify/import/export/generateKey support](https://nodejs.org/docs/latest-v24.x/api/webcrypto.html) — HIGH confidence (official Node docs).
+- [paulmillr/noble-ed25519 — README and 3.1.0 release notes (Apr 2026), self-audit Mar 2026](https://github.com/paulmillr/noble-ed25519) — HIGH confidence.
+- [@noble/ed25519 on npm](https://www.npmjs.com/package/@noble/ed25519) — HIGH confidence (release metadata).
+- [paulmillr/noble-curves — recommends @noble/ed25519 when only Ed25519 is needed](https://github.com/paulmillr/noble-curves) — HIGH confidence.
+- [RFC 8785 — JSON Canonicalization Scheme (JCS)](https://www.rfc-editor.org/rfc/rfc8785) — HIGH confidence (IETF standard).
+- [erdtman/canonicalize — RFC 8785 reference implementation, v3.0.0 released 2026-04-07, TypeScript types included, zero deps](https://github.com/erdtman/canonicalize) — HIGH confidence.
+- [unjs/citty — v0.2.2 (2026-04-01), ESM-only, native node:util.parseArgs, declarative subcommands](https://github.com/unjs/citty/releases) — HIGH confidence.
+- [citty on npm](https://www.npmjs.com/package/citty) — HIGH confidence (release metadata).
+- [tsdown — auto-generates `bin` field for entry chunks containing a shebang](https://tsdown.dev/reference/cli) — HIGH confidence (official docs); confirmed against tsdown 0.21.x release notes.
+- [in-toto/attestation — DSSE envelope spec v1](https://github.com/in-toto/attestation/blob/main/spec/v1/envelope.md) — HIGH confidence.
+- [secure-systems-lab/dsse — Dead Simple Signing Envelope v1.0.0 protocol, PAE definition](https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md) — HIGH confidence.
+- [Vitest 4 — snapshots fail (do not write) under `process.env.CI`, structured JSON reporter](https://vitest.dev/guide/snapshot) — HIGH confidence (official docs).
+- Local: `packages/lattice/src/outputs/validate.ts`, `packages/lattice/src/tools/tools.ts` — confirms `@standard-schema/spec` is the existing validator contract that invariants should reuse.
+- Local: `pnpm-workspace.yaml` — confirms catalog versions used as the integration baseline.
 
-Package versions were checked against the npm registry on 2026-04-22 with `npm view`.
+---
+*Stack research for: Lattice v1.1 Capability Receipts (signed receipts, contracts, CLI, CI gate)*
+*Researched: 2026-05-11*

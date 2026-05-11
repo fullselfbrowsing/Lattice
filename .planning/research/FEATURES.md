@@ -1,215 +1,331 @@
-# Feature Landscape
+# Feature Research
 
-**Project:** Lattice
-**Domain:** TypeScript-first capability runtime SDK for multimodal AI applications
-**Researched:** 2026-04-22
-**Overall confidence:** MEDIUM-HIGH
+**Domain:** TypeScript capability-runtime SDK — milestone v1.1 Capability Receipts
+**Researched:** 2026-05-11
+**Confidence:** MEDIUM-HIGH (Context7 not consulted; findings cross-checked across multiple official docs and 2026 industry sources; novel synthesis for Lattice-specific edge cases marked LOW where appropriate)
 
-## Research Position
+Scope reminder: this file covers ONLY new features for v1.1. Already-shipped v1.0 surfaces (`ai.run` / `ai.plan` / `ai.session`, artifact lifecycle, deterministic router, replay envelopes, schema-validated tools, default redaction, typed run events) are treated as fixed dependencies rather than candidates.
 
-The adjacent ecosystem has already normalized provider abstraction, streaming, tool calling, structured outputs, multimodal inputs, routing, fallbacks, tracing, and voice. Vercel AI SDK, TanStack AI, LiteLLM, OpenAI Agents SDK, MCP, and LangChain/LangGraph each cover slices of this surface.
+---
 
-Lattice should not compete by exposing another set of provider-level primitives. Its v0.1 wedge should be a small capability-first runtime where developers describe a task, attach artifacts, request outputs, set policy, and receive both the result and an inspectable execution plan. The differentiator is the product boundary: artifacts, context packing, provider packaging, deterministic routing, fallback, replay, and plan inspection are handled as one runtime concern.
+## Feature Landscape
 
-## Recommended Release Scope
+### Table Stakes (Users Expect These for a "Capability Receipts" Milestone)
 
-### v0.1: Prove the Runtime Thesis
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Capability Contract object on `ai.run`** (budget, invariants, qualityFloor) | Every production AI SDK in 2026 (MLflow AI Gateway, LiteLLM, Vercel AI SDK guardrails) lets the caller declare budget/policy *before* execution rather than discovering violations after. | MEDIUM | Must be a plain TypeScript shape attached to `RunInput.policy`. Re-uses existing policy contract; adds `contract: { budget, invariants[], qualityFloor }`. Depends on existing policy/runtime types. |
+| **Pre-flight contract proof** (router refuses if no route satisfies contract) | Mirrors LiteLLM / OpenRouter `models[]` fallback semantics and MLflow Gateway's reject-on-budget action: callers expect the system to fail fast with a typed reason before tokens are spent. | MEDIUM | Extends the deterministic router (Phase 3) with a contract-satisfaction filter step before scoring. Returns typed `NoContractMatchResult` (new sibling of existing `NoRouteResult`). Depends on capability catalog + scoring. |
+| **Tripwire invariants — abort-on-violation mid-stream** | OpenAI Guardrails, NeMo Guardrails, and Anthropic's mid-stream content filters all support `abort(reason)` semantics; users expect "kill the stream the moment X happens" or the invariant is theatre. | HIGH | Requires a streaming evaluator loop tied to existing run events. Each invariant is a `{ id, check, severity }` shape; on violation, run terminates with typed `TripwireViolationResult`. Depends on event stream + tracing hooks (Phase 5). |
+| **Signed Capability Receipts (Ed25519)** | Sigstore/cosign-style signed attestations are the 2026 baseline for any artifact that claims provenance; in-toto Statement+Predicate is the de facto wire shape. | HIGH | New `Receipt` artifact type. Signs over a canonical JSON of `{ inputHashes, route, packagingFingerprint, modelVersions, contractVerdict, redactionPolicyId, timestamp }`. Reuses artifact fingerprint subsystem (Phase 2) and execution plan JSON (Phase 3). |
+| **Redaction-aware receipt content** | Anyone in an enterprise will ask "what about PII?" within five minutes. GDPR Art. 17 + EU AI Act Art. 12 (enforcement Aug 2026) create a real tension between immutable audit trails and erasure rights. | MEDIUM | Receipt stores *hashes of redacted spans*, never the spans themselves. Inherits the default redaction layer already in Phase 5; needs an explicit redaction-policy identifier baked into the signed payload so verifiers know what was elided. |
+| **Receipt verification API** (`lattice verify <receipt>`) | A signature you cannot verify is performative. cosign and in-toto both ship a verify command beside the sign command; users will refuse to adopt signing without it. | LOW-MEDIUM | Pure function over canonical receipt JSON + public key. No runtime/provider dependency. Should also surface the receipt's contract verdict and redaction-policy id in human-readable form. |
+| **`lattice repro <receipt-id>` CLI** | LangGraph time-travel (`get_state_history` → resume) and Replay.io record/replay both prove this is now the expected developer ergonomic. A thumbs-down in prod should resolve to one shell command. | HIGH | New CLI surface. Reads a receipt, rehydrates the corresponding replay envelope (Phase 5), pins model versions, restores artifacts via lineage refs (Phase 2), and runs offline replay. Heavy dependency on Phase 5 envelopes + Phase 2 artifact stores. |
+| **`lattice eval` CI command** | Braintrust, Langfuse, and Maxim AI all advertise CI/CD blocking on quality/cost regressions in 2026; teams already expect this from their evaluation vendor and will expect it from a runtime SDK that emits receipts. | HIGH | Reads a directory of receipts + fixtures, re-runs them under a configurable model/provider, compares against baselines, exits non-zero on regression. Depends on receipts, replay envelopes, and existing fake providers for hermetic CI. |
+| **Cost & token accounting on the run result** | Every gateway (LiteLLM, MLflow, Vercel) exposes per-call cost; receipts and eval gates are meaningless without it. | MEDIUM | Extends existing `RunResult` with `usage: { promptTokens, completionTokens, costUSD }`. Depends on provider adapter factories (Phase 4) to surface usage data uniformly. |
+| **Stable canonical-JSON serialisation for receipts** | RFC 8785-style canonicalisation is the only way Ed25519 signatures actually verify across versions. Without it, every minor TS upgrade breaks signature checks. | MEDIUM | Single small library (or hand-rolled deterministic stringify). Must lock key ordering, number formatting, Unicode normalisation. Touches both signing and verify paths. |
 
-v0.1 should support one compelling multimodal work-inbox flow end to end:
+### Differentiators (Where Lattice Beats Existing Tools)
 
-1. Developer creates a runtime with `createAI`.
-2. Developer creates a `session`.
-3. Developer attaches artifacts: text, image, audio, PDF, JSON, and tool result.
-4. Developer calls `run` with a task, desired outputs, and policy constraints.
-5. Lattice builds a context pack, chooses a deterministic route, packages artifacts for a provider, executes the task, validates outputs, records the execution plan, and supports `replay`.
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Contract verdict as a first-class run-result discriminant** | LangGraph, Vercel AI SDK, and OpenAI Agents return success/failure; none returns a typed `{ kind: 'contract-satisfied' \| 'no-contract-match' \| 'tripwire-violation' \| 'budget-exceeded' }`. TypeScript users get exhaustive `switch` checks for free. | MEDIUM | Pure type design + result construction. Depends on existing typed-result inference (Phase 1). Lattice's TS-first stance makes this strictly nicer than competitors' string-keyed status fields. |
+| **Pre-flight proof returns *why* every route was rejected** | MLflow rejects with HTTP 429; LiteLLM falls back silently. Lattice can return a per-candidate `{ route, failedConstraint, observedScore }` array — debuggable by humans without re-running. | MEDIUM | Extends router scoring (Phase 3) to retain per-candidate rejection reasons. Already conceptually close to existing `NoRouteResult`. |
+| **Receipts that link the *entire* artifact lineage, not just the model call** | Sigstore/cosign sign one blob. LangGraph checkpoints record state but do not sign it. Lattice's artifact-fingerprint+lineage subsystem (Phase 2) can sign the full DAG from inbound artifact to outbound output. | HIGH | Receipt payload includes lineage merkle root over artifact fingerprints. Hard dependency on lineage descriptors already in Phase 2. Differentiator only if it stays a single hash, not a megabyte of nested JSON. |
+| **Prod-to-laptop repro with drift warnings** | LangGraph time-travel re-executes nodes and silently produces different outputs when the model changes. Lattice can detect that the receipt's pinned model version differs from the currently configured provider and surface a typed `DriftWarning` rather than pretending the rerun matches. | MEDIUM-HIGH | Builds on existing live-rerun drift warnings (Phase 5). Receipt provides the pinned baseline; CLI diffs against actual run. |
+| **`lattice eval` budgets are *iteration budgets*, not just $ caps** | MLflow caps spend at the gateway. Braintrust scores quality. Neither caps "this CI suite gets N retries across all receipts". Lattice can expose `--max-iterations` and per-receipt iteration counts, mirroring MLflow Gateway's iteration policy but local. | MEDIUM | New CLI flag + counter threaded through eval run. No new subsystem; uses existing run-event totals. |
+| **Receipts replayable across providers** | Most competitors hard-couple receipts/checkpoints to a specific provider. Because Lattice's router is deterministic and providers are abstracted, a receipt can in principle be replayed with `provider=fake` for hermetic CI or `provider=openai-compat` for cross-vendor regression. | MEDIUM | Depends on adapter factories (Phase 4) and execution-plan JSON (Phase 3) staying portable. Differentiation only holds if drift warnings (above) are honest. |
+| **Tripwire invariants reusable as eval scorers** | OpenAI Guardrails has runtime invariants. Braintrust has eval scorers. Nobody offers the same object in both roles. Lattice can let the same `Invariant` declaration gate prod streams AND fail CI in `lattice eval`. | MEDIUM | Shared `Invariant` interface; runtime uses it as a tripwire, CI uses it as an assertion. Pure type/factoring work once Tripwires exist. |
+| **Schema-validated contracts (Standard Schema / Zod)** | Lattice already validates output shapes with Standard Schema; extending the same pattern to budget/invariant declarations means typos like `budget.usd` vs `budget.dollars` fail at compile time. | LOW | Reuses existing Standard Schema integration (Phase 1). Minor type plumbing. |
+| **Receipts include a `redactionPolicyId` so verifiers know what was removed** | Most signed-audit-log discussions in 2026 either skip redaction (cosign) or treat it as informal (Langfuse PII filters). Naming the policy in the signed payload converts "trust me, we redacted" into "trust this declared policy version". | LOW-MEDIUM | Tiny field addition. Real work is governance: defining policy ids and keeping them stable. |
 
-This version should prefer depth over breadth: two or three providers, a narrow artifact transform set, strong plans, strong examples, and reliable replay.
+### Anti-Features (Tempting but Wrong for v1.1)
 
-### v1: Harden for Production Integrations
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Blockchain / public transparency log (Rekor-style) anchoring** | "Tamper-evident" is the marketing phrase of 2026; HDK and AuditableLLM both anchor to Hedera/Rekor. | Operational complexity (external dependency, key infrastructure, throughput limits, hash-chain reorg edge cases) for a runtime SDK whose target user runs `npm install`. Punishes the small-team developer the SDK is meant to attract. | Sign with Ed25519 locally now; design the receipt payload so it could be wrapped in an in-toto Statement later if hosted control-plane ships. |
+| **Hosted receipt store / control plane** | Braintrust, Langfuse, Maxim all host. | Explicitly out-of-scope per PROJECT.md ("Hosted control plane — first version should prove the runtime SDK"). | Keep receipts as artifacts in the existing local/memory store. Let users layer Langfuse/Braintrust if they want hosting. |
+| **Zero-knowledge proofs of correct inference** (VeriLLM, ZK courts) | Cited heavily in 2026 arXiv literature. | Two orders of magnitude too expensive for a developer SDK; verifies "the model ran" not "the contract held". Does not address the user's real question. | Stick with hash-based receipts + replay-based verification. |
+| **Cryptographic guarantee of identical outputs across providers** | "Cross-provider determinism" sounds appealing. | Physically impossible — sampling, tokenizers, and model versions diverge. Promising it produces broken trust. | Drift warnings (already in Phase 5) + receipt drift-diffs on replay. Tell the truth. |
+| **Auto-mutating tripwires** (LLM-as-judge tripwires that self-update mid-run) | Mirrors StreamGuard-style forecasting (arXiv 2026). | Non-deterministic tripwires defeat the purpose of having a *contract*. A contract whose terms change mid-call is not a contract. | Tripwires are pure functions over the stream. LLM-judge scoring belongs in `lattice eval`, not in the runtime. |
+| **Receipts that embed full prompts/responses in plaintext** | "But I want to see what was actually sent." | Directly conflicts with default redaction (Phase 5) and with GDPR Art. 17 erasure. Once signed, plaintext PII is permanent. | Receipt stores *hashes*, replay envelope holds redacted payloads, and `lattice repro` can re-fetch artifacts via lineage refs if storage still has them. |
+| **Receipt key management built into Lattice** (KMS, HSM, rotation API) | "Sign with our key" implies "manage our keys". | Vast surface area. Cosign-3 explicitly delegates this to `--trusted-root`/sigstore-config. Building it ourselves competes with KMS vendors badly. | Accept a key reference (`Ed25519KeyRef`) supplied by the caller; document rotation patterns; ship a dev-only in-memory key generator clearly labelled dev-only. |
+| **Mandatory contracts on every `ai.run`** | "Make it safe by default!" | Breaks the existing PROJECT.md constraint: "The beginner path should be one `run` call". | Contracts are opt-in. When absent, behaviour is exactly v1.0. When present, they are enforced. |
+| **Streaming-token-level signing** (per-chunk signatures) | "Real-time provable streaming!" | Generates O(tokens) signatures, wrecks performance, and is meaningless because the contract is about the whole run, not each token. | One receipt per run, signed at run completion (including tripwire-aborted runs — see edge cases). |
+| **Forking receipts** (LangGraph-style branched checkpoint chains) | Users coming from LangGraph will ask. | Receipts are attestations of what *happened*, not state snapshots to fork from. Conflating the two destroys the audit story. | Replay envelopes already support branching; receipts describe a single linear run. Keep them distinct. |
 
-v1 should expand capability coverage and operational controls after the core runtime is trusted:
-
-1. More provider adapters and provider capability metadata.
-2. Stable transform plugin API.
-3. Richer policy scoring and tenant/project profiles.
-4. Optional speech output and realtime-adjacent voice packaging.
-5. Production observability exports.
-6. Deeper MCP client support.
-7. Stronger eval, fixture, and regression testing harnesses.
-
-## Table Stakes
-
-Features developers already expect from a modern AI SDK/runtime. Missing these makes Lattice feel incomplete.
-
-| Feature | v0.1 Scope | v1 Scope | Why Expected | Complexity | Dependencies | Requirement Shape |
-|---------|------------|----------|--------------|------------|--------------|-------------------|
-| Tiny TypeScript API | `createAI`, `session`, `run`, `artifact`, `branch`, `replay`; typed config and result types. | Stabilize public API and semver contracts. | Vercel AI SDK and TanStack AI set the expectation that AI app SDKs are idiomatic TypeScript with small entry points. | Medium | Runtime core, artifact model, provider adapter interface. | Public package exports a minimal stable API with full TS inference. |
-| Provider abstraction | Support OpenAI plus one or two additional providers through a common internal adapter contract. | Add more providers through metadata-backed adapters or a routing/provider surface. | Provider switching is core in Vercel AI SDK, TanStack AI, and LiteLLM. | Medium | Capability matrix, packaging layer, credentials config. | Developers can run the same Lattice task across supported providers without changing task code. |
-| Capability matrix | Static metadata for model/provider capabilities: text, image input, PDF/file input, structured output, tools, audio transcription, speech, context window, pricing hints. | Versioned, externally updateable matrix with provider-specific limits and warnings. | Routing and packaging are impossible without current capability knowledge. | High | Provider abstraction, policy router. | Runtime can reject, route, or fallback based on declared capability support. |
-| Text generation | Basic non-streaming text result. | Rich model options and provider-specific escape hatch. | Text output is still the universal base case. | Low | Provider abstraction. | `outputs: { text: true }` returns normalized text with usage metadata. |
-| Streaming result events | Stream status, partial text, plan-stage updates, and final result. | Stream structured partials, artifact generation events, and observability spans. | Streaming is table stakes in AI SDKs and critical for user experience. | Medium | Execution engine, event protocol. | `run(...).stream()` or equivalent emits typed events. |
-| Structured outputs | Zod or JSON Schema output contracts; validate and return typed JSON. | Multi-output contracts with partial streaming and repair hooks. | Structured output is a standard SDK feature, and app developers need reliable typed actions. | Medium | Output validator, provider adapter, retry/repair policy. | `outputs: { action: schema }` returns typed `result.outputs.action` or a validation failure. |
-| Tool/function calling | Support local typed tools with schemas and tool results as artifacts. | Add approvals, tool execution policy, and richer tool lifecycle tracing. | Tool calling is expected in AI SDKs and agent runtimes. | Medium | Artifact model, output validation, execution plan. | Tools have typed inputs/outputs; results are preserved as artifacts and cited in plan. |
-| MCP compatibility | Read tools/resources/prompts from MCP servers in a minimal client path or adapter boundary. | Full MCP client support with transport options, permissions, and tool approval hooks. | MCP is now the standard integration protocol for tools and context. | Medium | Tool abstraction, security policy, credential handling. | Lattice can expose MCP tools as eligible runtime tools without inventing a proprietary plugin protocol. |
-| Multimodal artifact inputs | First-class text, image, audio, PDF/file, JSON, and tool-result artifact constructors. | Add video and generated media artifacts after packaging and cost controls mature. | Multimodal app SDKs increasingly support images, PDFs, audio, and files directly. | High | Artifact model, packaging layer, transforms, context packer. | Every input is an `Artifact` with ID, type, source, metadata, and traceable transforms. |
-| Audio transcription | v0.1 should support audio as an input artifact via transcription transform, not full realtime voice. | Add provider-routed transcription choices and optional speech-to-speech/realtime bridges. | Work-inbox use cases need voice notes and call recordings. | Medium | Artifact transforms, provider routing, cost metadata. | Audio artifacts can be converted to transcript artifacts and included in context packs. |
-| PDF/file handling | Accept PDF/file artifacts; extract text and optionally split into chunks for context packing. | Provider-native file upload when beneficial; richer document layout/OCR adapters. | PDFs and files are common in support, insurance, recruiting, and operations workflows. | High | Artifact transforms, provider packaging, context packer. | Runtime chooses extracted text, uploaded file handle, or chunked representation based on route. |
-| Provider packaging | Normalize provider transport forms: message parts, URL, base64, upload ID, file ID, extracted text, resized image, transcript. | Add provider-specific optimizers and durable provider file-handle cache. | Provider multimodal APIs differ in file and media transport. This is a major developer pain. | High | Capability matrix, artifact model, transforms. | Plan records exactly which artifact representation was sent to which provider. |
-| Context management | Automatic context pack with live messages, compressed summary, selected artifacts, and archived raw references. | Configurable context strategies, custom summarizers, and persistent session stores. | LangChain identifies context engineering as central to reliability; developers expect help managing history and files. | High | Artifact store, token estimator, summarizer, execution plan. | Runtime builds a bounded context pack and explains included/excluded artifacts. |
-| Sessions | In-memory session with turns, artifacts, summary, plan history, and branch points. | Durable storage adapters and tenant/project scoped session policy. | Agent SDKs and assistant APIs treat session/history management as a baseline convenience. | Medium | Artifact store, context packer. | `session()` returns an object that can run tasks and preserve context across runs. |
-| Deterministic routing | Capability-filtered route selection using policy: budget, latency, privacy, quality tier, provider allow/deny, fallback list. | More scoring dimensions, historical latency/cost data, and route profiles. | LiteLLM and gateway products normalize routing, fallbacks, budgets, and load balancing. | High | Capability matrix, policy model, provider adapters. | Same inputs and policy produce the same selected route unless capability metadata changes. |
-| Fallbacks/retries/timeouts | Explicit retry and fallback rules for provider failures, context overflow, rate limit, validation failure, and unsupported artifact transport. | Adaptive fallbacks with health checks and richer failure taxonomies. | Reliable production AI apps need fallback and retry behavior. | Medium | Routing, execution engine, plan model. | Failures are typed; fallback attempts are visible in the execution plan. |
-| Cost, token, and latency metadata | Estimate before run where possible; record actual usage where provider exposes it. | Budget enforcement across sessions and user/project labels. | Cost and latency are core operational concerns in routing products. | Medium | Provider adapters, plan model, usage normalizer. | Result includes `usage`, `costEstimate`, `latencyMs`, and provider/model attribution. |
-| Inspectable execution plan | Preflight and post-run plan with stages, chosen model, eligible alternatives, context budget, artifacts used, transforms, fallback attempts, usage, and warnings. | Export traces to OpenTelemetry/Langfuse/LangSmith-style systems. | OpenAI Agents SDK and TanStack AI emphasize tracing/devtools; Lattice needs this as a core differentiator. | High | Every runtime subsystem. | Every `run` returns a plan object suitable for logs, debugging, and tests. |
-| Replay | Re-run from saved task, policy, artifacts, context pack, route, and optionally mocked provider response. | Deterministic fixture mode for CI and regression tests. | Debugging AI runs requires reconstructing inputs and routing decisions. | High | Artifact store, plan serialization, provider mocks. | `replay(planId)` or `replay(plan)` can reproduce or simulate the prior run. |
-| Branching | Branch session state from a previous plan or turn. | Branch comparison utilities and eval batches. | Developers need to test alternate prompts, policies, routes, or artifact packs. | Medium | Session store, plan model. | `branch(planId)` creates an isolated session continuation. |
-| Error model | Typed errors for validation, unsupported capability, package failure, provider failure, fallback exhaustion, policy denial, and artifact transform failure. | Error recovery hooks and provider-specific diagnostics. | Provider APIs fail differently; SDK users need normalized failure semantics. | Medium | Provider adapters, routing, transform pipeline. | Errors are catchable by stable discriminated union or class hierarchy. |
-| Progressive overrides | Force provider/model, custom summarizer, custom transform, hooks, and policy override. | Project profiles and reusable route presets. | Advanced users need control without making the beginner API complex. | Medium | Router, transforms, context packer, hooks. | Overrides live under an advanced option object, not the top-level happy path. |
-| Local development examples | One polished work-inbox example with screenshots/photos, audio, PDFs, text, structured action, and optional spoken response stub. | More examples by vertical: support, field ops, recruiting, healthcare admin. | SDKs win through working examples. | Medium | All v0.1 runtime pieces. | Example doubles as integration test and product demonstration. |
-
-## Differentiators
-
-Features that make Lattice meaningfully different from a provider wrapper, gateway, or agent framework.
-
-| Feature | v0.1 Scope | v1 Scope | Value Proposition | Complexity | Dependencies | Requirement Shape |
-|---------|------------|----------|-------------------|------------|--------------|-------------------|
-| Capability-first `run` contract | Developer declares job, artifacts, outputs, and policy instead of choosing a model API. | Add reusable task templates and output bundles. | Moves the mental model from "call provider X" to "perform capability Y under constraints." | High | Tiny API, outputs, artifacts, policy router. | `run({ task, artifacts, outputs, policy })` is the central product surface. |
-| Artifact-native runtime | All inputs, outputs, transforms, files, media, tool results, summaries, and generated objects are artifacts with IDs and lineage. | Artifact persistence, dedupe, provider handle cache, and export/import. | Gives multimodal apps a durable content model instead of passing raw blobs through ad hoc messages. | High | Artifact store, transform pipeline, plan model. | Artifacts carry type, metadata, provenance, privacy label, hashes where practical, and references to derived artifacts. |
-| Context-native execution | Runtime automatically decides what goes into each model call: raw artifact, transformed artifact, summary, citation, or omission. | Pluggable context strategies and long-running context compaction. | Addresses the biggest reliability gap in multimodal applications: "right context, right format, right budget." | High | Artifact model, token estimation, summarization, provider packaging. | Plan includes a context packing section with token budget, included items, excluded items, and reasons. |
-| Artifact transport planner | Lattice chooses URL vs base64 vs provider upload vs extracted/chunked content vs resized/transcoded derivative. | Add provider-upload cache and transform cost optimization. | This is painful, provider-specific work that generic SDKs expose to the developer. | High | Capability matrix, transforms, provider adapters. | Packaging stage produces provider-ready payload plus traceable transform lineage. |
-| Deterministic policy router | Route from capability support and policy scoring, not opaque LLM self-selection. | Add health and historical performance signals while preserving explainability. | Builds trust and makes routing testable. | High | Capability matrix, policy scoring, fallbacks, usage metadata. | Plan shows candidate models, disqualification reasons, selected route, and fallback rules. |
-| Plan-first observability | The execution plan is not an add-on trace; it is a first-class result object and replay input. | Export plan as OpenTelemetry spans or integration-specific traces. | Differentiates from toolkits where debug data is spread across callbacks, logs, and provider responses. | High | Execution engine, plan schema, replay. | Every stage records inputs, outputs, decisions, costs, warnings, and errors. |
-| Replayable AI runs | A saved run can be replayed with original artifacts, context pack, policy, and route. | CI fixture mode, comparison runs, and regression snapshots. | Solves "what did the model actually see and why did this route happen?" | High | Plan-first observability, artifact store, deterministic router. | Replay supports exact-context replay and mocked-provider replay. |
-| Multi-output result contract | One run can request text, structured action JSON, citations/artifact refs, and optional speech artifact. | Add image/video outputs and output dependency planning. | Work-inbox tasks naturally produce both human-readable and machine-actionable results. | Medium | Structured outputs, artifact model, provider capability matrix. | Result returns typed `outputs` plus generated artifacts and references. |
-| Privacy-aware artifact policy | Artifacts and sessions can carry policy labels: local-only, no-upload, no-logging, allowed providers, retention class. | Add policy profiles, audit exports, and redaction transforms. | Multimodal artifacts often contain sensitive customer, health, legal, or operational data. | High | Artifact metadata, router, packaging layer, plan warnings. | Router and packaging layer must deny routes that violate artifact policy. |
-| Context archive model | Keep live context small, compressed summary current, and raw artifacts archived by reference. | Durable raw archive and selective rehydration APIs. | Prevents unbounded chat histories and repeated file stuffing while retaining traceability. | Medium | Session state, artifact store, summarizer. | Session tracks `live`, `summary`, and `archive` zones. |
-| Capability-aware preflight | Before execution, tell the developer if requested artifacts/outputs/policy can be satisfied and what route will be used. | Add dry-run pricing and quality/cost tradeoff explanation. | Reduces runtime surprises and supports interactive product UIs. | Medium | Capability matrix, router, packaging planner. | `run({ dryRun: true })` or `plan()` returns route and warnings without provider execution. |
-| Work-inbox reference app | Showcase multimodal inputs producing answer text, structured action, and optional speech. | Convert into templates and vertical starter kits. | Demonstrates the entire thesis in one concrete workflow. | Medium | Core v0.1 features. | Example is maintained as an executable integration scenario. |
-
-## Anti-Features
-
-Features to deliberately avoid in v0.1 because they bloat the product, duplicate mature ecosystems, or confuse the core thesis.
-
-| Anti-Feature | Avoid in v0.1 Because | What to Do Instead | Reconsider When |
-|--------------|-----------------------|--------------------|-----------------|
-| Hosted control plane | Adds auth, tenancy, billing, dashboards, uptime, and compliance before proving the SDK. | Local/runtime-only package with serializable plans and logs. | Developers repeatedly need shared team observability or managed artifact storage. |
-| Visual graph/DAG DSL | Competes with LangGraph-style orchestration and makes the simple path feel heavy. | Native TypeScript functions plus capability-first `run`. | Complex workflows need explicit multi-stage composition beyond normal code. |
-| Multi-agent handoff framework | OpenAI Agents SDK and LangGraph already cover this. It distracts from artifact/context/routing. | Support tools and simple staged execution internally, but do not market agents as the center. | v1 users ask for delegation after core runtime adoption. |
-| Broad provider catalog | Building 100 adapters slows learning and shifts differentiation to adapter maintenance. | Start with a few high-value providers and/or reuse existing provider surfaces where practical. | Runtime API stabilizes and provider metadata process is reliable. |
-| UI hook/component library as product center | Vercel AI SDK UI and TanStack client hooks already cover UI ergonomics. | Provide a minimal example UI only to prove the work-inbox flow. | Runtime demand is validated and UI bindings become a clear adoption blocker. |
-| Opaque AI router | Undermines trust, reproducibility, and cost/privacy policy enforcement. | Deterministic capability and policy scoring with explanations. | Only after deterministic routing is trusted; even then keep explainability. |
-| Long-term memory/persona system | "Memory" can become vague product scope and introduces storage/privacy complexity. | Session context, summaries, archived artifacts, and explicit stores. | Customers need cross-session personalization with clear data policy. |
-| Full RAG/vector database platform | Duplicates mature retrieval stacks and distracts from artifact/context packing. | Provide hooks for retrieved artifacts and simple PDF/text chunking. | Artifact search and retrieval become core to repeated use cases. |
-| Full realtime voice agent stack | WebRTC, VAD, interruptions, telephony, tokens, and transport are a separate product surface. | Support audio input via transcription and optional speech output artifact. | Work-inbox adoption proves demand for live voice. |
-| Built-in code interpreter/computer use | High-risk, provider-specific, security-heavy, and not required for the first work-inbox wedge. | Treat as external tools/MCP integrations. | Users need sandboxed computation with strong security requirements. |
-| Prompt playground/eval platform | Useful but too much surface area for v0.1. | Add replay, fixtures, and plan snapshots first. | CI regression needs dominate support requests. |
-| Provider-specific option sprawl | Exposes the exact complexity Lattice is meant to hide. | Keep provider-specific escape hatches under progressive overrides. | A capability cannot be expressed portably and advanced users need it. |
-| Custom plugin protocol | MCP already provides tools, resources, prompts, transports, and SDKs. | Be MCP-compatible. | Only add private extension points for Lattice internals, not external ecosystem integrations. |
+---
 
 ## Feature Dependencies
 
-These dependencies should drive requirements ordering.
+```
+Capability Contract (run input shape)
+    +-- requires --> Standard Schema validation (Phase 1)
+    +-- requires --> Policy contract type (Phase 1)
 
-```text
-Tiny API -> Artifact model -> Provider packaging -> Capability-first run
-Provider abstraction -> Capability matrix -> Deterministic router -> Fallbacks
-Artifact model -> Transform pipeline -> Context packer -> Execution plan
-Context packer -> Provider packaging -> Model execution
-Structured outputs -> Output validation -> Retry/repair policy
-Tool abstraction -> Tool result artifacts -> Plan traceability
-MCP compatibility -> Tool abstraction -> Policy and approval hooks
-Session state -> Context archive model -> Branch and replay
-Execution plan -> Replay -> CI fixtures
-Usage metadata -> Cost/budget policy -> Route scoring
-Privacy labels -> Router eligibility -> Packaging denial/warnings
-Work-inbox example -> Integration tests -> v0.1 validation
+Pre-flight Contract Proof
+    +-- requires --> Capability Contract
+    +-- requires --> Deterministic router + capability catalog (Phase 3)
+    +-- requires --> Typed no-route outcomes (Phase 3, sibling pattern)
+
+Tripwire Invariants
+    +-- requires --> Run event stream (Phase 3)
+    +-- requires --> Tracing hooks (Phase 5)
+    +-- requires --> Capability Contract (invariants declared there)
+
+Cost & Token Accounting
+    +-- requires --> Provider adapter factories (Phase 4) [uniform usage extraction]
+
+Signed Capability Receipt
+    +-- requires --> Artifact fingerprints + lineage (Phase 2)
+    +-- requires --> Execution plan JSON (Phase 3)
+    +-- requires --> Default redaction layer (Phase 5)
+    +-- requires --> Canonical JSON serialisation (new)
+    +-- requires --> Ed25519 signing primitive (new)
+    +-- requires --> Cost & Token Accounting (budget verdict)
+    +-- requires --> Contract verdict from Pre-flight + Tripwire results
+
+Receipt Verification API
+    +-- requires --> Signed Capability Receipt (payload format)
+    +-- requires --> Canonical JSON serialisation
+
+`lattice repro` CLI
+    +-- requires --> Signed Capability Receipt
+    +-- requires --> Replay envelopes (Phase 5)
+    +-- requires --> Artifact stores + lineage (Phase 2)
+    +-- requires --> Live-rerun drift warnings (Phase 5)
+
+`lattice eval` CI command
+    +-- requires --> Signed Capability Receipt
+    +-- requires --> `lattice repro` (or shared internals)
+    +-- requires --> Fake providers (Phase 3) [hermetic CI]
+    +-- enhances --> Tripwire Invariants (reused as eval scorers)
+
+Tripwires-as-Eval-Scorers (differentiator)
+    +-- requires --> Tripwire Invariants
+    +-- requires --> `lattice eval`
+
+Cross-Provider Replay (differentiator)
+    +-- requires --> `lattice repro`
+    +-- requires --> Drift warnings (Phase 5)
+    +-- conflicts --> any promise of bit-identical outputs
+
+Redaction-Policy Identifier
+    +-- requires --> Signed Capability Receipt
+    +-- requires --> Default redaction (Phase 5)
+    +-- conflicts --> Plaintext prompts in receipts
 ```
 
-## MVP Recommendation
+### Dependency Notes
 
-Prioritize for v0.1:
+- **Pre-flight contract proof must ship before tripwires.** Otherwise users learn at violation-time that no satisfying route existed, defeating the contract.
+- **Receipts must ship after both pre-flight and tripwires.** The receipt's `contractVerdict` enumerates `satisfied | no-match | tripwire-violated | budget-exceeded`; you cannot honestly sign a verdict whose machinery does not yet exist.
+- **`lattice repro` and `lattice eval` share an internal "execute from receipt" routine.** Build the library function first, then expose two CLI wrappers. This avoids the trap where eval reimplements repro and they drift.
+- **Cost accounting is on the critical path for receipts**, not a nice-to-have. Without per-run cost, `budget` invariants cannot be evaluated and the eval cost-regression gate cannot fire.
+- **Redaction-policy ids must be stable across versions** or every Lattice upgrade silently invalidates older receipts. This is a versioning discipline question, not a code question.
 
-1. Tiny TypeScript API: `createAI`, `session`, `run`, `artifact`, `branch`, `replay`.
-2. Artifact model with text, image, audio, PDF/file, JSON, and tool-result artifacts.
-3. Context packer with live context, summary, selected artifacts, archived raw references, and token budget explanation.
-4. Provider abstraction with a small adapter set and a real capability matrix.
-5. Deterministic policy router with provider/model allowlists, budget, latency, privacy, and fallback rules.
-6. Provider packaging for URL/base64/upload/extracted text/chunked PDF/transcript/image resize paths.
-7. Text and structured JSON outputs with schema validation.
-8. Typed local tools and tool-result artifacts.
-9. Inspectable execution plan and replay.
-10. Work-inbox showcase as the proof scenario.
+---
 
-Defer to v1:
+## MVP Definition
 
-1. Durable stores for sessions/artifacts.
-2. Full MCP client permissions and approvals.
-3. Speech output and realtime-adjacent voice.
-4. OpenTelemetry and third-party observability exports.
-5. Broader provider catalog.
-6. CI eval harness built on replay fixtures.
-7. Rich media generation beyond optional speech.
+### Launch With (v1.1)
 
-Do not build before v1:
+The full v1.1 milestone from PROJECT.md. Cutting any of these breaks the value proposition ("turn a thumbs-down in prod into a deterministic local repro and a CI-gated regression check"):
 
-1. Hosted control plane.
-2. Visual graph DSL.
-3. Multi-agent handoffs as a product category.
-4. Vector database/RAG platform.
-5. Full realtime voice stack.
-6. Proprietary plugin ecosystem.
+- [ ] **Capability Contract on `ai.run`** — without it, the rest has nothing to enforce.
+- [ ] **Pre-flight contract proof** — fail-fast is the whole point of declaring a contract.
+- [ ] **Tripwire invariants with mid-stream abort** — table stakes for any policy-bound runtime in 2026.
+- [ ] **Cost & token accounting** — required substrate for both contracts and eval.
+- [ ] **Canonical JSON serialisation** — required substrate for signing.
+- [ ] **Signed Capability Receipts (Ed25519, redaction-aware, with `redactionPolicyId`)** — the artifact the milestone is named after.
+- [ ] **Receipt verification API** — signature without verify is theatre.
+- [ ] **`lattice repro <receipt-id>`** — the "turn a thumbs-down into a local repro" half of the goal.
+- [ ] **`lattice eval`** — the "CI-gated regression check" half of the goal.
+- [ ] **Drift warnings on receipt replay** — using existing Phase 5 machinery, surfaced through the new CLI.
 
-## Complexity Notes by Phase
+### Add After Validation (v1.2 candidates)
 
-| Phase Topic | Complexity | Main Risk | Mitigation |
-|-------------|------------|-----------|------------|
-| Public API design | Medium | API becomes another provider wrapper. | Keep `run` centered on task, artifacts, outputs, and policy. |
-| Artifact model | High | Metadata too weak for packaging/replay/privacy. | Define artifact schema before provider adapters. |
-| Provider packaging | High | Provider transport differences leak through API. | Treat packaging as an explicit stage in the plan. |
-| Capability routing | High | Stale provider/model metadata causes bad routes. | Start narrow, version matrix, expose warnings. |
-| Context management | High | Summaries omit key details or costs balloon. | Make included/excluded context inspectable; allow custom summarizer. |
-| Replay | High | Impossible without full artifact and plan capture. | Design plan serialization from day one. |
-| Work-inbox example | Medium | Demo hides runtime gaps. | Maintain as integration test with representative artifacts. |
-| MCP support | Medium | Permissions and tool approval become too broad. | Start with minimal tool import/call path and explicit policy. |
+- [ ] **Tripwires-as-eval-scorers (shared `Invariant` factoring)** — desirable but pure refactor; defer until users complain about duplication.
+- [ ] **Per-candidate rejection reasons in pre-flight proof** — debuggability win; not blocking adoption.
+- [ ] **Iteration budgets in `lattice eval`** — mirrors MLflow; add when teams complain about runaway CI cost.
+- [ ] **Cross-provider replay smoke tests** — useful for users running multiple providers; depends on more provider adapters.
+- [ ] **Receipt diffing tool** (`lattice receipt diff a.json b.json`) — natural follow-on; not in the milestone goal.
 
-## Open Questions
+### Future Consideration (v2+)
 
-1. Should v0.1 reuse Vercel AI SDK provider adapters directly, integrate with LiteLLM/OpenRouter-style gateways, or own a very small adapter layer first? Recommendation: own a small internal adapter contract and optionally wrap existing provider SDKs; do not bind the product identity to a gateway.
-2. How durable should artifacts be in v0.1? Recommendation: in-memory plus filesystem/test fixture persistence is enough if plan serialization is solid.
-3. Should audio in v0.1 use provider-native multimodal audio or transcription-first? Recommendation: transcription-first for reliability and simpler context packing.
-4. How much automatic summarization is acceptable before users see it as unsafe? Recommendation: summaries must be explicit artifacts with lineage and overridable summarizer hooks.
-5. What is the minimum provider set? Recommendation: OpenAI, Anthropic, and Gemini cover enough multimodal/structured/tool variation to validate the abstractions.
+- [ ] **In-toto Statement wrapping / sigstore Rekor anchoring** — only if hosted control plane appears.
+- [ ] **External KMS / HSM key references** — only when enterprise adoption demands it.
+- [ ] **Multi-party receipt co-signing** — agent-handoff land; explicitly out-of-scope today.
+- [ ] **Hardware-attested receipts** (TPM, TEE) — solves a different threat model than Lattice's.
 
-## Source Confidence
+---
 
-| Finding | Confidence | Evidence |
-|---------|------------|----------|
-| Provider abstraction, streaming, structured outputs, tool calling, and multimodal inputs are table stakes. | HIGH | Vercel AI SDK docs show unified providers, Core for text/structured/tools/agents, provider capability matrix, multimodal guide, and structured output docs. |
-| Type-safe provider-agnostic SDKs and devtools are an active TypeScript ecosystem direction. | MEDIUM | TanStack AI official docs are current but marked alpha; use as ecosystem signal, not stable API evidence. |
-| Routing, fallback, retries, load balancing, budgets, and modality-specific endpoints are expected in AI gateways. | HIGH | LiteLLM official docs cover routing strategies, cooldowns, fallbacks, cost tracking, image generation, transcription, MCP bridge, and supported endpoints. |
-| Tracing, sessions, MCP tools, guardrails, and realtime voice are standard agent-runtime capabilities. | HIGH | OpenAI Agents SDK official docs list built-in tracing, sessions, MCP tool calling, guardrails, human-in-loop, and realtime voice features. |
-| Context management is a major reliability concern and should be first-class. | HIGH | LangChain context engineering docs explicitly frame right context and lifecycle context as core agent reliability work. |
-| MCP should be used instead of a proprietary plugin protocol. | HIGH | MCP TypeScript SDK docs define tools, resources, prompts, transports, sampling, elicitation, and tasks as standardized context/tool integration surfaces. |
-| Lattice's strongest differentiation is artifact-native/context-native deterministic execution with replayable plans. | MEDIUM-HIGH | This is an inference from gaps across adjacent products plus the project thesis; validate through v0.1 work-inbox usage. |
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Capability Contract object | HIGH | LOW | P1 |
+| Pre-flight contract proof | HIGH | MEDIUM | P1 |
+| Tripwire invariants (mid-stream abort) | HIGH | HIGH | P1 |
+| Cost & token accounting | HIGH | MEDIUM | P1 |
+| Canonical JSON serialisation | MEDIUM | LOW | P1 |
+| Signed Capability Receipts (Ed25519) | HIGH | HIGH | P1 |
+| Redaction-aware receipt content | HIGH | MEDIUM | P1 |
+| Receipt verification API | HIGH | LOW | P1 |
+| `lattice repro <receipt-id>` CLI | HIGH | HIGH | P1 |
+| `lattice eval` CI command | HIGH | HIGH | P1 |
+| Drift warnings on replay | MEDIUM | LOW (reuses Phase 5) | P1 |
+| Contract verdict as typed discriminant | MEDIUM | LOW | P1 (pure types, ship together) |
+| Per-candidate rejection reasons | MEDIUM | MEDIUM | P2 |
+| Tripwires-as-eval-scorers | MEDIUM | LOW (refactor) | P2 |
+| Iteration budgets in eval | LOW-MEDIUM | LOW | P2 |
+| Cross-provider replay | MEDIUM | MEDIUM | P2 |
+| Receipt diffing tool | LOW | LOW | P3 |
+| In-toto / Rekor anchoring | LOW (for SDK users) | HIGH | P3 |
+| External KMS integration | LOW (today) | HIGH | P3 |
+
+---
+
+## Competitor Feature Analysis
+
+| Feature | LangGraph (time-travel) | Replay.io | Braintrust / Langfuse / Maxim | sigstore/cosign | MLflow AI Gateway | OpenTelemetry GenAI | OpenAI / Anthropic prompt caching | Our Approach |
+|---------|------------------------|-----------|-------------------------------|-----------------|-------------------|---------------------|-----------------------------------|--------------|
+| **Reproducible re-run from a captured state** | Checkpoints in Postgres; re-executes downstream nodes (LLM calls re-fire and may differ) | Deterministic browser-level capture and replay | N/A (eval-time only) | N/A | N/A | N/A | N/A | Receipt + replay envelope; pinned model version; drift warnings when reality diverges from receipt |
+| **Signed attestation of execution** | Not signed | Not signed | Not signed | In-toto Statement + Ed25519/x509, Rekor transparency log | Not signed | Span attributes only, no signing | N/A | Ed25519-signed receipt; in-toto-compatible payload shape so we can opt into Rekor later |
+| **Key rotation story** | N/A | N/A | N/A | `--trusted-root` (cosign 3) supports rotation without client updates | N/A | N/A | Per-workspace cache isolation (Feb 2026) — not key rotation, but precedent for scope changes | Accept caller-supplied `Ed25519KeyRef`; document multi-key verify; do not own KMS |
+| **Pre-flight policy/budget enforcement** | No | No | Eval-time gates only | No | Budget policies with alert/reject (HTTP 429) | No | No | Pre-flight contract proof returns typed `NoContractMatchResult` with per-candidate reasons |
+| **Mid-stream abort on policy violation** | No (graph-step granularity) | N/A | No (eval is offline) | N/A | No | No | Content filters abort, but not user-defined invariants | Tripwire invariants evaluated against streamed events with typed `TripwireViolationResult` |
+| **CI/CD regression gate** | No | No | Yes — block merges on quality drop | No | No | No | No | `lattice eval` over receipt fixtures; fails CI on cost-per-task or quality-floor regression |
+| **Cost tracking** | No | No | Per-request cost breakdowns and alerts | No | Cumulative spend in USD over windows | Token usage metrics (experimental) | Caching reduces cost; reported per call | `usage.costUSD` on `RunResult`; receipt records final cost; eval gates on regression |
+| **Redaction-aware audit** | Not explicit | N/A | PII filters in tracing | Not built-in | Not explicit | Discusses PII in spans informally | Caches are exact-match, no redaction story | Receipts store *hashes* of redacted spans, signed payload names the `redactionPolicyId` |
+| **Tamper-evidence** | DB row immutability only | N/A | Vendor-controlled | Rekor transparency log | Audit logs | N/A | N/A | Signature + canonical JSON; deliberately *no* transparency log in v1.1 |
+| **Time-travel UX** | `get_state_history` then resume from checkpoint id | Step-by-step UI debugger | N/A | N/A | N/A | N/A | N/A | `lattice repro <receipt-id>` single command; opens replay envelope; surfaces drift |
+| **Telemetry standard** | Custom | Custom | OTel-compatible (Langfuse on OTel) | N/A | Custom | Authoritative spec but still Experimental (May 2026) | Returns usage in API response | Already emit typed run events; align attribute names with OTel GenAI where stable; flag experimental names |
+
+---
+
+## Edge Cases (Required by Quality Gate)
+
+These are the edge cases the roadmap and requirements must explicitly address. Several are unique to Lattice because we sit at the intersection of replay, signing, and policy enforcement — competitors sidestep them by owning only one corner.
+
+1. **Redaction conflict — signed receipts vs. right-to-be-forgotten.**
+   The receipt is immutable once signed; redacted spans referenced by hash cannot later be "un-hashed" without invalidating the signature. If a user invokes GDPR Art. 17 erasure against the underlying artifact store, the receipt's hashes become dangling. **Mitigation:** receipts store hashes only (never plaintext); a separate "tombstone" mechanism in the artifact store can record erasure without touching receipts; `lattice repro` returns a typed `ArtifactErasedResult` when lineage refs no longer resolve. Document explicitly that signatures over a tombstoned input are still mathematically valid — they just cannot be replayed.
+
+2. **Hash-chain reorg / receipt re-issuance.**
+   If a developer fixes a bug in canonical JSON serialisation, every old receipt becomes unverifiable. **Mitigation:** version the canonical-JSON algorithm inside the signed payload (`canonicalisationVersion`); verifier supports all historical versions; never re-issue old receipts (they describe what happened with the *then-current* code).
+
+3. **Signed-receipt key rotation.**
+   Cosign 3 solves this with `--trusted-root`; Lattice must not own KMS. **Mitigation:** receipts include a `keyId` (not the key); verification accepts a key set rather than a single key; users rotate by adding a new key to the trust set while old receipts still verify against the prior key. Spell out in docs that revoked keys remain valid for past receipts (signing is a historical fact, not a current permission).
+
+4. **Cross-provider replay drift.**
+   A receipt produced against OpenAI replayed against an OpenAI-compatible adapter will diverge. **Mitigation:** receipts pin `providerId`, `modelId`, and `modelVersion`; `lattice repro` emits typed `DriftWarning` events when the active provider differs; `lattice eval` configurable as `strict` (fail on drift) vs. `tolerant` (warn). Never claim bit-identity across providers.
+
+5. **Tripwire fires mid-stream — receipt still required.**
+   An aborted run is still a run that consumed tokens and made decisions. **Mitigation:** receipts are emitted for tripwire-aborted runs with `contractVerdict: 'tripwire-violated'` and the violating invariant id captured. Streaming-token signing (per-chunk) is rejected as an anti-feature precisely because the receipt is one-per-run.
+
+6. **Pre-flight proof says "no route" but operator forces execution.**
+   Operators will demand an override knob; without one, contracts become unworkable. **Mitigation:** `policy.contract.onNoMatch: 'fail' | 'warn-and-route'`; the receipt records *both* the pre-flight verdict and the override decision; verification surfaces the override explicitly so downstream auditors can see it.
+
+7. **Invariant whose check function itself throws.**
+   A tripwire that crashes must not silently allow the run to continue. **Mitigation:** wrap each invariant in a try/catch; thrown exceptions are treated as violations with severity `error` and a typed `InvariantExecutionFailure` reason; receipt captures both the original invariant id and the failure.
+
+8. **Multi-stage runs (`ai.plan` with N stages) — receipt granularity.**
+   One receipt for the whole `ai.run` or one per stage? **Mitigation:** one receipt per `ai.run`, but the receipt payload includes the execution plan JSON (Phase 3) so each stage's route, packaging, and model version are inspectable. Avoids fan-out of N receipts that all describe one user-facing operation.
+
+9. **Eval drift from upstream model deprecation.**
+   `lattice eval` in CI six months from now will hit deprecated models. **Mitigation:** eval supports `--allow-substitute-model` with explicit substitution rules; substitutions are recorded in the eval's output report; default is `fail-on-deprecated` to keep the regression-gate signal honest.
+
+10. **Tripwire invariants in eval vs. runtime — semantic drift.**
+    A tripwire that aborts a stream in prod might be evaluated *after* full generation in eval, producing different verdicts. **Mitigation:** when an invariant is reused as an eval scorer, evaluate it against the same event sequence that streaming would have produced, not against the final output. Share the evaluator, not just the predicate. Document this contract or the differentiator silently lies.
+
+11. **Receipt size growth from artifact-lineage merkle inclusion.**
+    Lineage DAGs can be deep. **Mitigation:** include only the lineage *root hash* in the signed payload; full DAG lives unsigned beside the receipt. The signature still binds the DAG transitively because changing any node changes the root.
+
+12. **OpenTelemetry GenAI semconv is Experimental in May 2026.**
+    Adopting names like `gen_ai.request.model` today risks breakage when stability lands. **Mitigation:** dual-emit (legacy Lattice event names + GenAI experimental names) and gate via env var, mirroring `OTEL_SEMCONV_STABILITY_OPT_IN`. Mark all GenAI-aligned fields as experimental in our typings.
+
+---
+
+## What Lattice Should Own vs Delegate (Quality Gate)
+
+**Lattice owns:**
+- The capability contract shape and its TypeScript types.
+- Pre-flight contract evaluation against its own deterministic router.
+- Tripwire evaluator against its own event stream.
+- The receipt payload schema and canonical JSON.
+- Ed25519 signing/verification primitives (using `@noble/ed25519` or `node:crypto`).
+- Replay-from-receipt orchestration via existing replay envelopes.
+- The eval driver loop, regression gating, and exit-code contract.
+- The redaction-policy identifier (governance + stable ids).
+
+**Lattice delegates:**
+- Key storage and rotation — to the host application or KMS; we accept references, not keys.
+- Transparency-log anchoring — to sigstore/Rekor if/when a hosted control plane ships.
+- Provider-side cost data — we ingest `usage` from the adapter; we do not price models ourselves.
+- LLM-as-judge scoring — to Braintrust/Langfuse/Maxim; eval can call out to them but does not host them.
+- OTel exporter wiring — we emit, the host wires up exporters.
+- Compliance certification (SOC2, HIPAA, EU AI Act) — receipts are *building blocks* for compliance, not certified compliance themselves.
+
+---
 
 ## Sources
 
-- Vercel AI SDK introduction: https://ai-sdk.dev/docs/introduction
-- Vercel AI SDK provider management: https://ai-sdk.dev/docs/ai-sdk-core/provider-management
-- Vercel AI SDK multimodal guide: https://ai-sdk.dev/cookbook/guides/multi-modal-chatbot
-- Vercel AI SDK structured data: https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data
-- Vercel AI SDK agents overview: https://ai-sdk.dev/docs/agents/overview
-- TanStack AI overview: https://tanstack.com/ai/latest
-- TanStack AI realtime voice blog: https://tanstack.com/blog/tanstack-ai-realtime-voice-chat
-- LiteLLM routing docs: https://docs.litellm.ai/docs/routing
-- LiteLLM image generation docs: https://docs.litellm.ai/docs/image_generation
-- LiteLLM audio transcription docs: https://docs.litellm.ai/docs/audio_transcription
-- LiteLLM MCP docs: https://docs.litellm.ai/docs/mcp
-- OpenAI Agents SDK TypeScript overview: https://openai.github.io/openai-agents-js/
-- OpenAI Agents SDK tracing: https://openai.github.io/openai-agents-js/guides/tracing/
-- OpenAI Agents SDK voice agents: https://openai.github.io/openai-agents-js/guides/voice-agents/
-- OpenAI Responses API reference: https://platform.openai.com/docs/api-reference/responses
-- OpenAI Responses API tools/features announcement: https://openai.com/index/new-tools-and-features-in-the-responses-api/
-- OpenAI Assistants API v2 FAQ: https://help.openai.com/en/articles/8550641-assistants-api-v2-faq
-- MCP TypeScript SDK: https://ts.sdk.modelcontextprotocol.io/
-- LangChain context engineering: https://docs.langchain.com/oss/javascript/langchain/context-engineering
+Prior art examined:
+
+- LangGraph time-travel and persistence:
+  - [Use time-travel — Docs by LangChain](https://docs.langchain.com/oss/python/langgraph/use-time-travel)
+  - [time travel in LangGraph — Concepts](https://langchain-ai.github.io/langgraph/concepts/time-travel/)
+  - [time travel then invoke, checkpoint id no longer updates — Issue #4987](https://github.com/langchain-ai/langgraph/issues/4987)
+  - [LangGraph Persistence Guide: Checkpointers & State (2026)](https://fast.io/resources/langgraph-persistence/)
+
+- Replay.io determinism model:
+  - [Replay — Time Travel: How does time travel work?](https://docs.replay.io/basics/time-travel/how-does-time-travel-work)
+  - [How to debug an Effectively Deterministic Time Travel Debugger?](https://blog.replay.io/how-to-debug-an-effectively-deterministic-time-travel-debugger-(seriously...how!))
+
+- Eval CI gates:
+  - [Braintrust — observability platform](https://www.braintrust.dev/)
+  - [Latitude vs Langfuse, LangSmith, Arize, Braintrust (2026)](https://latitude.so/blog/best-llm-observability-tools-agents-latitude-vs-langfuse-langsmith)
+  - [Top 3 AI Testing Platforms: Maxim AI vs Langfuse vs Braintrust](https://www.getmaxim.ai/articles/top-3-ai-testing-platforms-in-2025-comparison-between-maxim-ai-langfuse-and-braintrust/)
+
+- Sigstore / cosign / in-toto:
+  - [Sigstore Quickstart with Cosign](https://docs.sigstore.dev/quickstart/quickstart-cosign/)
+  - [Cosign v3 release notes](https://blog.sigstore.dev/cosign-3-0-available/)
+  - [cosign verify-attestation docs](https://github.com/sigstore/cosign/blob/main/doc/cosign_verify-attestation.md)
+  - [Sigstore Security Model](https://docs.sigstore.dev/about/security/)
+  - [in-toto Attestation Framework](https://github.com/in-toto/attestation)
+  - [SLSA Provenance predicate](https://github.com/in-toto/attestation/blob/main/spec/predicates/provenance.md)
+
+- Prompt caching (signing-flow inspiration only):
+  - [Anthropic prompt caching docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+  - [LiteLLM prompt caching](https://docs.litellm.ai/docs/completion/prompt_caching)
+
+- MLflow AI Gateway iteration / budget policies:
+  - [Control LLM Spend with AI Gateway Budget Alerts and Limits](https://mlflow.org/blog/gateway-budget-alerts-limits)
+  - [How to Prevent Runaway Agent Costs with MLflow AI Gateway](https://mlflow.org/blog/agent-costs-mlflow-gateway)
+  - [Budget Alerts & Limits — MLflow docs](https://mlflow.org/docs/latest/genai/governance/ai-gateway/budget-alerts-limits)
+
+- OpenTelemetry GenAI semconv (Experimental, May 2026):
+  - [Semantic conventions for generative AI systems — OTel](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+  - [GenAI client spans](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/)
+  - [GenAI agent and framework spans](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/)
+  - [GenAI metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/)
+
+- Mid-stream guardrails and abort semantics:
+  - [OpenAI Guardrails — Streaming vs Blocking](https://openai.github.io/openai-guardrails-python/streaming_output/)
+  - [NVIDIA NeMo Guardrails — streaming](https://developer.nvidia.com/blog/stream-smarter-and-safer-learn-how-nvidia-nemo-guardrails-enhance-llm-output-streaming/)
+  - [Mastering LLM Guardrails: Complete 2026 Guide](https://orq.ai/blog/llm-guardrails)
+  - [Predict, Do not React: Value-Based Safety Forecasting for LLM Streaming (arXiv 2026)](https://arxiv.org/abs/2604.03962v1)
+
+- Cryptographic LLM audit trails and reproducibility:
+  - [AuditableLLM — hash-chain audit framework (MDPI)](https://www.mdpi.com/2079-9292/15/1/56)
+  - [HDK: Tamper-Evident LLM Audit Trails](https://redact-app.com/publications/hdk-tamper-evident-llm-audit.html)
+  - [VeriLLM publicly verifiable inference (arXiv)](https://arxiv.org/html/2509.24257v3)
+
+- Redaction vs immutability:
+  - [The Right To Be Forgotten vs Audit Trail Mandates](https://axiom.co/blog/the-right-to-be-forgotten-vs-audit-trail-mandates)
+  - [Art. 17 GDPR — Right to erasure](https://gdpr-info.eu/art-17-gdpr/)
+  - [Complete Guide to GDPR Compliance and Document Redaction](https://document-logistix.com/complete-guide-to-gdpr-compliance-and-document-redaction/)
+
+---
+*Feature research for: Lattice v1.1 — Capability Receipts*
+*Researched: 2026-05-11*

@@ -1,262 +1,137 @@
-# Project Research Summary
+# Project Research Summary — v1.1 Capability Receipts
 
 **Project:** Lattice
-**Domain:** TypeScript-first capability runtime SDK for multimodal AI applications
-**Researched:** 2026-04-22
-**Confidence:** HIGH
+**Milestone:** v1.1 — Capability Receipts
+**Domain:** TypeScript capability-runtime SDK; attestation, contracts, replay, and CI regression gate subsystem
+**Researched:** 2026-05-11
+**Confidence:** HIGH (Stack, Architecture, Pitfalls); MEDIUM-HIGH (Features)
+
+> Scope note: this summary supersedes the v1.0 baseline summary. It synthesizes research for the v1.1 additions only — Capability Contracts on `ai.run`, pre-flight contract proof, tripwire invariants, signed Ed25519 receipts, the `lattice` CLI (`repro`, `verify`, `eval`), and the CI regression gate. The v1.0 runtime is a fixed foundation.
 
 ## Executive Summary
 
-Lattice should be built as a small TypeScript SDK that sits above provider SDKs, gateways, MCP tools, media transforms, and session stores. The core product is not another chat/provider wrapper. It is a capability runtime: developers provide a task, artifacts, desired outputs, and policy; Lattice builds context, selects a route, packages artifacts, executes, validates, records an inspectable plan, and supports replay.
+v1.1 turns every `ai.run` into a contract-bound, signed, and reproducible operation. The research converges on a small, opinionated stack on top of the existing v1.0 runtime: Node 24 WebCrypto Ed25519 for signing (zero new runtime crypto dependency), `canonicalize@3.0.0` for RFC 8785 JCS canonicalization, `citty@0.2.2` for a tiny ESM-only CLI with lazy subcommand loading, and Standard Schema-shaped invariants reusing the validator interface already established for outputs and tools. Receipts adopt a DSSE-shaped envelope (no `@sigstore/*` runtime dependencies) and a separate `packages/lattice-cli` workspace so the runtime stays portable to workers/edge while the CLI owns `fs`/`process` concerns.
 
-The recommended approach is to lock the invariant runtime model before building broad integrations. Start with a tiny public API, provider-neutral `Artifact` records, typed output contracts, a versioned capability matrix, deterministic routing, execution plans, and fake-provider test fixtures. Then add narrow real provider support through OpenAI, AI SDK, and OpenAI-compatible adapters, including LiteLLM as an optional gateway target rather than a required dependency.
+The recommended approach is to prove the type spine before the cryptography, and the cryptography before the CLI. Contracts and pre-flight proof slot cleanly into the existing deterministic router as additional `RouteRejectReason` codes — no new orchestrator branches. Tripwires extend `validateOutputMap` as a post-schema decorator stage and define terminal-vs-transient semantics that the existing fallback chain must honor. Receipts are emitted on both success and failure (including tripwire abort), sign over the redacted canonical form (never the cleartext), include a `kid` for rotation and an `observed` model fingerprint distinct from the requested model id, and embed inside the existing `ReplayEnvelope`. The CLI is a thin wrapper that calls `replayOffline(envelope)` — never re-implements runtime logic — and `lattice eval` is a vitest-style CI driver that gates on baseline-relative cost/quality regressions, not absolute thresholds.
 
-The main risks are all boundary failures: artifacts collapsing into provider payloads, "file support" hiding transport and retention differences, shallow routing metadata, fallbacks that silently change semantics, context compaction that loses decisions, and replay/trace logs leaking sensitive multimodal content. The mitigation is to make artifacts, transforms, context packs, route decisions, fallback attempts, usage, warnings, and redaction decisions explicit fields in the plan from day one.
+The dominant risks are all integrity-of-the-attestation risks. Signing before redaction creates permanent PII liability. `JSON.stringify` instead of RFC 8785 JCS produces signatures that silently fail to verify across Node 22/24/25/Bun/Deno. A missing `kid` plus single-key design makes rotation and revocation impossible. Tripwires without a `terminal: true` flag let the existing fallback chain retry violations and burn budget. LLM-judge variance (0.05-0.15 score spread) turns naive eval CI into flaky CI that gets disabled within two sprints. The mitigations are architectural and must land in the receipts/tripwire phases — they cannot be retrofitted once receipts are in the wild.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Build an ESM-first TypeScript 6 SDK targeting Node `>=24`, with strict type settings, pnpm workspaces, Changesets, tsdown builds, Vitest tests, and package-shape verification through `publint` and `@arethetypeswrong/cli`. Keep the public install small and modular: one umbrella `lattice` package for v0.1, with internal or subpath modules for providers, MCP, storage, media, testing, and optional UI bindings.
+Only two runtime deps added: `citty@0.2.2` (CLI parser) and `canonicalize@3.0.0` (RFC 8785 JCS). One devDep `@noble/ed25519@3.1.0` as a cross-implementation parity oracle in tests. All signing and verification run through Node 24's built-in WebCrypto `crypto.subtle` Ed25519. Runtime stays ESM-only and `sideEffects: false`; the CLI is a separate workspace package.
 
-Provider breadth should come from adapters over existing surfaces, not from custom SDK sprawl. Use the Vercel AI SDK provider contracts internally where useful, the OpenAI JS SDK for OpenAI-specific Responses/files/audio/realtime edge cases, and a direct OpenAI-compatible adapter for LiteLLM, OpenRouter, local gateways, and raw request/response journaling. Use Zod 4 and Standard Schema at public boundaries, AJV internally for emitted JSON Schema validation, MCP's official TypeScript SDK for tool/resource integration, OpenTelemetry for spans, and optional Node packages for media/storage.
-
-**Core technologies:**
-- Node.js `>=24` - modern runtime target with stable Web APIs, native `fetch`, streams, `Blob`, `File`, and ESM maturity.
-- TypeScript 6 - source language and public type contract; run strict settings and watch TS 7 preview compatibility later.
-- pnpm workspaces + Changesets - monorepo dependency control, versioning, changelogs, and publish discipline.
-- tsdown + `tsc --noEmit` - library builds and source type correctness.
-- Zod 4 + Standard Schema + AJV - ergonomic public schemas, schema-library neutrality, and provider-compatible validation.
-- AI SDK + OpenAI SDK + OpenAI-compatible HTTP - narrow adapter substrate for provider breadth without leaking provider APIs.
-- Official MCP TypeScript SDK - MCP client bridge first, optional MCP server/export path later.
-- OpenTelemetry + structured run events - tracing substrate without tying the core to a proprietary observability vendor.
-- Vitest + fast-check + MSW/fake providers - deterministic unit, property, adapter, and replay tests.
+- **Node 24 WebCrypto Ed25519** — primary signer/verifier. Zero new audit surface. Isomorphic with browsers, Workers, Deno Deploy for the `lattice/receipts` verify-only subpath export.
+- **`canonicalize@3.0.0`** (RFC 8785 JCS) — deterministic JSON canonicalization. Zero deps; TypeScript types included; debuggable in CI logs (unlike CBOR).
+- **DSSE-shaped envelope (no library)** — `{ payloadType, payload, signatures[] }` with PAE-style pre-auth encoding. ~80 LOC against WebCrypto + `canonicalize`.
+- **`citty@0.2.2`** — declarative `defineCommand`, lazy subcommand loading, wraps `node:util.parseArgs`, ESM-only, ~3 KB gzip.
+- **Standard Schema-shaped invariants** — reuses `@standard-schema/spec@1.1.0` already in catalog.
+- **`tsdown` shebang auto-bin** — already in catalog at 0.21.9; `bin` field maintained automatically.
+- **`vitest@4.1.5`** reused as the `lattice eval` assertion backbone.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Tiny TypeScript API centered on `createAI`, `artifact`, `run`, `session`, `branch`, `replay`, and returned execution plans.
-- Provider abstraction behind Lattice-owned adapter contracts.
-- Versioned capability matrix with modalities, file transports, structured output, tools, streaming, context, pricing, latency, and data policy.
-- First-class artifact inputs for text, JSON, image, audio, PDF/file, URL, and tool results.
-- Context management with live context, compressed summaries, archive references, token estimates, and omitted-item reasons.
-- Provider packaging for URL, base64, upload ID, provider file ID, extracted/chunked text, transcript, and resized/transcoded derivatives.
-- Text and structured JSON outputs with schema validation and typed result inference.
-- Typed local tools and minimal MCP compatibility, with tool results represented as artifacts.
-- Deterministic routing, explicit fallbacks, retries/timeouts, cost/token/latency metadata, and typed errors.
-- Inspectable plan, dry-run/preflight planning, replay, branching, and a work-inbox showcase.
+**Must-have:**
+- Capability Contract on `ai.run` (budget + invariants + qualityFloor)
+- Pre-flight contract proof — typed `NoContractMatchResult` with per-candidate rejection reasons
+- Tripwire invariants — post-execution in v1.1 (mid-stream forward-compat), `terminal: true`
+- Cost & token accounting on `RunResult.usage`
+- RFC 8785 JCS canonical JSON serialization
+- Signed Ed25519 Capability Receipts (DSSE envelope, redaction-aware, `redactionPolicyId` + `kid`)
+- `verifyReceipt` pure function
+- `lattice repro <receipt-id>` — load → verify → materialize replay envelope → `replayOffline` → diff
+- `lattice eval` — replay receipt fixtures, regression gate vs last green main
+- Drift warnings on replay — model-fingerprint divergence as typed `DriftWarning`
 
-**Should have (competitive differentiators):**
-- Capability-first `run({ task, artifacts, outputs, policy })` as the central product surface.
-- Artifact-native runtime with IDs, lineage, transforms, privacy labels, hashes, and generated output artifacts.
-- Context-native execution that explains what was included, compressed, archived, or omitted.
-- Artifact transport planner that chooses provider-ready representations without exposing provider-specific file pain.
-- Deterministic policy router with visible candidate filtering, score breakdowns, and no-route behavior.
-- Plan-first observability and replayable AI runs, including exact-context replay and mocked-provider replay.
-- Privacy-aware artifact policy: local-only, no-upload, no-logging, provider allow/deny, retention class, and route denial.
-- Capability-aware preflight plans before provider execution.
+**Should-have differentiators:**
+- Contract verdict as a typed result discriminant
+- Receipts bind the artifact-lineage merkle root, not just the model call
+- Tripwires reusable as eval scorers (shared `Invariant` interface)
+- Receipts replayable across providers via deterministic router + `provider=fake`
+- `redactionPolicyId` as a signed field
 
-**Defer beyond v0.1/v1:**
-- Hosted control plane, billing, dashboards, and team infrastructure.
-- Visual graph/DAG DSL and multi-agent handoff framework.
-- Broad native provider catalog before a conformance harness is stable.
-- Frontend hook/component library as a product center.
-- Full realtime voice stack, code interpreter/computer-use runtime, full RAG/vector database platform, and prompt playground/eval platform.
-- Proprietary plugin ecosystem; use MCP compatibility instead.
+**Defer to v1.2+:** mid-stream tripwire abort; YAML/JSON contract file loaders; `lattice receipt diff`; iteration budgets in eval; per-candidate rejection-reason detail beyond basic taxonomy.
+
+**Anti-features:** blockchain/Rekor anchoring; hosted receipt store; ZK proofs of inference; cross-provider bit-identity claims; per-chunk streaming signatures; plaintext prompts in receipts; KMS built into Lattice; mandatory contracts on every `ai.run`.
 
 ### Architecture Approach
 
-Use one published umbrella package for v0.1 with modular internals and subpath exports for advanced extension points. The public API should expose intent and results; the internals should produce stable records for artifacts, context packs, route decisions, stages, events, storage, tracing, and replay. The execution plan is a runtime artifact, not a user-authored graph DSL.
+Two new top-level domains inside `packages/lattice` (`contract/` and `receipts/`). A separate `packages/lattice-cli` workspace package owns the `lattice` bin. Runtime stays Node-version-agnostic and free of `fs`/`process`; CLI imports `lattice` via `workspace:*` through public APIs only.
 
 **Major components:**
-1. Public runtime - `createAI`, `run`, `plan`, `replay`, and `branch` facades.
-2. Domain types - immutable records for `RunIntent`, `ArtifactRef`, `OutputSpec`, `Policy`, `ExecutionPlan`, `StagePlan`, and result types.
-3. Artifact registry - canonical manifests, hashes, media metadata, raw storage, transforms, lineage, and generated artifacts.
-4. Context engine - live/summary/archive planes, token budgets, packed model-visible context, and omission explanations.
-5. Router - deterministic hard filters, policy scoring, fallback chain, and rejected-candidate reasons.
-6. Planner - intent-to-stage plan creation, dry runs, required transforms, budgets, and provider route selection.
-7. Executor - stage lifecycle, provider attempts, retries, fallback activation, output normalization, and validation.
-8. Provider adapters - provider-specific packaging/execution behind a narrow Lattice contract.
-9. Storage/sessions - memory and file stores first, optional SQLite after core stabilizes, copy-on-write branches.
-10. Tracing/replay/testing - redacted run events, OpenTelemetry bridge, cassettes, fake providers, and golden-plan helpers.
+1. **`contract/`** (NEW) — `CapabilityContract`, `contract()` factory, `evaluateContractAgainstRoute`, `Tripwire` runtime, `runTripwires`.
+2. **`receipts/`** (NEW) — `CapabilityReceipt` schema, `createReceipt`/`verifyReceipt`, Ed25519 signer, `canonical.ts`, receipt redactor.
+3. **`routing/router.ts`** (MODIFIED) — `RouteRequest.contract?`; new `contract-*` reject codes.
+4. **`outputs/validate.ts`** (MODIFIED) — optional `contract` param; post-schema tripwire stage.
+5. **`replay/replay.ts`** (MODIFIED) — `ReplayEnvelope.contract?` and `ReplayEnvelope.receipt?`.
+6. **`results/errors.ts`** (MODIFIED) — additive `NoContractMatchError` and `TripwireViolationError`; optional `receipt?` on results.
+7. **`packages/lattice-cli/`** (NEW) — citty entry, `repro`/`verify`/`eval` subcommands.
+8. **`tracing/tracing.ts`** (MODIFIED) — additive event kinds.
+
+Backwards compatibility is strict: every new field optional; v1.0 consumer code compiles unchanged.
 
 ### Critical Pitfalls
 
-1. **Collapsing artifacts into provider payloads** - keep artifacts provider-neutral and immutable; treat provider payloads/upload IDs as derived packaging metadata with lineage.
-2. **Treating file transports as interchangeable** - build a transport planner that accounts for URL/base64/upload/chunking, endpoint support, privacy, TTL, retention, cleanup, MIME, size, and page limits.
-3. **Building a shallow capability matrix** - model directionality and detail: input/output modalities, file transport, visual PDF mode, structured output, tools, streaming, context, cost, latency, and data policy.
-4. **Letting fallbacks change semantics silently** - require fallback envelopes for privacy, capability deltas, cost, latency, quality, and content-policy behavior; record every attempt.
-5. **Naive context compression and state mixing** - separate session, run, context pack, provider attempt, artifact store, and plan; summaries need provenance and raw artifact rehydration.
-6. **Designing replay as "run the prompt again"** - persist plan, catalog version, artifacts, transforms, context pack, provider payload metadata, attempts, warnings, errors, usage, and cassettes.
-7. **Underestimating multimodal cost and visual loss** - estimate by packaging strategy, reconcile actual usage, and warn when lossy transforms drop charts, screenshots, layout, tables, or embedded images.
-8. **Logging sensitive artifacts** - redacted-by-default traces and replay envelopes; raw payload capture must be explicit dev-mode behavior with tests for secrets, signed URLs, base64 blobs, and transcripts.
+Top 5:
 
-## Implications for Roadmap
+1. **Signing before redaction.** Sign digest of `redact(canonicalize(run))`. Include `redactions[]` manifest inside the signed payload. Cannot be deferred.
+2. **JCS / canonicalization drift across Node versions.** Pin `canonicalize@3.0.0` with RFC 8785 appendix vectors; I-JSON receipt schema (no floats); cross-version CI matrix; lint-ban `JSON.stringify` in signing path.
+3. **Ed25519 key rotation without `kid`.** Day-one design: `kid` in signed payload; `KeySet` interface with `active | retired | revoked`; verifier looks up by `kid`.
+4. **Tripwires burn budget on retries.** Define violations as `terminal: true`; thread budget through every retry; receipts record `costAtAbort` separately from `costAtSuccess`.
+5. **Eval CI is flaky and gets disabled.** Layered gates by determinism class; N=3/N=5 medians; baseline-relative gating; cached judge outputs by `hash(fixture, model_fingerprint, judge_prompt)`.
 
-Based on the combined research, the roadmap should prove the runtime spine before the showcase and before provider breadth.
+## Cross-Cutting Decisions (must lock before phase planning)
 
-### Phase 1: Runtime Contracts
+1. Receipts sign over the redacted form, not the cleartext.
+2. Canonical JSON is a substrate, not a feature. Single source in `receipts/canonical.ts`. I-JSON only.
+3. Tripwire violations are `terminal: true` against the existing fallback chain.
+4. Cost/token accounting on `RunResult.usage` ships in the contracts phase, not the receipts phase.
+5. `kid` and `KeySet` ship from day one.
+6. CLI lives in a separate `packages/lattice-cli` workspace.
+7. Receipts emitted on both success and failure (failure receipts include `contractVerdict`).
+8. Receipts pin both `model.requested` and `model.observed`.
+9. Tripwire timing is post-execution in v1.1; mid-stream defers to v1.2.
+10. CLI is a thin replay-envelope materializer; never re-implements runtime logic.
 
-**Rationale:** Every other subsystem depends on stable records. If artifacts, outputs, policy, capabilities, and plans are weak here, provider work will bake in the wrong abstractions.
+## Recommended Phase Ordering
 
-**Delivers:** Tiny public API skeleton; `RunIntent`; `ArtifactManifest`; `OutputSpec`; `PolicySpec`; `ExecutionPlan`; `StagePlan`; `LatticeResult`; Zod/Standard Schema validation; package/build/test scaffolding.
+Phase numbers continue from the v1.0 final phase 6.
 
-**Addresses:** Tiny API, artifact-native model, typed outputs, capability-first run contract, inspectable plan, progressive overrides.
+```
+Phase 7:  Contracts + Pre-flight + Cost Accounting
+Phase 8:  Tripwire Runtime + terminal-flag fallback semantics
+Phase 9:  Canonical JSON + Ed25519 + Receipt Issuance
+Phase 10: Replay Envelope Integration
+Phase 11: lattice CLI (packages/lattice-cli) — repro + verify
+Phase 12: lattice eval CI Gate
+Phase 13: Showcase Update + Milestone Validation
+```
 
-**Avoids:** Artifacts collapsing into provider payloads, shallow capability matrix, plain-text-only outputs, inspectability afterthought, ad hoc provider options.
+## Top Open Questions for Roadmapper
 
-### Phase 2: Artifact Lifecycle And Storage
-
-**Rationale:** Multimodal runtime value depends on canonical artifacts before context, packaging, routing, replay, or showcases can be trusted.
-
-**Delivers:** Artifact builders for text/JSON/file/image/audio/PDF/tool result; content hashes; MIME detection; parent/derived lineage; privacy labels; memory store; file store; generated artifact support.
-
-**Addresses:** Multimodal inputs, output artifacts, artifact reuse, privacy labels, local examples, future replay.
-
-**Avoids:** Provider upload IDs as source of truth, invisible transforms, untracked inline bytes, weak provenance.
-
-### Phase 3: Deterministic Catalog, Router, And Planner
-
-**Rationale:** Route selection must be dry-runnable and explainable before real provider complexity. A frozen catalog plus fake providers makes plan behavior testable.
-
-**Delivers:** Versioned model catalog schema; hard filters; deterministic scoring; rejected-candidate reason codes; fallback candidate graph; `ai.plan()`; golden route and no-route tests.
-
-**Addresses:** Capability matrix, deterministic routing, preflight, budget/latency/privacy policy, fallback foundations.
-
-**Avoids:** Opaque AI routing, boolean "vision/files" metadata, semantic fallback drift, impossible tasks being downgraded silently.
-
-### Phase 4: Execution Spine, Events, And Fake Providers
-
-**Rationale:** The executor and event model are the backbone for streaming, tracing, replay, failure diagnostics, and UI bindings later.
-
-**Delivers:** Stage runner; fake provider adapter; run store; typed events; retries/timeouts; cancellation shape; schema validation; output normalization; plan snapshots for success/failure/fallback.
-
-**Addresses:** Streaming lifecycle events, typed errors, structured outputs, plan-first observability, provider-independent tests.
-
-**Avoids:** Text-delta-only streaming, final-output-only tests, logs instead of structured plan warnings, replay gaps.
-
-### Phase 5: Context And Sessions
-
-**Rationale:** Context decisions depend on artifacts and stages, but provider packaging and replay depend on context packs being explicit and inspectable.
-
-**Delivers:** Session snapshots; live/summary/archive planes; context packer; token budget estimates; summary artifacts with provenance; branch semantics; trust labels; retention/pinning rules.
-
-**Addresses:** Sessions, branching, context archive model, context-native execution, policy/trust separation.
-
-**Avoids:** Dropping turns instead of preserving decisions, mutable conversation grab bag, parent-session mutation during replay/branching, prompt injection through untrusted artifacts.
-
-### Phase 6: Provider Packaging And Narrow Real Adapters
-
-**Rationale:** Real providers should enter after contracts, routing, execution, artifacts, and context are testable. This phase proves transport and multimodal packaging without turning provider count into the product.
-
-**Delivers:** Provider adapter contract; OpenAI adapter; AI SDK adapter; OpenAI-compatible/LiteLLM adapter; file transport planner; upload/cache metadata; adapter conformance tests; packaging warnings; cost estimate metadata.
-
-**Addresses:** Provider abstraction, provider packaging, file/PDF/image/audio transport, usage metadata, narrow provider set for v0.1.
-
-**Avoids:** Native adapter sprawl, file support being treated as binary, private files becoming public URLs, invisible lossy transforms, unbounded upload retries.
-
-### Phase 7: Replay, Redaction, And Observability
-
-**Rationale:** Lattice's promise depends on explaining and reproducing AI runs without leaking sensitive artifacts. This needs full artifacts, plans, context packs, provider attempts, and events in place.
-
-**Delivers:** Replay envelope; provider cassettes; deterministic offline replay; live rerun comparison mode; redacted trace/replay defaults; OpenTelemetry bridge; usage reconciliation; fixture format.
-
-**Addresses:** Replay, plan-first observability, cost/usage reconciliation, security and privacy defaults, CI fixtures.
-
-**Avoids:** Replay as prompt rerun, telemetry leaks, stale URL dependence, unredacted provider bodies, hidden estimate errors.
-
-### Phase 8: Work Inbox Showcase
-
-**Rationale:** The showcase should validate the real product thesis, not bypass runtime abstractions. It belongs after the runtime can handle adversarial artifacts, route decisions, context packing, and replay.
-
-**Delivers:** Executable multimodal work-inbox example using the public API; fixtures for text, screenshot/photo, audio/call recording, PDF, JSON action output, and optional speech stub; UAT proving plan inspection and replay.
-
-**Addresses:** First compelling use case, integration testing, developer onboarding, runtime validation.
-
-**Avoids:** Happy-path demo only, showcase-only shortcuts, weak visual/PDF/audio coverage, provider-specific demo code.
-
-### Phase Ordering Rationale
-
-- Contracts come first because provider adapters, context, storage, replay, and tests need stable domain records.
-- Artifacts precede context and packaging because every context, transform, output, policy, and replay decision references artifact IDs and lineage.
-- Router/planner precede executor so `ai.plan()` is trusted and deterministic before side effects occur.
-- Executor/events precede sessions/replay so state changes are observable and persistable.
-- Context/sessions precede real provider packaging because provider payloads should be assembled from explicit context packs, not from ad hoc message histories.
-- Real providers come after fake-provider conformance so adapter behavior is held to Lattice invariants.
-- Replay/redaction comes before the showcase so the demo can prove debuggability without leaking sensitive multimodal payloads.
-
-### Research Flags
-
-Phases likely needing deeper research during planning:
-- **Phase 5: Context And Sessions** - summarization, provenance, prompt-injection handling, and trust labels need careful implementation research and fixture design.
-- **Phase 6: Provider Packaging And Narrow Real Adapters** - provider file transport, retention/deletion, visual PDF behavior, audio transcription, spreadsheet/document extraction, and provider-specific option scopes change quickly.
-- **Phase 7: Replay, Redaction, And Observability** - redaction defaults, cassette shape, trace payload boundaries, and provider usage reconciliation need security-focused review.
-- **Phase 8: Work Inbox Showcase** - optional speech and audio/video paths need provider-by-provider validation before being promised beyond a narrow path.
-
-Phases with standard patterns where phase research can be lighter:
-- **Phase 1: Runtime Contracts** - standard TypeScript library, schema, package export, and validation patterns are well documented.
-- **Phase 2: Artifact Lifecycle And Storage** - content-addressed manifests, MIME detection, memory/file stores, and lineage records are straightforward if kept provider-neutral.
-- **Phase 3: Deterministic Catalog, Router, And Planner** - deterministic filtering/scoring and golden-plan tests are local algorithm work once the schema is defined.
-- **Phase 4: Execution Spine, Events, And Fake Providers** - standard async execution, event streaming, fake adapters, and validation tests can follow normal SDK patterns.
+1. Does the existing v1.0 fallback chain centralize retry decisions in one function? (Affects Phase 8 scope.)
+2. Where does cost/token data surface from each existing provider adapter? (Affects Phase 7 normalization sub-task.)
+3. Is the existing redactor pure enough to invoke from the receipts module?
+4. Canonical form for the lineage merkle root: binary merkle vs JCS-canonicalized JSON tree hash?
+5. Terminal/transient discriminator shape on `LatticeRunError`?
+6. `signer` on `createAI` only vs per-`ai.run` override?
+7. Default receipt emission policy when signer present?
+8. `.lattice/` storage convention and fixture-discovery rules for `lattice eval`?
+9. Mid-stream tripwire scope: truly out of scope for v1.1?
+10. Cross-platform CI cost budget: every PR vs merge-to-main only?
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Node 24, TypeScript 6, pnpm, Zod 4, Vitest, OpenTelemetry, OpenAI SDK, AI SDK, and MCP direction are backed by official docs and current package checks. Adapter package boundaries are MEDIUM because AI SDK and MCP package surfaces are still evolving. |
-| Features | MEDIUM-HIGH | Table stakes are strongly supported by adjacent SDKs/gateways. Differentiation is an inference from ecosystem gaps plus the project thesis and should be validated through v0.1 work-inbox usage. |
-| Architecture | HIGH | Component boundaries map directly to project requirements and known SDK/runtime patterns. Provider substrate choice remains MEDIUM until real multimodal packaging proves it. |
-| Pitfalls | HIGH | Most risks come from official provider/runtime docs and repeated ecosystem patterns around files, context, fallback, replay, and telemetry. Roadmap prioritization is partly inferred. |
+| Area | Confidence |
+|------|------------|
+| Stack | HIGH |
+| Features | MEDIUM-HIGH |
+| Architecture | HIGH |
+| Pitfalls | HIGH (signing/repro/CLI), MEDIUM (tripwire DSL, eval CI) |
 
-**Overall confidence:** HIGH
-
-### Gaps to Address
-
-- **Provider retention and deletion semantics:** Research per provider in Phase 6 before claiming upload cleanup guarantees.
-- **MCP tool/resource security:** Do separate research before implementing anything beyond basic MCP tool/resource import and explicit policy checks.
-- **Audio/video and optional speech:** Validate provider support, cost, latency, streaming semantics, and storage implications before committing to showcase speech beyond a stub or narrow adapter path.
-- **Exact provider substrate:** Validate whether AI SDK, OpenAI SDK, or direct HTTP gives better control for raw envelopes, files, usage, retries, and replay before stabilizing adapter internals.
-- **Context compaction quality:** Use adversarial fixtures and oracle comparisons to decide how much automatic summarization is safe in v0.1.
-- **Fixture privacy policy:** Define which replay artifacts can be committed, which must be redacted, and which require local-only encrypted storage.
-
-## Sources
-
-### Project And Local Research
-
-- `.planning/PROJECT.md` - product definition, active requirements, constraints, and initial out-of-scope boundaries.
-- `.planning/research/STACK.md` - stack recommendations, current package versions, provider/MCP/schema/testing/storage/observability choices.
-- `.planning/research/FEATURES.md` - table stakes, differentiators, anti-features, dependency ordering, MVP recommendation.
-- `.planning/research/ARCHITECTURE.md` - API shape, component boundaries, data flow, build order, testability strategy.
-- `.planning/research/PITFALLS.md` - critical pitfalls, phase warnings, guardrails, and follow-up research gaps.
-
-### Primary External Sources
-
-- TypeScript 6 announcement: https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/
-- Node.js release status: https://nodejs.org/en/about/previous-releases
-- Vercel AI SDK docs: https://ai-sdk.dev/docs/introduction
-- Vercel AI SDK provider management: https://ai-sdk.dev/docs/ai-sdk-core/provider-management
-- Vercel AI SDK structured outputs: https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data
-- OpenAI JavaScript/TypeScript SDK: https://github.com/openai/openai-node
-- OpenAI file inputs: https://developers.openai.com/api/docs/guides/file-inputs
-- OpenAI Agents SDK TypeScript docs: https://openai.github.io/openai-agents-js/
-- LiteLLM routing docs: https://docs.litellm.ai/docs/routing
-- LiteLLM reliability/fallback docs: https://docs.litellm.ai/docs/proxy/reliability
-- MCP TypeScript SDK docs: https://ts.sdk.modelcontextprotocol.io/
-- MCP SDK overview: https://modelcontextprotocol.io/docs/sdk
-- Zod docs: https://zod.dev/
-- Standard Schema spec: https://standardschema.dev/schema
-- OpenTelemetry JavaScript instrumentation: https://opentelemetry.io/docs/languages/js/instrumentation/
-- Vitest docs: https://v4.vitest.dev/
-- fast-check docs: https://fast-check.dev/
-
-### Secondary Sources And Ecosystem Signals
-
-- TanStack AI docs: https://tanstack.com/ai/latest
-- LangChain context engineering: https://docs.langchain.com/oss/javascript/langchain/context-engineering
-- LangGraph durable execution and persistence docs: https://docs.langchain.com/oss/javascript/langgraph/durable-execution
-- Anthropic PDF support: https://platform.claude.com/docs/en/build-with-claude/pdf-support
-- Google Gemini API file limit update: https://blog.google/innovation-and-ai/technology/developers-tools/gemini-api-new-file-limits/
+**Overall:** HIGH
 
 ---
-*Research completed: 2026-04-22*
-*Ready for roadmap: yes*
+*Research completed: 2026-05-11*
+*Supersedes: v1.0 baseline summary for v1.1 milestone planning*
