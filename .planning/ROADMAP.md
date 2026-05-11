@@ -18,7 +18,7 @@ Phase numbering continues from v1.0 (which ended at Phase 6). v1.1 starts at Pha
 - [ ] **Phase 8: Tripwire Invariants with Terminal Semantics** — Fluent invariant builder, post-execution evaluation stage, typed `tripwire-violated` failures that the fallback chain refuses to retry.
 - [ ] **Phase 9: Canonical JSON, Ed25519 Signing, and Receipt Issuance** — RFC 8785 JCS canonicalization, redact-then-sign DSSE envelope, `kid`/`KeySet` rotation surface, pure `verifyReceipt`, receipts on success and failure.
 - [x] **Phase 10: Receipts inside the Replay Envelope** — Embed `receipt?` and `contract?` into `ReplayEnvelope` so a single receipt is sufficient to materialize an offline replay. (completed 2026-05-11)
-- [ ] **Phase 11: lattice CLI — repro and verify** — New `packages/lattice-cli` workspace shipping the `lattice` bin via citty with lazy subcommands for `lattice repro` and `lattice verify`.
+- [x] **Phase 11: lattice CLI — repro and verify** — New `packages/lattice-cli` workspace shipping the `lattice` bin via citty with lazy subcommands for `lattice repro` and `lattice verify`. (completed 2026-05-11)
 - [ ] **Phase 12: lattice eval CI Gate** — `lattice eval` discovers receipts, replays via `replayOffline`, gates baseline-relative cost/quality regressions with judge caching and layered determinism classes.
 - [ ] **Phase 13: Showcase Update and Milestone Validation** — Extend the work-inbox showcase end-to-end across contracts, tripwires, receipts, repro, and eval; close v1.1.
 
@@ -94,9 +94,9 @@ Plans:
   5. CLI output is redacted by default — only the redacted fields from the signed receipt are surfaced; there is no `--unsafe-unredacted` flag in v1.1.
 **Plans**: 3 plans
 Plans:
-- [ ] 11-01-PLAN.md — Bootstrap lattice-cli workspace + citty bin entry with lazy subcommand stubs + depcheck gate (Wave 1)
-- [ ] 11-02-PLAN.md — `lattice verify` subcommand + keyset loader, tested via mock argv (Wave 2)
-- [ ] 11-03-PLAN.md — `lattice repro` subcommand + filesystem artifact loader + receipt id-or-path resolver, tested via mock argv (Wave 2)
+- [x] 11-01-PLAN.md — Bootstrap lattice-cli workspace + citty bin entry with lazy subcommand stubs + depcheck gate (Wave 1)
+- [x] 11-02-PLAN.md — `lattice verify` subcommand + keyset loader, tested via mock argv (Wave 2)
+- [x] 11-03-PLAN.md — `lattice repro` subcommand + filesystem artifact loader + receipt id-or-path resolver, tested via mock argv (Wave 2)
 
 ### Phase 12: lattice eval CI Gate
 **Goal**: `lattice eval` walks a fixture directory of receipts, replays each via `replayOffline`, and gates baseline-relative cost-per-task and quality-floor regressions with judge caching, layered determinism classes, and a CI-friendly non-zero exit on regression.
@@ -130,7 +130,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 8. Tripwire Invariants with Terminal Semantics | v1.1 | 0/2 | Not started | - |
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
 | 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
-| 11. lattice CLI — repro and verify | v1.1 | 0/3 | Not started | - |
+| 11. lattice CLI — repro and verify | v1.1 | 3/3 | Complete    | 2026-05-11 |
 | 12. lattice eval CI Gate | v1.1 | 0/TBD | Not started | - |
 | 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |
 
