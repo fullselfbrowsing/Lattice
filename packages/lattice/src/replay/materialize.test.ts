@@ -23,10 +23,8 @@ import {
 } from "../receipts/sign.js";
 import type { ReceiptEnvelope } from "../receipts/types.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
-import {
-  MaterializationError,
-  materializeReplayEnvelope,
-} from "./materialize.js";
+import { materializeReplayEnvelope } from "./materialize.js";
+import type { MaterializationError } from "./materialize.js";
 import { replayOffline } from "./replay.js";
 
 interface MaterializationFixture {

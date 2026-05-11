@@ -1,8 +1,10 @@
 import type { ArtifactRef } from "../artifacts/artifact.js";
+import type { CapabilityContract } from "../contract/contract.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { InferOutputMap } from "../outputs/infer.js";
 import type { ExecutionPlan, UsageRecord } from "../plan/plan.js";
 import type { Usage } from "../providers/provider.js";
+import type { ReceiptEnvelope } from "../receipts/types.js";
 import type { RunResult } from "../results/result.js";
 import type { AI, RunIntent } from "../runtime/create-ai.js";
 import type { RunEvent } from "../tracing/tracing.js";
@@ -21,6 +23,18 @@ export interface ReplayEnvelope<TOutputs extends OutputContractMap = OutputContr
   readonly errors: readonly string[];
   readonly usage?: UsageRecord;
   readonly events: readonly RunEvent[];
+  /**
+   * Phase 10 — optional signed receipt recorded alongside the envelope so a
+   * single artifact is sufficient to materialize an offline replay session
+   * deterministically. Type-only import — replay.ts stays runtime-import-free
+   * of the receipts builder.
+   */
+  readonly receipt?: ReceiptEnvelope;
+  /**
+   * Phase 10 — optional contract recorded so replays can re-run pre-flight
+   * checks deterministically.
+   */
+  readonly contract?: CapabilityContract;
 }
 
 export function createReplayEnvelope<TOutputs extends OutputContractMap>(

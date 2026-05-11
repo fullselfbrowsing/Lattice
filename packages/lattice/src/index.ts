@@ -21,6 +21,7 @@ export {
   createOpenAIProvider,
 } from "./providers/adapters.js";
 export { createFakeProvider } from "./providers/fake.js";
+export { materializeReplayEnvelope } from "./replay/materialize.js";
 export {
   createReplayEnvelope,
   redactArtifactRef,
@@ -70,6 +71,8 @@ export type {
   LatticeConfig,
   LatticeRunError,
   MatchesInvariant,
+  MaterializationError,
+  MaterializeReplayEnvelopeOptions,
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
@@ -90,6 +93,7 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  ReplayEnvelope,
   RunFailure,
   RunResult,
   RunSuccess,

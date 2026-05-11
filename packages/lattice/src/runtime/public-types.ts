@@ -72,6 +72,11 @@ export type {
   Usage,
 } from "../providers/provider.js";
 export type {
+  ArtifactLoader,
+  MaterializationError,
+  MaterializeReplayEnvelopeOptions,
+} from "../replay/materialize.js";
+export type {
   ReplayEnvelope,
 } from "../replay/replay.js";
 export type {
