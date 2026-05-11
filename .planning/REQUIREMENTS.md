@@ -105,8 +105,45 @@ REQ-ID format: `<CATEGORY>-<NN>`. Numbering restarts for v1.1; v1.0 requirements
 
 ## Traceability
 
-Mapped to phases by the roadmapper. See `.planning/ROADMAP.md` once generated.
+Mapped to phases by the roadmapper (2026-05-11). See `.planning/ROADMAP.md` for phase details.
 
 | REQ-ID | Phase |
 |--------|-------|
-| (filled by roadmapper) | |
+| CONTRACT-01 | Phase 7 |
+| CONTRACT-02 | Phase 7 |
+| CONTRACT-03 | Phase 7 |
+| CONTRACT-04 | Phase 7 |
+| CONTRACT-05 | Phase 7 |
+| CONTRACT-06 | Phase 7 |
+| COST-01 | Phase 7 |
+| COST-02 | Phase 7 |
+| COST-03 | Phase 7 |
+| TRIP-01 | Phase 8 |
+| TRIP-02 | Phase 8 |
+| TRIP-03 | Phase 8 |
+| TRIP-04 | Phase 8 |
+| TRIP-05 | Phase 8 |
+| RECEIPT-01 | Phase 9 |
+| RECEIPT-02 | Phase 9 |
+| RECEIPT-03 | Phase 9 |
+| RECEIPT-04 | Phase 9 |
+| RECEIPT-05 | Phase 9 |
+| RECEIPT-06 | Phase 9 |
+| RECEIPT-07 | Phase 9 |
+| RECEIPT-08 | Phase 9 |
+| RECEIPT-10 | Phase 9 |
+| RECEIPT-09 | Phase 10 |
+| CLI-01 | Phase 11 |
+| CLI-02 | Phase 11 |
+| CLI-03 | Phase 11 |
+| CLI-04 | Phase 11 |
+| CLI-05 | Phase 11 |
+| CLI-06 | Phase 11 |
+| EVAL-01 | Phase 12 |
+| EVAL-02 | Phase 12 |
+| EVAL-03 | Phase 12 |
+| EVAL-04 | Phase 12 |
+| EVAL-05 | Phase 12 |
+| EVAL-06 | Phase 12 |
+
+**Coverage:** 36/36 v1.1 REQ-IDs mapped. No orphans, no duplicates. Phase 13 is a cross-cutting integration/validation phase that exercises all categories end-to-end without owning any single REQ-ID exclusively.
