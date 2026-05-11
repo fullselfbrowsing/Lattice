@@ -1,4 +1,9 @@
 export { artifact } from "./artifacts/artifact.js";
+export { contract } from "./contract/contract.js";
+export {
+  estimateRouteCost,
+  evaluateContractAgainstRoute,
+} from "./contract/preflight.js";
 export { output } from "./outputs/contracts.js";
 export {
   createAISdkProvider,
@@ -37,9 +42,14 @@ export type {
   ArtifactStore,
   ArtifactTransformDescriptor,
   ArtifactTransformKind,
+  BudgetInvariant,
+  CapabilityContract,
+  CapabilityContractInput,
+  ContractRejectReasonCode,
   ExecutionPlanStub,
   InferOutput,
   InferOutputMap,
+  InvariantDeclaration,
   LatticeConfig,
   LatticeRunError,
   NormalizedLatticeConfig,
@@ -50,6 +60,7 @@ export type {
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
+  QualityFloorInvariant,
   RunFailure,
   RunResult,
   RunSuccess,
@@ -58,5 +69,6 @@ export type {
   StoredArtifactEnvelope,
   StoredArtifactPayloadDescriptor,
   TracerLike,
+  Usage,
   ValidationIssue,
 } from "./runtime/public-types.js";
