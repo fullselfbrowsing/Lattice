@@ -36,7 +36,7 @@ Phase numbering continues from v1.0 (which ended at Phase 6). v1.1 starts at Pha
 **Plans**: 4 plans
 Plans:
 - [x] 07-01-PLAN.md — Contract types, capability catalog pricing, and Usage shape (Wave 1)
-- [ ] 07-02-PLAN.md — Pre-flight evaluator + router integration with contract reject codes (Wave 2)
+- [x] 07-02-PLAN.md — Pre-flight evaluator + router integration with contract reject codes (Wave 2)
 - [ ] 07-03-PLAN.md — Adapter usage normalization + RunResult.usage + NoContractMatchError (Wave 2)
 - [ ] 07-04-PLAN.md — Runtime wiring through ai.run, classification, and public exports (Wave 3)
 
