@@ -33,7 +33,12 @@ Phase numbering continues from v1.0 (which ended at Phase 6). v1.1 starts at Pha
   2. When no candidate route can satisfy the contract, the run resolves with a typed `RunFailure` of kind `no-contract-match` and the rejection taxonomy in `noRouteReasons` distinguishes `contract-budget-exceeded`, `contract-quality-floor`, `contract-modality-missing`, and `contract-privacy-mismatch`.
   3. Every `RunResult` (success and failure) exposes a `usage` field shaped `{ promptTokens, completionTokens, costUsd }` populated consistently by the openai, openai-compat, and ai-sdk adapters.
   4. Pre-flight contract proof reads adapter cost metadata from the capability catalog to estimate cost before execution, so budget rejections happen without tokens being spent.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 07-01-PLAN.md — Contract types, capability catalog pricing, and Usage shape (Wave 1)
+- [ ] 07-02-PLAN.md — Pre-flight evaluator + router integration with contract reject codes (Wave 2)
+- [ ] 07-03-PLAN.md — Adapter usage normalization + RunResult.usage + NoContractMatchError (Wave 2)
+- [ ] 07-04-PLAN.md — Runtime wiring through ai.run, classification, and public exports (Wave 3)
 
 ### Phase 8: Tripwire Invariants with Terminal Semantics
 **Goal**: Developers can declare semantic/policy invariants on a contract using a fluent Standard Schema builder, the runtime evaluates them post-execution as a distinct plan stage, and violations are typed terminal failures that the fallback chain refuses to retry.
