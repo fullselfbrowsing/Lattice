@@ -22,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:types": "vitest --typecheck --run && tsd",
-    "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
+    "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only && node ./scripts/check-cli-deps.mjs"
   },
   "tsd": {
     "compilerOptions": {
