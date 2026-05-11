@@ -1,5 +1,10 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { LatticeRunError, NoContractMatchError } from "./errors.js";
+import type {
+  LatticeRunError,
+  NoContractMatchError,
+  TripwireViolationError,
+} from "./errors.js";
+import { isTerminal } from "./errors.js";
 
 describe("Phase 7 LatticeRunError additions", () => {
   it("NoContractMatchError has the expected shape", () => {
@@ -51,5 +56,118 @@ describe("Phase 7 LatticeRunError additions", () => {
       readonly completionTokens: number;
       readonly costUsd: number | null;
     }>();
+  });
+});
+
+describe("Phase 8 isTerminal predicate and TripwireViolationError", () => {
+  it("TripwireViolationError has kind 'tripwire-violated' with terminal: true literal", () => {
+    const err: TripwireViolationError = {
+      kind: "tripwire-violated",
+      message: "no-pii: detector \"email\" flagged content at \"text\".",
+      invariantId: "no-pii-1",
+      evidence: {
+        invariantId: "no-pii-1",
+        kind: "no-pii",
+        path: "text",
+        observed: { detector: "email", substring: "a@b.co" },
+        message: "no-pii: detector \"email\" flagged content at \"text\".",
+      },
+      terminal: true,
+    };
+    expect(err.kind).toBe("tripwire-violated");
+    expect(err.terminal).toBe(true);
+    expectTypeOf(err.terminal).toEqualTypeOf<true>();
+  });
+
+  it("LatticeRunError union includes TripwireViolationError", () => {
+    const err: LatticeRunError = {
+      kind: "tripwire-violated",
+      message: "x",
+      invariantId: "must-cite-1",
+      evidence: {
+        invariantId: "must-cite-1",
+        kind: "must-cite",
+        path: "citations",
+        observed: [],
+        message: "x",
+      },
+      terminal: true,
+    };
+    expect(err.kind).toBe("tripwire-violated");
+  });
+
+  it("isTerminal(tripwire-violated) returns true", () => {
+    expect(
+      isTerminal({
+        kind: "tripwire-violated",
+        message: "x",
+        invariantId: "id",
+        evidence: {
+          invariantId: "id",
+          kind: "must-cite",
+          path: "citations",
+          observed: [],
+          message: "x",
+        },
+        terminal: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("isTerminal(no-contract-match) returns true", () => {
+    expect(
+      isTerminal({
+        kind: "no-contract-match",
+        message: "x",
+        noRouteReasons: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("isTerminal(validation) returns false", () => {
+    expect(
+      isTerminal({
+        kind: "validation",
+        message: "x",
+        issues: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("isTerminal(no_route) returns false", () => {
+    expect(
+      isTerminal({
+        kind: "no_route",
+        message: "x",
+        reasons: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("isTerminal(execution_unavailable) returns false", () => {
+    expect(
+      isTerminal({
+        kind: "execution_unavailable",
+        message: "x",
+      }),
+    ).toBe(false);
+  });
+
+  it("isTerminal(provider_execution) returns false", () => {
+    expect(
+      isTerminal({
+        kind: "provider_execution",
+        message: "x",
+      }),
+    ).toBe(false);
+  });
+
+  it("isTerminal(timeout) returns false", () => {
+    expect(
+      isTerminal({
+        kind: "timeout",
+        message: "x",
+      }),
+    ).toBe(false);
   });
 });
