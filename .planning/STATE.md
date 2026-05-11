@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: ROADMAP.md drafted for v1.1; Phase 7 ready to enter planning.
+milestone: v1.1
+milestone_name: Capability Receipts
+status: in_progress
+stopped_at: Phase 7 executing — plans 07-01 and 07-02 complete, 07-03 next.
 last_updated: "2026-05-11T19:41:53.010Z"
-last_activity: 2026-05-11 -- Phase 07 execution started
+last_activity: 2026-05-11 -- Phase 07 execution in progress
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
