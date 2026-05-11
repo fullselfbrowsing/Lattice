@@ -1,3 +1,5 @@
+import type { RouteRejectReason } from "../plan/plan.js";
+
 export interface ValidationIssue {
   readonly message: string;
   readonly path?: readonly (string | number | symbol)[];
@@ -33,9 +35,25 @@ export interface TimeoutError {
   readonly message: string;
 }
 
+/**
+ * Phase 7 addition: emitted by the runtime when no candidate route can
+ * satisfy the caller-supplied `CapabilityContract` (budget, modality,
+ * privacy, or quality-floor invariants).
+ *
+ * `noRouteReasons` carries the full deterministic-router rejection list
+ * so callers can inspect per-candidate detail. Phase 9 (receipts) will
+ * persist this array for deterministic verdict reconstruction.
+ */
+export interface NoContractMatchError {
+  readonly kind: "no-contract-match";
+  readonly message: string;
+  readonly noRouteReasons: readonly RouteRejectReason[];
+}
+
 export type LatticeRunError =
   | ValidationError
   | ExecutionUnavailableError
   | NoRouteError
   | ProviderExecutionError
-  | TimeoutError;
+  | TimeoutError
+  | NoContractMatchError;
