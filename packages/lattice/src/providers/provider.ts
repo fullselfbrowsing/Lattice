@@ -98,7 +98,20 @@ export interface ProviderRunRequest {
 export interface ProviderRunResponse {
   readonly rawOutputs: Record<string, unknown>;
   readonly artifactRefs?: readonly (ArtifactInput | ArtifactRef)[];
+  /**
+   * @deprecated Legacy per-attempt usage shape. Phase 7+ adapters should
+   * populate `normalizedUsage` instead — Plan 04 will prefer `normalizedUsage`
+   * when wiring `RunResult.usage`. Kept here for backward compatibility with
+   * v1.0 adapters that already report this field.
+   */
   readonly usage?: UsageRecord;
+  /**
+   * Phase 7 normalized usage shape for `RunResult.usage`. Populated by all
+   * Phase 7+ adapters (openai, openai-compat, ai-sdk, fake). `costUsd` is
+   * `null` when pricing is unknown (per the cost-normalization decision in
+   * 07-CONTEXT.md — distinguishes "free" from "unmeasured").
+   */
+  readonly normalizedUsage?: Usage;
   readonly rawResponse?: unknown;
 }
 
