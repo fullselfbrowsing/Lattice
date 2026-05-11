@@ -24,6 +24,15 @@ export type {
   QualityFloorInvariant,
 } from "../contract/contract.js";
 export type {
+  FieldFromTableInvariant,
+  InvariantOptions,
+  MatchesInvariant,
+  MustCiteInvariant,
+  NoPiiInvariant,
+} from "../contract/invariants.js";
+export type { PiiDetector, PiiDetectorResult } from "../contract/pii-detectors.js";
+export type { TripwireEvidence, TripwireResult } from "../contract/tripwire.js";
+export type {
   InferOutput,
   InferOutputMap,
 } from "../outputs/infer.js";
@@ -65,7 +74,11 @@ export type {
 export type {
   ReplayEnvelope,
 } from "../replay/replay.js";
-export type { LatticeRunError, ValidationIssue } from "../results/errors.js";
+export type {
+  LatticeRunError,
+  TripwireViolationError,
+  ValidationIssue,
+} from "../results/errors.js";
 export type { RunFailure, RunResult, RunSuccess } from "../results/result.js";
 export type {
   AppendSessionTurnInput,

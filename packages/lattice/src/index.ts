@@ -1,10 +1,14 @@
 export { artifact } from "./artifacts/artifact.js";
 export { contract } from "./contract/contract.js";
+export { inv } from "./contract/invariants.js";
+export { defaultPiiDetectors } from "./contract/pii-detectors.js";
 export {
   estimateRouteCost,
   evaluateContractAgainstRoute,
 } from "./contract/preflight.js";
+export { evaluateTripwires } from "./contract/tripwire.js";
 export { output } from "./outputs/contracts.js";
+export { isTerminal } from "./results/errors.js";
 export {
   createAISdkProvider,
   createOpenAICompatibleProvider,
@@ -47,14 +51,21 @@ export type {
   CapabilityContractInput,
   ContractRejectReasonCode,
   ExecutionPlanStub,
+  FieldFromTableInvariant,
   InferOutput,
   InferOutputMap,
   InvariantDeclaration,
+  InvariantOptions,
   LatticeConfig,
   LatticeRunError,
+  MatchesInvariant,
+  MustCiteInvariant,
+  NoPiiInvariant,
   NormalizedLatticeConfig,
   OutputContract,
   OutputContractMap,
+  PiiDetector,
+  PiiDetectorResult,
   PolicySpec,
   ProviderAdapter,
   ProviderRef,
@@ -69,6 +80,9 @@ export type {
   StoredArtifactEnvelope,
   StoredArtifactPayloadDescriptor,
   TracerLike,
+  TripwireEvidence,
+  TripwireResult,
+  TripwireViolationError,
   Usage,
   ValidationIssue,
 } from "./runtime/public-types.js";
