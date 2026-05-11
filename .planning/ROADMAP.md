@@ -49,7 +49,10 @@ Plans:
   2. The execution plan exposes a `"tripwire"` stage sitting between output schema validation and result return so tripwire timing is inspectable.
   3. A tripwire violation surfaces a typed `RunFailure` of kind `tripwire-violated` carrying the violating invariant id and structured evidence, and the existing fallback chain treats it as terminal (no retries, no fallback).
   4. The contract verdict that downstream receipts will sign is fully determined by the combined output of pre-flight proof plus tripwire evaluation, with no other source of verdict truth.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 08-01-PLAN.md — Pure tripwire kernel: inv builder, defaultPiiDetectors with Luhn, evaluateTripwires + TripwireEvidence + path resolver (Wave 1)
+- [ ] 08-02-PLAN.md — Runtime wiring: TripwireViolationError + isTerminal + "tripwire" stage + runWithConfig integration + public exports (Wave 2)
 
 ### Phase 9: Canonical JSON, Ed25519 Signing, and Receipt Issuance
 **Goal**: Every `ai.run` (success or failure) issues a `CapabilityReceipt` that is RFC 8785-canonicalized, signed over the redacted form with Node 24 WebCrypto Ed25519 in a DSSE-shaped envelope, carries `kid` plus model.observed fingerprint, and can be verified by a pure `verifyReceipt` against a `KeySet`.
@@ -113,7 +116,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 7. Capability Contracts, Pre-flight Proof, and Cost Accounting | v1.1 | 0/TBD | Not started | - |
-| 8. Tripwire Invariants with Terminal Semantics | v1.1 | 0/TBD | Not started | - |
+| 8. Tripwire Invariants with Terminal Semantics | v1.1 | 0/2 | Not started | - |
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
 | 10. Receipts inside the Replay Envelope | v1.1 | 0/TBD | Not started | - |
 | 11. lattice CLI — repro and verify | v1.1 | 0/TBD | Not started | - |
