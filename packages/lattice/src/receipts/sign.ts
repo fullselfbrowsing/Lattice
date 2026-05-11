@@ -9,20 +9,18 @@
  *   - Production users plug their own signer (KMS adapter / OS keyring).
  *     createInMemorySigner is the in-process default for tests and dev.
  *
- * NOTE (parallel execution with plan 09-01): types.ts is owned by plan 09-01
- * (Wave 1). To avoid file conflicts in Wave 1, this module defines a local
- * structural ReceiptSigner_Local interface. Plan 09-03 (Wave 2) will
- * reconcile by re-exporting ReceiptSigner from "./types.js" and removing the
- * `_Local` suffix.
+ * Reconciled in plan 09-03 to import ReceiptSigner from ./types.js (plan 09-01
+ * owns the spine). `ReceiptSigner_Local` retained as a deprecated alias for
+ * backward compatibility with Wave 1 sibling imports.
  */
 
-// TODO(09-03): Replace ReceiptSigner_Local with import from "./types.js" once
-// Wave 1 (plan 09-01) has landed the canonical type definitions.
-export interface ReceiptSigner_Local {
-  readonly kid: string;
-  sign(bytes: Uint8Array): Promise<Uint8Array>;
-  readonly publicKeyJwk: JsonWebKey;
-}
+import type { ReceiptSigner } from "./types.js";
+
+/**
+ * @deprecated Use ReceiptSigner from "./types.js". Retained as an alias
+ * during the Wave 1 -> Wave 2 reconciliation.
+ */
+export type ReceiptSigner_Local = ReceiptSigner;
 
 const ALG = "Ed25519" as const;
 
@@ -94,7 +92,7 @@ export async function verifyEd25519Signature(
 export function createInMemorySigner(
   privateKeyJwk: JsonWebKey,
   options: { readonly kid: string; readonly publicKeyJwk: JsonWebKey },
-): ReceiptSigner_Local {
+): ReceiptSigner {
   // Lazily import the key on first sign() — keeps the factory synchronous
   // and avoids touching crypto.subtle during module load.
   let cachedKey: CryptoKey | undefined;

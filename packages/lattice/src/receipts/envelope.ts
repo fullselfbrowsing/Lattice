@@ -9,24 +9,24 @@
  *
  * Reference: https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md
  *
- * NOTE (parallel execution with plan 09-01): types.ts is owned by plan 09-01
- * (Wave 1). To avoid file conflicts in Wave 1, this module defines local
- * structural types with a `_Local` suffix. Plan 09-03 (Wave 2) will reconcile
- * to import from ./types.js once both Wave 1 plans have merged.
+ * Reconciled in plan 09-03 to import canonical types from ./types.js (plan
+ * 09-01 lands the spine). `_Local` aliases are retained as deprecated type
+ * exports for backward compatibility with the Wave 1 sibling imports.
  */
 
-// TODO(09-03): Replace `_Local` types with imports from "./types.js" after
-// Wave 1 merges (plan 09-01 lands the canonical type definitions).
-export interface ReceiptSignature_Local {
-  readonly keyid: string;
-  readonly sig: string; // base64
-}
+import type { ReceiptEnvelope, ReceiptSignature } from "./types.js";
 
-export interface ReceiptEnvelope_Local {
-  readonly payloadType: "application/vnd.lattice.receipt+json";
-  readonly payload: string; // base64(canonical_json_bytes)
-  readonly signatures: readonly ReceiptSignature_Local[];
-}
+/**
+ * @deprecated Use ReceiptSignature from "./types.js". Retained as an alias
+ * during the Wave 1 -> Wave 2 reconciliation.
+ */
+export type ReceiptSignature_Local = ReceiptSignature;
+
+/**
+ * @deprecated Use ReceiptEnvelope from "./types.js". Retained as an alias
+ * during the Wave 1 -> Wave 2 reconciliation.
+ */
+export type ReceiptEnvelope_Local = ReceiptEnvelope;
 
 export const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json" as const;
 
@@ -80,14 +80,12 @@ export interface EncodeEnvelopeInput {
 
 export function encodeEnvelope(
   input: EncodeEnvelopeInput,
-): ReceiptEnvelope_Local {
+): ReceiptEnvelope {
   const payload = base64Encode(input.payloadBytes);
-  const signatures: ReceiptSignature_Local[] = input.signatures.map(
-    (entry) => ({
-      keyid: entry.keyid,
-      sig: base64Encode(entry.sig),
-    }),
-  );
+  const signatures: ReceiptSignature[] = input.signatures.map((entry) => ({
+    keyid: entry.keyid,
+    sig: base64Encode(entry.sig),
+  }));
   return {
     payloadType: PAYLOAD_TYPE,
     payload,
@@ -105,7 +103,7 @@ export interface DecodedEnvelope {
 }
 
 export function decodeEnvelope(
-  envelope: ReceiptEnvelope_Local,
+  envelope: ReceiptEnvelope,
 ): DecodedEnvelope {
   if (envelope.payloadType !== PAYLOAD_TYPE) {
     throw new Error(
