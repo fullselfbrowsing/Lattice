@@ -3,24 +3,38 @@ import { describe, expect, it } from "vitest";
 import {
   contract,
   createAI,
+  createInMemorySigner,
+  createMemoryKeySet,
   evaluateTripwires,
+  generateEd25519KeyPairJwk,
   inv,
   isTerminal,
+  verifyReceipt,
 } from "../src/index.js";
+import { createFakeProvider } from "../src/providers/fake.js";
 import type {
   BudgetInvariant,
   CapabilityContract,
+  CapabilityReceiptBody,
   ContractRejectReasonCode,
+  ContractVerdict,
   FieldFromTableInvariant,
   InvariantDeclaration,
+  KeyEntry,
+  KeySet,
+  KeyState,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
   QualityFloorInvariant,
+  ReceiptEnvelope,
+  ReceiptSigner,
   TripwireEvidence,
   TripwireResult,
   TripwireViolationError,
   Usage,
+  VerifyError,
+  VerifyResult,
 } from "../src/index.js";
 
 describe("Phase 7 public surface", () => {
@@ -171,5 +185,82 @@ describe("Phase 8 public surface", () => {
     expect(c.invariants).toHaveLength(1);
     expect(c.invariants?.[0]?.kind).toBe("field-from-table");
     expect(typeof ai.run).toBe("function");
+  });
+});
+
+describe("Phase 9 public surface", () => {
+  it("verifyReceipt, createInMemorySigner, createMemoryKeySet, generateEd25519KeyPairJwk are exported as functions", () => {
+    expect(typeof verifyReceipt).toBe("function");
+    expect(typeof createInMemorySigner).toBe("function");
+    expect(typeof createMemoryKeySet).toBe("function");
+    expect(typeof generateEd25519KeyPairJwk).toBe("function");
+  });
+
+  it("createInMemorySigner returns a ReceiptSigner shape", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer: ReceiptSigner = createInMemorySigner(privateKeyJwk, {
+      kid: "x",
+      publicKeyJwk,
+    });
+    expect(signer.kid).toBe("x");
+    expect(typeof signer.sign).toBe("function");
+    expect(typeof signer.publicKeyJwk).toBe("object");
+    expect((signer.publicKeyJwk as { kty?: string }).kty).toBe("OKP");
+  });
+
+  it("createMemoryKeySet returns a KeySet with lookup", async () => {
+    const { publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const entry: KeyEntry = {
+      kid: "test-kid",
+      publicKeyJwk,
+      state: "active",
+    };
+    const keySet: KeySet = createMemoryKeySet([entry]);
+    expect(keySet.lookup("test-kid")).toBeDefined();
+    expect(keySet.lookup("unknown")).toBeUndefined();
+  });
+
+  it("createReceipt is NOT exported from the public surface", async () => {
+    const mod = (await import("../src/index.js")) as Record<string, unknown>;
+    expect("createReceipt" in mod).toBe(false);
+  });
+
+  it("end-to-end public-surface integration — createAI + signer + verifyReceipt", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, {
+      kid: "k1",
+      publicKeyJwk,
+    });
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeDefined();
+    const keySet = createMemoryKeySet([
+      { kid: "k1", publicKeyJwk, state: "active" },
+    ]);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it("type-only: Phase 9 types compile and are reachable from the consumer-visible path", () => {
+    const _body: CapabilityReceiptBody | undefined = undefined;
+    const _envelope: ReceiptEnvelope | undefined = undefined;
+    const _signer: ReceiptSigner | undefined = undefined;
+    const _keyState: KeyState | undefined = undefined;
+    const _verifyResult: VerifyResult | undefined = undefined;
+    const _verifyError: VerifyError | undefined = undefined;
+    const _verdict: ContractVerdict | undefined = undefined;
+    // touch to silence unused-var lint
+    void _body;
+    void _envelope;
+    void _signer;
+    void _keyState;
+    void _verifyResult;
+    void _verifyError;
+    void _verdict;
+    expect(true).toBe(true);
   });
 });
