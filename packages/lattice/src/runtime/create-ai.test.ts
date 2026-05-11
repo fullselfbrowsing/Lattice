@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { contract } from "../contract/contract.js";
+import { inv } from "../contract/invariants.js";
 import { createFakeProvider } from "../providers/fake.js";
 import type { ModelCapability } from "../providers/provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
@@ -256,6 +257,218 @@ describe("Phase 7 end-to-end integration", () => {
       expect(result.error.kind).toBe("no_route");
       // Sanity: still carries usage even on the no-route branch (zero, per design)
       expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0, costUsd: 0 });
+    }
+  });
+});
+
+describe("Phase 8 tripwire integration", () => {
+  it("T1: tripwire violation produces typed failure with terminal flag, invariantId, and evidence", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "ok" },
+        normalizedUsage: { promptTokens: 10, completionTokens: 5, costUsd: 0.0001 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({
+        invariants: [inv.fieldFromTable("text", ["create", "delete"])],
+      }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+      if (result.error.kind === "tripwire-violated") {
+        expect(result.error.terminal).toBe(true);
+        expect(typeof result.error.invariantId).toBe("string");
+        expect(result.error.invariantId.length).toBeGreaterThan(0);
+        expect(result.error.evidence.kind).toBe("field-from-table");
+        expect(result.error.evidence.path).toBe("text");
+      }
+    }
+  });
+
+  it("T2: no retry on tripwire violation — second provider in fallback chain is not attempted", async () => {
+    inv.__resetCounterForTests();
+    // Provider A: violates the invariant.
+    const providerA = createFakeProvider({
+      id: "fake",
+      modelId: "fake:a",
+      response: {
+        rawOutputs: { text: "violator" },
+        normalizedUsage: { promptTokens: 10, completionTokens: 5, costUsd: 0.0001 },
+      },
+    });
+    // Provider B: would pass but should NEVER be reached.
+    const providerB = createFakeProvider({
+      id: "fake-b",
+      modelId: "fake-b:passing",
+      response: {
+        rawOutputs: { text: "create" },
+        normalizedUsage: { promptTokens: 999, completionTokens: 999, costUsd: 9.99 },
+      },
+    });
+    const ai = createAI({ providers: [providerA, providerB] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({
+        invariants: [inv.fieldFromTable("text", ["create"])],
+      }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+      // Plan should record exactly one attempt — provider B never reached.
+      expect(result.plan.attempts).toHaveLength(1);
+      // No fallback.activated event emitted.
+      const fallbackEvents = (result.events ?? []).filter(
+        (event) => event.kind === "fallback.activated",
+      );
+      expect(fallbackEvents).toHaveLength(0);
+    }
+  });
+
+  it("T3: usage populated on tripwire violation from normalizedUsage (cost-so-far)", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "ok" },
+        normalizedUsage: { promptTokens: 10, completionTokens: 5, costUsd: 0.0001 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({
+        invariants: [inv.fieldFromTable("text", ["create"])],
+      }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, costUsd: 0.0001 });
+    }
+  });
+
+  it("T4: no contract field — success and stage:tripwire status is 'skipped'", async () => {
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "hello" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0.0 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const tripwire = result.plan.stages.find((s) => s.id === "stage:tripwire");
+      expect(tripwire?.status).toBe("skipped");
+    }
+  });
+
+  it("T5: empty invariants array — stage:tripwire skipped, success returned", async () => {
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "hello" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0.0 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [] }),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const tripwire = result.plan.stages.find((s) => s.id === "stage:tripwire");
+      expect(tripwire?.status).toBe("skipped");
+    }
+  });
+
+  it("T6: must-cite happy path — citations array satisfies invariant, stage:tripwire completed", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "ok", citations: ["artifact-1"] },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0.0 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.mustCite("artifact-1")] }),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const tripwire = result.plan.stages.find((s) => s.id === "stage:tripwire");
+      expect(tripwire?.status).toBe("completed");
+    }
+  });
+
+  it("T7: no-PII violation — evidence carries redacted detector + substring (not full input)", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0.0 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok && result.error.kind === "tripwire-violated") {
+      expect(result.error.evidence.kind).toBe("no-pii");
+      const observed = result.error.evidence.observed as {
+        detector: string;
+        substring: string;
+      };
+      expect(observed.detector).toBe("email");
+      expect(observed.substring).toBe("alice@example.com");
+      // Critical: full input string must NOT appear inside the evidence.
+      expect(JSON.stringify(result.error.evidence)).not.toContain("Contact ");
+      expect(JSON.stringify(result.error.evidence)).not.toContain("please");
+    }
+  });
+
+  it("T8: validation failure precedes tripwire — error.kind is 'validation', stage:tripwire never runs", async () => {
+    inv.__resetCounterForTests();
+    // Provider returns a non-string for `text` so output schema validation
+    // rejects it BEFORE tripwires evaluate.
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: 42 as unknown as string },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0.0 },
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({
+        // This invariant would ALSO fail if reached; assert it never runs.
+        invariants: [inv.fieldFromTable("text", ["create"])],
+      }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("validation");
+      const tripwire = result.plan.stages.find((s) => s.id === "stage:tripwire");
+      // Tripwire stage never advanced — stays at its initial 'pending'/'skipped'
+      // status. It must NOT be 'completed' or 'failed'.
+      expect(["pending", "skipped"]).toContain(tripwire?.status);
     }
   });
 });
