@@ -7,6 +7,14 @@ export type {
   InvariantDeclaration,
   QualityFloorInvariant,
 } from "./contract.js";
+export { inv } from "./invariants.js";
+export type {
+  FieldFromTableInvariant,
+  InvariantOptions,
+  MatchesInvariant,
+  MustCiteInvariant,
+  NoPiiInvariant,
+} from "./invariants.js";
 export {
   estimateRouteCost,
   evaluateContractAgainstRoute,

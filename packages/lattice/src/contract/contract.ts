@@ -1,5 +1,17 @@
 import type { CapabilityModality } from "../providers/provider.js";
 
+export type {
+  FieldFromTableInvariant,
+  InvariantDeclaration,
+  MatchesInvariant,
+  MustCiteInvariant,
+  NoPiiInvariant,
+} from "./invariants.js";
+
+// Local alias so the union can be referenced in this module without
+// re-importing through the public re-export above.
+import type { InvariantDeclaration as InvariantDeclarationUnion } from "./invariants.js";
+
 /**
  * Budget invariant declaration attached to a CapabilityContract.
  *
@@ -25,19 +37,6 @@ export interface QualityFloorInvariant {
 }
 
 /**
- * Tripwire invariant declaration — declared in the Phase 7 type surface
- * but NOT evaluated until Phase 8 (tripwire runtime).
- *
- * Kept structural and minimal so Phase 8 can extend without breaking
- * Phase 7 callers.
- */
-export interface InvariantDeclaration {
-  readonly id: string;
-  readonly kind: "policy" | "semantic" | "schema";
-  readonly description?: string;
-}
-
-/**
  * The full Capability Contract attached to `RunIntent.contract`.
  *
  * All fields are optional. v1.0 callers compile and run unchanged when
@@ -47,7 +46,7 @@ export interface InvariantDeclaration {
 export interface CapabilityContract {
   readonly kind: "capability-contract";
   readonly budget?: BudgetInvariant;
-  readonly invariants?: readonly InvariantDeclaration[];
+  readonly invariants?: readonly InvariantDeclarationUnion[];
   readonly qualityFloor?: QualityFloorInvariant;
   readonly requiredModalities?: readonly CapabilityModality[];
   readonly requiredPrivacy?: "standard" | "sensitive" | "restricted";
@@ -67,7 +66,7 @@ export type ContractRejectReasonCode =
 /** Input shape accepted by `contract()`. Mirrors `CapabilityContract` minus `kind`. */
 export interface CapabilityContractInput {
   readonly budget?: BudgetInvariant;
-  readonly invariants?: readonly InvariantDeclaration[];
+  readonly invariants?: readonly InvariantDeclarationUnion[];
   readonly qualityFloor?: QualityFloorInvariant;
   readonly requiredModalities?: readonly CapabilityModality[];
   readonly requiredPrivacy?: "standard" | "sensitive" | "restricted";

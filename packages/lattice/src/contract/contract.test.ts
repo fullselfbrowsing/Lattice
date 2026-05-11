@@ -30,17 +30,22 @@ describe("contract() factory", () => {
   });
 
   it("declares invariants without evaluating them in Phase 7", () => {
-    const c = contract({ invariants: [{ id: "must-cite", kind: "policy" }] });
+    // Phase 8 reshaped InvariantDeclaration into a discriminated union;
+    // the Phase 7 placeholder ({ kind: 'policy' | 'semantic' | 'schema' })
+    // is gone. Use the new must-cite shape to assert declaration is preserved.
+    const c = contract({
+      invariants: [{ id: "must-cite-1", kind: "must-cite", artifactName: "doc-1" }],
+    });
     expect(c.invariants?.length).toBe(1);
-    expect(c.invariants?.[0]?.id).toBe("must-cite");
-    expect(c.invariants?.[0]?.kind).toBe("policy");
+    expect(c.invariants?.[0]?.id).toBe("must-cite-1");
+    expect(c.invariants?.[0]?.kind).toBe("must-cite");
   });
 
   it("survives a JSON.parse(JSON.stringify(...)) round-trip with field equality", () => {
     const c = contract({
       budget: { maxCostUsd: 0.05 },
       qualityFloor: { suite: "fixtures/inbox", minScore: 0.8 },
-      invariants: [{ id: "must-cite", kind: "policy", description: "all claims must cite" }],
+      invariants: [{ id: "must-cite-1", kind: "must-cite", artifactName: "doc-1" }],
       requiredModalities: ["text", "image"],
       requiredPrivacy: "sensitive",
     });

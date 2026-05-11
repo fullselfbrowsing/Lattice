@@ -49,7 +49,9 @@ describe("Phase 7 public type exports", () => {
     expectTypeOf(all).toMatchTypeOf<readonly ContractRejectReasonCode[]>();
   });
 
-  it("InvariantDeclaration kind is the closed three-value union", () => {
-    expectTypeOf<InvariantDeclaration["kind"]>().toEqualTypeOf<"policy" | "semantic" | "schema">();
+  it("InvariantDeclaration kind is the closed four-value discriminated union (Phase 8 reshape)", () => {
+    expectTypeOf<InvariantDeclaration["kind"]>().toEqualTypeOf<
+      "must-cite" | "field-from-table" | "no-pii" | "matches"
+    >();
   });
 });

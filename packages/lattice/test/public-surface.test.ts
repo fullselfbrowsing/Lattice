@@ -35,9 +35,11 @@ describe("Phase 7 public surface", () => {
   it("type-only: BudgetInvariant, QualityFloorInvariant, InvariantDeclaration, ContractRejectReasonCode, Usage are exported", () => {
     const b: BudgetInvariant = {};
     const q: QualityFloorInvariant = { suite: "fixtures/x", minScore: 0.5 };
-    const inv: InvariantDeclaration = { id: "x", kind: "policy" };
+    // Phase 8 reshape: InvariantDeclaration is a discriminated union over
+    // four kinds (must-cite | field-from-table | no-pii | matches).
+    const invDecl: InvariantDeclaration = { id: "x", kind: "must-cite", artifactName: "doc-1" };
     const code: ContractRejectReasonCode = "contract-budget-exceeded";
     const usage: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
-    expect([b, q, inv, code, usage]).toHaveLength(5);
+    expect([b, q, invDecl, code, usage]).toHaveLength(5);
   });
 });
