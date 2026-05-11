@@ -10,6 +10,18 @@ The product is for developers building multimodal AI features who do not want to
 
 Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
 
+## Current Milestone: v1.1 Capability Receipts
+
+**Goal:** Make every Lattice run contract-bound, signed, and reproducible — turning a thumbs-down in prod into a deterministic local repro and a CI-gated regression check.
+
+**Target features:**
+- Capability Contracts declared on `ai.run` (budget + invariants + qualityFloor)
+- Pre-flight contract proof — router refuses to execute when no route can satisfy the contract; typed no-contract-match result
+- Tripwire invariants — semantic/policy invariants evaluated mid-stream with abort-on-violation
+- Signed Capability Receipts — Ed25519-signed attestation per run (input hashes, route, packaging, model versions, contract verdict, redaction-aware)
+- `lattice repro <receipt-id>` CLI — reconstructs deterministic replay session from a receipt
+- `lattice eval` CI command — runs receipts + fixtures as regression suite; fails CI on cost-per-task or quality-floor regressions
+
 ## Requirements
 
 ### Validated
@@ -23,7 +35,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-No active v1 requirements remain. Future work starts from v2 requirements or a new milestone.
+v1.1 requirements are tracked in `.planning/REQUIREMENTS.md` and mapped to phases in `.planning/ROADMAP.md`. They cover capability contracts, pre-flight contract proof, tripwire invariants, signed receipts (Ed25519), the `lattice repro` CLI, and the `lattice eval` CI gate.
 
 ### Out of Scope
 
@@ -99,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 after Phase 6 completion*
+*Last updated: 2026-05-11 — milestone v1.1 (Capability Receipts) started*
