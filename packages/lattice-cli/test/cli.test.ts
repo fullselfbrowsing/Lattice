@@ -22,6 +22,7 @@ describe("lattice CLI bin smoke test", () => {
     expect(status).toBe(0);
     expect(stdout).toMatch(/repro/);
     expect(stdout).toMatch(/verify/);
+    expect(stdout).toMatch(/eval/);
   });
 
   // Plan 11-03 replaced the repro stub with the real handler. Calling repro
@@ -48,5 +49,18 @@ describe("lattice CLI bin smoke test", () => {
     const { status, stderr } = runBin(["verify", "./fixture.json"]);
     expect(status).toBe(2);
     expect(stderr).toMatch(/^FAIL kind=(keyset|receipt)-load-failed reason=/m);
+  });
+
+  // Plan 12-03 adds the `eval` subcommand. Running it in an empty cwd
+  // (no .lattice/, no keyset) MUST exit 2 with a FAIL kind=... message —
+  // any of receipt-/keyset-/baseline-/session- prefixed kinds with
+  // -missing/-malformed/-failed suffix is acceptable; the contract is the
+  // exit code and the FAIL line shape.
+  it("eval subcommand exits 2 with a FAIL load-failed message when paths are absent", () => {
+    const { status, stderr } = runBin(["eval"]);
+    expect(status).toBe(2);
+    expect(stderr).toMatch(
+      /^FAIL kind=(receipt|keyset|baseline|session)-(missing|malformed|failed)/m,
+    );
   });
 });
