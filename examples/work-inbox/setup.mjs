@@ -1,0 +1,178 @@
+/**
+ * Shared setup helpers for the work-inbox showcase (Phase 13-01).
+ *
+ * Produces the on-disk `.lattice/` layout consumed by `lattice repro`,
+ * `lattice verify`, and `lattice eval` (per 13-CONTEXT.md "Receipts +
+ * Artifacts Output"):
+ *
+ *   examples/work-inbox/.lattice/
+ *     keyset.json           # JSON array of KeyEntry — what loadKeySetFromPath expects
+ *     receipts/<id>.json    # Signed ReceiptEnvelope per terminal run
+ *     fixtures/<sha256>.bin # Content-addressed input artifact bodies
+ *     baseline.json         # (written by `lattice eval --init-baseline`, not us)
+ *
+ * Each `pnpm example:work-inbox` invocation generates a fresh Ed25519
+ * keypair — receipts are unique per run. The `.lattice/` tree is
+ * gitignored so it never pollutes the repo.
+ *
+ * Public exports:
+ *   - createShowcase()                              -> { ai, signer, keySet, paths }
+ *   - buildScenarioAI({ signer, sessionId, fakeRawOutputs, capabilities? })
+ *   - writeArtifactContentAddressed(fixturesDir, bytes) -> sha256 hex
+ *   - writeReceipt(receiptsDir, envelope)           -> absolute path
+ */
+
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, writeFile, access } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  createAI,
+  createFakeProvider,
+  createInMemorySigner,
+  createMemoryKeySet,
+  createMemorySessionStore,
+  generateEd25519KeyPairJwk,
+} from "../../packages/lattice/dist/index.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Resolve and create the .lattice/ on-disk layout, generate a fresh Ed25519
+ * keypair, write the keyset JSON, and construct a shared `ai` instance
+ * (success scenario reuses this; tripwire + refusal build their own).
+ */
+export async function createShowcase() {
+  const latticeDir = resolve(__dirname, ".lattice");
+  const receiptsDir = join(latticeDir, "receipts");
+  const fixturesDir = join(latticeDir, "fixtures");
+  const keysetPath = join(latticeDir, "keyset.json");
+  const baselinePath = join(latticeDir, "baseline.json");
+
+  await mkdir(receiptsDir, { recursive: true });
+  await mkdir(fixturesDir, { recursive: true });
+
+  // Fresh per-run keypair. `generateEd25519KeyPairJwk()` returns
+  // `{ privateKeyJwk, publicKeyJwk }` only — caller mints the kid.
+  const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+  const kid = `showcase-${randomUUID()}`;
+
+  // Keyset file format consumed by `loadKeySetFromPath` in lattice-cli:
+  // a JSON array of `KeyEntry { kid, state, publicKeyJwk }`. NOT a
+  // versioned object — the CLI loader rejects anything else.
+  const keysetEntries = [
+    {
+      kid,
+      state: "active",
+      publicKeyJwk,
+    },
+  ];
+  await writeFile(keysetPath, JSON.stringify(keysetEntries, null, 2));
+
+  const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+  const keySet = createMemoryKeySet(keysetEntries);
+
+  // Shared `ai` exposed for callers that want a no-op default. Each
+  // scenario constructs its own scenario-specific `ai` via
+  // `buildScenarioAI` so the fake provider response varies per scenario.
+  const ai = createAI({
+    sessions: createMemorySessionStore(),
+    providers: [
+      createFakeProvider({
+        id: "showcase-default",
+        response: { rawOutputs: {} },
+      }),
+    ],
+    signer,
+  });
+
+  return {
+    ai,
+    signer,
+    keySet,
+    keysetEntries,
+    latticeDir,
+    receiptsDir,
+    fixturesDir,
+    keysetPath,
+    baselinePath,
+    kid,
+  };
+}
+
+/**
+ * Build a scenario-scoped `ai` with a fresh fake provider returning
+ * `fakeRawOutputs` and the shared signer threaded through. Optional
+ * `capabilities` override is used by the refusal scenario to give the
+ * provider non-zero pricing so the budget invariant can actually fire.
+ */
+export function buildScenarioAI({ signer, sessionId, fakeRawOutputs, capabilities }) {
+  const providerOptions = {
+    id: `showcase-${sessionId}`,
+    response: { rawOutputs: fakeRawOutputs },
+  };
+  if (capabilities !== undefined) {
+    providerOptions.capabilities = capabilities;
+  }
+  return createAI({
+    sessions: createMemorySessionStore(),
+    providers: [createFakeProvider(providerOptions)],
+    signer,
+  });
+}
+
+/**
+ * Write `bytes` (Buffer | Uint8Array | string) to
+ * `<fixturesDir>/<sha256hex>.bin` and return the sha256 hex digest.
+ *
+ * Idempotent: if the file already exists, no second write is performed.
+ * The runtime hashes artifact values via `fingerprintArtifactValue`
+ * (sha256 over the value bytes), so the showcase pre-hashes here and
+ * writes the same bytes — `lattice repro` can then rehydrate the input
+ * by the hash recorded in the receipt's `inputHashes`.
+ */
+export async function writeArtifactContentAddressed(fixturesDir, bytes) {
+  const buf =
+    typeof bytes === "string"
+      ? Buffer.from(bytes, "utf8")
+      : Buffer.isBuffer(bytes)
+        ? bytes
+        : Buffer.from(bytes);
+  const sha256hex = createHash("sha256").update(buf).digest("hex");
+  const filePath = join(fixturesDir, `${sha256hex}.bin`);
+  let exists = true;
+  try {
+    await access(filePath);
+  } catch {
+    exists = false;
+  }
+  if (!exists) {
+    await writeFile(filePath, buf);
+  }
+  return sha256hex;
+}
+
+/**
+ * Decode `envelope.payload` (base64url -> JSON) to read `body.receiptId`,
+ * then write the full envelope as JSON to `<receiptsDir>/<receiptId>.json`.
+ * Returns the absolute path written. This is the filename convention
+ * `lattice repro <id>` expects (Phase 11-03 receipt-loader).
+ */
+export async function writeReceipt(receiptsDir, envelope) {
+  if (envelope === undefined || envelope === null) {
+    throw new Error("writeReceipt: envelope is undefined — signer is not wired.");
+  }
+  const payloadJson = Buffer.from(envelope.payload, "base64url").toString("utf8");
+  const body = JSON.parse(payloadJson);
+  const receiptId = body.receiptId;
+  if (typeof receiptId !== "string" || receiptId.length === 0) {
+    throw new Error(
+      "writeReceipt: decoded receipt body has no receiptId — receipt is malformed.",
+    );
+  }
+  const filePath = join(receiptsDir, `${receiptId}.json`);
+  await writeFile(filePath, JSON.stringify(envelope, null, 2));
+  return filePath;
+}
