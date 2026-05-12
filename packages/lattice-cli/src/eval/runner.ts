@@ -143,12 +143,31 @@ export async function runEvalSession(
     deps.buildArtifactLoader ?? createFilesystemArtifactLoader;
 
   // Load keyset once; failure propagates so the caller (Plan 03) maps to exit 2.
-  const keySet = await loadKeySet(config.keyPath);
+  // Keyset and Baseline load errors share an identical structural shape
+  // (`{ kind, path, message }`), so we wrap KeysetLoadError with a `source`
+  // discriminator to let the boundary (commands/eval.ts) distinguish them.
+  // The wrapper preserves the original error under `cause` for diagnostics.
+  let keySet;
+  try {
+    keySet = await loadKeySet(config.keyPath);
+  } catch (err) {
+    throw {
+      ...(typeof err === "object" && err !== null ? err : { message: String(err) }),
+      source: "keyset",
+    };
+  }
 
   // Load baseline (skipped in init-baseline mode).
   let baseline: Baseline | undefined;
   if (!config.initBaseline) {
-    baseline = await loadBaseline(config.baselinePath);
+    try {
+      baseline = await loadBaseline(config.baselinePath);
+    } catch (err) {
+      throw {
+        ...(typeof err === "object" && err !== null ? err : { message: String(err) }),
+        source: "baseline",
+      };
+    }
   }
 
   const judgeCache = createDiskJudgeCache(config.judgeCacheDir);

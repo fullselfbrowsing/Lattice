@@ -12,6 +12,7 @@ const main = defineCommand({
   subCommands: {
     repro: () => import("./commands/repro.js").then((m) => m.default),
     verify: () => import("./commands/verify.js").then((m) => m.default),
+    eval: () => import("./commands/eval.js").then((m) => m.default),
   },
 });
 

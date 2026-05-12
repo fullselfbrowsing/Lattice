@@ -175,10 +175,13 @@ describe("lattice eval handler (commands/eval.ts)", () => {
   });
 
   it("Test 4: baseline missing -> exit 2, FAIL kind=baseline-missing reason=...", async () => {
-    const err: BaselineLoadError = {
+    // The runner wraps BaselineLoadError with `source: "baseline"` so the
+    // handler can disambiguate it from a structurally-identical KeysetLoadError.
+    const err: BaselineLoadError & { source: "baseline" } = {
       kind: "missing",
       path: "/tmp/baseline.json",
       message: "ENOENT",
+      source: "baseline",
     };
     const { deps, bag } = captureDeps({
       runSession: async () => {
@@ -192,10 +195,13 @@ describe("lattice eval handler (commands/eval.ts)", () => {
   });
 
   it("Test 5: keyset missing -> exit 2, FAIL kind=keyset-missing reason=...", async () => {
-    const err: KeysetLoadError = {
+    // The runner wraps KeysetLoadError with `source: "keyset"` so the handler
+    // can disambiguate it from a structurally-identical BaselineLoadError.
+    const err: KeysetLoadError & { source: "keyset" } = {
       kind: "missing",
       path: "/tmp/keyset.json",
       message: "ENOENT",
+      source: "keyset",
     };
     const { deps, bag } = captureDeps({
       runSession: async () => {
