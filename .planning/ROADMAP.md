@@ -121,7 +121,10 @@ Plans:
   1. The work-inbox showcase declares a `contract`, intentionally triggers a tripwire on one fixture, captures a signed receipt for both success and failure paths, and runs them through `lattice repro`.
   2. A `lattice eval` invocation over the showcase's receipts emits a regression report that exits zero on the baseline and non-zero when a fixture is intentionally regressed.
   3. Every v1.1 requirement (CONTRACT, TRIP, COST, RECEIPT, CLI, EVAL) is exercised by at least one showcase or eval-fixture path and recorded in the milestone audit.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 13-01-PLAN.md — Showcase refactor: setup + 3 scenarios (success/tripwire/no-contract-match) + .gitignore (Wave 1)
+- [ ] 13-02-PLAN.md — Integration test (spawn showcase + CLI verify/repro/eval) + REQ-coverage matrix in SUMMARY (Wave 2)
 
 ## Progress
 
@@ -136,7 +139,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
 | 11. lattice CLI — repro and verify | v1.1 | 3/3 | Complete    | 2026-05-11 |
 | 12. lattice eval CI Gate | v1.1 | 3/3 | Complete    | 2026-05-12 |
-| 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |
+| 13. Showcase Update and Milestone Validation | v1.1 | 0/2 | Not started | - |
 
 ## Completed Milestone Summary
 
