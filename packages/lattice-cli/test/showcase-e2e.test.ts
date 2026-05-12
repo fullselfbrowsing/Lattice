@@ -94,26 +94,34 @@ async function runProc(
   });
 }
 
-type ScenarioName = "success" | "tripwire" | "no-contract-match";
+type ScenarioName =
+  | "success"
+  | "tripwire"
+  | "no-contract-match"
+  | "quality-floor";
 
 interface ScenarioRow {
   readonly scenario: ScenarioName;
   readonly receiptId: string;
   readonly verdict: string;
+  readonly contractHash?: string;
 }
 
 function parseScenarioLines(stdout: string): ScenarioRow[] {
   const rows: ScenarioRow[] = [];
   for (const line of stdout.split("\n")) {
-    const m = /^scenario=(success|tripwire|no-contract-match) receiptId=(\S+) verdict=(\S+)/.exec(
-      line,
-    );
+    const m =
+      /^scenario=(success|tripwire|no-contract-match|quality-floor) receiptId=(\S+) verdict=(\S+)(?:\s+contractHash=([0-9a-f]{64}))?/.exec(
+        line,
+      );
     if (m !== null) {
-      rows.push({
+      const row: ScenarioRow = {
         scenario: m[1] as ScenarioName,
         receiptId: m[2] as string,
         verdict: m[3] as string,
-      });
+        ...(m[4] !== undefined ? { contractHash: m[4] } : {}),
+      };
+      rows.push(row);
     }
   }
   return rows;
@@ -210,21 +218,29 @@ describe("showcase v1.1 end-to-end", () => {
     await rm(LATTICE_DIR, { recursive: true, force: true });
   });
 
-  it("showcase exits 0 and writes 3 receipts + content-addressed fixtures + keyset", async () => {
+  it("showcase exits 0 and writes 4 receipts + content-addressed fixtures + keyset", async () => {
     expect(
       showcaseRun.code,
       `showcase stderr: ${showcaseRun.stderr}`,
     ).toBe(0);
     expect(showcaseRun.stdout).toContain("Next steps (run from repo root):");
-    expect(showcaseRun.stdout).toContain("Wrote 3 receipts to");
+    expect(showcaseRun.stdout).toContain("Wrote 4 receipts to");
 
-    expect(scenarios).toHaveLength(3);
+    expect(scenarios).toHaveLength(4);
     const names = scenarios.map((s) => s.scenario).sort();
-    expect(names).toEqual(["no-contract-match", "success", "tripwire"]);
+    expect(names).toEqual([
+      "no-contract-match",
+      "quality-floor",
+      "success",
+      "tripwire",
+    ]);
 
     const successRow = scenarios.find((s) => s.scenario === "success");
     const tripwireRow = scenarios.find((s) => s.scenario === "tripwire");
     const refusalRow = scenarios.find((s) => s.scenario === "no-contract-match");
+    const qualityFloorRow = scenarios.find(
+      (s) => s.scenario === "quality-floor",
+    );
 
     // Per Plan 13-01 SUMMARY Deviation #1: the runtime emits the literal
     // "success" (not "pass") as the success ContractVerdict. The plan body
@@ -233,11 +249,19 @@ describe("showcase v1.1 end-to-end", () => {
     expect(tripwireRow?.verdict).toBe("tripwire-violated");
     expect(refusalRow?.verdict).toBe("no-contract-match");
 
-    // 3 receipt JSON files on disk.
+    // Plan 13.2-01: the quality-floor scenario declares a contract carrying
+    // `qualityFloor` and reaches contractVerdict=success at run time
+    // (enforcement is deferred to `lattice eval`). The stdout grammar
+    // additionally surfaces the 64-hex `contractHash` so Plan 13.2-02 can
+    // cross-check the receipt body.
+    expect(qualityFloorRow?.verdict).toBe("success");
+    expect(qualityFloorRow?.contractHash).toMatch(/^[0-9a-f]{64}$/);
+
+    // 4 receipt JSON files on disk.
     const receiptFiles = (await readdir(RECEIPTS_DIR)).filter((f) =>
       f.endsWith(".json"),
     );
-    expect(receiptFiles).toHaveLength(3);
+    expect(receiptFiles).toHaveLength(4);
 
     // Keyset is present and is a JSON array per the CLI loader contract.
     expect((await stat(KEYSET_PATH)).isFile()).toBe(true);
@@ -259,7 +283,7 @@ describe("showcase v1.1 end-to-end", () => {
     const sidecarFiles = (await readdir(SIDECARS_DIR)).filter((f) =>
       f.endsWith(".json"),
     );
-    expect(sidecarFiles).toHaveLength(3);
+    expect(sidecarFiles).toHaveLength(4);
     for (const f of sidecarFiles) {
       const text = await readFile(join(SIDECARS_DIR, f), "utf8");
       const parsed = JSON.parse(text) as { version: string };
@@ -267,8 +291,40 @@ describe("showcase v1.1 end-to-end", () => {
     }
   });
 
-  it("lattice verify exits 0 for all 3 receipts with OK kid=... verdict=...", async () => {
-    expect(scenarios.length, "scenarios not populated").toBe(3);
+  it("quality-floor receipt body contractHash matches the showcase-emitted hash (CONTRACT-03 canonicalization)", async () => {
+    // CONTRACT-03 observable proof: the showcase emits the contract hash on
+    // stdout AND serializes it into the signed receipt body. If qualityFloor
+    // were stripped during canonicalization, the two would diverge. Reading
+    // the receipt from disk and re-comparing against the stdout-emitted hash
+    // is an independent observation point — the showcase's own internal
+    // assertion (scenarios/quality-floor.mjs:155-160) catches mismatch at
+    // emit time; this test catches mismatch at read time.
+    const qualityFloorRow = scenarios.find(
+      (s) => s.scenario === "quality-floor",
+    );
+    expect(qualityFloorRow, "quality-floor scenario row").toBeDefined();
+    expect(qualityFloorRow?.contractHash).toMatch(/^[0-9a-f]{64}$/);
+
+    const receiptPath = join(
+      RECEIPTS_DIR,
+      `${qualityFloorRow?.receiptId}.json`,
+    );
+    const env = JSON.parse(await readFile(receiptPath, "utf8")) as {
+      readonly payload: string;
+    };
+    const body = JSON.parse(
+      Buffer.from(env.payload, "base64url").toString("utf8"),
+    ) as {
+      readonly contractHash: string | null;
+      readonly contractVerdict: string;
+    };
+    expect(body.contractHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.contractHash).toBe(qualityFloorRow?.contractHash);
+    expect(body.contractVerdict).toBe("success");
+  });
+
+  it("lattice verify exits 0 for all 4 receipts with OK kid=... verdict=...", async () => {
+    expect(scenarios.length, "scenarios not populated").toBe(4);
     for (const row of scenarios) {
       const receiptPath = join(RECEIPTS_DIR, `${row.receiptId}.json`);
       const r = await runProc("node", [
@@ -348,8 +404,9 @@ describe("showcase v1.1 end-to-end", () => {
 
     const report = parseEvalReport(r.stdout);
     expect(report.exitCode).toBe(0);
-    // The walker visits every receipt in the dir, so total === 3.
-    expect(report.summary.total).toBe(3);
+    // The walker visits every receipt in the dir; Plan 13.2-01 added the
+    // quality-floor scenario for a 4th receipt, so total === 4.
+    expect(report.summary.total).toBe(4);
     expect(report.version).toBe("lattice-eval/v1");
 
     // Phase 13.1 closes V1.1-LIMITATION-1: the success fixture now has a
@@ -358,10 +415,16 @@ describe("showcase v1.1 end-to-end", () => {
     // outputHash=null (failure receipts cannot commit to outputs) and
     // surface as load-failed with loadFailedReason="outputhash-missing"
     // — this is the documented expected outcome for failure-class receipts.
+    // Phase 13.2-01: the quality-floor scenario also writes a sidecar whose
+    // rawOutputs match the receipt's outputHash, so it likewise reaches
+    // verdict=match with loadFailedReason=null.
     const successRow = scenarios.find((s) => s.scenario === "success");
     const tripwireRow = scenarios.find((s) => s.scenario === "tripwire");
     const refusalRow = scenarios.find(
       (s) => s.scenario === "no-contract-match",
+    );
+    const qualityFloorRow = scenarios.find(
+      (s) => s.scenario === "quality-floor",
     );
     const successFixture = report.fixtures.find(
       (f) => f.fixtureId === successRow?.receiptId,
@@ -372,12 +435,17 @@ describe("showcase v1.1 end-to-end", () => {
     const refusalFixture = report.fixtures.find(
       (f) => f.fixtureId === refusalRow?.receiptId,
     );
+    const qualityFloorFixture = report.fixtures.find(
+      (f) => f.fixtureId === qualityFloorRow?.receiptId,
+    );
     expect(successFixture?.verdict).toBe("match");
     expect(successFixture?.loadFailedReason).toBe(null);
     expect(tripwireFixture?.verdict).toBe("load-failed");
     expect(tripwireFixture?.loadFailedReason).toBe("outputhash-missing");
     expect(refusalFixture?.verdict).toBe("load-failed");
     expect(refusalFixture?.loadFailedReason).toBe("outputhash-missing");
+    expect(qualityFloorFixture?.verdict).toBe("match");
+    expect(qualityFloorFixture?.loadFailedReason).toBe(null);
 
     // CLI-05 redaction discipline on the JSON projection: the report MUST
     // NOT carry raw inputHashes, raw outputHash strings, or model
@@ -472,8 +540,13 @@ describe("showcase v1.1 end-to-end", () => {
 
     const report = parseEvalReport(r.stdout);
     expect(report.version).toBe("lattice-eval/v1");
-    expect(report.summary.total).toBe(3);
-    expect(report.summary.regressed).toBeGreaterThan(0);
+    expect(report.summary.total).toBe(4);
+    // The mutated baseline only carries the success fixture; the
+    // quality-floor fixture is absent from the baseline → counted as a new
+    // fixture (newFixtures >= 1), NOT regressed. The success fixture's cost
+    // regression keeps `regressed >= 1` so exit code is still 1.
+    expect(report.summary.regressed).toBeGreaterThanOrEqual(1);
+    expect(report.summary.newFixtures).toBeGreaterThanOrEqual(1);
 
     const successFixture = report.fixtures.find(
       (f) => f.fixtureId === successId,
