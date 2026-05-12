@@ -167,6 +167,29 @@ async function writeKeyset(paths: SandboxPaths, entries: KeyEntry[]): Promise<vo
   await writeJson(paths.keysetPath, entries);
 }
 
+/**
+ * Mock `lattice`'s `replayOffline` so it returns the given outputs verbatim.
+ * Without this, `replayOffline` returns `execution_unavailable` because the
+ * materialized envelope lacks an `outputs` field (the receipt body alone has
+ * no way to carry outputs; `repro.test.ts` uses the same trick).
+ */
+function mockReplayWithOutputs(outputs: Record<string, unknown>): void {
+  vi.doMock("lattice", async (importOriginal) => {
+    const mod = await importOriginal<typeof import("lattice")>();
+    return {
+      ...mod,
+      replayOffline: vi.fn(async () => ({
+        ok: true,
+        outputs,
+        artifacts: [],
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+        plan: { kind: "execution-plan" },
+        events: [],
+      })),
+    };
+  });
+}
+
 describe("runEvalSession", () => {
   let saved: string;
   beforeEach(() => {
@@ -189,6 +212,8 @@ describe("runEvalSession", () => {
       paths.baselinePath,
       makeBaseline({ "fx-match": makeBaselineEntry("0", null) }),
     );
+
+    mockReplayWithOutputs(fixture.outputs);
 
     let judgeCalls = 0;
     const judge: Judge = {
@@ -290,7 +315,9 @@ describe("runEvalSession", () => {
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
 
     // Receipt body costUsd is fake provider default. Force a "cost regression"
-    // by mocking verifyReceipt to return a body with a high cost.
+    // by mocking verifyReceipt to return a body with a high cost. Mock
+    // replayOffline as well so the materialized envelope yields the same
+    // outputs that match body.outputHash (Stage 5 must pass first).
     vi.doMock("lattice", async (importOriginal) => {
       const mod = await importOriginal<typeof import("lattice")>();
       const realVerify = mod.verifyReceipt;
@@ -307,6 +334,14 @@ describe("runEvalSession", () => {
             },
           };
         }),
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: fixture.outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
       };
     });
 
@@ -345,6 +380,8 @@ describe("runEvalSession", () => {
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
 
     // Inject a body that declares qualityFloor (so the runner enters Stage 7).
+    // Mock replayOffline so Stage 5 (Exact) passes; otherwise drift would
+    // short-circuit Stage 7 and the judge would never run.
     vi.doMock("lattice", async (importOriginal) => {
       const mod = await importOriginal<typeof import("lattice")>();
       const realVerify = mod.verifyReceipt;
@@ -361,6 +398,14 @@ describe("runEvalSession", () => {
             },
           };
         }),
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: fixture.outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
       };
     });
 
@@ -407,6 +452,8 @@ describe("runEvalSession", () => {
     await seedFixtureOnDisk(paths, "fx-new", fixture);
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
     await writeBaseline(paths.baselinePath, makeBaseline({}));
+
+    mockReplayWithOutputs(fixture.outputs);
 
     const { runEvalSession } = await import("../src/eval/runner.js");
     const report = await runEvalSession(
@@ -485,6 +532,14 @@ describe("runEvalSession", () => {
             },
           };
         }),
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: fixture.outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
       };
     });
 
@@ -525,6 +580,8 @@ describe("runEvalSession", () => {
     await seedFixtureOnDisk(paths, "fx-init", fixture);
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
     // Note: no baseline file written.
+
+    mockReplayWithOutputs(fixture.outputs);
 
     const { runEvalSession } = await import("../src/eval/runner.js");
     const report = await runEvalSession(
@@ -640,26 +697,29 @@ describe("runEvalSession", () => {
     );
 
     // Drift only for fixture b-drift: mock replayOffline to return drifted
-    // outputs ONLY when the envelope corresponds to b-drift. We detect via the
-    // envelope's signature kid.
+    // outputs ONLY when the envelope corresponds to b-drift. For the others,
+    // we return the matching outputs from their original fixture so Stage 5
+    // passes. We detect which fixture via the envelope's first signature kid.
     vi.doMock("lattice", async (importOriginal) => {
       const mod = await importOriginal<typeof import("lattice")>();
-      const realReplay = mod.replayOffline;
+      const outputsByKid: Record<string, Record<string, unknown>> = {
+        [fxMatch.kid]: fxMatch.outputs,
+        [fxDrift.kid]: { text: "DRIFTED" },
+        [fxNew.kid]: fxNew.outputs,
+      };
       return {
         ...mod,
         replayOffline: vi.fn(async (envelopeReplay: any) => {
           const sig = envelopeReplay?.receipt?.signatures?.[0];
-          if (sig?.keyid === fxDrift.kid) {
-            return {
-              ok: true,
-              outputs: { text: "DRIFTED" },
-              artifacts: [],
-              usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
-              plan: { kind: "execution-plan" },
-              events: [],
-            };
-          }
-          return realReplay(envelopeReplay);
+          const outputs = outputsByKid[sig?.keyid as string] ?? {};
+          return {
+            ok: true,
+            outputs,
+            artifacts: [],
+            usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+            plan: { kind: "execution-plan" },
+            events: [],
+          };
         }),
       };
     });

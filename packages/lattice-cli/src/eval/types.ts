@@ -59,9 +59,21 @@ export interface EvalConfig {
   readonly fixturesDir: string;
   readonly baselinePath: string;
   readonly judgeCacheDir: string;
+  /**
+   * Directory containing on-disk artifact bytes keyed by `<sha256-hex>.bin`.
+   * The Phase 11 filesystem ArtifactLoader (`createFilesystemArtifactLoader`)
+   * is rooted here.
+   */
+  readonly artifactsDir: string;
   readonly keyPath: string | undefined;
   readonly costTolerance: number;
   readonly qualityTolerance: number;
   readonly judgeN: number;
   readonly initBaseline: boolean;
+  /**
+   * Prompt forwarded to `runJudgeWithN` (and through to `Judge.score`). Held
+   * here so the judge-cache key recipe (which mixes in `judgePrompt`) is
+   * stable across runs that share a baseline.
+   */
+  readonly judgePrompt: string;
 }
