@@ -30,10 +30,13 @@ import { fileURLToPath } from "node:url";
 
 import {
   createAI,
+  createAISdkProvider,
   createFakeProvider,
   createInMemorySigner,
   createMemoryKeySet,
   createMemorySessionStore,
+  createOpenAICompatibleProvider,
+  createOpenAIProvider,
   generateEd25519KeyPairJwk,
 } from "../../packages/lattice/dist/index.js";
 
@@ -208,4 +211,87 @@ export async function writeSidecar(sidecarsDir, receiptId, sidecar) {
   const filePath = join(sidecarsDir, `${receiptId}.json`);
   await writeFile(filePath, JSON.stringify(sidecar, null, 2));
   return filePath;
+}
+
+/**
+ * Build three provider adapters representing each v1.1 adapter family,
+ * each producing a normalized Usage shape:
+ *   - openai           — createOpenAIProvider with bundled catalog pricing
+ *                        (per-1k input/output costs set explicitly so costUsd
+ *                        is a positive number, not null).
+ *   - openai-compat    — createOpenAICompatibleProvider with caller-supplied
+ *                        pricing and a TEST-INJECTED fetch mock returning a
+ *                        deterministic chat-completions body (NO real HTTP).
+ *   - ai-sdk           — createAISdkProvider whose `generate` returns a fixed
+ *                        ProviderRunResponse with non-null usage.inputTokens
+ *                        / usage.outputTokens (costUsd is null per the
+ *                        ai-sdk adapter's documented behaviour).
+ *
+ * Token counts in the inline mock are FIXED (prompt=100, completion=50) so
+ * downstream stdout / receipts are byte-deterministic across runs.
+ *
+ * Cost expectations (with the bundled defaults):
+ *   - openai        costUsd = 100/1000 * 0.001 + 50/1000 * 0.002 = 0.0002
+ *   - openai-compat costUsd = 100/1000 * 0.0005 + 50/1000 * 0.001 = 0.0001
+ *   - ai-sdk        costUsd = null (per adapter design)
+ *
+ * @param {object} [options]
+ * @param {typeof fetch} [options.fetch] - Injected fetch for openai +
+ *   openai-compat. When omitted, a shared deterministic mock is used.
+ *   Tests can pass their own to assert request shape.
+ * @returns {{
+ *   openai: import("../../packages/lattice/dist/index.js").ProviderAdapter,
+ *   openaiCompat: import("../../packages/lattice/dist/index.js").ProviderAdapter,
+ *   aiSdk: import("../../packages/lattice/dist/index.js").ProviderAdapter,
+ * }}
+ */
+export function buildMultiAdapterProviders(options = {}) {
+  const defaultFetchMock = async (_url, _init) => {
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content: "stub-completion" } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      },
+    );
+  };
+
+  const fetchImpl = options.fetch ?? defaultFetchMock;
+
+  const openai = createOpenAIProvider({
+    id: "showcase-openai",
+    model: "showcase-openai-1",
+    baseUrl: "https://stub.invalid/v1",
+    apiKey: "stub",
+    pricing: {
+      inputPer1kTokens: 0.001,
+      outputPer1kTokens: 0.002,
+    },
+    fetch: fetchImpl,
+  });
+
+  const openaiCompat = createOpenAICompatibleProvider({
+    id: "showcase-openai-compat",
+    model: "showcase-openai-compat-1",
+    baseUrl: "https://stub.invalid/v1",
+    pricing: {
+      inputPer1kTokens: 0.0005,
+      outputPer1kTokens: 0.001,
+    },
+    fetch: fetchImpl,
+  });
+
+  const aiSdk = createAISdkProvider({
+    id: "showcase-ai-sdk",
+    model: "showcase-ai-sdk-1",
+    generate: async () => ({
+      rawOutputs: { answer: "ai-sdk-fixed-answer" },
+      usage: { inputTokens: 80, outputTokens: 40 },
+    }),
+  });
+
+  return { openai, openaiCompat, aiSdk };
 }
