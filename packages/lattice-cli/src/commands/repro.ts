@@ -31,6 +31,8 @@
  * exit }` injection point so tests assert without touching process globals.
  */
 
+import { basename, dirname, join } from "node:path";
+
 import { defineCommand } from "citty";
 
 import {
@@ -49,7 +51,14 @@ import { isKeysetLoadError, loadKeySetFromPath } from "../io/keyset-loader.js";
 import {
   isReceiptLoadError,
   loadReceiptByIdOrPath,
+  type LoadedReceipt,
 } from "../io/receipt-loader.js";
+import {
+  applySidecar,
+  isSidecarLoadError,
+  loadSidecar,
+  type SidecarApplyResult,
+} from "../io/sidecar-loader.js";
 
 export interface ReproDeps {
   readonly stdout: (line: string) => void;
@@ -69,6 +78,14 @@ export interface RunReproArgs {
   readonly target: string;
   readonly key?: string;
   readonly fixtures?: string;
+  /** Explicit sidecar path (Plan 13.1-02). Highest precedence. */
+  readonly sidecar?: string;
+  /**
+   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Second
+   * precedence: looked up after --sidecar, before the convention path
+   * `<receiptsDir>/../sidecars/<id>.json`.
+   */
+  readonly sidecarDir?: string;
   /** Test-only knob (cwd-independent receipt resolution). NOT exposed via citty args. */
   readonly receiptsDir?: string;
 }
@@ -130,10 +147,13 @@ export async function runRepro(
   args: RunReproArgs,
   deps: ReproDeps = defaultDeps,
 ): Promise<void> {
-  // Stage 1: load receipt.
+  // Stage 1: load receipt. Capture the full `LoadedReceipt` so Stage 3.5
+  // (Plan 13.1-02) can derive the sidecar convention path from the resolved
+  // receipt path.
   let envelope: ReceiptEnvelope;
+  let loaded: LoadedReceipt;
   try {
-    const loaded = await loadReceiptByIdOrPath(
+    loaded = await loadReceiptByIdOrPath(
       args.target,
       args.receiptsDir !== undefined ? { receiptsDir: args.receiptsDir } : {},
     );
@@ -164,15 +184,83 @@ export async function runRepro(
   const fixturesDir = args.fixtures ?? ".lattice/fixtures";
   const artifactLoader = createFilesystemArtifactLoader(fixturesDir);
 
+  // Stage 3.5 (Plan 13.1-02): resolve sidecar.
+  // Precedence (highest → lowest):
+  //   1. --sidecar <path>                                    (explicit)
+  //   2. --sidecar-dir <dir>/<receipt-id>.json               (explicit dir)
+  //   3. <receiptsDir>/../sidecars/<receipt-id>.json         (convention)
+  //
+  // Missing-sidecar with NO explicit flag is non-fatal: `appliedSidecar`
+  // stays null and the convention-miss hint is appended later if Stage 6 also
+  // fails with `replay-failed`. Missing-sidecar with an explicit flag is
+  // FATAL: exit 2 with FAIL kind=sidecar-load-failed.
+  //
+  // The candidate receipt id is derived from the on-disk filename — by the
+  // writeReceipt convention this matches `body.receiptId`. Using the
+  // filename keeps Stage 3.5 ordered BEFORE the (re-)verifyReceipt that
+  // happens in Stage 5, so a missing-sidecar lookup never depends on a
+  // verified body.
+  const sidecarExplicit =
+    args.sidecar !== undefined || args.sidecarDir !== undefined;
+  const receiptId =
+    args.target.includes("/") || args.target.endsWith(".json")
+      ? basename(loaded.resolvedPath, ".json")
+      : args.target;
+  const sidecarCandidate: string =
+    args.sidecar !== undefined
+      ? args.sidecar
+      : args.sidecarDir !== undefined
+        ? join(args.sidecarDir, `${receiptId}.json`)
+        : join(dirname(loaded.resolvedPath), "..", "sidecars", `${receiptId}.json`);
+
+  let appliedSidecar: SidecarApplyResult | null = null;
+  try {
+    const sidecarFile = await loadSidecar(sidecarCandidate);
+    appliedSidecar = applySidecar(sidecarFile);
+  } catch (err) {
+    if (isSidecarLoadError(err)) {
+      if (err.kind === "file-not-found" && !sidecarExplicit) {
+        // Non-fatal: convention miss. Continue with appliedSidecar = null;
+        // the Stage 6 replay-failed branch will append a helpful hint.
+      } else {
+        // Fatal: explicit flag pointing at a bad sidecar, OR any non-file-
+        // not-found error (malformed / version-mismatch / unsupported-output-
+        // shape).
+        const detail =
+          err.kind === "version-mismatch"
+            ? `${err.kind} at ${err.path}: received=${err.received} ${err.message}`
+            : err.kind === "unsupported-output-shape"
+              ? `${err.kind} at ${err.path}: outputKey=${err.outputKey} ${err.message}`
+              : `${err.kind} at ${err.path}: ${err.message}`;
+        deps.stderr(`FAIL kind=sidecar-load-failed reason=${detail}`);
+        deps.exit(2);
+        return;
+      }
+    } else {
+      // Non-typed throw: surface as sidecar-load-failed for symmetry.
+      deps.stderr(
+        `FAIL kind=sidecar-load-failed reason=${readErrorMessage(err)}`,
+      );
+      deps.exit(2);
+      return;
+    }
+  }
+
   // Stage 4: materialize. Phase 10's materializer verifies FIRST — a tampered
   // receipt never touches artifactLoader. Loader-thrown ArtifactLoaderError
   // values get re-wrapped by materialize as MaterializationError
   // { kind: "artifact-load-failed", message }.
+  //
+  // When a sidecar is present, spread its `{ task, outputs, policy, contract }`
+  // quadruple into the materializer so the resulting `ReplayEnvelope.outputs`
+  // is populated and `replayOffline` returns `ok: true` instead of the
+  // historical `execution_unavailable` fallback.
   let envelopeReplay;
   try {
     envelopeReplay = await materializeReplayEnvelope(envelope, {
       artifactLoader,
       keySet,
+      ...(appliedSidecar !== null ? appliedSidecar : {}),
     });
   } catch (err) {
     // err may be:
@@ -208,6 +296,14 @@ export async function runRepro(
   if (!result.ok) {
     const reason = `${result.error.kind}: ${result.error.message ?? ""}`;
     deps.stderr(`FAIL kind=replay-failed reason=${reason}`);
+    // Plan 13.1-02: when no sidecar was found AND none was explicitly
+    // requested, point users at the convention so they can flip this branch
+    // into verdict=match by writing the missing sidecar.
+    if (appliedSidecar === null && !sidecarExplicit) {
+      deps.stderr(
+        `hint: Provide --sidecar <path> or place a sidecar at .lattice/sidecars/${receiptId}.json. See lattice-sidecar/v1 spec.`,
+      );
+    }
     deps.exit(2);
     return;
   }
@@ -263,6 +359,16 @@ export default defineCommand({
       description:
         "Path to the fixtures directory containing <sha256>.bin artifact bodies (default: .lattice/fixtures/).",
     },
+    sidecar: {
+      type: "string",
+      description:
+        "Path to a sidecar JSON file containing the original RunIntent inputs (task/outputs/policy/contract).",
+    },
+    "sidecar-dir": {
+      type: "string",
+      description:
+        "Directory holding `<receipt-id>.json` sidecars. Default: <receiptsDir>/../sidecars/.",
+    },
   },
   async run({ args }) {
     // exactOptionalPropertyTypes: conditionally spread optional fields so
@@ -272,6 +378,10 @@ export default defineCommand({
       target: args.target,
       ...(args.key !== undefined ? { key: args.key } : {}),
       ...(args.fixtures !== undefined ? { fixtures: args.fixtures } : {}),
+      ...(args.sidecar !== undefined ? { sidecar: args.sidecar } : {}),
+      ...(args["sidecar-dir"] !== undefined
+        ? { sidecarDir: args["sidecar-dir"] }
+        : {}),
     };
     await runRepro(callArgs);
   },

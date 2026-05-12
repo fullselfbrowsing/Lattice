@@ -500,4 +500,312 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     expect(out.includes(fixture.envelope.payload)).toBe(false);
     expect(out.includes(fixture.envelope.signatures[0]!.sig)).toBe(false);
   });
+
+  // -----------------------------------------------------------------
+  // Plan 13.1-02: sidecar flag wiring (--sidecar, --sidecar-dir, convention).
+  // -----------------------------------------------------------------
+
+  /** Write a minimal valid sidecar JSON to the given path. */
+  async function writeValidSidecar(
+    path: string,
+    overrides: Record<string, unknown> = {},
+  ): Promise<void> {
+    const body = {
+      version: "lattice-sidecar/v1",
+      task: "repro-sidecar-test",
+      outputs: { text: "text" },
+      policy: { privacy: "sensitive" },
+      contract: { kind: "capability-contract", invariants: [] },
+      ...overrides,
+    };
+    await writeFile(path, JSON.stringify(body), "utf8");
+  }
+
+  /**
+   * Helper: install a vi.doMock on `lattice` so `replayOffline` returns the
+   * receipt's original outputs. This lets the sidecar wiring test reach the
+   * hash-comparison branch in `runRepro` even though the real replay would
+   * report `execution_unavailable` (no outputs were threaded historically).
+   */
+  function mockReplayWithFixtureOutputs(outputs: Record<string, unknown>): void {
+    vi.doMock("lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("lattice")>();
+      return {
+        ...mod,
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
+      };
+    });
+  }
+
+  it("Test 9 (sidecar explicit --sidecar): valid sidecar -> verdict=match, exit 0", async () => {
+    const fixture = await makeReproFixture("sidecar-explicit-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "explicit-sidecar.json");
+    await writeValidSidecar(sidecarPath);
+
+    mockReplayWithFixtureOutputs(fixture.outputs);
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+
+    const { deps, bag } = captureDeps();
+    await mockedRunRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(0);
+    expect(bag.stderr).toEqual([]);
+    const out = bag.stdout.join("\n");
+    expect(out).toMatch(/verdict=match/);
+    expect(out).toMatch(/receiptId=/);
+    expect(out).toMatch(/usage\.costUsd=/);
+  });
+
+  it("Test 10 (sidecar --sidecar-dir): resolves <dir>/<receipt-id>.json", async () => {
+    const fixture = await makeReproFixture("sidecar-dir-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture, {
+      receiptName: "abcdef",
+    });
+    const sidecarDir = join(sandbox, "alt-sidecars");
+    await mkdir(sidecarDir, { recursive: true });
+    await writeValidSidecar(join(sidecarDir, "abcdef.json"));
+
+    mockReplayWithFixtureOutputs(fixture.outputs);
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+
+    const { deps, bag } = captureDeps();
+    await mockedRunRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecarDir,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(0);
+    const out = bag.stdout.join("\n");
+    expect(out).toMatch(/verdict=match/);
+  });
+
+  it("Test 11 (sidecar convention): <receiptsDir>/../sidecars/<id>.json auto-resolves", async () => {
+    const fixture = await makeReproFixture("sidecar-convention-kid");
+    const { keysetPath, fixturesDir, receiptPath, receiptsDir } =
+      await seedSandbox(fixture, { receiptName: "conv-id" });
+    // Convention: receiptsDir is <sandbox>/.lattice/receipts; sidecar dir is
+    // <sandbox>/.lattice/sidecars.
+    const conventionDir = join(receiptsDir, "..", "sidecars");
+    await mkdir(conventionDir, { recursive: true });
+    await writeValidSidecar(join(conventionDir, "conv-id.json"));
+
+    mockReplayWithFixtureOutputs(fixture.outputs);
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+
+    const { deps, bag } = captureDeps();
+    await mockedRunRepro(
+      { target: receiptPath, key: keysetPath, fixtures: fixturesDir },
+      deps,
+    );
+    expect(bag.exitCode).toBe(0);
+    const out = bag.stdout.join("\n");
+    expect(out).toMatch(/verdict=match/);
+  });
+
+  it("Test 12 (sidecar missing, no flag): non-fatal fallback with stderr hint, exit 2 replay-failed", async () => {
+    const fixture = await makeReproFixture("sidecar-fallback-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    // No sidecar written anywhere. Real replayOffline will report
+    // execution_unavailable (no outputs threaded), so handler falls through to
+    // FAIL kind=replay-failed PLUS a hint line.
+    const { deps, bag } = captureDeps();
+    await runRepro(
+      { target: receiptPath, key: keysetPath, fixtures: fixturesDir },
+      deps,
+    );
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr.some((l) => l.startsWith("FAIL kind=replay-failed reason="))).toBe(true);
+    expect(
+      bag.stderr.some((l) =>
+        l.startsWith("hint: Provide --sidecar <path> or place a sidecar at "),
+      ),
+    ).toBe(true);
+  });
+
+  it("Test 13 (sidecar explicit but missing): exit 2 with FAIL kind=sidecar-load-failed reason=file-not-found", async () => {
+    const fixture = await makeReproFixture("sidecar-explicit-missing-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "does-not-exist.json");
+
+    const { deps, bag } = captureDeps();
+    await runRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=sidecar-load-failed reason=file-not-found at /,
+    );
+  });
+
+  it("Test 14 (sidecar malformed): exit 2 with FAIL kind=sidecar-load-failed reason=malformed", async () => {
+    const fixture = await makeReproFixture("sidecar-malformed-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "bad-sidecar.json");
+    await writeFile(sidecarPath, "{not valid json", "utf8");
+
+    const { deps, bag } = captureDeps();
+    await runRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=sidecar-load-failed reason=malformed at /,
+    );
+  });
+
+  it("Test 15 (sidecar version-mismatch): exit 2 with FAIL kind=sidecar-load-failed reason=version-mismatch", async () => {
+    const fixture = await makeReproFixture("sidecar-vmismatch-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "vmis-sidecar.json");
+    await writeValidSidecar(sidecarPath, { version: "lattice-sidecar/v9999" });
+
+    const { deps, bag } = captureDeps();
+    await runRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=sidecar-load-failed reason=version-mismatch at /,
+    );
+    expect(bag.stderr[0]).toMatch(/received=lattice-sidecar\/v9999/);
+  });
+
+  it("Test 16 (sidecar unsupported-output-shape): exit 2 with FAIL kind=sidecar-load-failed reason=unsupported-output-shape", async () => {
+    const fixture = await makeReproFixture("sidecar-unsupported-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "unsupp-sidecar.json");
+    await writeValidSidecar(sidecarPath, {
+      outputs: { weird: { type: "zod-schema-placeholder" } },
+    });
+
+    const { deps, bag } = captureDeps();
+    await runRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=sidecar-load-failed reason=unsupported-output-shape at /,
+    );
+    expect(bag.stderr[0]).toMatch(/outputKey=weird/);
+  });
+
+  it("Test 17 (sidecar precedence): --sidecar overrides --sidecar-dir", async () => {
+    const fixture = await makeReproFixture("sidecar-precedence-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture, {
+      receiptName: "prec-id",
+    });
+    // Sidecar-dir variant is MALFORMED — it must NOT be touched when explicit
+    // --sidecar is passed.
+    const sidecarDir = join(sandbox, "would-fail-sidecars");
+    await mkdir(sidecarDir, { recursive: true });
+    await writeFile(join(sidecarDir, "prec-id.json"), "{ malformed", "utf8");
+    // Explicit sidecar is valid.
+    const explicitPath = join(sandbox, "explicit-good-sidecar.json");
+    await writeValidSidecar(explicitPath);
+
+    mockReplayWithFixtureOutputs(fixture.outputs);
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+
+    const { deps, bag } = captureDeps();
+    await mockedRunRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: explicitPath,
+        sidecarDir,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(0);
+    const out = bag.stdout.join("\n");
+    expect(out).toMatch(/verdict=match/);
+  });
+
+  it("Test 18 (sidecar drift): sidecar loaded but replay outputs hash-mismatch -> exit 1, verdict=drift", async () => {
+    const fixture = await makeReproFixture("sidecar-drift-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+    const sidecarPath = join(sandbox, "drift-sidecar.json");
+    await writeValidSidecar(sidecarPath);
+
+    // Mock replayOffline to return DRIFTED outputs (different from fixture.outputs).
+    vi.doMock("lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("lattice")>();
+      return {
+        ...mod,
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: { text: "DRIFT-FROM-SIDECAR-WIRING-TEST" },
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
+      };
+    });
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+
+    const { deps, bag } = captureDeps();
+    await mockedRunRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        sidecar: sidecarPath,
+      },
+      deps,
+    );
+    expect(bag.exitCode).toBe(1);
+    const out = bag.stdout.join("\n");
+    expect(out).toMatch(/verdict=drift/);
+    expect(out).toMatch(/expected\.outputHash=/);
+    expect(out).toMatch(/actual\.outputHash=/);
+  });
 });
