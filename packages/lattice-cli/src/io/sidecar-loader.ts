@@ -42,6 +42,21 @@ export interface SidecarFile {
   readonly outputs: Record<string, SidecarOutputSpec>;
   readonly policy: PolicySpec;
   readonly contract: CapabilityContract;
+  /**
+   * Optional raw output values from the original provider run. When present,
+   * `applySidecar` projects these into the `outputs` field of
+   * `SidecarApplyResult` so `materializeReplayEnvelope` receives the actual
+   * values (not the schema spec) — required for `lattice repro` to recompute
+   * the same outputHash the receipt committed to (i.e. reach verdict=match).
+   *
+   * When omitted, `applySidecar` falls back to rehydrating the schema spec
+   * via `output.citations()` / `output.artifacts()` / `"text"` — useful for
+   * fixtures whose receipts have `outputHash === null` (failure receipts)
+   * where the values are unrecoverable anyway.
+   *
+   * Additive in v1: existing sidecars without this field continue to load.
+   */
+  readonly rawOutputs?: Record<string, unknown>;
 }
 
 /** Serializable output specs supported by v1.1. */
@@ -210,12 +225,29 @@ export async function loadSidecar(path: string): Promise<SidecarFile> {
     validatedOutputs[key] = classified;
   }
 
+  // Optional rawOutputs (Phase 13.1-03). When present, callers can opt to
+  // round-trip the receipt's outputHash through `lattice repro`. Additive
+  // field: existing sidecars without it still load.
+  let rawOutputs: Record<string, unknown> | undefined;
+  if (parsed.rawOutputs !== undefined) {
+    if (!isPlainObject(parsed.rawOutputs)) {
+      throw {
+        kind: "malformed",
+        path,
+        message:
+          "Sidecar JSON's optional `rawOutputs` field must be a plain object when present.",
+      } satisfies SidecarLoadError;
+    }
+    rawOutputs = parsed.rawOutputs;
+  }
+
   return {
     version: "lattice-sidecar/v1",
     task: parsed.task,
     outputs: validatedOutputs,
     policy: parsed.policy as unknown as PolicySpec,
     contract: parsed.contract as unknown as CapabilityContract,
+    ...(rawOutputs !== undefined ? { rawOutputs } : {}),
   };
 }
 
@@ -225,8 +257,28 @@ export async function loadSidecar(path: string): Promise<SidecarFile> {
  * `"text"`; sentinels are reconstructed via `output.citations()` /
  * `output.artifacts()`). Returns the four optional fields ready to spread
  * into `MaterializeReplayEnvelopeOptions`.
+ *
+ * Phase 13.1-03: when the sidecar carries `rawOutputs` (the original
+ * provider output VALUES), the returned `outputs` field is set to those
+ * values directly so `materializeReplayEnvelope` populates the replay
+ * envelope with values that recompute the receipt's recorded outputHash
+ * (i.e. `lattice repro` reaches verdict=match). Without `rawOutputs` the
+ * fallback (schema spec) still satisfies the type, but the replay's
+ * outputHash will not match the receipt's — appropriate for fixtures whose
+ * receipts have `outputHash === null` (failure / refusal receipts).
  */
 export function applySidecar(sidecar: SidecarFile): SidecarApplyResult {
+  if (sidecar.rawOutputs !== undefined) {
+    return {
+      task: sidecar.task,
+      // Cast: rawOutputs is the validated value shape from the original
+      // provider run. `materializeReplayEnvelope` accepts these as
+      // `InferOutputMap<TOutputs>` (the inferred value shape).
+      outputs: sidecar.rawOutputs as unknown as OutputContractMap,
+      policy: sidecar.policy,
+      contract: sidecar.contract,
+    };
+  }
   const outputs: Record<string, OutputContractMap[string]> = {};
   for (const [key, spec] of Object.entries(sidecar.outputs)) {
     if (spec === "text") {

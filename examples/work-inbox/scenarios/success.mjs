@@ -17,25 +17,12 @@ import {
   output,
 } from "../../../packages/lattice/dist/index.js";
 
-import { buildScenarioAI, writeArtifactContentAddressed, writeReceipt } from "../setup.mjs";
-
-const actionSchema = {
-  "~standard": {
-    version: 1,
-    vendor: "work-inbox-fixture",
-    validate(value) {
-      const valid =
-        typeof value === "object" &&
-        value !== null &&
-        ["refund", "replace", "escalate", "clarify"].includes(value.kind) &&
-        typeof value.reason === "string" &&
-        ["normal", "urgent"].includes(value.priority);
-      return valid
-        ? { value }
-        : { issues: [{ message: "Expected a work-inbox action object." }] };
-    },
-  },
-};
+import {
+  buildScenarioAI,
+  writeArtifactContentAddressed,
+  writeReceipt,
+  writeSidecar,
+} from "../setup.mjs";
 
 async function readFixture(name) {
   return readFile(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
@@ -78,17 +65,18 @@ export async function run(ctx) {
     }),
   ];
 
+  // Phase 13.1: the success scenario's outputs map uses ONLY sidecar-
+  // serializable shapes (literal "text", `output.citations()`,
+  // `output.artifacts()`). The v1.0 `action` Standard-Schema validator was
+  // dropped here so the sidecar JSON round-trips through `loadSidecar`
+  // unchanged and `lattice repro` reaches verdict=match. The fake provider
+  // emits matching fields.
   const ai = buildScenarioAI({
     signer: ctx.signer,
     sessionId: "success",
     fakeRawOutputs: {
       answer:
         "Approve a replacement and escalate billing review because the package photo and policy excerpt conflict.",
-      action: {
-        kind: "replace",
-        reason: "Photo evidence shows damage while the policy excerpt allows replacement before refund.",
-        priority: "normal",
-      },
       evidence: [
         { artifactId: "artifact:text:message", label: "customer message" },
         { artifactId: "artifact:image:package-photo", label: "visual evidence" },
@@ -104,7 +92,6 @@ export async function run(ctx) {
     artifacts,
     outputs: {
       answer: "text",
-      action: actionSchema,
       evidence: output.citations(),
       generated: output.artifacts(),
     },
@@ -132,6 +119,28 @@ export async function run(ctx) {
   }
 
   await writeReceipt(ctx.receiptsDir, result.receipt);
+
+  // Phase 13.1: write the sidecar JSON next to the receipt so `lattice repro`
+  // and `lattice eval` can materialize a replay envelope that round-trips to
+  // verdict=match. The outputs map mirrors `intent.outputs` in the v1.1 wire
+  // format (literal "text" + citations/artifacts sentinels). The optional
+  // `rawOutputs` field carries the validated provider output VALUES — these
+  // are what the receipt's outputHash committed to, so a sidecar with
+  // `rawOutputs` lets `lattice repro` recompute the same hash and reach
+  // verdict=match.
+  const sidecar = {
+    version: "lattice-sidecar/v1",
+    task: intent.task,
+    outputs: {
+      answer: "text",
+      evidence: { kind: "citations" },
+      generated: { kind: "artifacts" },
+    },
+    policy: intent.policy,
+    contract: intent.contract,
+    rawOutputs: result.outputs,
+  };
+  await writeSidecar(ctx.sidecarsDir, body.receiptId, sidecar);
 
   return {
     scenario: "success",

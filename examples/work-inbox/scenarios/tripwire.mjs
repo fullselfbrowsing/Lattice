@@ -18,28 +18,14 @@ import {
   artifact,
   contract,
   inv,
-  output,
 } from "../../../packages/lattice/dist/index.js";
 
-import { buildScenarioAI, writeArtifactContentAddressed, writeReceipt } from "../setup.mjs";
-
-const actionSchema = {
-  "~standard": {
-    version: 1,
-    vendor: "work-inbox-fixture",
-    validate(value) {
-      const valid =
-        typeof value === "object" &&
-        value !== null &&
-        ["refund", "replace", "escalate", "clarify"].includes(value.kind) &&
-        typeof value.reason === "string" &&
-        ["normal", "urgent"].includes(value.priority);
-      return valid
-        ? { value }
-        : { issues: [{ message: "Expected a work-inbox action object." }] };
-    },
-  },
-};
+import {
+  buildScenarioAI,
+  writeArtifactContentAddressed,
+  writeReceipt,
+  writeSidecar,
+} from "../setup.mjs";
 
 async function readFixture(name) {
   return readFile(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
@@ -57,6 +43,10 @@ export async function run(ctx) {
     }),
   ];
 
+  // Phase 13.1: drop `action` from outputs so the sidecar is sidecar-loader-
+  // acceptable. The tripwire fires on `inv.noPII("answer")` which operates
+  // on the answer string, so removing the action validator does not change
+  // the tripwire outcome.
   const ai = buildScenarioAI({
     signer: ctx.signer,
     sessionId: "tripwire",
@@ -64,11 +54,6 @@ export async function run(ctx) {
       // The email j.doe@example.com is intentionally embedded so the
       // default email-regex PII detector trips.
       answer: "Refund approved for j.doe@example.com per ticket review.",
-      action: {
-        kind: "refund",
-        reason: "duplicate",
-        priority: "normal",
-      },
     },
   });
 
@@ -78,7 +63,6 @@ export async function run(ctx) {
     artifacts,
     outputs: {
       answer: "text",
-      action: actionSchema,
     },
     policy: { privacy: "sensitive" },
     contract: contract({
@@ -110,6 +94,21 @@ export async function run(ctx) {
   }
 
   await writeReceipt(ctx.receiptsDir, result.receipt);
+
+  // Phase 13.1: write a sidecar so the receipt is discoverable by the eval
+  // walker. The tripwire receipt has `outputHash === null` (failure receipts
+  // do not commit to outputs), so `lattice repro` still hits the
+  // receipt-had-no-outputhash branch — the sidecar exists so `lattice eval`
+  // can classify it as `load-failed` with `loadFailedReason: "outputhash-missing"`
+  // rather than the more ambiguous `no-sidecar`.
+  const sidecar = {
+    version: "lattice-sidecar/v1",
+    task: intent.task,
+    outputs: { answer: "text" },
+    policy: intent.policy,
+    contract: intent.contract,
+  };
+  await writeSidecar(ctx.sidecarsDir, body.receiptId, sidecar);
 
   return {
     scenario: "tripwire",

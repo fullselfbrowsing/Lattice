@@ -25,28 +25,14 @@ import { readFile } from "node:fs/promises";
 import {
   artifact,
   contract,
-  output,
 } from "../../../packages/lattice/dist/index.js";
 
-import { buildScenarioAI, writeArtifactContentAddressed, writeReceipt } from "../setup.mjs";
-
-const actionSchema = {
-  "~standard": {
-    version: 1,
-    vendor: "work-inbox-fixture",
-    validate(value) {
-      const valid =
-        typeof value === "object" &&
-        value !== null &&
-        ["refund", "replace", "escalate", "clarify"].includes(value.kind) &&
-        typeof value.reason === "string" &&
-        ["normal", "urgent"].includes(value.priority);
-      return valid
-        ? { value }
-        : { issues: [{ message: "Expected a work-inbox action object." }] };
-    },
-  },
-};
+import {
+  buildScenarioAI,
+  writeArtifactContentAddressed,
+  writeReceipt,
+  writeSidecar,
+} from "../setup.mjs";
 
 async function readFixture(name) {
   return readFile(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
@@ -95,17 +81,15 @@ export async function run(ctx) {
     }),
   ];
 
+  // Phase 13.1: drop `action` from outputs so the sidecar is sidecar-loader-
+  // acceptable. The scenario short-circuits before any provider call, so
+  // the change in outputs map is invisible to the runtime.
   const providerId = "showcase-refusal";
   const ai = buildScenarioAI({
     signer: ctx.signer,
     sessionId: "refusal",
     fakeRawOutputs: {
       answer: "(unreachable)",
-      action: {
-        kind: "clarify",
-        reason: "(unreachable)",
-        priority: "normal",
-      },
     },
     capabilities: [buildPricedCapability(providerId)],
   });
@@ -116,7 +100,6 @@ export async function run(ctx) {
     artifacts,
     outputs: {
       answer: "text",
-      action: actionSchema,
     },
     policy: { privacy: "sensitive" },
     contract: contract({ budget: { maxCostUsd: 0.0000001 } }),
@@ -153,6 +136,20 @@ export async function run(ctx) {
   }
 
   await writeReceipt(ctx.receiptsDir, result.receipt);
+
+  // Phase 13.1: write a sidecar so the receipt is paired during eval. The
+  // refusal receipt has `outputHash === null` (no outputs were produced),
+  // so `lattice eval` classifies it as `load-failed` with
+  // `loadFailedReason: "outputhash-missing"` — the sidecar's presence
+  // distinguishes "missing input quadruple" from "outputs never existed".
+  const sidecar = {
+    version: "lattice-sidecar/v1",
+    task: intent.task,
+    outputs: { answer: "text" },
+    policy: intent.policy,
+    contract: intent.contract,
+  };
+  await writeSidecar(ctx.sidecarsDir, body.receiptId, sidecar);
 
   return {
     scenario: "no-contract-match",

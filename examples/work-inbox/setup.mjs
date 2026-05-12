@@ -20,6 +20,7 @@
  *   - buildScenarioAI({ signer, sessionId, fakeRawOutputs, capabilities? })
  *   - writeArtifactContentAddressed(fixturesDir, bytes) -> sha256 hex
  *   - writeReceipt(receiptsDir, envelope)           -> absolute path
+ *   - writeSidecar(sidecarsDir, receiptId, sidecar) -> absolute path
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -48,11 +49,13 @@ export async function createShowcase() {
   const latticeDir = resolve(__dirname, ".lattice");
   const receiptsDir = join(latticeDir, "receipts");
   const fixturesDir = join(latticeDir, "fixtures");
+  const sidecarsDir = join(latticeDir, "sidecars");
   const keysetPath = join(latticeDir, "keyset.json");
   const baselinePath = join(latticeDir, "baseline.json");
 
   await mkdir(receiptsDir, { recursive: true });
   await mkdir(fixturesDir, { recursive: true });
+  await mkdir(sidecarsDir, { recursive: true });
 
   // Fresh per-run keypair. `generateEd25519KeyPairJwk()` returns
   // `{ privateKeyJwk, publicKeyJwk }` only — caller mints the kid.
@@ -96,6 +99,7 @@ export async function createShowcase() {
     latticeDir,
     receiptsDir,
     fixturesDir,
+    sidecarsDir,
     keysetPath,
     baselinePath,
     kid,
@@ -174,5 +178,34 @@ export async function writeReceipt(receiptsDir, envelope) {
   }
   const filePath = join(receiptsDir, `${receiptId}.json`);
   await writeFile(filePath, JSON.stringify(envelope, null, 2));
+  return filePath;
+}
+
+/**
+ * Write `sidecar` as JSON to `<sidecarsDir>/<receiptId>.json`. The sidecar
+ * carries the `{ task, outputs, policy, contract }` quadruple that
+ * `lattice repro` / `lattice eval` need to materialize a replay envelope
+ * that round-trips to verdict=match (Phase 13.1).
+ *
+ * Defensive: refuses to write any version other than `"lattice-sidecar/v1"`
+ * (matches the loader's strict version check). Returns the absolute path
+ * written.
+ *
+ * @param {string} sidecarsDir - Absolute path to the sidecars dir.
+ * @param {string} receiptId - The receipt id (used as the filename stem).
+ * @param {object} sidecar - The sidecar object to JSON.stringify.
+ * @returns {Promise<string>} Absolute path written.
+ */
+export async function writeSidecar(sidecarsDir, receiptId, sidecar) {
+  if (sidecar?.version !== "lattice-sidecar/v1") {
+    throw new Error(
+      `writeSidecar: refusing to write — expected version "lattice-sidecar/v1", got "${sidecar?.version}".`,
+    );
+  }
+  if (typeof receiptId !== "string" || receiptId.length === 0) {
+    throw new Error("writeSidecar: receiptId must be a non-empty string.");
+  }
+  const filePath = join(sidecarsDir, `${receiptId}.json`);
+  await writeFile(filePath, JSON.stringify(sidecar, null, 2));
   return filePath;
 }
