@@ -38,6 +38,11 @@ process.stdout.write(
   `scenario=${refusalResult.scenario} receiptId=${refusalResult.receiptId} verdict=${refusalResult.verdict}\n`,
 );
 
+const qualityFloorResult = await (await import("./scenarios/quality-floor.mjs")).run(ctx);
+process.stdout.write(
+  `scenario=${qualityFloorResult.scenario} receiptId=${qualityFloorResult.receiptId} verdict=${qualityFloorResult.verdict} contractHash=${qualityFloorResult.contractHash}\n`,
+);
+
 // Print paths relative to the repo root so copy-paste works from cwd.
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const relPath = (absPath) => relative(repoRoot, absPath);
@@ -47,15 +52,16 @@ const fixturesDirRel = relPath(ctx.fixturesDir);
 const sidecarsDirRel = relPath(ctx.sidecarsDir);
 const keysetPathRel = relPath(ctx.keysetPath);
 const successReceiptPathRel = `${receiptsDirRel}/${successResult.receiptId}.json`;
+const qualityFloorReceiptPathRel = `${receiptsDirRel}/${qualityFloorResult.receiptId}.json`;
 
-process.stdout.write(`\nWrote 3 receipts to ${receiptsDirRel}/.\n`);
-process.stdout.write(`Wrote 3 sidecars to ${sidecarsDirRel}/.\n`);
+process.stdout.write(`\nWrote 4 receipts to ${receiptsDirRel}/.\n`);
+process.stdout.write(`Wrote 4 sidecars to ${sidecarsDirRel}/.\n`);
 process.stdout.write("Next steps (run from repo root):\n");
 process.stdout.write(
   `  pnpm --filter lattice-cli exec lattice verify ${successReceiptPathRel} --key ${keysetPathRel}\n`,
 );
 process.stdout.write(
-  `  pnpm --filter lattice-cli exec lattice repro ${successReceiptPathRel} --key ${keysetPathRel} --fixtures ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel}\n`,
+  `  pnpm --filter lattice-cli exec lattice repro ${qualityFloorReceiptPathRel} --key ${keysetPathRel} --fixtures ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel}\n`,
 );
 process.stdout.write(
   `  pnpm --filter lattice-cli exec lattice eval --fixtures ${receiptsDirRel} --key ${keysetPathRel} --artifacts ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel} --baseline ${relPath(ctx.baselinePath)} --init-baseline\n`,
