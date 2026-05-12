@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Capability Receipts
 status: in_progress
-stopped_at: Phases 7-11 complete; Phase 12 (lattice eval CI Gate) next.
-last_updated: "2026-05-11T23:02:36.053Z"
-last_activity: 2026-05-11
+stopped_at: Phases 7-12 complete; Phase 13 (Showcase + Milestone Validation) next.
+last_updated: "2026-05-12T01:20:24.924Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
-  percent: 71
+  completed_phases: 6
+  total_plans: 17
+  completed_plans: 17
+  percent: 86
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 11 — lattice CLI - repro and verify
+**Current focus:** Phase 12 — lattice eval CI Gate
 
 ## Current Position
 
-Phase: 12
+Phase: 13
 Plan: Not started
-Status: Executing Phase 11
-Last activity: 2026-05-11
+Status: Executing Phase 12
+Last activity: 2026-05-12
 
 Progress: [█░░░░░░░░░] 14%
 
@@ -50,6 +50,7 @@ Progress: [█░░░░░░░░░] 14%
 | 09 | 4 | - | - |
 | 10 | 1 | - | - |
 | 11 | 3 | - | - |
+| 12 | 3 | - | - |
 
 **Recent Trend:**
 

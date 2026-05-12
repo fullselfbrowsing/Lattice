@@ -19,7 +19,7 @@ Phase numbering continues from v1.0 (which ended at Phase 6). v1.1 starts at Pha
 - [ ] **Phase 9: Canonical JSON, Ed25519 Signing, and Receipt Issuance** — RFC 8785 JCS canonicalization, redact-then-sign DSSE envelope, `kid`/`KeySet` rotation surface, pure `verifyReceipt`, receipts on success and failure.
 - [x] **Phase 10: Receipts inside the Replay Envelope** — Embed `receipt?` and `contract?` into `ReplayEnvelope` so a single receipt is sufficient to materialize an offline replay. (completed 2026-05-11)
 - [x] **Phase 11: lattice CLI — repro and verify** — New `packages/lattice-cli` workspace shipping the `lattice` bin via citty with lazy subcommands for `lattice repro` and `lattice verify`. (completed 2026-05-11)
-- [ ] **Phase 12: lattice eval CI Gate** — `lattice eval` discovers receipts, replays via `replayOffline`, gates baseline-relative cost/quality regressions with judge caching and layered determinism classes.
+- [x] **Phase 12: lattice eval CI Gate** — `lattice eval` discovers receipts, replays via `replayOffline`, gates baseline-relative cost/quality regressions with judge caching and layered determinism classes. (completed 2026-05-12)
 - [ ] **Phase 13: Showcase Update and Milestone Validation** — Extend the work-inbox showcase end-to-end across contracts, tripwires, receipts, repro, and eval; close v1.1.
 
 ## Phase Details
@@ -109,9 +109,9 @@ Plans:
   4. Quality-floor gates are layered by determinism class — exact (string/hash equality), then semantic-cheap (schema match), then semantic-expensive (LLM judge) — and failures on cheaper layers short-circuit.
 **Plans**: 3 plans
 Plans:
-- [ ] 12-01-PLAN.md — Receipt walker + baseline loader/comparator + Judge interface + judge cache + shared eval types (Wave 1)
-- [ ] 12-02-PLAN.md — runEvalSession orchestrator: layered determinism (Exact -> Semantic-cheap -> Judge) + baseline-relative cost/quality gates + N=3 median + cache (Wave 2)
-- [ ] 12-03-PLAN.md — `lattice eval` citty subcommand: argv parsing, exit-code mapping, stdout JSON / stderr human, --init-baseline writer (Wave 3)
+- [x] 12-01-PLAN.md — Receipt walker + baseline loader/comparator + Judge interface + judge cache + shared eval types (Wave 1)
+- [x] 12-02-PLAN.md — runEvalSession orchestrator: layered determinism (Exact -> Semantic-cheap -> Judge) + baseline-relative cost/quality gates + N=3 median + cache (Wave 2)
+- [x] 12-03-PLAN.md — `lattice eval` citty subcommand: argv parsing, exit-code mapping, stdout JSON / stderr human, --init-baseline writer (Wave 3)
 
 ### Phase 13: Showcase Update and Milestone Validation
 **Goal**: The work-inbox showcase exercises contracts, tripwires, signed receipts, `lattice repro`, and `lattice eval` end-to-end against deterministic fixtures, and a milestone-level validation pass confirms every v1.1 requirement is satisfied by observable behavior.
@@ -135,7 +135,7 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 | 9. Canonical JSON, Ed25519 Signing, and Receipt Issuance | v1.1 | 0/TBD | Not started | - |
 | 10. Receipts inside the Replay Envelope | v1.1 | 1/1 | Complete    | 2026-05-11 |
 | 11. lattice CLI — repro and verify | v1.1 | 3/3 | Complete    | 2026-05-11 |
-| 12. lattice eval CI Gate | v1.1 | 0/3 | Not started | - |
+| 12. lattice eval CI Gate | v1.1 | 3/3 | Complete    | 2026-05-12 |
 | 13. Showcase Update and Milestone Validation | v1.1 | 0/TBD | Not started | - |
 
 ## Completed Milestone Summary
