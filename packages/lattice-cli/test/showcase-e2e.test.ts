@@ -55,6 +55,7 @@ const SHOWCASE_DIR = join(REPO_ROOT, "examples/work-inbox");
 const LATTICE_DIR = join(SHOWCASE_DIR, ".lattice");
 const RECEIPTS_DIR = join(LATTICE_DIR, "receipts");
 const FIXTURES_DIR = join(LATTICE_DIR, "fixtures");
+const SIDECARS_DIR = join(LATTICE_DIR, "sidecars");
 const KEYSET_PATH = join(LATTICE_DIR, "keyset.json");
 const BASELINE_PATH = join(LATTICE_DIR, "baseline.json");
 const CLI_BIN = join(REPO_ROOT, "packages/lattice-cli/dist/cli.js");
@@ -135,6 +136,8 @@ interface EvalReport {
     readonly qualityScore: number | null;
     readonly deltaCostPct: number | null;
     readonly deltaQuality: number | null;
+    /** Phase 13.1-02 additive field. `null` on every non-load-failed verdict. */
+    readonly loadFailedReason: string | null;
   }>;
   readonly summary: {
     readonly total: number;
@@ -248,6 +251,20 @@ describe("showcase v1.1 end-to-end", () => {
     for (const f of fixtureFiles) {
       expect(f).toMatch(/^[0-9a-f]{64}\.bin$/);
     }
+
+    // Phase 13.1: every scenario writes a v1.1 sidecar JSON alongside its
+    // receipt. The sidecars carry the `{ task, outputs, policy, contract }`
+    // quadruple `lattice repro` / `lattice eval` need to materialize the
+    // replay envelope and reach verdict=match for sidecared fixtures.
+    const sidecarFiles = (await readdir(SIDECARS_DIR)).filter((f) =>
+      f.endsWith(".json"),
+    );
+    expect(sidecarFiles).toHaveLength(3);
+    for (const f of sidecarFiles) {
+      const text = await readFile(join(SIDECARS_DIR, f), "utf8");
+      const parsed = JSON.parse(text) as { version: string };
+      expect(parsed.version).toBe("lattice-sidecar/v1");
+    }
   });
 
   it("lattice verify exits 0 for all 3 receipts with OK kid=... verdict=...", async () => {
@@ -271,14 +288,14 @@ describe("showcase v1.1 end-to-end", () => {
     }
   });
 
-  it("lattice repro on the success receipt surfaces the documented v1.1 replay-failed boundary", async () => {
-    // v1.1 boundary (Phase 10 limitation, documented in 13-01-SUMMARY Issues
-    // Encountered and packages/lattice/src/replay/materialize.ts header):
-    // a receipt-only ReplayEnvelope has no embedded `outputs`, so
-    // `replayOffline` returns `execution_unavailable`. `lattice repro` maps
-    // that to exit 2 with `FAIL kind=replay-failed reason=execution_unavailable
-    // ...`. This test asserts that exact behavior. A v1.2 sidecar-outputs
-    // upgrade will flip this assertion to `verdict=match` + exit 0.
+  it("lattice repro on the success receipt with sidecar exits 0 with verdict=match", async () => {
+    // Phase 13.1 closes the v1.1 boundary. The showcase now writes a
+    // sidecar alongside each receipt; `lattice repro` resolves the sidecar
+    // via `--sidecar-dir`, spreads its `{ task, outputs (raw), policy,
+    // contract }` quadruple into `materializeReplayEnvelope`, and the
+    // replay's recomputed outputHash matches the receipt's recorded
+    // outputHash → `verdict=match` + exit 0. This is the hard assertion
+    // that closes V1.1-LIMITATION-1 from 13-02-SUMMARY.md.
     const successRow = scenarios.find((s) => s.scenario === "success");
     expect(successRow, "success scenario not found").toBeDefined();
     const receiptPath = join(RECEIPTS_DIR, `${successRow?.receiptId}.json`);
@@ -291,20 +308,18 @@ describe("showcase v1.1 end-to-end", () => {
       KEYSET_PATH,
       "--fixtures",
       FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
     ]);
-    // Non-zero exit confirms the v1.1 boundary fires; exit 2 specifically
-    // is `replay-failed` (Phase 11-03 exit-code matrix).
     expect(
       r.code,
       `repro stderr: ${r.stderr} stdout: ${r.stdout}`,
-    ).not.toBe(0);
-    expect(r.stderr).toMatch(/^FAIL kind=replay-failed/m);
-    expect(r.stderr).toContain("execution_unavailable");
+    ).toBe(0);
+    expect(r.stdout).toContain("verdict=match");
 
-    // Redaction discipline (CLI-05): even on failure, no PII in the failure
-    // message. The success receipt's redacted body has no email; the
-    // tripwire fixture's `j.doe@example.com` MUST NOT appear in success
-    // repro output.
+    // Redaction discipline (CLI-05): no PII in either stream. The success
+    // receipt's body is clean; the tripwire fixture's `j.doe@example.com`
+    // must NOT appear anywhere in success repro output.
     expect(r.stdout).not.toMatch(/j\.doe@example\.com/);
     expect(r.stderr).not.toMatch(/j\.doe@example\.com/);
   });
@@ -319,6 +334,8 @@ describe("showcase v1.1 end-to-end", () => {
       KEYSET_PATH,
       "--artifacts",
       FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
       "--baseline",
       BASELINE_PATH,
       "--init-baseline",
@@ -331,15 +348,42 @@ describe("showcase v1.1 end-to-end", () => {
 
     const report = parseEvalReport(r.stdout);
     expect(report.exitCode).toBe(0);
-    // The walker visits every receipt in the dir, so total === 3 even when
-    // every fixture is `load-failed` (the v1.1 boundary).
+    // The walker visits every receipt in the dir, so total === 3.
     expect(report.summary.total).toBe(3);
     expect(report.version).toBe("lattice-eval/v1");
+
+    // Phase 13.1 closes V1.1-LIMITATION-1: the success fixture now has a
+    // sidecar, replays cleanly, and is verdict=match with
+    // loadFailedReason=null. The tripwire + refusal fixtures keep
+    // outputHash=null (failure receipts cannot commit to outputs) and
+    // surface as load-failed with loadFailedReason="outputhash-missing"
+    // — this is the documented expected outcome for failure-class receipts.
+    const successRow = scenarios.find((s) => s.scenario === "success");
+    const tripwireRow = scenarios.find((s) => s.scenario === "tripwire");
+    const refusalRow = scenarios.find(
+      (s) => s.scenario === "no-contract-match",
+    );
+    const successFixture = report.fixtures.find(
+      (f) => f.fixtureId === successRow?.receiptId,
+    );
+    const tripwireFixture = report.fixtures.find(
+      (f) => f.fixtureId === tripwireRow?.receiptId,
+    );
+    const refusalFixture = report.fixtures.find(
+      (f) => f.fixtureId === refusalRow?.receiptId,
+    );
+    expect(successFixture?.verdict).toBe("match");
+    expect(successFixture?.loadFailedReason).toBe(null);
+    expect(tripwireFixture?.verdict).toBe("load-failed");
+    expect(tripwireFixture?.loadFailedReason).toBe("outputhash-missing");
+    expect(refusalFixture?.verdict).toBe("load-failed");
+    expect(refusalFixture?.loadFailedReason).toBe("outputhash-missing");
 
     // CLI-05 redaction discipline on the JSON projection: the report MUST
     // NOT carry raw inputHashes, raw outputHash strings, or model
     // fingerprints. Only fixtureId / verdict / regressionKind / usage /
-    // qualityScore / deltaCostPct / deltaQuality leak through.
+    // qualityScore / deltaCostPct / deltaQuality / loadFailedReason
+    // leak through.
     expect(r.stdout).not.toMatch(/inputHashes/);
     expect(r.stdout).not.toMatch(/"outputHash":/);
     expect(r.stdout).not.toMatch(/model\.observed/);
@@ -355,6 +399,8 @@ describe("showcase v1.1 end-to-end", () => {
       KEYSET_PATH,
       "--artifacts",
       FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
       "--baseline",
       BASELINE_PATH,
     ]);
@@ -375,46 +421,26 @@ describe("showcase v1.1 end-to-end", () => {
     );
   });
 
-  it("lattice eval with an artificially regressed baseline surfaces the gate semantics", async () => {
-    // EVAL-02 + EVAL-06 — baseline-relative gating. The orchestrator's spec
-    // says modifying baseline.costUsd to a lower value MUST cause exit 1.
-    //
-    // v1.1 boundary: every receipt produced by the showcase is replay-only-
-    // verifiable (no embedded outputs), so the eval runner classifies each
-    // fixture as `load-failed` at Stage 4 (replayOffline). `load-failed`
-    // fixtures never enter the cost comparator (Stage 8) because the
-    // comparator only runs when verdict transitions from `match` -> potentially
-    // `regression`. With zero `match` fixtures in v1.1, no baseline mutation
-    // can flip the verdict.
-    //
-    // We assert this honestly: hand-write a baseline whose success fixture's
-    // costUsd is a tiny NEGATIVE value (a strict "regression" relative to
-    // the showcase's null/"0" replay cost — `compareCost` treats replay > 0
-    // against a negative baseline as a regression). When v1.2 lands the
-    // sidecar-outputs upgrade and the success receipt becomes replay-able,
-    // this SAME assertion will flip to exit 1. Until then, we assert that
-    // the baseline-mutation flow does not crash and the report surfaces the
-    // gate's structural fields.
+  it("lattice eval with an artificially regressed baseline exits 1 with cost-regression on the success fixture", async () => {
+    // Phase 13.1 closes V1.1-LIMITATION-2 from 13-02-SUMMARY.md. The
+    // success fixture's sidecar makes the receipt replay-able with
+    // costUsd=0 (the fake provider records null/0 cost). A baseline whose
+    // success-fixture costUsd is a tiny negative value triggers
+    // `compareCost(replay=0, baseline=-0.0001, tol=0.1) === regressed`,
+    // the runner flips verdict to "regression" with regressionKind
+    // "cost-regression", and the eval handler exits 1. This is the hard
+    // assertion that closes the cost-regression gate's forward-compat
+    // hook.
     const successRow = scenarios.find((s) => s.scenario === "success");
     expect(successRow, "success scenario not found").toBeDefined();
     const successId = successRow?.receiptId as string;
 
-    // Hand-write a baseline that DOES contain an entry for the success
-    // fixture. The eval runner picks up the baseline; the receipt itself
-    // hits the v1.1 boundary so verdict stays `load-failed`, but the JSON
-    // report nonetheless lists this fixture with deltaCostPct=null (the
-    // entry was loaded but never gated).
     const mutatedBaseline = {
       version: "lattice-eval/v1",
       recordedAt: new Date().toISOString(),
       fixtures: {
         [successId]: {
           usage: {
-            // Tiny negative cost — once v1.2 makes the success receipt
-            // replay-able with body.usage.costUsd === "0" (or any
-            // non-negative number), `compareCost(replay=0, baseline=-0.0001,
-            // tol=0.1)` returns `regressed=true`. Today (v1.1) the receipt
-            // is load-failed and the comparator never runs.
             costUsd: "-0.0001",
             promptTokens: 0,
             completionTokens: 0,
@@ -434,45 +460,29 @@ describe("showcase v1.1 end-to-end", () => {
       KEYSET_PATH,
       "--artifacts",
       FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
       "--baseline",
       BASELINE_PATH,
     ]);
-    // The eval surface MUST stay structurally stable regardless of v1.1 vs
-    // v1.2: exit code is either 0 (no regression detected — v1.1 boundary)
-    // or 1 (regression detected — post-v1.2). Both are accepted; what we
-    // assert is the JSON projection shape so the audit reviewer can read
-    // either outcome programmatically.
-    expect([0, 1]).toContain(r.code);
+    expect(
+      r.code,
+      `eval stderr: ${r.stderr} stdout: ${r.stdout}`,
+    ).toBe(1);
 
     const report = parseEvalReport(r.stdout);
     expect(report.version).toBe("lattice-eval/v1");
     expect(report.summary.total).toBe(3);
+    expect(report.summary.regressed).toBeGreaterThan(0);
 
-    // Forward-compat assertion: when a v1.2 receipt makes the success
-    // fixture replay-able, the cost comparator will trigger and we expect
-    // `regressed > 0` + exit 1. Today (v1.1) it stays 0 + exit 0.
-    // The branch below documents both outcomes for the audit reviewer.
-    if (r.code === 1) {
-      expect(report.summary.regressed).toBeGreaterThan(0);
-      // SUMMARY shows the regression: at least one fixture has verdict
-      // === "regression" with regressionKind === "cost-regression".
-      const regressed = report.fixtures.find(
-        (f) => f.verdict === "regression",
-      );
-      expect(regressed?.regressionKind).toBe("cost-regression");
-    } else {
-      // v1.1 boundary path: the receipt is load-failed at replay so the
-      // mutation never reaches the cost gate. This is the documented
-      // v1.1 behavior — the regression flip is forward-compat.
-      expect(report.summary.regressed).toBe(0);
-      const successFixture = report.fixtures.find(
-        (f) => f.fixtureId === successId,
-      );
-      expect(successFixture?.verdict).toBe("load-failed");
-    }
+    const successFixture = report.fixtures.find(
+      (f) => f.fixtureId === successId,
+    );
+    expect(successFixture?.verdict).toBe("regression");
+    expect(successFixture?.regressionKind).toBe("cost-regression");
 
-    // Restore the baseline so subsequent runs in the same suite (none today,
-    // but defensive) start clean.
+    // Restore the baseline so subsequent runs in the same suite (none
+    // today, but defensive) start clean.
     await runProc("node", [
       CLI_BIN,
       "eval",
@@ -482,6 +492,8 @@ describe("showcase v1.1 end-to-end", () => {
       KEYSET_PATH,
       "--artifacts",
       FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
       "--baseline",
       BASELINE_PATH,
       "--init-baseline",
