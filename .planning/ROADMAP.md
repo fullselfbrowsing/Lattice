@@ -166,10 +166,12 @@ Plans:
 
 ### Phase 13.1: Receipt Sidecar Support (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Close v1.1 audit limitations V1.1-LIMITATION-1 (CLI-02 end-to-end repro) and V1.1-LIMITATION-2 (EVAL-02/EVAL-06 regression gate) by adding a strict v1.1 sidecar JSON loader, `--sidecar` / `--sidecar-dir` flags on `lattice repro` and `lattice eval`, walker pairing of receipts with sidecars, and showcase scenarios that write sidecars alongside receipts.
+**Requirements**: Closes CLI-02, EVAL-02, EVAL-06 end-to-end paths (no new REQ-IDs; type-surface coverage already shipped in Phase 13).
 **Depends on:** Phase 13
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 13.1 to break down)
+- [ ] 13.1-01-PLAN.md — Sidecar loader + walker pairing + types (Wave 1)
+- [ ] 13.1-02-PLAN.md — CLI wiring: repro + eval flags and handler updates (Wave 2)
+- [ ] 13.1-03-PLAN.md — Showcase sidecar writes + showcase-e2e flips + 13-02-SUMMARY annotations (Wave 3)
