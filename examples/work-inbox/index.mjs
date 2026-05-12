@@ -53,7 +53,7 @@ process.stdout.write(
   `  pnpm --filter lattice-cli exec lattice verify ${successReceiptPathRel} --key ${keysetPathRel}\n`,
 );
 process.stdout.write(
-  `  pnpm --filter lattice-cli exec lattice repro ${successResult.receiptId} --key ${keysetPathRel} --fixtures ${fixturesDirRel}\n`,
+  `  pnpm --filter lattice-cli exec lattice repro ${successReceiptPathRel} --key ${keysetPathRel} --fixtures ${fixturesDirRel}\n`,
 );
 process.stdout.write(
   `  pnpm --filter lattice-cli exec lattice eval --fixtures ${receiptsDirRel} --key ${keysetPathRel} --artifacts ${fixturesDirRel} --init-baseline\n`,
