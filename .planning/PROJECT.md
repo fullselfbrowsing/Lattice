@@ -10,17 +10,16 @@ The product is for developers building multimodal AI features who do not want to
 
 Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
 
-## Current Milestone: v1.1 Capability Receipts
+## Current State
 
-**Goal:** Make every Lattice run contract-bound, signed, and reproducible — turning a thumbs-down in prod into a deterministic local repro and a CI-gated regression check.
+**v1.1 Capability Receipts shipped 2026-05-12.** All 36 v1.1 requirements wired end-to-end (zero blockers, zero remaining limitations). 451 tests passing across `lattice` (307) and `lattice-cli` (144).
 
-**Target features:**
-- Capability Contracts declared on `ai.run` (budget + invariants + qualityFloor)
-- Pre-flight contract proof — router refuses to execute when no route can satisfy the contract; typed no-contract-match result
-- Tripwire invariants — semantic/policy invariants evaluated mid-stream with abort-on-violation
-- Signed Capability Receipts — Ed25519-signed attestation per run (input hashes, route, packaging, model versions, contract verdict, redaction-aware)
-- `lattice repro <receipt-id>` CLI — reconstructs deterministic replay session from a receipt
-- `lattice eval` CI command — runs receipts + fixtures as regression suite; fails CI on cost-per-task or quality-floor regressions
+No active milestone. Next milestone defines goals via `/gsd-new-milestone`.
+
+## Shipped Milestones
+
+- **v1.0 milestone** (2026-04-22) — Foundation: package/API spine, artifact lifecycle, deterministic planning, sessions+context+packaging, tools+replay+observability, work-inbox showcase.
+- **v1.1 Capability Receipts** (2026-05-12) — Contract-bound, signed, reproducible runs: contracts + pre-flight + cost, tripwire invariants, RFC 8785 + Ed25519 signed receipts with `kid`/`KeySet`, replay envelope integration, `lattice` CLI (`repro`/`verify`/`eval`), sidecar support, end-to-end showcase exercising all 36 REQ-IDs.
 
 ## Requirements
 
@@ -42,9 +41,9 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-All v1.1 requirements validated. v1.1 (Capability Receipts) ready for milestone audit and archive.
+No active requirements. v1.0 and v1.1 fully validated. Define v1.2 via `/gsd-new-milestone`.
 
-### Known v1.2 Carry-Forward (tech debt)
+### Known v1.2 Carry-Forward
 
 - `lattice repro` / `lattice eval` cannot replay or grade against a receipt alone — receipts intentionally minimal (no task/outputs/policy embedded). v1.2 will accept a sidecar JSON file with the original RunIntent inputs, enabling end-to-end replay round-trips.
 - Vitest-compatible JSON/JUnit reporter for `lattice eval`.
@@ -130,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 — Milestone v1.1 (Capability Receipts) complete; all 7 phases verified, ready for audit*
+*Last updated: 2026-05-12 — Milestone v1.1 (Capability Receipts) shipped and archived*

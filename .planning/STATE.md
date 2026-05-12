@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Type-Surface REQs
-status: executing
-stopped_at: ROADMAP.md drafted for v1.1; Phase 7 ready to enter planning.
-last_updated: "2026-05-12T05:56:29.462Z"
-last_activity: 2026-05-12
+milestone_name: Capability Receipts
+status: shipped
+stopped_at: v1.1 milestone complete and archived. No active milestone.
+last_updated: "2026-05-12T06:01:06.406Z"
+last_activity: 2026-05-12 — v1.1 archived
 progress:
   total_phases: 9
   completed_phases: 9
-  total_plans: 24
-  completed_plans: 24
+  total_plans: 19
+  completed_plans: 19
   percent: 100
 ---
 
