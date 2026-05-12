@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Capability Receipts
-status: all_phases_complete
-stopped_at: All 7 v1.1 phases complete; ready for milestone lifecycle (audit -> complete -> cleanup).
-last_updated: "2026-05-12T01:49:18.599Z"
-last_activity: 2026-05-12 — Phase 13 verified
+milestone_name: Type-Surface REQs
+status: executing
+stopped_at: ROADMAP.md drafted for v1.1; Phase 7 ready to enter planning.
+last_updated: "2026-05-12T05:38:15.569Z"
+last_activity: 2026-05-12
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 19
-  completed_plans: 19
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 13
+Phase: 13.2
 Plan: Not started
 Status: Executing Phase 13
 Last activity: 2026-05-12
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 14%
 | 11 | 3 | - | - |
 | 12 | 3 | - | - |
 | 13 | 2 | - | - |
+| 13.1 | 3 | - | - |
 
 **Recent Trend:**
 
