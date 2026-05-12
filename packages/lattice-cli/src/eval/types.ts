@@ -27,6 +27,33 @@ export interface FixtureReportUsage {
   readonly completionTokens: number;
 }
 
+/**
+ * Discriminator for `verdict: "load-failed"` entries (Plan 13.1-02). The
+ * field is additive to `lattice-eval/v1` — older readers MUST ignore it; no
+ * version bump is required (per the v1.1.1 sub-phase decision in
+ * 13.1-CONTEXT.md "Sidecar File Format"). For every non-load-failed fixture
+ * (match / drift / regression) the value is `null`.
+ *
+ * Taxonomy:
+ *   - "no-sidecar"          : walker yielded the receipt but no sidecar pair
+ *                              (the EVAL-02/EVAL-06 forward-compat case the
+ *                              v1.1 audit said was unreachable).
+ *   - "verify-failed"       : materialize/verifyReceipt rejected the envelope
+ *   - "replay-failed"       : replayOffline returned ok:false
+ *   - "malformed-sidecar"   : walker surfaced a sidecar-side load error
+ *                              (malformed / version-mismatch /
+ *                              unsupported-output-shape)
+ *   - "outputhash-missing"  : verified body.outputHash === null (failure
+ *                              receipts have no diff target)
+ */
+export type LoadFailedReason =
+  | "no-sidecar"
+  | "verify-failed"
+  | "replay-failed"
+  | "malformed-sidecar"
+  | "outputhash-missing"
+  | null;
+
 export interface FixtureReport {
   readonly fixtureId: string;
   readonly verdict: FixtureVerdict;
@@ -35,6 +62,12 @@ export interface FixtureReport {
   readonly qualityScore: number | null;
   readonly deltaCostPct: number | null;
   readonly deltaQuality: number | null;
+  /**
+   * Sub-discriminator for `verdict: "load-failed"` (Plan 13.1-02). `null` for
+   * every other verdict. Additive field — consumers that pre-date Plan 13.1
+   * MAY ignore it without a version bump.
+   */
+  readonly loadFailedReason: LoadFailedReason;
 }
 
 export interface EvalRunSummary {
@@ -65,6 +98,15 @@ export interface EvalConfig {
    * is rooted here.
    */
   readonly artifactsDir: string;
+  /**
+   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Default
+   * `.lattice/sidecars`. Paired with each receipt by `walkReceiptsWithSidecars`
+   * so per-fixture `{ task, outputs, policy, contract }` quadruples flow into
+   * `materializeReplayEnvelope`. Fixtures without a sidecar surface as
+   * `verdict: "load-failed"` with `loadFailedReason: "no-sidecar"` so the
+   * audit and JSON projection can distinguish them from verify/replay failures.
+   */
+  readonly sidecarsDir: string;
   readonly keyPath: string | undefined;
   readonly costTolerance: number;
   readonly qualityTolerance: number;

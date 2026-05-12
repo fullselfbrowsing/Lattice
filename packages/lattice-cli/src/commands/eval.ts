@@ -84,6 +84,14 @@ export interface RunEvalArgs {
   readonly key?: string;
   readonly judgeCache?: string;
   readonly artifacts?: string;
+  /**
+   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Default
+   * `.lattice/sidecars`. Each fixture's sidecar (when present) is applied to
+   * `materializeReplayEnvelope` so the cost-regression gate is reachable;
+   * fixtures without a sidecar surface as `verdict: "load-failed"` with
+   * `loadFailedReason: "no-sidecar"`.
+   */
+  readonly sidecarDir?: string;
   readonly initBaseline?: boolean;
   readonly costTolerance?: number;
   readonly qualityTolerance?: number;
@@ -101,6 +109,7 @@ export function buildEvalConfig(args: RunEvalArgs): EvalConfig {
     baselinePath: args.baseline ?? ".lattice/baseline.json",
     judgeCacheDir: args.judgeCache ?? ".lattice/judge-cache",
     artifactsDir: args.artifacts ?? ".lattice/fixtures",
+    sidecarsDir: args.sidecarDir ?? ".lattice/sidecars",
     keyPath: args.key,
     costTolerance: args.costTolerance ?? 0.1,
     qualityTolerance: args.qualityTolerance ?? 0.05,
@@ -307,6 +316,11 @@ export default defineCommand({
       description:
         "Artifact bodies directory used for offline replay (default: .lattice/fixtures/).",
     },
+    "sidecar-dir": {
+      type: "string",
+      description:
+        "Directory holding `<receipt-id>.json` sidecars. Default: .lattice/sidecars/.",
+    },
     "init-baseline": {
       type: "boolean",
       description:
@@ -344,6 +358,9 @@ export default defineCommand({
         ? { judgeCache: args["judge-cache"] }
         : {}),
       ...(args.artifacts !== undefined ? { artifacts: args.artifacts } : {}),
+      ...(args["sidecar-dir"] !== undefined
+        ? { sidecarDir: args["sidecar-dir"] }
+        : {}),
       ...(args["init-baseline"] === true ? { initBaseline: true } : {}),
       ...(args["cost-tolerance"] !== undefined
         ? { costTolerance: Number(args["cost-tolerance"]) }

@@ -104,12 +104,14 @@ function makeConfig(overrides: Partial<EvalConfig>, base: {
   judgeCacheDir: string;
   artifactsDir: string;
   keyPath: string;
+  sidecarsDir?: string;
 }): EvalConfig {
   return {
     fixturesDir: base.fixturesDir,
     baselinePath: base.baselinePath,
     judgeCacheDir: base.judgeCacheDir,
     artifactsDir: base.artifactsDir,
+    sidecarsDir: base.sidecarsDir ?? ".lattice/sidecars",
     keyPath: base.keyPath,
     costTolerance: 0.10,
     qualityTolerance: 0.05,
@@ -125,6 +127,7 @@ interface SandboxPaths {
   readonly receiptsDir: string;
   readonly fixturesDir: string;
   readonly judgeCacheDir: string;
+  readonly sidecarsDir: string;
   readonly baselinePath: string;
   readonly keysetPath: string;
 }
@@ -134,22 +137,49 @@ async function makeSandbox(): Promise<SandboxPaths> {
   const receiptsDir = join(sandbox, "receipts");
   const fixturesDir = join(sandbox, "fixtures");
   const judgeCacheDir = join(sandbox, "judge-cache");
+  const sidecarsDir = join(sandbox, "sidecars");
   await mkdir(receiptsDir, { recursive: true });
   await mkdir(fixturesDir, { recursive: true });
+  await mkdir(sidecarsDir, { recursive: true });
   return {
     sandbox,
     receiptsDir,
     fixturesDir,
     judgeCacheDir,
+    sidecarsDir,
     baselinePath: join(sandbox, "baseline.json"),
     keysetPath: join(sandbox, "keyset.json"),
   };
+}
+
+/**
+ * Plan 13.1-02: write a minimal valid sidecar so the runner's
+ * `walkReceiptsWithSidecars` pairing yields a non-null sidecar and the
+ * materialize call receives a usable `{ task, outputs, policy, contract }`
+ * quadruple. Tests that intentionally exercise the "no-sidecar" branch must
+ * skip calling this helper.
+ */
+async function writeSidecarForFixture(
+  paths: SandboxPaths,
+  fixtureId: string,
+  overrides: Record<string, unknown> = {},
+): Promise<void> {
+  const body = {
+    version: "lattice-sidecar/v1",
+    task: "eval-runner-sidecar-test",
+    outputs: { text: "text" },
+    policy: { privacy: "sensitive" },
+    contract: { kind: "capability-contract", invariants: [] },
+    ...overrides,
+  };
+  await writeJson(join(paths.sidecarsDir, `${fixtureId}.json`), body);
 }
 
 async function seedFixtureOnDisk(
   paths: SandboxPaths,
   fixtureId: string,
   fixture: BuiltFixture,
+  options: { skipSidecar?: boolean } = {},
 ): Promise<void> {
   await writeJson(join(paths.receiptsDir, `${fixtureId}.json`), fixture.envelope);
   // Side-channel verify to learn inputHashes.
@@ -160,6 +190,9 @@ async function seedFixtureOnDisk(
   for (const h of verified.body.inputHashes) {
     if (h === "") continue;
     await writeFile(join(paths.fixturesDir, `${h}.bin`), new Uint8Array([0xde, 0xad]));
+  }
+  if (options.skipSidecar !== true) {
+    await writeSidecarForFixture(paths, fixtureId);
   }
 }
 
@@ -233,6 +266,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
       { judge, now: () => "2026-05-11T00:00:00Z" },
@@ -294,6 +328,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
       { judge },
@@ -361,6 +396,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -432,6 +468,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
       { judge },
@@ -465,6 +502,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -496,6 +534,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -565,6 +604,7 @@ describe("runEvalSession", () => {
         judgeCacheDir: paths.judgeCacheDir,
         artifactsDir: paths.fixturesDir,
         keyPath: paths.keysetPath,
+        sidecarsDir: paths.sidecarsDir,
       },
     );
 
@@ -593,6 +633,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -661,6 +702,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
       { judge },
@@ -734,6 +776,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -770,6 +813,7 @@ describe("runEvalSession", () => {
           judgeCacheDir: paths.judgeCacheDir,
           artifactsDir: paths.fixturesDir,
           keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
         },
       ),
     );
@@ -777,5 +821,191 @@ describe("runEvalSession", () => {
     expect(report.fixtures).toEqual([]);
     expect(report.summary).toEqual({ total: 0, passed: 0, regressed: 0, newFixtures: 0 });
     expect(report.tripwireOutcomes).toEqual([]);
+  });
+
+  // -----------------------------------------------------------------
+  // Plan 13.1-02: sidecar walker + per-fixture sidecar apply.
+  // -----------------------------------------------------------------
+
+  it("Test 12 (sidecar present): every fixture has a sidecar -> verdict=match with loadFailedReason=null", async () => {
+    const paths = await makeSandbox();
+    const fixture = await buildFixture("sc-match-kid");
+    await seedFixtureOnDisk(paths, "fx-sc-match", fixture);
+    await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
+    await writeBaseline(
+      paths.baselinePath,
+      makeBaseline({ "fx-sc-match": makeBaselineEntry("0", null) }),
+    );
+
+    mockReplayWithOutputs(fixture.outputs);
+
+    const { runEvalSession } = await import("../src/eval/runner.js");
+    const report = await runEvalSession(
+      makeConfig(
+        {},
+        {
+          fixturesDir: paths.receiptsDir,
+          baselinePath: paths.baselinePath,
+          judgeCacheDir: paths.judgeCacheDir,
+          artifactsDir: paths.fixturesDir,
+          keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
+        },
+      ),
+    );
+
+    expect(report.fixtures).toHaveLength(1);
+    const fx = report.fixtures[0]!;
+    expect(fx.verdict).toBe("match");
+    expect(fx.loadFailedReason).toBe(null);
+  });
+
+  it("Test 13 (sidecar missing): fixture without a sidecar -> verdict=load-failed, loadFailedReason=no-sidecar", async () => {
+    const paths = await makeSandbox();
+    const fixtureA = await buildFixture("nosc-a-kid");
+    const fixtureB = await buildFixture("nosc-b-kid");
+    // A has a sidecar, B does NOT.
+    await seedFixtureOnDisk(paths, "fx-with-sc", fixtureA);
+    await seedFixtureOnDisk(paths, "fx-without-sc", fixtureB, { skipSidecar: true });
+    await writeKeyset(paths, [
+      keyEntry(fixtureA.kid, fixtureA.publicKeyJwk),
+      keyEntry(fixtureB.kid, fixtureB.publicKeyJwk),
+    ]);
+    await writeBaseline(
+      paths.baselinePath,
+      makeBaseline({
+        "fx-with-sc": makeBaselineEntry("0", null),
+        "fx-without-sc": makeBaselineEntry("0", null),
+      }),
+    );
+
+    mockReplayWithOutputs(fixtureA.outputs);
+
+    const { runEvalSession } = await import("../src/eval/runner.js");
+    const report = await runEvalSession(
+      makeConfig(
+        {},
+        {
+          fixturesDir: paths.receiptsDir,
+          baselinePath: paths.baselinePath,
+          judgeCacheDir: paths.judgeCacheDir,
+          artifactsDir: paths.fixturesDir,
+          keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
+        },
+      ),
+    );
+
+    expect(report.fixtures).toHaveLength(2);
+    const byId: Record<string, (typeof report.fixtures)[number]> = {};
+    for (const fx of report.fixtures) byId[fx.fixtureId] = fx;
+    const withSc = byId["fx-with-sc"]!;
+    const withoutSc = byId["fx-without-sc"]!;
+    expect(withSc.verdict).toBe("match");
+    expect(withSc.loadFailedReason).toBe(null);
+    expect(withoutSc.verdict).toBe("load-failed");
+    expect(withoutSc.loadFailedReason).toBe("no-sidecar");
+    expect(withoutSc.usage).toBe(null);
+    expect(withoutSc.qualityScore).toBe(null);
+    expect(withoutSc.deltaCostPct).toBe(null);
+    expect(withoutSc.deltaQuality).toBe(null);
+  });
+
+  it("Test 14 (sidecar malformed): walker yields malformed-sidecar error -> verdict=load-failed, loadFailedReason=malformed-sidecar", async () => {
+    const paths = await makeSandbox();
+    const fixture = await buildFixture("sc-malf-kid");
+    // Seed receipt WITHOUT the auto-sidecar; write a malformed one manually.
+    await seedFixtureOnDisk(paths, "fx-malf-sc", fixture, { skipSidecar: true });
+    await writeFile(
+      join(paths.sidecarsDir, "fx-malf-sc.json"),
+      "{ this is not valid json",
+      "utf8",
+    );
+    await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
+    await writeBaseline(paths.baselinePath, makeBaseline({}));
+
+    const { runEvalSession } = await import("../src/eval/runner.js");
+    const report = await runEvalSession(
+      makeConfig(
+        {},
+        {
+          fixturesDir: paths.receiptsDir,
+          baselinePath: paths.baselinePath,
+          judgeCacheDir: paths.judgeCacheDir,
+          artifactsDir: paths.fixturesDir,
+          keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
+        },
+      ),
+    );
+
+    expect(report.fixtures).toHaveLength(1);
+    const fx = report.fixtures[0]!;
+    expect(fx.verdict).toBe("load-failed");
+    expect(fx.loadFailedReason).toBe("malformed-sidecar");
+  });
+
+  it("Test 15 (cost-regression with sidecar fires): closes V1.1-LIMITATION-2", async () => {
+    // This is the v1.1 audit's "regression gate is unreachable" case. With a
+    // sidecar present, Stage 5 (Exact) passes and Stage 8 (cost gate) runs.
+    const paths = await makeSandbox();
+    const fixture = await buildFixture("sc-cost-kid");
+    await seedFixtureOnDisk(paths, "fx-sc-cost", fixture);
+    await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
+
+    vi.doMock("lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("lattice")>();
+      const realVerify = mod.verifyReceipt;
+      return {
+        ...mod,
+        verifyReceipt: vi.fn(async (env, ks) => {
+          const result = await realVerify(env, ks);
+          if (!result.ok) return result;
+          return {
+            ...result,
+            body: {
+              ...result.body,
+              usage: { ...result.body.usage, costUsd: "0.002" },
+            },
+          };
+        }),
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: fixture.outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
+      };
+    });
+
+    // Baseline cost 0.0001 with tolerance 0.10 → regression fires above ~0.00011.
+    await writeBaseline(
+      paths.baselinePath,
+      makeBaseline({ "fx-sc-cost": makeBaselineEntry("0.0001", null) }),
+    );
+
+    const { runEvalSession } = await import("../src/eval/runner.js");
+    const report = await runEvalSession(
+      makeConfig(
+        {},
+        {
+          fixturesDir: paths.receiptsDir,
+          baselinePath: paths.baselinePath,
+          judgeCacheDir: paths.judgeCacheDir,
+          artifactsDir: paths.fixturesDir,
+          keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
+        },
+      ),
+    );
+
+    expect(report.fixtures).toHaveLength(1);
+    const fx = report.fixtures[0]!;
+    expect(fx.verdict).toBe("regression");
+    expect(fx.regressionKind).toBe("cost-regression");
+    expect(fx.loadFailedReason).toBe(null);
+    expect(report.summary.regressed).toBe(1);
   });
 });

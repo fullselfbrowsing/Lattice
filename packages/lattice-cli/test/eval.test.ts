@@ -78,6 +78,7 @@ function fixtureReport(
     qualityScore: null,
     deltaCostPct: 0,
     deltaQuality: null,
+    loadFailedReason: null,
     ...overrides,
   };
 }
@@ -337,6 +338,7 @@ describe("lattice eval handler (commands/eval.ts)", () => {
       baselinePath: string;
       judgeCacheDir: string;
       artifactsDir: string;
+      sidecarsDir: string;
       costTolerance: number;
       qualityTolerance: number;
       judgeN: number;
@@ -346,9 +348,25 @@ describe("lattice eval handler (commands/eval.ts)", () => {
     expect(cfg.baselinePath).toBe(".lattice/baseline.json");
     expect(cfg.judgeCacheDir).toBe(".lattice/judge-cache");
     expect(cfg.artifactsDir).toBe(".lattice/fixtures");
+    expect(cfg.sidecarsDir).toBe(".lattice/sidecars");
     expect(cfg.costTolerance).toBeCloseTo(0.1, 10);
     expect(cfg.qualityTolerance).toBeCloseTo(0.05, 10);
     expect(cfg.judgeN).toBe(3);
     expect(cfg.initBaseline).toBe(false);
+  });
+
+  it("Test 11 (Plan 13.1-02): --sidecar-dir flag overrides the default", async () => {
+    let capturedConfig: unknown;
+    const report = reportFromFixtures([], { regressed: 0 });
+    const { deps, bag } = captureDeps({
+      runSession: async (config) => {
+        capturedConfig = config;
+        return report;
+      },
+    });
+    await runEval({ sidecarDir: "/custom/sidecars" }, deps);
+    expect(bag.exitCode).toBe(0);
+    const cfg = capturedConfig as { sidecarsDir: string };
+    expect(cfg.sidecarsDir).toBe("/custom/sidecars");
   });
 });
