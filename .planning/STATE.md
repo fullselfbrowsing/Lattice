@@ -4,13 +4,13 @@ milestone: v1.1
 milestone_name: Type-Surface REQs
 status: executing
 stopped_at: ROADMAP.md drafted for v1.1; Phase 7 ready to enter planning.
-last_updated: "2026-05-12T05:38:15.569Z"
+last_updated: "2026-05-12T05:56:29.462Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 9
-  completed_phases: 8
-  total_plans: 22
-  completed_plans: 22
+  completed_phases: 9
+  total_plans: 24
+  completed_plans: 24
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 13 — Showcase Update and Milestone Validation
+**Current focus:** Phase 13.2 — Showcase Enrichment for v1.1 Type-Surface REQs
 
 ## Current Position
 
 Phase: 13.2
 Plan: Not started
-Status: Executing Phase 13
+Status: Executing Phase 13.2
 Last activity: 2026-05-12
 
 Progress: [█░░░░░░░░░] 14%
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 14%
 | 12 | 3 | - | - |
 | 13 | 2 | - | - |
 | 13.1 | 3 | - | - |
+| 13.2 | 2 | - | - |
 
 **Recent Trend:**
 

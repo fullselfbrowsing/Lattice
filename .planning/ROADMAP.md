@@ -159,11 +159,11 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 **Goal:** Close v1.1 audit V1.1-TYPE-SURFACE-ONLY tech-debt by exercising CONTRACT-03 (qualityFloor declared on a contract; canonicalize+sha256 binding), COST-02 (normalized Usage shape across openai / openai-compat / ai-sdk adapter families), EVAL-03 (judge N=3 median aggregation), and EVAL-04 (judge disk-cache reuse) end-to-end in the work-inbox showcase and showcase-e2e test. No new public API; no real LLM; no real HTTP (openai-compat exercised via test-injected fetch mock).
 **Requirements**: Closes type-surface gaps for CONTRACT-03, COST-02, EVAL-03, EVAL-04 (no new REQ-IDs; per-package tests already cover the types).
 **Depends on:** Phase 13.1
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 13.2-01-PLAN.md — Stub judge module + multi-adapter capabilities helper + quality-floor scenario (Wave 1)
-- [ ] 13.2-02-PLAN.md — showcase-e2e cases 7 + 8 + quality-floor receipt-body contractHash assertion (Wave 2)
+- [x] 13.2-01-PLAN.md — Stub judge module + multi-adapter capabilities helper + quality-floor scenario (Wave 1)
+- [x] 13.2-02-PLAN.md — showcase-e2e cases 7 + 8 + quality-floor receipt-body contractHash assertion (Wave 2)
 
 ### Phase 13.1: Receipt Sidecar Support (INSERTED)
 
