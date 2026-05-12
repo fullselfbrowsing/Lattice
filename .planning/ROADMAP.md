@@ -153,3 +153,23 @@ Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12 → 13.
 - Roadmap archive: `.planning/milestones/v1.0-ROADMAP.md`
 - Audit report: `.planning/milestones/v1.0-MILESTONE-AUDIT.md`
 - Phase artifacts: `.planning/milestones/v1.0-phases/`
+
+### Phase 13.2: Showcase Enrichment for v1.1 Type-Surface REQs (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13.2 to break down)
+
+### Phase 13.1: Receipt Sidecar Support (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13.1 to break down)
