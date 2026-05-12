@@ -44,8 +44,11 @@
 import { spawn, type SpawnOptions } from "node:child_process";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { runJudgeWithN, type Judge, type JudgeInput } from "../src/eval/judge.js";
+import { createDiskJudgeCache } from "../src/eval/judge-cache.js";
 
 // Resolve REPO_ROOT once. This file lives at
 // packages/lattice-cli/test/showcase-e2e.test.ts so the repo root is three
@@ -172,6 +175,19 @@ function parseEvalReport(stdout: string): EvalReport {
 // re-run the showcase per case.
 let scenarios: ScenarioRow[] = [];
 let showcaseRun: SpawnResult = { stdout: "", stderr: "", code: -1 };
+
+// Module-level state for EVAL-03 / EVAL-04 (cases 7 + 8). Case 7 populates
+// these; case 8 reads them and asserts the cache short-circuited the
+// second runJudgeWithN invocation. Vitest runs `it` blocks in declaration
+// order within a single `describe`, so this binding is safe.
+interface StubScoringJudge {
+  readonly judge: Judge;
+  readonly callCount: number;
+}
+let case7Stub: StubScoringJudge | undefined;
+let case7Input: JudgeInput | undefined;
+let case7Cache: ReturnType<typeof createDiskJudgeCache> | undefined;
+let case7CacheDir = "";
 
 describe("showcase v1.1 end-to-end", () => {
   beforeAll(async () => {
@@ -572,8 +588,74 @@ describe("showcase v1.1 end-to-end", () => {
       "--init-baseline",
     ]);
   });
-});
 
-// Silence "unused import" for `mkdir` — kept for future hand-written fixture
-// fabrication if the v1.1 boundary is closed.
-void mkdir;
+  it("EVAL-03: runJudgeWithN with stub scores [0.6, 0.8, 0.7] returns median 0.7 with 3 sample calls", async () => {
+    // Dynamic-import the stub judge factory from examples/work-inbox so the
+    // showcase + this test share the same cyclic scoring schedule and
+    // STUB_JUDGE_PROMPT (the cache-key prompt). Using pathToFileURL guards
+    // against Windows path-as-URL pitfalls.
+    const judgesMod = (await import(
+      pathToFileURL(join(REPO_ROOT, "examples/work-inbox/judges.mjs")).href
+    )) as {
+      readonly stubScoringJudge: (scores: readonly number[]) => StubScoringJudge;
+      readonly STUB_JUDGE_PROMPT: string;
+    };
+
+    case7Stub = judgesMod.stubScoringJudge([0.6, 0.8, 0.7]);
+    expect(case7Stub.callCount).toBe(0);
+
+    case7CacheDir = join(LATTICE_DIR, "judge-cache-case7");
+    await mkdir(case7CacheDir, { recursive: true });
+    case7Cache = createDiskJudgeCache(case7CacheDir);
+
+    case7Input = {
+      fixtureId: "stub-fixture-quality-floor",
+      output: { answer: "stub-completion" },
+      modelFingerprint: "stub-model-fp",
+      prompt: judgesMod.STUB_JUDGE_PROMPT,
+    };
+
+    const result = await runJudgeWithN(
+      case7Stub.judge,
+      case7Input,
+      3,
+      case7Cache,
+    );
+    expect(result.score).toBe(0.7);
+    expect(result.cached).toBe(false);
+    expect(result.samples).toHaveLength(3);
+    expect([...result.samples].sort((a, b) => a - b)).toEqual([0.6, 0.7, 0.8]);
+    expect(case7Stub.callCount).toBe(3);
+  });
+
+  it("EVAL-04: second runJudgeWithN call with same input hits the disk cache without advancing the stub judge counter", async () => {
+    // Case 7 must have run first to populate the module-scoped state.
+    expect(case7Stub, "case 7 must run first to populate stub").toBeDefined();
+    expect(case7Cache, "case 7 must run first to populate cache").toBeDefined();
+    expect(case7Input, "case 7 must run first to populate input").toBeDefined();
+    expect(case7Stub?.callCount).toBe(3);
+
+    const stub = case7Stub as StubScoringJudge;
+    const cache = case7Cache as ReturnType<typeof createDiskJudgeCache>;
+    const input = case7Input as JudgeInput;
+
+    const result = await runJudgeWithN(stub.judge, input, 3, cache);
+    expect(result.score).toBe(0.7);
+    expect(result.cached).toBe(true);
+    // Samples are preserved as recorded (NOT re-sorted) per judge-cache.ts.
+    expect(result.samples).toEqual([0.6, 0.8, 0.7]);
+
+    // CRITICAL EVAL-04 assertion: the cache hit short-circuited every judge
+    // call on the second invocation. callCount is STILL 3, not 6.
+    expect(stub.callCount).toBe(3);
+
+    // The cache directory contains exactly one entry whose filename matches
+    // the canonical SHA-256-hex shape enforced by judge-cache.ts:KEY_REGEX.
+    const entries = await readdir(case7CacheDir);
+    const jsonEntries = entries.filter((f) => f.endsWith(".json"));
+    expect(jsonEntries).toHaveLength(1);
+    for (const f of jsonEntries) {
+      expect(f).toMatch(/^[a-f0-9]{64}\.json$/);
+    }
+  });
+});
