@@ -1,115 +1,60 @@
-import { readFile } from "node:fs/promises";
+/**
+ * Work-inbox showcase (v1.1) entry point.
+ *
+ * Orchestrates the three contract scenarios that prove v1.1 end-to-end:
+ *   1. success           — RunSuccess + signed receipt
+ *   2. tripwire          — inv.noPII fires, RunFailure tripwire-violated
+ *   3. no-contract-match — sub-cent budget, RunFailure no-contract-match
+ *
+ * Scenarios run sequentially (NOT in parallel) so the receipts dir
+ * grows in deterministic order — the Plan 13-02 integration test will
+ * depend on this ordering.
+ *
+ * Final stdout is a copy-pastable next-step block referencing the
+ * actual generated paths and the success receipt id, so a reader can
+ * paste a `lattice verify`, `lattice repro`, or `lattice eval` command
+ * without rewriting placeholders.
+ */
 
-import {
-  artifact,
-  createAI,
-  createFakeProvider,
-  createMemorySessionStore,
-  createReplayEnvelope,
-  output,
-  replayOffline,
-} from "../../packages/lattice/dist/index.js";
+import { relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const actionSchema = {
-  "~standard": {
-    version: 1,
-    vendor: "work-inbox-fixture",
-    validate(value) {
-      const valid =
-        typeof value === "object" &&
-        value !== null &&
-        ["refund", "replace", "escalate", "clarify"].includes(value.kind) &&
-        typeof value.reason === "string" &&
-        ["normal", "urgent"].includes(value.priority);
+import { createShowcase } from "./setup.mjs";
 
-      return valid
-        ? { value }
-        : { issues: [{ message: "Expected a work-inbox action object." }] };
-    },
-  },
-};
+const ctx = await createShowcase();
 
-const sessionStore = createMemorySessionStore();
-const ai = createAI({
-  sessions: sessionStore,
-  providers: [
-    createFakeProvider({
-      id: "work-inbox-fixture",
-      response: {
-        rawOutputs: {
-          answer:
-            "Approve a replacement and escalate billing review because the package photo and policy excerpt conflict.",
-          action: {
-            kind: "replace",
-            reason: "Photo evidence shows damage while the policy excerpt allows replacement before refund.",
-            priority: "normal",
-          },
-          evidence: [
-            { artifactId: "artifact:text:message", label: "customer message" },
-            { artifactId: "artifact:image:package-photo", label: "visual evidence" },
-            { artifactId: "artifact:document:return-policy", label: "policy excerpt" },
-          ],
-          generated: [],
-        },
-      },
-    }),
-  ],
-});
+const successResult = await (await import("./scenarios/success.mjs")).run(ctx);
+process.stdout.write(
+  `scenario=${successResult.scenario} receiptId=${successResult.receiptId} verdict=${successResult.verdict}\n`,
+);
 
-const artifacts = [
-  artifact.text(await readFixture("message.txt"), {
-    id: "artifact:text:message",
-    label: "Customer message",
-  }),
-  artifact.image("examples/work-inbox/fixtures/package-photo.txt", {
-    id: "artifact:image:package-photo",
-    label: "Package photo fixture",
-    mediaType: "image/png",
-  }),
-  artifact.audio("examples/work-inbox/fixtures/call-transcript.txt", {
-    id: "artifact:audio:call-transcript",
-    label: "Call recording transcript fixture",
-    mediaType: "text/plain",
-    privacy: "sensitive",
-  }),
-  artifact.document("examples/work-inbox/fixtures/return-policy.pdf.txt", {
-    id: "artifact:document:return-policy",
-    label: "Return policy PDF text fixture",
-    mediaType: "application/pdf",
-  }),
-];
+const tripwireResult = await (await import("./scenarios/tripwire.mjs")).run(ctx);
+process.stdout.write(
+  `scenario=${tripwireResult.scenario} receiptId=${tripwireResult.receiptId} verdict=${tripwireResult.verdict}\n`,
+);
 
-const intent = {
-  task: "Resolve this work-inbox case. Return a concise answer and an action object.",
-  session: ai.session("showcase-case-1"),
-  artifacts,
-  outputs: {
-    answer: "text",
-    action: actionSchema,
-    evidence: output.citations(),
-    generated: output.artifacts(),
-  },
-  policy: {
-    privacy: "sensitive",
-    maxCostUsd: 0.01,
-    noLogging: true,
-  },
-};
+const refusalResult = await (await import("./scenarios/no-contract-match.mjs")).run(ctx);
+process.stdout.write(
+  `scenario=${refusalResult.scenario} receiptId=${refusalResult.receiptId} verdict=${refusalResult.verdict}\n`,
+);
 
-const plan = await ai.plan(intent);
-console.log("Selected route:", plan.route.selected);
-console.log("Context pack:", plan.context);
-console.log("Packaging warnings:", plan.providerPackaging?.warnings ?? []);
+// Print paths relative to the repo root so copy-paste works from cwd.
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
+const relPath = (absPath) => relative(repoRoot, absPath);
 
-const result = await ai.run(intent);
-console.log("Run result:", JSON.stringify(result, null, 2));
+const receiptsDirRel = relPath(ctx.receiptsDir);
+const fixturesDirRel = relPath(ctx.fixturesDir);
+const keysetPathRel = relPath(ctx.keysetPath);
+const successReceiptPathRel = `${receiptsDirRel}/${successResult.receiptId}.json`;
 
-if (result.ok) {
-  const replay = createReplayEnvelope(result);
-  const offline = await replayOffline(replay);
-  console.log("Offline replay:", JSON.stringify(offline.outputs, null, 2));
-}
-
-async function readFixture(name) {
-  return readFile(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
-}
+process.stdout.write(`\nWrote 3 receipts to ${receiptsDirRel}/.\n`);
+process.stdout.write("Next steps (run from repo root):\n");
+process.stdout.write(
+  `  pnpm --filter lattice-cli exec lattice verify ${successReceiptPathRel} --key ${keysetPathRel}\n`,
+);
+process.stdout.write(
+  `  pnpm --filter lattice-cli exec lattice repro ${successResult.receiptId} --key ${keysetPathRel} --fixtures ${fixturesDirRel}\n`,
+);
+process.stdout.write(
+  `  pnpm --filter lattice-cli exec lattice eval --fixtures ${receiptsDirRel} --key ${keysetPathRel} --artifacts ${fixturesDirRel} --init-baseline\n`,
+);
