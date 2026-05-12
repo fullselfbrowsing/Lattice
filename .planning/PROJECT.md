@@ -38,10 +38,23 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] Phase 10 receipts inside the replay envelope: `ReplayEnvelope.receipt?` and `ReplayEnvelope.contract?` additive optional fields (type-only imports); pure async `materializeReplayEnvelope(receipt, { artifactLoader, keySet, ... })` that verifies the receipt BEFORE loading any artifacts; `MaterializationError` discriminated by kind `verify-failed | artifact-load-failed | envelope-malformed`; round-trip property test asserts `createReceipt → materializeReplayEnvelope → replayOffline` preserves `outputHash`. (RECEIPT-09)
 - [x] Phase 11 lattice CLI - repro and verify: new `packages/lattice-cli` workspace package with `lattice` bin via tsdown shebang detection; `citty@0.2.2` lazy subcommand loading; `lattice repro <id-or-path>` runs load -> verify -> materialize -> replayOffline -> diff outputHash with exit codes 0/1/2; `lattice verify <path>` runs signature + structural verification with single-line OK/FAIL output; filesystem artifact loader reads `.lattice/fixtures/<sha256>.bin`; depcheck gate prevents CLI deps from entering lattice runtime; redacted-by-default (no `--unsafe-unredacted` flag in v1.1); handler tests use mock argv, bin smoke test spawns built binary. (CLI-01..06)
 - [x] Phase 12 lattice eval CI gate: new `lattice eval` lazy subcommand walks `.lattice/receipts/`, replays each via `replayOffline`, gates layered determinism (Exact -> Semantic-cheap no-op -> Semantic-expensive judge with N=3 median) and baseline-relative cost / quality regressions; `--init-baseline` flag writes a fresh baseline; disk-backed judge cache keyed by `hash(fixtureId, model_fingerprint, judge_prompt, output_canonicalized)`; stdout emits single-line JSON `EvalRunReport` (with reserved `tripwireOutcomes: []` forward-compat slot); exit codes 0/1/2 deterministic; configurable cost (default 10%) and quality (default 0.05) tolerances. (EVAL-01..06)
+- [x] Phase 13 showcase + milestone validation: `examples/work-inbox` refactored into 3 deterministic scenarios (success / tripwire-violated / no-contract-match) demonstrating contract + signed receipts + redaction-aware verification end-to-end; ephemeral Ed25519 keypair generated per run; receipts written to `.lattice/receipts/`, content-addressed artifacts to `.lattice/fixtures/<sha256>.bin`; copy-pastable `lattice verify` / `lattice repro` / `lattice eval` next-step prompts; `packages/lattice-cli/test/showcase-e2e.test.ts` spawns showcase + CLI bins (6 e2e cases, 105/105 total tests passing); 36-row REQ-coverage matrix in 13-02-SUMMARY.md confirms every v1.1 requirement has an observable behavior. Known v1.1 boundary: `lattice repro` and `lattice eval` cannot fully reconstruct a `RunIntent` from a receipt alone (no embedded task/outputs/policy); the test asserts the documented `execution_unavailable` behavior with forward-compat for v1.2 sidecar-outputs. (cross-cutting integration; validates all 36 v1.1 REQ-IDs)
 
 ### Active
 
-v1.1 requirements are tracked in `.planning/REQUIREMENTS.md` and mapped to phases in `.planning/ROADMAP.md`. They cover capability contracts, pre-flight contract proof, tripwire invariants, signed receipts (Ed25519), the `lattice repro` CLI, and the `lattice eval` CI gate.
+All v1.1 requirements validated. v1.1 (Capability Receipts) ready for milestone audit and archive.
+
+### Known v1.2 Carry-Forward (tech debt)
+
+- `lattice repro` / `lattice eval` cannot replay or grade against a receipt alone — receipts intentionally minimal (no task/outputs/policy embedded). v1.2 will accept a sidecar JSON file with the original RunIntent inputs, enabling end-to-end replay round-trips.
+- Vitest-compatible JSON/JUnit reporter for `lattice eval`.
+- Cross-platform CI matrix (Windows) + published-tarball smoke test.
+- Tripwires-as-eval-scorers wiring (the report slot is reserved).
+- Typed verify error union extensions (`EnvironmentDrift`, `RedactionDrift`, `Tampered`).
+- KMS adapter shapes for `ReceiptSigner`.
+- Lineage merkle root signed inside receipts.
+- Multi-tier cost/quality thresholds.
+- `lattice receipt diff` subcommand.
 
 ### Out of Scope
 
@@ -117,4 +130,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 — Phases 7-12 complete; Phase 13 (Showcase + Milestone Validation) next*
+*Last updated: 2026-05-12 — Milestone v1.1 (Capability Receipts) complete; all 7 phases verified, ready for audit*
