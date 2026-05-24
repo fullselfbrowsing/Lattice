@@ -43,6 +43,16 @@ export interface CreateReceiptInput {
   readonly redactionPolicyId?: string;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
+  // Phase 2 v1.1 step-marker fields. When ANY of these is provided, the
+  // emitted receipt body's `version` is bumped to "lattice-receipt/v1.1";
+  // when ALL are absent, the body's `version` stays "lattice-receipt/v1"
+  // for backward compatibility with v1 verifiers.
+  readonly stepName?: string;
+  readonly stepIndex?: number;
+  readonly parentStepName?: string;
+  readonly previousStepName?: string;
+  readonly sessionId?: string;
+  readonly timestamp?: string;
 }
 
 /**
@@ -73,10 +83,23 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
+  // Phase 2 version-bump heuristic: any step-marker field set -> v1.1;
+  // otherwise v1 (preserves backward compatibility with Phase 1 callers).
+  const hasStepMarker =
+    input.stepName !== undefined ||
+    input.stepIndex !== undefined ||
+    input.parentStepName !== undefined ||
+    input.previousStepName !== undefined ||
+    input.sessionId !== undefined ||
+    input.timestamp !== undefined;
+  const version: "lattice-receipt/v1" | "lattice-receipt/v1.1" = hasStepMarker
+    ? "lattice-receipt/v1.1"
+    : "lattice-receipt/v1";
+
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).
   const body0: CapabilityReceiptBody = {
-    version: "lattice-receipt/v1",
+    version,
     receiptId,
     runId: input.runId,
     issuedAt,
@@ -96,6 +119,13 @@ export async function createReceipt(
     ...(input.tripwireEvidence !== undefined
       ? { tripwireEvidence: input.tripwireEvidence }
       : {}),
+    // v1.1 step-marker fields (conditional-spread to honor exactOptionalPropertyTypes)
+    ...(input.stepName !== undefined ? { stepName: input.stepName } : {}),
+    ...(input.stepIndex !== undefined ? { stepIndex: input.stepIndex } : {}),
+    ...(input.parentStepName !== undefined ? { parentStepName: input.parentStepName } : {}),
+    ...(input.previousStepName !== undefined ? { previousStepName: input.previousStepName } : {}),
+    ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+    ...(input.timestamp !== undefined ? { timestamp: input.timestamp } : {}),
   };
 
   // Step 2: redact BEFORE canonicalize. body now carries the redactions[]

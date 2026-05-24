@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 
 import { PAYLOAD_TYPE, base64Decode } from "./envelope.js";
+import { createMemoryKeySet } from "./keyset.js";
 import { DEFAULT_REDACTION_POLICY_ID, redactReceiptBody } from "./redact.js";
 import {
   createInMemorySigner,
@@ -13,6 +14,7 @@ import type {
   ContractVerdict,
   ReceiptSigner,
 } from "./types.js";
+import { verifyReceipt } from "./verify.js";
 
 import { createReceipt, type CreateReceiptInput } from "./receipt.js";
 
@@ -307,5 +309,122 @@ describe("receipt.ts — determinism", () => {
     // Ed25519 is deterministic per RFC 8032 — signatures byte-equal too.
     expect(env1.signatures[0]?.sig).toBe(env2.signatures[0]?.sig);
     expect(env1.signatures[0]?.keyid).toBe(env2.signatures[0]?.keyid);
+  });
+});
+
+describe("receipt.ts — v1.1 step-marker fields (Phase 2)", () => {
+  it("mints v1.1 receipt when any step-marker field is set", async () => {
+    const { privateKeyJwk: pk, publicKeyJwk: vk } =
+      await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(pk, {
+      kid: "phase-2-test-key",
+      publicKeyJwk: vk,
+    });
+    const envelope = await createReceipt(
+      {
+        runId: "phase-2-test-run-v11",
+        model: { requested: "test-model", observed: null },
+        route: {
+          providerId: "test",
+          capabilityId: "test/v11",
+          attemptNumber: 1,
+        },
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: 0 },
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+        stepName: "click-link",
+        stepIndex: 3,
+        sessionId: "session-1",
+        timestamp: "2026-05-24T18:00:00.000Z",
+      },
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      { kid: "phase-2-test-key", publicKeyJwk: vk, state: "active" },
+    ]);
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.stepName).toBe("click-link");
+      expect(result.body.stepIndex).toBe(3);
+      expect(result.body.sessionId).toBe("session-1");
+      expect(result.body.timestamp).toBe("2026-05-24T18:00:00.000Z");
+    }
+  });
+
+  it("mints v1 receipt (backward compat) when no step-marker fields are set", async () => {
+    const { privateKeyJwk: pk, publicKeyJwk: vk } =
+      await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(pk, {
+      kid: "phase-2-test-key",
+      publicKeyJwk: vk,
+    });
+    const envelope = await createReceipt(
+      {
+        runId: "phase-2-test-run-v1",
+        model: { requested: "test-model", observed: null },
+        route: {
+          providerId: "test",
+          capabilityId: "test/v1",
+          attemptNumber: 1,
+        },
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: 0 },
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+      },
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      { kid: "phase-2-test-key", publicKeyJwk: vk, state: "active" },
+    ]);
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1");
+      expect(result.body.stepName).toBeUndefined();
+      expect(result.body.stepIndex).toBeUndefined();
+      expect(result.body.sessionId).toBeUndefined();
+    }
+  });
+
+  it("mints v1.1 receipt with single stepName field (any field triggers bump)", async () => {
+    const { privateKeyJwk: pk, publicKeyJwk: vk } =
+      await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(pk, {
+      kid: "phase-2-test-key",
+      publicKeyJwk: vk,
+    });
+    const envelope = await createReceipt(
+      {
+        runId: "phase-2-test-run-single",
+        model: { requested: "test-model", observed: null },
+        route: {
+          providerId: "test",
+          capabilityId: "test/single",
+          attemptNumber: 1,
+        },
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: 0 },
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+        stepName: "single-field-bump",
+      },
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      { kid: "phase-2-test-key", publicKeyJwk: vk, state: "active" },
+    ]);
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.stepName).toBe("single-field-bump");
+    }
   });
 });

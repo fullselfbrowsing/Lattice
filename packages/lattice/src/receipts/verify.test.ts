@@ -355,3 +355,70 @@ describe("verify.ts — purity", () => {
     }
   });
 });
+
+describe("verify.ts — v1.1 backward-compatible verification (Phase 2)", () => {
+  it("accepts a v1.1 receipt envelope (round-trip mint + verify)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("phase-2-verify-key");
+    const env = await createReceipt(
+      {
+        ...minimalInput(),
+        runId: "phase-2-verify-run",
+        stepName: "v11-verify-test",
+        stepIndex: 0,
+      },
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("phase-2-verify-key", publicKeyJwk, "active"),
+    ]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.stepName).toBe("v11-verify-test");
+      expect(result.body.stepIndex).toBe(0);
+    }
+  });
+
+  it("emits version-mismatch when body.version is neither v1 nor v1.1", async () => {
+    // Construct a synthetic envelope with a payload encoding version
+    // "lattice-receipt/v9". The structural check at Step 3 of the decision
+    // tree fires BEFORE keyset lookup (Step 4) and signature verification
+    // (Step 6), so the version-mismatch verdict is returned regardless of
+    // signature validity.
+    const fakeBody = {
+      version: "lattice-receipt/v9",
+      receiptId: "00000000-0000-4000-8000-000000000000",
+      runId: "fake-run",
+      issuedAt: "2026-05-24T00:00:00.000Z",
+      kid: "fake-key",
+      model: { requested: "fake", observed: null },
+      route: {
+        providerId: "fake",
+        capabilityId: "fake/x",
+        attemptNumber: 1,
+      },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+    };
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(fakeBody));
+    const env: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload: base64Encode(payloadBytes),
+      signatures: [
+        { keyid: "fake-key", sig: base64Encode(new Uint8Array(64)) },
+      ],
+    };
+    const keySet = createMemoryKeySet([]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.error.kind).toBe("version-mismatch");
+    }
+  });
+});
