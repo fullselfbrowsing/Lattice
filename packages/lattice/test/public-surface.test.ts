@@ -223,9 +223,16 @@ describe("Phase 9 public surface", () => {
     expect(keySet.lookup("unknown")).toBeUndefined();
   });
 
-  it("createReceipt is NOT exported from the public surface", async () => {
+  it("createReceipt IS exported from the public surface (Phase 1 re-export)", async () => {
+    // Phase 1 commit ab6c1f6 (FSB v0.10.0-attempt-2) deliberately re-exported
+    // createReceipt + CreateReceiptInput from src/index.ts so the FSB
+    // integration smoke (tests/lattice-smoke.test.js) can mint receipts via
+    // the public package surface. Prior to that commit, callers had to reach
+    // into internal paths; the re-export collapses the gap. This test asserts
+    // the re-export holds.
     const mod = (await import("../src/index.js")) as Record<string, unknown>;
-    expect("createReceipt" in mod).toBe(false);
+    expect("createReceipt" in mod).toBe(true);
+    expect(typeof mod.createReceipt).toBe("function");
   });
 
   it("end-to-end public-surface integration — createAI + signer + verifyReceipt", async () => {
