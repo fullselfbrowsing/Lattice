@@ -29,7 +29,17 @@ export {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./providers/adapters.js";
+export { createAnthropicProvider } from "./providers/anthropic.js";
+export type { AnthropicProviderOptions } from "./providers/anthropic.js";
 export { createFakeProvider } from "./providers/fake.js";
+export { createGeminiProvider } from "./providers/gemini.js";
+export type { GeminiProviderOptions } from "./providers/gemini.js";
+export { createLmStudioProvider } from "./providers/lm-studio.js";
+export type { LmStudioProviderOptions } from "./providers/lm-studio.js";
+export { createOpenRouterProvider } from "./providers/openrouter.js";
+export type { OpenRouterProviderOptions } from "./providers/openrouter.js";
+export { createXaiProvider } from "./providers/xai.js";
+export type { XaiProviderOptions } from "./providers/xai.js";
 export { materializeReplayEnvelope } from "./replay/materialize.js";
 export {
   createReplayEnvelope,
