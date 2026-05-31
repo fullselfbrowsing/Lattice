@@ -281,4 +281,79 @@ write("favicon-16.svg", render({ ...C_light, size: 16, pad: 0.08, idPrefix: "f16
   write("social-card.svg", svg);
 }
 
+// ---------------------------------------------------------------------------
+// GIFs — render each rotation frame as a fresh SVG (crisp lines at every
+// angle) and stitch via rsvg-convert + ImageMagick. The static SVG approach
+// avoids the bitmap-interpolation blur you get from rotating a PNG. Period
+// is 14 seconds, matching the design's CSS rotate(360deg) keyframe.
+// ---------------------------------------------------------------------------
+
+import { execSync, spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, readFileSync as fsRead } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+function which(cmd) {
+  const r = spawnSync("which", [cmd], { encoding: "utf8" });
+  return r.status === 0 && r.stdout.trim().length > 0;
+}
+
+if (!which("rsvg-convert") || !which("magick")) {
+  console.log("Skipping GIFs (rsvg-convert + magick required).");
+  console.log("Done.");
+  process.exit(0);
+}
+
+const FRAMES = 60;
+const PERIOD = 14;            // seconds, matches the design
+const DELAY_CS = Math.round(PERIOD * 100 / FRAMES); // ImageMagick delay (centiseconds)
+const OUT_SIZE = 480;         // frame raster size
+const GIF_SIZE = 360;         // final GIF size
+const LIGHT_BG = "#f4f5f7";
+const DARK_BG  = "#0b1220";
+
+function wrapSvgRotated(svg, angle, size) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const openEnd = svg.indexOf(">") + 1;
+  const closeStart = svg.lastIndexOf("</svg>");
+  const head = svg.slice(0, openEnd);
+  const inner = svg.slice(openEnd, closeStart);
+  return `${head}<g transform="rotate(${angle.toFixed(4)} ${cx} ${cy})">${inner}</g></svg>`;
+}
+
+function buildGif({ srcSvgPath, outGifPath, bg, label }) {
+  const tmp = mkdtempSync(join(tmpdir(), `lat-spin-${label}-`));
+  const src = fsRead(srcSvgPath, "utf8");
+  for (let i = 0; i < FRAMES; i++) {
+    const angle = (i * 360) / FRAMES;
+    const rotated = wrapSvgRotated(src, angle, 440);
+    const svgPath = join(tmp, `f${String(i).padStart(3, "0")}.svg`);
+    const pngPath = join(tmp, `f${String(i).padStart(3, "0")}.png`);
+    writeFileSync(svgPath, rotated);
+    execSync(`rsvg-convert -w ${OUT_SIZE} -h ${OUT_SIZE} -b transparent ${svgPath} -o ${pngPath}`);
+  }
+  // Stitch + optimize.
+  execSync(
+    `magick -delay ${DELAY_CS} -loop 0 -dispose previous ${join(tmp, "f*.png")} ` +
+    `-resize ${GIF_SIZE}x${GIF_SIZE} -background "${bg}" -alpha remove -alpha off ` +
+    `-colors 48 -layers Optimize -fuzz 4% ${outGifPath}`
+  );
+  rmSync(tmp, { recursive: true, force: true });
+  console.log(`wrote ${outGifPath} (${FRAMES} frames, ${PERIOD}s period)`);
+}
+
+buildGif({
+  srcSvgPath: resolve(ASSETS, "logo-mark.svg"),
+  outGifPath: resolve(ASSETS, "logo-mark-spin.gif"),
+  bg: LIGHT_BG,
+  label: "light",
+});
+buildGif({
+  srcSvgPath: resolve(ASSETS, "logo-mark-dark.svg"),
+  outGifPath: resolve(ASSETS, "logo-mark-spin-dark.gif"),
+  bg: DARK_BG,
+  label: "dark",
+});
+
 console.log("Done.");
