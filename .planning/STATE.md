@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: phase-22-complete
-stopped_at: Phases 21 + 22 COMPLETE on v1.2 branch. Phase 21 (ff2f062) shipped 5 agent infrastructure primitives (cost tracker, transcript store, goal-progress tracker, action-history dedup, permission context) — AGENT-INFRA-01..04 + PERM-01 closed. Phase 22 (34483a4) shipped examples/agent-loop showcase (real Ed25519 + 3 receipts verified end-to-end) and evalAgentRun helper — SHOWCASE-AGENT-01..02 closed. 733/733 workspace tests pass. ONLY PHASE 23 REMAINS (milestone audit + v1.2.0 tag).
+status: phase-23-audit-complete-tag-pending
+stopped_at: Phase 23 milestone audit COMPLETE on v1.2 branch. Wrote `.planning/v1.2-MILESTONE-INTEGRATION.md` (46/46 REQ-IDs WIRED, 15/15 e2e flows COMPLETE, 0 blockers, 1 non-blocking V1.2-LIMITATION-1 documented) + `.planning/milestones/v1.2-MILESTONE-AUDIT.md` (v1.1-CARRYFORWARD-TRACE-EXT-01 CLOSED in Phase 20; v1.3 carry-forward enumerated). 733/733 workspace tests pass; strict tsc clean. PENDING USER TRIGGER: cut v1.2.0 tag, push v1.2 + tag to fullselfbrowsing/Lattice, switch FSB automation/lattice to submodule pinned at the tag, update LATTICE-PIN.md.
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phases 21 + 22 closed; 41 of 41 v1.2 REQ-IDs closed; ready for Phase 23 milestone audit + tag
+last_activity: 2026-05-31 — Phase 23 milestone audit complete; 46 of 46 v1.2 REQ-IDs WIRED end-to-end; ready for v1.2.0 tag + Stage 5 distribution (user confirmation required)
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 31
   completed_plans: 31
-  percent: 90
+  percent: 100
 ---
 
 # Project State

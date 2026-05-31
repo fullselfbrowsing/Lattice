@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | v1.0 milestone | Shipped | 2026-04-22 | `.planning/milestones/v1.0-ROADMAP.md` |
 | v1.1 Capability Receipts | Shipped | 2026-05-12 | `.planning/milestones/v1.1-ROADMAP.md` |
-| v1.2 FSB Integration + Agent Capability | In progress | — | inline below + `.planning/milestones/v1.2-ROADMAP.md` |
+| v1.2 FSB Integration + Agent Capability | Audit complete; tag + Stage 5 pending | — | inline below + `.planning/milestones/v1.2-ROADMAP.md` |
 
 ## v1.2: FSB Integration + Agent Capability
 
@@ -30,7 +30,7 @@ Phase numbering continues from v1.1 (which ended at Phase 13.2).
 - [x] **Phase 20: Pluggable AgentHost Adapter + TRACE-EXT-01 Recovery Markers** (Track B forward) — completed 2026-05-31
 - [x] **Phase 21: Agent Infrastructure Primitives** (Track B forward) — completed 2026-05-31
 - [x] **Phase 22: Agent Showcase + Eval Mode** (Track B forward) — completed 2026-05-31
-- [ ] **Phase 23: Milestone Audit + Tag** (Track B forward, TBD)
+- [x] **Phase 23: Milestone Audit + Tag** (Track B forward) — audit complete 2026-05-31 (`.planning/milestones/v1.2-MILESTONE-AUDIT.md` + `.planning/v1.2-MILESTONE-INTEGRATION.md`); 46/46 REQ-IDs WIRED end-to-end; 733/733 workspace tests pass; `v1.2.0` tag + Stage 5 distribution pending user trigger.
 
 ### Phase Details
 
