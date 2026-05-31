@@ -19,8 +19,8 @@ Surface inventory: `lattice/packages/lattice/src/receipts/{receipt,sign,verify,k
 | Domain | Gap | Status | Severity | Notes |
 |--------|-----|--------|----------|-------|
 | Receipts | Capability Receipt mint + verify round-trip via Ed25519 (DSSE v1.0 envelope + JCS canonical form) | Covered | n/a | v1.1 ships this surface end-to-end; FSB's Phase 1 smoke proves the round-trip from a Node-side consumer. |
-| Receipts | Step-transition fields on the receipt body (stepName, stepIndex, parentStepName, previousStepName, timestamp per FSB attempt-1 inspector envelope) | Needs extension | Blocker | FSB autopilot emits 12 step markers per iteration (attempt-1 02-state-inspectability-carve-out). Without these fields on the receipt body, every step-marker emission must carry the metadata out-of-band, defeating the "Lattice receipt is the inspector envelope" thesis (INV-06). Phase 2 candidate. |
-| Receipts | sessionId field on the receipt body (FSB ties step markers to a persistent session across SW eviction) | Needs extension | Blocker | Phase 2 candidate. |
+| Receipts | Step-transition fields on the receipt body (stepName, stepIndex, parentStepName, previousStepName, timestamp per FSB attempt-1 inspector envelope) | Covered | n/a | Phase 2 (FSB v0.10.0-attempt-2) added stepName, stepIndex, parentStepName, previousStepName, timestamp as optional top-level fields on CapabilityReceiptBody; version bumped via literal-union `"lattice-receipt/v1" \| "lattice-receipt/v1.1"`. JCS round-trip unchanged. Redaction policy unchanged (step-marker fields are stable identifiers, not user content). Lattice commit `5c48134`. |
+| Receipts | sessionId field on the receipt body (FSB ties step markers to a persistent session across SW eviction) | Covered | n/a | Phase 2 (FSB v0.10.0-attempt-2) added sessionId as optional top-level field on CapabilityReceiptBody, same commit. Lattice commit `5c48134`. |
 | Receipts | createReceipt is reachable via the public `lattice` bare specifier | Covered | n/a | Resolved in Phase 1 by re-exporting from `src/index.ts` (D-13 narrowed). |
 
 ## Tripwires/hooks
@@ -30,10 +30,11 @@ Surface inventory: `lattice/packages/lattice/src/policy/policy.ts` (PolicySpec s
 | Domain | Gap | Status | Severity | Notes |
 |--------|-----|--------|----------|-------|
 | Tripwires/hooks | Pure tripwire evaluator over invariant set | Covered | n/a | v1.1 ships `evaluateTripwires` -- typed result, never throws. |
-| Tripwires/hooks | Priority bands (SAFETY > OBSERVABILITY > EXTENSION) for hook ordering | Needs addition | Blocker | FSB attempt-1 Phase 1 (hooks-foundation) built this inside FSB. Per INV-06 this lives in Lattice. Phase 3 candidate. |
-| Tripwires/hooks | Per-handler matcher regex + race-with-log budget so a slow handler cannot stall the safety band | Needs addition | Blocker | FSB attempt-1 pattern; required for autopilot reliability. Phase 3 candidate. |
-| Tripwires/hooks | Frozen contexts (handler cannot mutate the band-set after registration window closes) | Needs addition | Important | Closes attempt-1 duplication. Phase 3 candidate. |
-| Tripwires/hooks | Mid-session registration freeze | Needs addition | Important | Phase 3 candidate. |
+| Tripwires/hooks | Priority bands (SAFETY > OBSERVABILITY > EXTENSION) for hook ordering | Covered | n/a | Phase 2 (FSB v0.10.0-attempt-2) added `lattice/packages/lattice/src/contract/bands.ts` exporting createHookPipeline factory. Bands: SAFETY=0, OBSERVABILITY=1, EXTENSION=2. Lower number runs first; within-band registration order preserved. Lattice commit `ba6172c`. |
+| Tripwires/hooks | Per-handler matcher regex + race-with-log budget so a slow handler cannot stall the safety band | Covered | n/a | Phase 2 -- bands.ts RegisterOptions.matcher (optional per-handler regex) + RegisterOptions.budgetMs (default 100ms). Timeout emits HOOK_TIMEOUT event via TracerLike (no-abort `Promise.race`; CPU-leak risk explicitly accepted per CONTEXT.md D-09). Lattice commit `ba6172c`. |
+| Tripwires/hooks | Frozen contexts (handler cannot mutate the band-set after registration window closes) | Covered | n/a | Phase 2 -- bands.ts pipeline.run() wraps each handler's context in structuredClone + Object.freeze. Handler mutations do not leak. Lattice commit `ba6172c`. |
+| Tripwires/hooks | Mid-session registration freeze | Covered | n/a | Phase 2 -- bands.ts pipeline.freeze() is irreversible; subsequent register() throws Error(name === "PIPELINE_FROZEN"). Lattice commit `ba6172c`. |
+| Tripwires/hooks | Typed lifecycle event union (BEFORE_PROVIDER, AFTER_PROVIDER, BEFORE_TOOL, AFTER_TOOL) separate from RunEventKind | Covered | n/a | Phase 2 -- bands.ts HookLifecycleEvent union. Separate vocabulary from tracing.ts RunEventKind by design (CONTEXT.md D-12). Phase 3 (observability) can extend either independently. Lattice commit `ba6172c`. |
 
 ## Providers
 

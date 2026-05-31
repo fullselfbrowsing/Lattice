@@ -1,4 +1,5 @@
 export { artifact } from "./artifacts/artifact.js";
+export { createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
 export { contract } from "./contract/contract.js";
 export { inv } from "./contract/invariants.js";
 export { defaultPiiDetectors } from "./contract/pii-detectors.js";

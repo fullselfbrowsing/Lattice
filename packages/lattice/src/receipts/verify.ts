@@ -36,7 +36,12 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const v = value as Record<string, unknown>;
-  if (v.version !== "lattice-receipt/v1") return undefined;
+  // v1.1 bump (Phase 2): accept BOTH v1 and v1.1 literals. Receipts whose
+  // version is neither still fall through to the `version-mismatch` path
+  // via the existing return-undefined contract (see verify.ts decision tree).
+  if (v.version !== "lattice-receipt/v1" && v.version !== "lattice-receipt/v1.1") {
+    return undefined;
+  }
   if (typeof v.receiptId !== "string") return undefined;
   if (typeof v.runId !== "string") return undefined;
   if (typeof v.issuedAt !== "string") return undefined;

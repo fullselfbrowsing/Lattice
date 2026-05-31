@@ -40,7 +40,7 @@ export interface ReceiptRedaction {
 }
 
 export interface CapabilityReceiptBody {
-  readonly version: "lattice-receipt/v1";
+  readonly version: "lattice-receipt/v1" | "lattice-receipt/v1.1";
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
@@ -56,6 +56,16 @@ export interface CapabilityReceiptBody {
   readonly redactions: readonly ReceiptRedaction[];
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
+  // Phase 2 v1.1 step-marker fields. All optional; populated by callers when
+  // a step-transition emits a receipt. v1 receipts omit these entirely.
+  // Step-marker fields are stable identifiers, not user content -- the
+  // redaction manifest (redact.ts) intentionally does NOT touch them.
+  readonly stepName?: string;
+  readonly stepIndex?: number;
+  readonly parentStepName?: string;
+  readonly previousStepName?: string;
+  readonly sessionId?: string;
+  readonly timestamp?: string;
 }
 
 export interface ReceiptSignature {
