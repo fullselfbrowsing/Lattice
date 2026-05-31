@@ -28,8 +28,8 @@ Phase numbering continues from v1.1 (which ended at Phase 13.2).
 - [x] **Phase 18: Survivability Adapter Contract** (Track A retro) — completed 2026-05-31. Note: TRACE-EXT-01 (recovery markers) deferred to Track B per phase 18 VERIFICATION.md.
 - [x] **Phase 19: Delegation Surface Policy Flip + Agent Runtime Entrypoint** (Track B forward) — completed 2026-05-31
 - [x] **Phase 20: Pluggable AgentHost Adapter + TRACE-EXT-01 Recovery Markers** (Track B forward) — completed 2026-05-31
-- [ ] **Phase 21: Agent Infrastructure Primitives** (Track B forward, TBD)
-- [ ] **Phase 22: Agent Showcase + Eval Mode** (Track B forward, TBD)
+- [x] **Phase 21: Agent Infrastructure Primitives** (Track B forward) — completed 2026-05-31
+- [x] **Phase 22: Agent Showcase + Eval Mode** (Track B forward) — completed 2026-05-31
 - [ ] **Phase 23: Milestone Audit + Tag** (Track B forward, TBD)
 
 ### Phase Details

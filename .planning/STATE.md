@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: phase-20-complete
-stopped_at: Phase 20 COMPLETE (AgentHost + TRACE-EXT-01) on v1.2 branch. 3 plans landed: 20-01 (AgentHost interface + noop impl + recovery markers) + 20-02 (runAgent host integration + survivability resume) at 3794896, 20-03 (public surface + end-to-end survivability smoke + verification) at aaab2bf. 686/686 workspace tests pass. REQ-IDs closed: HOST-01..03, TRACE-EXT-01 (4 of 4). NEXT: Phase 21 (Agent Infrastructure Primitives — cost tracker, transcript store, goal-progress, action-history, permission context).
+status: phase-22-complete
+stopped_at: Phases 21 + 22 COMPLETE on v1.2 branch. Phase 21 (ff2f062) shipped 5 agent infrastructure primitives (cost tracker, transcript store, goal-progress tracker, action-history dedup, permission context) — AGENT-INFRA-01..04 + PERM-01 closed. Phase 22 (34483a4) shipped examples/agent-loop showcase (real Ed25519 + 3 receipts verified end-to-end) and evalAgentRun helper — SHOWCASE-AGENT-01..02 closed. 733/733 workspace tests pass. ONLY PHASE 23 REMAINS (milestone audit + v1.2.0 tag).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 20 closed; 3 plans + 686 tests pass; ready for Phase 21
+last_activity: 2026-05-31 — Phases 21 + 22 closed; 41 of 41 v1.2 REQ-IDs closed; ready for Phase 23 milestone audit + tag
 progress:
   total_phases: 10
-  completed_phases: 7
-  total_plans: 25
-  completed_plans: 25
-  percent: 70
+  completed_phases: 9
+  total_plans: 31
+  completed_plans: 31
+  percent: 90
 ---
 
 # Project State
