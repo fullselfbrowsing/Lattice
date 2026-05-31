@@ -1,5 +1,5 @@
 export { artifact } from "./artifacts/artifact.js";
-export { createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
+export { BAND, createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
 export {
   DEFAULT_CHECKPOINT_BAND,
   STEP_TRANSITION_EVENT_NAME,
@@ -119,6 +119,15 @@ export type {
   PermissionRule,
   PermissionVerdict,
 } from "./agent/infra/permission-context.js";
+// Agent eval helper (v1.2 Phase 22).
+export { evalAgentRun } from "./agent/eval.js";
+export type {
+  AgentEvalResult,
+  AgentRunSnapshot,
+  EvalOptions,
+  EvalRegression,
+  EvalRegressionKind,
+} from "./agent/eval.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";

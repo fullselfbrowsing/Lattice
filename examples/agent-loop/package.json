@@ -1,0 +1,9 @@
+{
+  "name": "lattice-example-agent-loop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "lattice": "workspace:*"
+  }
+}
