@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
 status: executing
-stopped_at: Phase 14 merged into v1.2 (INDEX-01 + PKG-01 closed). Phase 15 next (Receipt v1.1 schema extension + Tripwire band pipeline + Lifecycle events).
+stopped_at: Phase 15 merged into v1.2 (10 REQ-IDs closed: RECEIPT-EXT-01..03, BAND-01..05, LIFECYCLE-01, INDEX-02). Phase 16 next (Step-Transition Tracing + Checkpoint Hook).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 14 retro merged via --no-ff into v1.2 branch (merge commit a4c2dc3)
+last_activity: 2026-05-31 — Phase 15 retro merged via --no-ff into v1.2 (merge commit a51262a)
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 10
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
+  percent: 20
 ---
 
 # Project State
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 15 — Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events (Track A retro from FSB v0.10.0-attempt-2 Phase 2)
+**Current focus:** Phase 16 — Step-Transition Tracing + Checkpoint Hook (Track A retro from FSB v0.10.0-attempt-2 Phase 3)
 
 ## Current Position
 
-Phase: 15
+Phase: 16
 Plan: Not started
-Status: Track A in progress. Phase 14 merged (a4c2dc3). Phase 15 next.
+Status: Track A in progress. Phases 14-15 merged. Phase 16 next.
 Last activity: 2026-05-31
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ### Completed Phases (v1.2)
 
 - Phase 14 — Public Surface Index + Packaging Readiness — merge commit a4c2dc3 — REQ-IDs closed: INDEX-01, PKG-01
+- Phase 15 — Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events — merge commit a51262a — REQ-IDs closed: RECEIPT-EXT-01..03, BAND-01..05, LIFECYCLE-01, INDEX-02 (10 REQs)
 
 ## Performance Metrics
 
