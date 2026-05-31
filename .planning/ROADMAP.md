@@ -21,7 +21,7 @@ Phase numbering continues from v1.1 (which ended at Phase 13.2).
 
 ### Phases
 
-- [ ] **Phase 14: Public Surface Index + Packaging Readiness** (Track A retro)
+- [x] **Phase 14: Public Surface Index + Packaging Readiness** (Track A retro) — completed 2026-05-31
 - [ ] **Phase 15: Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events** (Track A retro)
 - [ ] **Phase 16: Step-Transition Tracing + Checkpoint Hook** (Track A retro)
 - [ ] **Phase 17: Provider Adapter Alignment + INV-03 Parity Smoke** (Track A retro)

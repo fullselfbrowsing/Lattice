@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: planning
-stopped_at: v1.2 milestone opened. Track A (Phases 14-18 retro) ready to land via phase-grouped merges from local-fsb-integration branch (HEAD e95067b). Track B (Phases 19-23 forward) awaiting /gsd-discuss-phase for Phase 19 agent runtime entrypoint scope.
+status: executing
+stopped_at: Phase 14 merged into v1.2 (INDEX-01 + PKG-01 closed). Phase 15 next (Receipt v1.1 schema extension + Tripwire band pipeline + Lifecycle events).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — v1.2 milestone opened, REQUIREMENTS + ROADMAP drafted
+last_activity: 2026-05-31 — Phase 14 retro merged via --no-ff into v1.2 branch (merge commit a4c2dc3)
 progress:
   total_phases: 10
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+  percent: 10
 ---
 
 # Project State
@@ -21,16 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 14 — Public Surface Index + Packaging Readiness (Track A retro from FSB v0.10.0-attempt-2 Phase 1)
+**Current focus:** Phase 15 — Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events (Track A retro from FSB v0.10.0-attempt-2 Phase 2)
 
 ## Current Position
 
-Phase: 14
+Phase: 15
 Plan: Not started
-Status: v1.2 milestone planning open. Track A ready for phase-grouped merges.
+Status: Track A in progress. Phase 14 merged (a4c2dc3). Phase 15 next.
 Last activity: 2026-05-31
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
+
+### Completed Phases (v1.2)
+
+- Phase 14 — Public Surface Index + Packaging Readiness — merge commit a4c2dc3 — REQ-IDs closed: INDEX-01, PKG-01
 
 ## Performance Metrics
 
