@@ -49,6 +49,32 @@ export {
   replayOffline,
   rerunLive,
 } from "./replay/replay.js";
+// Agent runtime (v1.2 Phase 19) — opens the previously out-of-scope
+// Delegation surface as single-agent execution. Multi-agent crews remain
+// Out of Scope.
+export { runAgent } from "./agent/runtime.js";
+export {
+  formatToolsForProvider,
+  toolSchemaToJsonSchema,
+} from "./agent/format-tools.js";
+export { AgentDeniedError } from "./agent/types.js";
+export type {
+  AgentFailure,
+  AgentFailureKind,
+  AgentHost,
+  AgentIntent,
+  AgentResult,
+  AgentSuccess,
+  IterationRecord,
+  ToolUseRequest,
+} from "./agent/types.js";
+export type {
+  ConversationTurn,
+  FormatToolsMode,
+  FormatToolsOptions,
+  FormattedToolsHandle,
+} from "./agent/format-tools.js";
+export type { HookControls, HookDenyDirective } from "./contract/bands.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";

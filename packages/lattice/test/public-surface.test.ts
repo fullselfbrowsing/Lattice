@@ -306,3 +306,58 @@ describe("Phase 10 public surface", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("public-surface — Phase 19 agent runtime", () => {
+  it("re-exports runAgent + formatToolsForProvider + AgentDeniedError as values", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.runAgent).toBe("function");
+    expect(typeof mod.formatToolsForProvider).toBe("function");
+    expect(typeof mod.toolSchemaToJsonSchema).toBe("function");
+    expect(typeof mod.AgentDeniedError).toBe("function");
+    expect(new mod.AgentDeniedError("x", 0).name).toBe("AgentDeniedError");
+  });
+
+  it("type-only: AgentIntent / AgentResult / AgentSuccess / AgentFailure / IterationRecord / ToolUseRequest are exported", async () => {
+    // Imports go through src/index.ts to assert reachability; the values are
+    // never executed.
+    type _AgentIntent = import("../src/index.js").AgentIntent;
+    type _AgentResult = import("../src/index.js").AgentResult;
+    type _AgentSuccess = import("../src/index.js").AgentSuccess;
+    type _AgentFailure = import("../src/index.js").AgentFailure;
+    type _AgentFailureKind = import("../src/index.js").AgentFailureKind;
+    type _AgentHost = import("../src/index.js").AgentHost;
+    type _IterationRecord = import("../src/index.js").IterationRecord;
+    type _ToolUseRequest = import("../src/index.js").ToolUseRequest;
+    type _ConversationTurn = import("../src/index.js").ConversationTurn;
+    type _FormatToolsMode = import("../src/index.js").FormatToolsMode;
+    type _FormatToolsOptions = import("../src/index.js").FormatToolsOptions;
+    type _FormattedToolsHandle = import("../src/index.js").FormattedToolsHandle;
+    type _HookControls = import("../src/index.js").HookControls;
+    type _HookDenyDirective = import("../src/index.js").HookDenyDirective;
+    // Touch the placeholders so TypeScript treats the imports as used.
+    void (null as unknown as
+      | _AgentIntent
+      | _AgentResult
+      | _AgentSuccess
+      | _AgentFailure
+      | _AgentFailureKind
+      | _AgentHost
+      | _IterationRecord
+      | _ToolUseRequest
+      | _ConversationTurn
+      | _FormatToolsMode
+      | _FormatToolsOptions
+      | _FormattedToolsHandle
+      | _HookControls
+      | _HookDenyDirective);
+    expect(true).toBe(true);
+  });
+
+  it("createAI() returns a runtime exposing ai.runAgent next to ai.run", () => {
+    const ai = createAI();
+    expect(typeof ai.runAgent).toBe("function");
+    expect(typeof ai.run).toBe("function");
+    expect(typeof ai.plan).toBe("function");
+    expect(typeof ai.session).toBe("function");
+  });
+});
