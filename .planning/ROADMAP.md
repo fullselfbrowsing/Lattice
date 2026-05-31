@@ -24,7 +24,7 @@ Phase numbering continues from v1.1 (which ended at Phase 13.2).
 - [x] **Phase 14: Public Surface Index + Packaging Readiness** (Track A retro) — completed 2026-05-31
 - [x] **Phase 15: Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events** (Track A retro) — completed 2026-05-31
 - [x] **Phase 16: Step-Transition Tracing + Checkpoint Hook** (Track A retro) — completed 2026-05-31
-- [ ] **Phase 17: Provider Adapter Alignment + INV-03 Parity Smoke** (Track A retro)
+- [x] **Phase 17: Provider Adapter Alignment + INV-03 Parity Smoke** (Track A retro) — completed 2026-05-31
 - [ ] **Phase 18: Survivability Adapter Contract + Recovery Tracing Markers** (Track A retro)
 - [ ] **Phase 19: Delegation Surface Policy Flip + Agent Runtime Entrypoint** (Track B forward, TBD)
 - [ ] **Phase 20: Pluggable AgentHost Adapter** (Track B forward, TBD)

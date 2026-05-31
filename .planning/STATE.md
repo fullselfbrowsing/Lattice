@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
 status: executing
-stopped_at: Phase 16 merged into v1.2 (6 REQ-IDs closed: TRACE-01, CHECKPOINT-01..04, INDEX-03). Phase 17 next (Provider Adapter Alignment + INV-03 Parity Smoke).
+stopped_at: Phase 17 merged into v1.2 (7 REQ-IDs closed: PROV-01..05, INDEX-04, PARITY-01). Phase 18 next (Survivability Adapter Contract + Recovery Tracing Markers — final Track A retro phase).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 16 retro merged via --no-ff into v1.2 (merge commit 103a2ac)
+last_activity: 2026-05-31 — Phase 17 retro merged via --no-ff into v1.2 (merge commit 4391a70)
 progress:
   total_phases: 10
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 30
+  completed_phases: 4
+  total_plans: 15
+  completed_plans: 15
+  percent: 40
 ---
 
 # Project State
@@ -21,22 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 17 — Provider Adapter Alignment + INV-03 Parity Smoke (Track A retro from FSB v0.10.0-attempt-2 Phase 4)
+**Current focus:** Phase 18 — Survivability Adapter Contract + Recovery Tracing Markers (Track A retro from FSB v0.10.0-attempt-2 Phase 5; final Track A phase)
 
 ## Current Position
 
-Phase: 17
+Phase: 18
 Plan: Not started
-Status: Track A in progress. Phases 14-16 merged. Phase 17 next.
+Status: Track A in progress. Phases 14-17 merged. Phase 18 next (final Track A retro phase).
 Last activity: 2026-05-31
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ### Completed Phases (v1.2)
 
 - Phase 14 — Public Surface Index + Packaging Readiness — merge commit a4c2dc3 — REQ-IDs closed: INDEX-01, PKG-01
 - Phase 15 — Receipt v1.1 Schema Extension + Tripwire Band Pipeline + Lifecycle Events — merge commit a51262a — REQ-IDs closed: RECEIPT-EXT-01..03, BAND-01..05, LIFECYCLE-01, INDEX-02 (10 REQs)
 - Phase 16 — Step-Transition Tracing + Checkpoint Hook — merge commit 103a2ac — REQ-IDs closed: TRACE-01, CHECKPOINT-01..04, INDEX-03 (6 REQs)
+- Phase 17 — Provider Adapter Alignment + INV-03 Parity Smoke — merge commit 4391a70 — REQ-IDs closed: PROV-01..05, INDEX-04, PARITY-01 (7 REQs)
 
 ## Performance Metrics
 
