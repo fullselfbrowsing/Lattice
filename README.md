@@ -55,7 +55,7 @@ The v1.2 surface adds two things on top of the same call. A **capability contrac
 
 </div>
 
-> **Status:** v1.2.0 shipped on 2026-05-31. Track A (FSB Integration, Phases 14 to 18) backfilled five FSB-integration extensions onto canonical Lattice. Track B (Agent Capability, Phases 19 to 22) opened the previously out-of-scope Delegation surface as a runtime-agnostic single-agent capability. The Phase 23 milestone audit closed with 46 of 46 REQ-IDs WIRED end-to-end and 733 of 733 workspace tests passing. See [`.planning/milestones/v1.2-MILESTONE-AUDIT.md`](.planning/milestones/v1.2-MILESTONE-AUDIT.md) and [`.planning/v1.2-MILESTONE-INTEGRATION.md`](.planning/v1.2-MILESTONE-INTEGRATION.md) for the full audit trail.
+> **Status:** v1.2.0 shipped on 2026-05-31. Track A (Phases 14 to 18) backfilled five integration extensions onto canonical Lattice. Track B (Phases 19 to 22) opened the previously out-of-scope Delegation surface as a runtime-agnostic single-agent capability. The Phase 23 milestone audit closed with 46 of 46 REQ-IDs wired end-to-end and 733 of 733 workspace tests passing.
 
 ---
 
@@ -531,7 +531,7 @@ Lattice/
 |-- assets/                     # brand assets (mark, wordmark, app icon, favicons, social card, spin gif)
 |-- tools/
 |   `-- gen-assets.mjs          # regenerate brand assets from the design-canvas renderer
-|-- .planning/                  # GSD project plans, state, milestone audits
+|-- .planning/                  # project plans, state, milestone audits
 |-- package.json
 |-- pnpm-workspace.yaml
 `-- tsconfig.base.json
@@ -634,7 +634,7 @@ To regenerate the assets after a design change, edit `tools/gen-assets.mjs` and 
 5. Run `pnpm typecheck`, `pnpm test`, and `pnpm test:types`.
 6. Open a pull request with the behavior change, test coverage, and any public API implications.
 
-Architecture notes for contributors. Keep `packages/lattice/src/index.ts` intentionally small. Keep provider SDK details out of public exports. Treat `.planning/` as the source of roadmap, phase context, and milestone audits.
+Architecture notes for contributors. Keep `packages/lattice/src/index.ts` intentionally small. Keep provider SDK details out of public exports.
 
 ---
 

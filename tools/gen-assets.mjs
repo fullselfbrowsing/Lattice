@@ -309,11 +309,11 @@ if (!which("rsvg-convert") || !which("magick")) {
   process.exit(0);
 }
 
-const FRAMES = 72;
+const FRAMES = 240;                                  // ~17 fps over the period
 const PERIOD = 14;                                   // seconds per full sway
-const DELAY_CS = Math.round(PERIOD * 100 / FRAMES);  // centiseconds per frame
-const RENDER_SIZE = 480;                             // SVG raster size per frame
-const GIF_SIZE = 360;                                // final GIF size
+const DELAY_CS = Math.max(2, Math.round(PERIOD * 100 / FRAMES)); // browser min is 2 cs
+const RENDER_SIZE = 440;                             // SVG raster size per frame
+const GIF_SIZE = 320;                                // final GIF size (tightened to keep filesize sane at 240 frames)
 const LIGHT_BG = "#f4f5f7";
 const DARK_BG  = "#0b1220";
 
@@ -349,7 +349,7 @@ function buildGif({ baseOpts, outGifPath, bg, label }) {
   execSync(
     `magick -delay ${DELAY_CS} -loop 0 -dispose previous ${join(tmp, "f*.png")} ` +
     `-resize ${GIF_SIZE}x${GIF_SIZE} -background "${bg}" -alpha remove -alpha off ` +
-    `-colors 64 -layers Optimize -fuzz 3% ${outGifPath}`
+    `-colors 32 -layers Optimize -fuzz 5% ${outGifPath}`
   );
   rmSync(tmp, { recursive: true, force: true });
   console.log(`wrote ${outGifPath} (${FRAMES} frames, ${PERIOD}s turntable)`);
