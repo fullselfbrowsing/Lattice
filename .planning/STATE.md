@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: track-a-complete
-stopped_at: TRACK A COMPLETE. Phase 18 merged into v1.2 (5 REQ-IDs closed: SURV-01..04, INDEX-05). Track A total: 30 REQ-IDs closed across Phases 14-18 via cherry-pick equivalence from FSB v0.10.0-attempt-2 Phases 1-5. TRACE-EXT-01 deferred to Track B Phase 20. Ready for user `pnpm test` verification then Stage 4 (Track B autonomous via /gsd-autonomous --from 19).
+status: phase-19-in-progress
+stopped_at: Phase 19 (Track B opener) in progress on v1.2 branch. Plan 19-01 (AGENTS.md policy flip, DELEG-01) committed a0e5c9c. Plan 19-02 (agent type foundation + BudgetInvariant.maxIterations/maxWallTimeMs + bands HookControls deny pattern + BEFORE/AFTER_AGENT_ITERATION lifecycle events) committed 00dcd4a. 420/420 lattice tests pass. NEXT: Plans 19-03 (formatToolsForProvider, ~400 LOC + 21 tests across 7 native protocols), 19-04 (runAgent orchestrator, ~500 LOC + 13 tests), 19-05 (public surface + integration smoke). Recommend resuming in a fresh session for context budget.
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 18 retro merged via --no-ff into v1.2 (merge commit 03d7f72) — Track A complete
+last_activity: 2026-05-31 — Phase 19 Plans 19-01 + 19-02 landed; type foundation + bands deny pattern in place; 420/420 tests pass
 progress:
   total_phases: 10
   completed_phases: 5
@@ -21,16 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Stage 4 — Track B (Agent Capability) starting at Phase 19 via /gsd-autonomous --from 19. Awaiting user `pnpm test` verification of Track A first.
+**Current focus:** Phase 19 Plan 19-03 (formatToolsForProvider helper + 7 native parse closures + LM Studio prompt-reencoded fallback). Foundation (types + bands deny + budget extension) already on disk.
 
 ## Current Position
 
-Phase: 19 (Track B starts)
-Plan: Not started
-Status: TRACK A COMPLETE. Phases 14-18 merged. Track B (Phases 19-23) next via autonomous flow.
+Phase: 19
+Plan: 19-03 (next)
+Status: Phase 19 in progress. Plan 19-01 (AGENTS.md policy flip) + Plan 19-02 (type foundation + bands deny + budget extension) committed. 420/420 tests pass.
 Last activity: 2026-05-31
 
-Progress: [█████░░░░░] 50%
+Progress: [█████░░░░░] 52%
+
+### Phase 19 Plan Progress
+
+- [x] Plan 19-01 — AGENTS.md policy flip (DELEG-01) — commit a0e5c9c
+- [x] Plan 19-02 — Agent types + budget extension + bands deny pattern — commit 00dcd4a
+- [ ] Plan 19-03 — formatToolsForProvider helper (AGENT-02)
+- [ ] Plan 19-04 — runAgent orchestrator (AGENT-01, AGENT-03, AGENT-04)
+- [ ] Plan 19-05 — Public surface re-exports + integration smoke + verification
 
 ### Completed Phases (v1.2 / Track A)
 
