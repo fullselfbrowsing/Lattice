@@ -1,5 +1,12 @@
 export { artifact } from "./artifacts/artifact.js";
 export { createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
+export {
+  DEFAULT_CHECKPOINT_BAND,
+  STEP_TRANSITION_EVENT_NAME,
+  createCheckpointHook,
+  type CheckpointHookContext,
+  type CheckpointHookOptions,
+} from "./contract/checkpoint.js";
 export { contract } from "./contract/contract.js";
 export { inv } from "./contract/invariants.js";
 export { defaultPiiDetectors } from "./contract/pii-detectors.js";

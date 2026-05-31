@@ -24,7 +24,8 @@ export type RunEventKind =
   | "run.failed"
   | "tool.call"
   | "replay.offline"
-  | "replay.live";
+  | "replay.live"
+  | "step.transition";
 
 export interface RunEvent {
   readonly kind: RunEventKind;
