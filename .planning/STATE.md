@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: phase-19-complete
-stopped_at: Phase 19 COMPLETE (Track B opener) on v1.2 branch. 5 plans landed: 19-01 (AGENTS.md policy flip) a0e5c9c, 19-02 (foundation) 00dcd4a, 19-03 (formatToolsForProvider) 46f85a0, 19-04 (runAgent orchestrator + ai.runAgent integration) 9b066d8, 19-05 (public surface + integration smoke + verification) f5a30d7. 669/669 workspace tests pass. REQ-IDs closed: DELEG-01, AGENT-01..04 (5 of 5). Native tool_use deferred to Phase 20+ via AgentHost transport seam (documented in 19-VERIFICATION). NEXT: Phase 20 (Pluggable AgentHost Adapter + TRACE-EXT-01 recovery markers).
+status: phase-20-complete
+stopped_at: Phase 20 COMPLETE (AgentHost + TRACE-EXT-01) on v1.2 branch. 3 plans landed: 20-01 (AgentHost interface + noop impl + recovery markers) + 20-02 (runAgent host integration + survivability resume) at 3794896, 20-03 (public surface + end-to-end survivability smoke + verification) at aaab2bf. 686/686 workspace tests pass. REQ-IDs closed: HOST-01..03, TRACE-EXT-01 (4 of 4). NEXT: Phase 21 (Agent Infrastructure Primitives — cost tracker, transcript store, goal-progress, action-history, permission context).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 19 closed; 5 plans + 669 tests pass; ready for Phase 20
+last_activity: 2026-05-31 — Phase 20 closed; 3 plans + 686 tests pass; ready for Phase 21
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 22
-  completed_plans: 22
-  percent: 60
+  completed_phases: 7
+  total_plans: 25
+  completed_plans: 25
+  percent: 70
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 20 — Pluggable AgentHost Adapter (scheduler / transport / storage seams) + TRACE-EXT-01 recovery markers. Composes with v1.2 Phase 18 SurvivabilityAdapter.
+**Current focus:** Phase 21 — Agent Infrastructure Primitives (cost tracker, transcript store, goal-progress tracker, action-history dedup, permission context). All compose with the Phase 19 agent runtime and Phase 20 host seams.
 
 ## Current Position
 
-Phase: 20
+Phase: 21
 Plan: Not started
-Status: Phase 19 closed. Phase 20 next (AgentHost adapter, HOST-01..03 + TRACE-EXT-01).
+Status: Phase 20 closed. Phase 21 next (AGENT-INFRA-01..04 + PERM-01).
 Last activity: 2026-05-31
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ### Completed Phases (v1.2 / Track A)
 
@@ -40,6 +40,7 @@ Progress: [██████░░░░] 60%
 - Phase 17 — Provider Adapter Alignment + INV-03 Parity Smoke — merge commit 4391a70 — REQ-IDs closed: PROV-01..05, INDEX-04, PARITY-01 (7)
 - Phase 18 — Survivability Adapter Contract — merge commit 03d7f72 — REQ-IDs closed: SURV-01..04, INDEX-05 (5). TRACE-EXT-01 deferred to Track B Phase 20.
 - Phase 19 — Delegation Surface Policy Flip + Agent Runtime Entrypoint — plans 19-01..05 committed inline on v1.2 — REQ-IDs closed: DELEG-01, AGENT-01..04 (5). Native tool_use deferred to Phase 20 AgentHost transport seam.
+- Phase 20 — Pluggable AgentHost Adapter + TRACE-EXT-01 — plans 20-01..03 committed inline on v1.2 (3794896 + aaab2bf) — REQ-IDs closed: HOST-01..03, TRACE-EXT-01 (4). Full eviction-resume contract verified end-to-end with real Ed25519 receipt verification across simulated process boundary.
 
 **Track A total: 30 REQ-IDs closed across 23 originating commits (cherry-picked from FSB v0.10.0-attempt-2 Phases 1-5).**
 
