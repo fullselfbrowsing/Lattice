@@ -29,12 +29,46 @@ import type { TracerLike } from "../tracing/tracing.js";
 
 /**
  * Hook lifecycle event vocabulary -- separate from RunEventKind by design.
+ *
+ * Phase 19 (v1.2) additively extends with BEFORE_AGENT_ITERATION and
+ * AFTER_AGENT_ITERATION — emitted by `runAgent` around each iteration's
+ * provider call. Existing four events continue to fire inside each
+ * iteration (BEFORE/AFTER_PROVIDER per native call; BEFORE/AFTER_TOOL
+ * per dispatched tool).
  */
 export type HookLifecycleEvent =
   | "BEFORE_PROVIDER"
   | "AFTER_PROVIDER"
   | "BEFORE_TOOL"
-  | "AFTER_TOOL";
+  | "AFTER_TOOL"
+  | "BEFORE_AGENT_ITERATION"
+  | "AFTER_AGENT_ITERATION";
+
+/**
+ * SAFETY-band veto mechanism — Phase 19.
+ *
+ * Handlers can deny an iteration by calling `controls.deny(reason)`. The
+ * pipeline records the latest reason and exposes it via `lastDenialReason()`.
+ * The reason resets at the start of each `run()` call.
+ *
+ * Composition convention: the agent runtime invokes BEFORE_AGENT_ITERATION
+ * before provider call, then checks `pipeline.lastDenialReason()`. If set,
+ * the iteration aborts with `agent-iteration-denied` failure.
+ */
+export interface HookDenyDirective {
+  readonly reason: string;
+}
+
+/**
+ * Controls passed to each handler as an optional second argument.
+ *
+ * Backward compat: existing single-argument handlers (Phase 15 + Phase 16)
+ * ignore this and continue to work unchanged.
+ */
+export interface HookControls {
+  /** Set a denial reason; the latest call wins per `run()`. */
+  readonly deny: (reason: string) => void;
+}
 
 /**
  * Priority bands. Lower number = higher priority (runs first).
@@ -66,7 +100,7 @@ const BAND_ORDER: readonly Band[] = [BAND.SAFETY, BAND.OBSERVABILITY, BAND.EXTEN
  * add a typed return that downstream bands consume.
  */
 export interface HookHandler<TContext = unknown> {
-  (context: Readonly<TContext>): void | Promise<void>;
+  (context: Readonly<TContext>, controls?: HookControls): void | Promise<void>;
 }
 
 export interface RegisterOptions {
@@ -95,6 +129,12 @@ export interface HookPipeline {
     event: HookLifecycleEvent,
     context: TContext,
   ): Promise<void>;
+  /**
+   * Phase 19: returns the latest denial reason set by any handler during
+   * the most recent `run()` call. Resets to `null` at the start of each run.
+   * Read by the agent runtime to detect SAFETY-band veto.
+   */
+  lastDenialReason(): string | null;
 }
 
 export interface CreateHookPipelineOptions {
@@ -131,6 +171,7 @@ function freezeContext<T>(ctx: T): Readonly<T> {
 async function runHandlerWithBudget(
   record: HandlerRecord,
   ctx: Readonly<unknown>,
+  controls: HookControls,
   emit: ((kind: string, payload: Record<string, unknown>) => void) | undefined,
   event: HookLifecycleEvent,
   sessionId: string | undefined,
@@ -146,7 +187,7 @@ async function runHandlerWithBudget(
   });
   const handlerPromise = (async () => {
     try {
-      await record.handler(ctx);
+      await record.handler(ctx, controls);
     } catch {
       // handler errors are absorbed (pipeline does not propagate)
     }
@@ -180,6 +221,7 @@ export function createHookPipeline(
   const registry: Map<HookLifecycleEvent, Map<Band, HandlerRecord[]>> = new Map();
   let frozen = false;
   let globalRegistrationCounter = 0;
+  let currentDenialReason: string | null = null;
 
   // TracerLike.event is optional on the interface; the emit factory bridges
   // through optional-chain so a tracer without an event method (or no tracer
@@ -235,8 +277,14 @@ export function createHookPipeline(
     event: HookLifecycleEvent,
     context: TContext,
   ): Promise<void> {
+    currentDenialReason = null;
     const perEventBands = registry.get(event);
     if (perEventBands === undefined) return;
+    const controls: HookControls = {
+      deny: (reason: string) => {
+        currentDenialReason = reason;
+      },
+    };
     for (const band of BAND_ORDER) {
       const arr = perEventBands.get(band);
       if (arr === undefined || arr.length === 0) continue;
@@ -245,9 +293,13 @@ export function createHookPipeline(
           continue;
         }
         const ctx = freezeContext(context);
-        await runHandlerWithBudget(record, ctx, emit, event, sessionId);
+        await runHandlerWithBudget(record, ctx, controls, emit, event, sessionId);
       }
     }
+  }
+
+  function lastDenialReason(): string | null {
+    return currentDenialReason;
   }
 
   const pipeline: HookPipeline = {
@@ -256,6 +308,7 @@ export function createHookPipeline(
     freeze: freezePipeline,
     isFrozen,
     run,
+    lastDenialReason,
   };
   return pipeline;
 }

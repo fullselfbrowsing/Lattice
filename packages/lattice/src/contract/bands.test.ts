@@ -232,3 +232,73 @@ describe("HookPipeline -- absent event", () => {
     await expect(pipe.run("AFTER_TOOL", {})).resolves.toBeUndefined();
   });
 });
+
+describe("HookPipeline -- Phase 19 agent iteration events", () => {
+  it("BEFORE_AGENT_ITERATION + AFTER_AGENT_ITERATION accept handlers", async () => {
+    const pipe = createHookPipeline();
+    const seen: string[] = [];
+    pipe.register("BEFORE_AGENT_ITERATION", () => { seen.push("before"); }, { band: BAND.SAFETY });
+    pipe.register("AFTER_AGENT_ITERATION", () => { seen.push("after"); }, { band: BAND.OBSERVABILITY });
+    await pipe.run("BEFORE_AGENT_ITERATION", { iterationIndex: 0 });
+    await pipe.run("AFTER_AGENT_ITERATION", { iterationIndex: 0 });
+    expect(seen).toEqual(["before", "after"]);
+  });
+});
+
+describe("HookPipeline -- Phase 19 deny pattern", () => {
+  it("lastDenialReason() returns null when no handler denies", async () => {
+    const pipe = createHookPipeline();
+    pipe.register("BEFORE_AGENT_ITERATION", () => {}, { band: BAND.SAFETY });
+    await pipe.run("BEFORE_AGENT_ITERATION", { iterationIndex: 0 });
+    expect(pipe.lastDenialReason()).toBeNull();
+  });
+
+  it("SAFETY-band handler can call controls.deny(reason); lastDenialReason() returns it", async () => {
+    const pipe = createHookPipeline();
+    pipe.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => {
+        controls?.deny("budget exceeded by user policy");
+      },
+      { band: BAND.SAFETY },
+    );
+    await pipe.run("BEFORE_AGENT_ITERATION", { iterationIndex: 0 });
+    expect(pipe.lastDenialReason()).toBe("budget exceeded by user policy");
+  });
+
+  it("lastDenialReason() resets at the start of each run() call", async () => {
+    const pipe = createHookPipeline();
+    let shouldDeny = true;
+    pipe.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => {
+        if (shouldDeny) controls?.deny("first run denied");
+      },
+      { band: BAND.SAFETY },
+    );
+    await pipe.run("BEFORE_AGENT_ITERATION", {});
+    expect(pipe.lastDenialReason()).toBe("first run denied");
+
+    shouldDeny = false;
+    await pipe.run("BEFORE_AGENT_ITERATION", {});
+    expect(pipe.lastDenialReason()).toBeNull();
+  });
+
+  it("latest deny() call wins when multiple SAFETY handlers deny", async () => {
+    const pipe = createHookPipeline();
+    pipe.register("BEFORE_AGENT_ITERATION", (_c, controls) => { controls?.deny("first"); }, { band: BAND.SAFETY });
+    pipe.register("BEFORE_AGENT_ITERATION", (_c, controls) => { controls?.deny("second"); }, { band: BAND.SAFETY });
+    await pipe.run("BEFORE_AGENT_ITERATION", {});
+    expect(pipe.lastDenialReason()).toBe("second");
+  });
+
+  it("backward compat: single-arg handlers continue to work unchanged", async () => {
+    const pipe = createHookPipeline();
+    let called = false;
+    // Single-arg handler — does not declare the controls parameter.
+    pipe.register("BEFORE_PROVIDER", (_ctx) => { called = true; }, { band: BAND.OBSERVABILITY });
+    await pipe.run("BEFORE_PROVIDER", {});
+    expect(called).toBe(true);
+    expect(pipe.lastDenialReason()).toBeNull();
+  });
+});
