@@ -37,9 +37,15 @@ import { createCheckpointHook } from "../contract/checkpoint.js";
 import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
+import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
 
 import { formatToolsForProvider, type ConversationTurn } from "./format-tools.js";
+import {
+  createNoopAgentHost,
+  type AgentHost,
+  type AgentSnapshot,
+} from "./host.js";
 import {
   AgentDeniedError,
   type AgentFailure,
@@ -66,6 +72,11 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
 
+  // 0. Host adapter + survivability defaults.
+  const host: AgentHost = intent.host ?? createNoopAgentHost();
+  const survivabilityAdapter: SurvivabilityAdapter<AgentSnapshot> =
+    intent.survivabilityAdapter ?? createNoopSurvivabilityAdapter<AgentSnapshot>();
+
   // 1. Hook pipeline + auto-checkpoint registration.
   const pipeline = ensurePipeline(intent);
   maybeAutoRegisterCheckpoint(pipeline, intent);
@@ -80,10 +91,10 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
       usage: cumulativeUsage,
     });
   }
-  const providerName = provider.id;
+  let providerName = provider.id;
 
   // 3. Initialize conversation + tools handle.
-  const conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
+  let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
   const handle = formatToolsForProvider(providerName, intent.tools);
 
   const budget = intent.contract?.budget;
@@ -92,6 +103,37 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
   const maxCostUsd = budget?.maxCostUsd ?? Number.POSITIVE_INFINITY;
 
   let iterationIndex = 0;
+
+  // 3.5. Resume path (Phase 20): attempt to load a snapshot from host.storage.
+  // On success, deserialize via the survivability adapter and re-enter at the
+  // recorded iteration index. Emits recovery.start / recovery.complete /
+  // recovery.failed events on the configured tracer (TRACE-EXT-01).
+  const existingSnapshot = await host.storage?.load();
+  if (existingSnapshot !== null && existingSnapshot !== undefined) {
+    intent.tracer?.event?.("recovery.start", {
+      snapshotVersion: existingSnapshot.version,
+      capturedAt: existingSnapshot.capturedAt,
+    });
+    try {
+      const restored = survivabilityAdapter.deserialize(existingSnapshot);
+      iterationIndex = restored.iterationIndex;
+      conversation = [...restored.conversation];
+      cumulativeUsage.promptTokens = restored.cumulativeUsage.promptTokens;
+      cumulativeUsage.completionTokens = restored.cumulativeUsage.completionTokens;
+      cumulativeUsage.costUsd = restored.cumulativeUsage.costUsd;
+      providerName = restored.providerName;
+      intent.tracer?.event?.("recovery.complete", {
+        iterationIndex,
+        providerName,
+      });
+    } catch (error) {
+      intent.tracer?.event?.("recovery.failed", {
+        reason: error instanceof Error ? error.message : "deserialize failed",
+      });
+      await host.storage?.clear();
+      // Fall through to fresh start (iterationIndex stays 0).
+    }
+  }
 
   while (iterationIndex < maxIterations) {
     // 4a. Budget pre-checks.
@@ -163,7 +205,7 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
       });
     }
 
-    // 4c. Build task + dispatch.
+    // 4c. Build task + dispatch via host transport seam.
     const task = handle.buildTask(conversation);
     const iterStart = Date.now();
     let response: ProviderRunResponse;
@@ -176,12 +218,15 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
           usage: cumulativeUsage,
         });
       }
-      response = await provider.execute({
+      const providerRequest = {
         task,
         artifacts: [],
         outputs: ["answer"],
         ...(intent.policy !== undefined ? { policy: intent.policy } : {}),
-      });
+      };
+      response = host.transport !== undefined
+        ? await host.transport.call(provider, providerRequest)
+        : await provider.execute(providerRequest);
     } catch (error) {
       return buildFailure({
         kind: "provider_execution",
@@ -222,6 +267,10 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
         timestamp: new Date().toISOString(),
         previousStepName: `agent-iteration-${iterationIndex}-before`,
       });
+
+      // 4e.1. Clear persistent storage on final-answer success so the next
+      // run starts fresh (Phase 20).
+      await host.storage?.clear();
 
       // 4f. Output materialization. Phase 19 produces a flat
       // `{ answer: string }` output by default. When `intent.outputs` is
@@ -310,6 +359,27 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
       timestamp: new Date().toISOString(),
       previousStepName: `agent-iteration-${iterationIndex}-before`,
     });
+
+    // 4h. Persist agent state via host.storage so the loop can resume
+    // after eviction (Phase 20). The survivability adapter handles
+    // serialization (default: createNoopSurvivabilityAdapter which
+    // JSON.stringifies the state).
+    if (host.storage !== undefined) {
+      const snapshot = survivabilityAdapter.serialize({
+        version: "agent-snapshot/v1",
+        iterationIndex: iterationIndex + 1,
+        conversation: [...conversation],
+        cumulativeUsage: snapshotUsage(cumulativeUsage),
+        providerName,
+        capturedAt: new Date().toISOString(),
+      });
+      await host.storage.save(snapshot);
+    }
+
+    // 4i. Yield to the host scheduler between iterations.
+    if (host.scheduler !== undefined) {
+      await host.scheduler.scheduleNext(iterationIndex);
+    }
 
     iterationIndex += 1;
   }

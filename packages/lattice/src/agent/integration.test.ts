@@ -70,8 +70,9 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
       // extract `envelope` from the event metadata.
       const mintedReceipts: ReceiptEnvelope[] = [];
       const tracer = {
-        event: (kind: string, payload: Record<string, unknown>) => {
-          if (kind === "step.transition") {
+        kind: "tracer" as const,
+        event: (kind: string, payload?: Record<string, unknown>) => {
+          if (kind === "step.transition" && payload !== undefined) {
             const envelope = payload["envelope"];
             if (envelope !== undefined) {
               mintedReceipts.push(envelope as ReceiptEnvelope);
@@ -147,8 +148,9 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
     const { signer } = await makeEphemeralSetup();
     const mintedReceipts: ReceiptEnvelope[] = [];
     const tracer = {
-      event: (kind: string, payload: Record<string, unknown>) => {
-        if (kind === "step.transition") {
+      kind: "tracer" as const,
+      event: (kind: string, payload?: Record<string, unknown>) => {
+        if (kind === "step.transition" && payload !== undefined) {
           const envelope = payload["envelope"];
           if (envelope !== undefined) mintedReceipts.push(envelope as ReceiptEnvelope);
         }

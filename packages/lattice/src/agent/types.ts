@@ -28,22 +28,21 @@ import type { PolicySpec } from "../policy/policy.js";
 import type { Usage } from "../providers/provider.js";
 import type { LatticeRunError } from "../results/errors.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
+import type { SurvivabilityAdapter } from "../runtime/survivability.js";
 import type { ToolDefinition } from "../tools/tools.js";
 import type { TracerLike } from "../tracing/tracing.js";
 
-/**
- * Forward declaration of the pluggable host adapter shipping in Phase 20.
- *
- * Phase 19 uses an internal default in-process host (synchronous scheduler,
- * direct provider transport, in-memory transcript storage). Phase 20
- * promotes this to a public interface with scheduler/transport/storage seams.
- *
- * Until Phase 20 lands, callers can pass `host: undefined` (or omit the
- * field entirely) and rely on the default.
- */
-export interface AgentHost {
-  readonly kind: "agent-host";
-}
+// Phase 20 (v1.2): the AgentHost forward-decl that shipped in Phase 19 is
+// replaced by the full interface in host.ts. Existing imports of AgentHost
+// from "./types.js" continue to resolve via this re-export.
+export type {
+  AgentHost,
+  AgentScheduler,
+  AgentSnapshot,
+  AgentStorage,
+  AgentTransport,
+} from "./host.js";
+import type { AgentHost as _AgentHost } from "./host.js";
 
 /**
  * Per-iteration record stored on `AgentSuccess.iterations` for inspectability.
@@ -84,7 +83,16 @@ export interface IterationRecord {
 export interface AgentIntent<TOutputs extends OutputContractMap = OutputContractMap> {
   readonly task: string;
   readonly tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>;
-  readonly host?: AgentHost;
+  readonly host?: _AgentHost;
+  /**
+   * Phase 20 (v1.2): when the agent loop resumes from a host.storage snapshot,
+   * the configured SurvivabilityAdapter handles the serialize/deserialize
+   * round-trip. When absent, runtime defaults to
+   * `createNoopSurvivabilityAdapter<AgentSnapshot>()`.
+   */
+  readonly survivabilityAdapter?: SurvivabilityAdapter<
+    import("./host.js").AgentSnapshot
+  >;
   readonly contract?: CapabilityContract;
   readonly policy?: PolicySpec;
   readonly outputs?: TOutputs;
