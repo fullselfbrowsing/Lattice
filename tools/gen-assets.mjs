@@ -282,14 +282,19 @@ write("favicon-16.svg", render({ ...C_light, size: 16, pad: 0.08, idPrefix: "f16
 }
 
 // ---------------------------------------------------------------------------
-// GIFs — render each rotation frame as a fresh SVG (crisp lines at every
-// angle) and stitch via rsvg-convert + ImageMagick. The static SVG approach
-// avoids the bitmap-interpolation blur you get from rotating a PNG. Period
-// is 14 seconds, matching the design's CSS rotate(360deg) keyframe.
+// GIFs — gentle 3D turntable around the vertical (Y) axis. Each frame is a
+// fresh render from the parametric 3D geometry, NOT a 2D rotation of a
+// rasterized PNG. The X-tilt stays locked at the isometric pose (ISO_X),
+// the Y-rotation sweeps a full 360° over the period, and `fixedFit` keeps
+// the projected bounding box constant under rotation (the cube's centre
+// stays put; only the silhouette width breathes naturally as the cube
+// turns from face-on to corner-on).
+//
+// Period defaults to 18s for a gentle pace.
 // ---------------------------------------------------------------------------
 
 import { execSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync as fsRead } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -304,56 +309,53 @@ if (!which("rsvg-convert") || !which("magick")) {
   process.exit(0);
 }
 
-const FRAMES = 60;
-const PERIOD = 14;            // seconds, matches the design
-const DELAY_CS = Math.round(PERIOD * 100 / FRAMES); // ImageMagick delay (centiseconds)
-const OUT_SIZE = 480;         // frame raster size
-const GIF_SIZE = 360;         // final GIF size
+const FRAMES = 72;
+const PERIOD = 14;                                   // seconds per full sway
+const DELAY_CS = Math.round(PERIOD * 100 / FRAMES);  // centiseconds per frame
+const RENDER_SIZE = 480;                             // SVG raster size per frame
+const GIF_SIZE = 360;                                // final GIF size
 const LIGHT_BG = "#f4f5f7";
 const DARK_BG  = "#0b1220";
 
-function wrapSvgRotated(svg, angle, size) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const openEnd = svg.indexOf(">") + 1;
-  const closeStart = svg.lastIndexOf("</svg>");
-  const head = svg.slice(0, openEnd);
-  const inner = svg.slice(openEnd, closeStart);
-  return `${head}<g transform="rotate(${angle.toFixed(4)} ${cx} ${cy})">${inner}</g></svg>`;
+// Sinusoidal sway of ±SWAY_DEG around the isometric ISO_Y. A full 360°
+// turntable would cycle 4 times visually because a cube has 90° rotational
+// symmetry around its Y axis — that reads as stuttering, not as one gentle
+// rotation. Staying inside ±30° keeps the cube in the asymmetric region
+// the whole time, so the eye reads a single continuous sideways tilt.
+const SWAY_DEG = 30;
+const SWAY_RAD = (SWAY_DEG * Math.PI) / 180;
+
+function renderFrame(baseOpts, i, frames) {
+  const t = (i / frames) * 2 * Math.PI;
+  const yOffset = SWAY_RAD * Math.sin(t);
+  return render({
+    ...baseOpts,
+    size: 440,
+    rotY: ISO_Y + yOffset,
+    fixedFit: true,
+    idPrefix: `t${i}`,
+  });
 }
 
-function buildGif({ srcSvgPath, outGifPath, bg, label }) {
-  const tmp = mkdtempSync(join(tmpdir(), `lat-spin-${label}-`));
-  const src = fsRead(srcSvgPath, "utf8");
+function buildGif({ baseOpts, outGifPath, bg, label }) {
+  const tmp = mkdtempSync(join(tmpdir(), `lat-tt-${label}-`));
   for (let i = 0; i < FRAMES; i++) {
-    const angle = (i * 360) / FRAMES;
-    const rotated = wrapSvgRotated(src, angle, 440);
+    const svg = renderFrame(baseOpts, i, FRAMES);
     const svgPath = join(tmp, `f${String(i).padStart(3, "0")}.svg`);
     const pngPath = join(tmp, `f${String(i).padStart(3, "0")}.png`);
-    writeFileSync(svgPath, rotated);
-    execSync(`rsvg-convert -w ${OUT_SIZE} -h ${OUT_SIZE} -b transparent ${svgPath} -o ${pngPath}`);
+    writeFileSync(svgPath, svg);
+    execSync(`rsvg-convert -w ${RENDER_SIZE} -h ${RENDER_SIZE} -b transparent ${svgPath} -o ${pngPath}`);
   }
-  // Stitch + optimize.
   execSync(
     `magick -delay ${DELAY_CS} -loop 0 -dispose previous ${join(tmp, "f*.png")} ` +
     `-resize ${GIF_SIZE}x${GIF_SIZE} -background "${bg}" -alpha remove -alpha off ` +
-    `-colors 48 -layers Optimize -fuzz 4% ${outGifPath}`
+    `-colors 64 -layers Optimize -fuzz 3% ${outGifPath}`
   );
   rmSync(tmp, { recursive: true, force: true });
-  console.log(`wrote ${outGifPath} (${FRAMES} frames, ${PERIOD}s period)`);
+  console.log(`wrote ${outGifPath} (${FRAMES} frames, ${PERIOD}s turntable)`);
 }
 
-buildGif({
-  srcSvgPath: resolve(ASSETS, "logo-mark.svg"),
-  outGifPath: resolve(ASSETS, "logo-mark-spin.gif"),
-  bg: LIGHT_BG,
-  label: "light",
-});
-buildGif({
-  srcSvgPath: resolve(ASSETS, "logo-mark-dark.svg"),
-  outGifPath: resolve(ASSETS, "logo-mark-spin-dark.gif"),
-  bg: DARK_BG,
-  label: "dark",
-});
+buildGif({ baseOpts: C_light, outGifPath: resolve(ASSETS, "logo-mark-spin.gif"),      bg: LIGHT_BG, label: "light" });
+buildGif({ baseOpts: C_dark,  outGifPath: resolve(ASSETS, "logo-mark-spin-dark.gif"), bg: DARK_BG,  label: "dark"  });
 
 console.log("Done.");
