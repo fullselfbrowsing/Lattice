@@ -75,6 +75,16 @@ export type {
   FormattedToolsHandle,
 } from "./agent/format-tools.js";
 export type { HookControls, HookDenyDirective } from "./contract/bands.js";
+// AgentHost adapter (v1.2 Phase 20) — pluggable scheduler / transport /
+// storage seams + recovery markers. Composes with the SurvivabilityAdapter
+// shipped in Phase 18 for cross-process resumption.
+export { createNoopAgentHost } from "./agent/host.js";
+export type {
+  AgentScheduler,
+  AgentSnapshot,
+  AgentStorage,
+  AgentTransport,
+} from "./agent/host.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";

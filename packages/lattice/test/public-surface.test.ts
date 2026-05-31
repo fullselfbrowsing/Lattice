@@ -361,3 +361,28 @@ describe("public-surface — Phase 19 agent runtime", () => {
     expect(typeof ai.session).toBe("function");
   });
 });
+
+describe("public-surface — Phase 20 AgentHost adapter", () => {
+  it("re-exports createNoopAgentHost as a value", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.createNoopAgentHost).toBe("function");
+    const host = mod.createNoopAgentHost();
+    expect(host.kind).toBe("agent-host");
+    expect(typeof host.scheduler?.scheduleNext).toBe("function");
+    expect(typeof host.transport?.call).toBe("function");
+    expect(typeof host.storage?.save).toBe("function");
+  });
+
+  it("type-only: AgentScheduler / AgentTransport / AgentStorage / AgentSnapshot are exported", async () => {
+    type _AgentScheduler = import("../src/index.js").AgentScheduler;
+    type _AgentTransport = import("../src/index.js").AgentTransport;
+    type _AgentStorage = import("../src/index.js").AgentStorage;
+    type _AgentSnapshot = import("../src/index.js").AgentSnapshot;
+    void (null as unknown as
+      | _AgentScheduler
+      | _AgentTransport
+      | _AgentStorage
+      | _AgentSnapshot);
+    expect(true).toBe(true);
+  });
+});
