@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Capability Receipts
-status: shipped
-stopped_at: v1.1 milestone complete and archived. No active milestone.
-last_updated: "2026-05-12T06:01:06.406Z"
-last_activity: 2026-05-12 — v1.1 archived
+milestone: v1.2
+milestone_name: FSB Integration + Agent Capability
+status: planning
+stopped_at: v1.2 milestone opened. Track A (Phases 14-18 retro) ready to land via phase-grouped merges from local-fsb-integration branch (HEAD e95067b). Track B (Phases 19-23 forward) awaiting /gsd-discuss-phase for Phase 19 agent runtime entrypoint scope.
+last_updated: "2026-05-31T00:00:00.000Z"
+last_activity: 2026-05-31 — v1.2 milestone opened, REQUIREMENTS + ROADMAP drafted
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_phases: 10
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 13.2 — Showcase Enrichment for v1.1 Type-Surface REQs
+**Current focus:** Phase 14 — Public Surface Index + Packaging Readiness (Track A retro from FSB v0.10.0-attempt-2 Phase 1)
 
 ## Current Position
 
-Phase: 13.2
+Phase: 14
 Plan: Not started
-Status: Executing Phase 13.2
-Last activity: 2026-05-12
+Status: v1.2 milestone planning open. Track A ready for phase-grouped merges.
+Last activity: 2026-05-31
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -69,22 +69,27 @@ Progress: [█░░░░░░░░░] 14%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [v1.1 Roadmap]: Phase numbering continues from v1.0 (Phase 7 is the first v1.1 phase). Granularity is coarse but expanded to 7 phases because cryptographic ordering (redact-then-sign, terminal-before-receipt, envelope-before-CLI) cannot be safely compressed further.
-- [v1.1 Roadmap]: Cost accounting ships in Phase 7 alongside contracts (not in Phase 9 with receipts) because pre-flight contract proof depends on adapter cost metadata.
-- [v1.1 Roadmap]: Tripwire `terminal: true` semantics are locked in Phase 8 before receipts in Phase 9 so the signed `contractVerdict` shape is consistent across success, no-contract-match, and tripwire-violated paths.
-- [v1.1 Roadmap]: `kid` plus `KeySet` and redact-then-sign ordering both ship inside Phase 9; neither can be retrofitted once receipts are in the wild.
-- [v1.1 Roadmap]: CLI lives in a separate `packages/lattice-cli` workspace to keep the runtime portable to workers/edge and to prevent CLI-only deps from entering the runtime closure.
+- [v1.2 Roadmap]: Phase numbering continues from v1.1 (which ended at Phase 13.2). v1.2 starts at Phase 14 and spans Phases 14-23.
+- [v1.2 Roadmap]: Milestone splits into two tracks. Track A (Phases 14-18) is retro — code already on `local-fsb-integration` branch (HEAD `e95067b`, 23 commits, 414 vitest PASS) from FSB v0.10.0-attempt-2 Phases 1-5. Each phase backfills GSD artifacts and merges via `--no-ff` into the `v1.2` branch. Track B (Phases 19-23) is forward — opens the Delegation surface via a runtime-agnostic agent capability.
+- [v1.2 Roadmap]: Track A history brought in via phase-grouped `--no-ff` merges (chosen over single-branch merge or cherry-pick) to preserve the 5 phase boundaries as readable merge commits matching `LATTICE-PIN.md` rows.
+- [v1.2 Roadmap]: Agent capability ships as runtime-agnostic — no coupling to `chrome.*`, `importScripts`, or service-worker idioms. Pluggable AgentHost adapter (scheduler/transport/storage seams) composes with the SurvivabilityAdapter shipped in Phase 18.
+- [v1.2 Roadmap]: Multi-agent crews stay Out of Scope; v1.2 opens the single-agent surface only. PROJECT.md Out of Scope section updated to reflect the narrowed scope.
+- [v1.2 Stage 5]: Distribution model is git submodule pinned at the `v1.2.0` tag (FSB consumes via `file:./lattice/packages/lattice` against the submodule). npm publish of `@fullselfbrowsing/lattice@1.2.0` deferred until at least one external consumer asks.
 
 ### Pending Todos
 
-None yet for v1.1.
+- Stage 3: Land Track A as 5 phase-grouped merges (Phases 14-18) into v1.2 branch.
+- Stage 4: `/gsd-discuss-phase 19` for Track B Phase 19 (agent runtime entrypoint + delegation policy flip).
+- Stage 5: Tag v1.2.0, push to fullselfbrowsing/Lattice, switch FSB automation branch to git submodule pinned at the tag.
 
 ### Blockers/Concerns
 
-None. Open questions from SUMMARY.md (fallback-chain centralization, redactor purity, signer scoping, fixture-discovery rules) will be resolved during `/gsd-plan-phase` for their respective phases.
+- Track A merge risk: 23 commits authored before v1.1 sub-phases 13.1 + 13.2 landed in canonical main. Divergence point verified clean (`8fa7b03` v1.1 close), but TypeScript strict checks may surface incidental friction. Mitigation: `pnpm test` after each `--no-ff` merge; revert + rebase if a phase merge breaks.
+- Track A `dist/` regeneration: original commits regenerated `dist/` locally per phase (commits say "dist rebuilt via tsdown clean:true"). Canonical Lattice gitignores `dist/`. Verify `.gitignore` matches before merging.
+- Track B open questions captured in `.planning/milestones/v1.2-ROADMAP.md` Risks section: agent runtime entrypoint shape (`ai.runAgent(...)` method vs. separate `createAgent(...)` factory), tool registry surface (reuse v1.0 `defineTool` vs. new `AgentToolRegistry`). Resolve during `/gsd-discuss-phase 19`.
 
 ## Session Continuity
 
-Last session: 2026-05-11
-Stopped at: ROADMAP.md drafted for v1.1; Phase 7 ready to enter planning.
+Last session: 2026-05-31
+Stopped at: v1.2 milestone artifacts drafted (REQUIREMENTS + ROADMAP + top-level ROADMAP + PROJECT + this STATE). `local-fsb-integration` branch mirrored into canonical Lattice from `automation/lattice/`. Stage 3 (phase-grouped merges) next.
 Resume file: None

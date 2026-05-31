@@ -12,9 +12,9 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ## Current State
 
-**v1.1 Capability Receipts shipped 2026-05-12.** All 36 v1.1 requirements wired end-to-end (zero blockers, zero remaining limitations). 451 tests passing across `lattice` (307) and `lattice-cli` (144).
+**v1.2 FSB Integration + Agent Capability — started 2026-05-31.** Two tracks: Track A retroactively wraps five FSB-integration extensions already implemented on `local-fsb-integration` (HEAD `e95067b`, 23 commits, 414 vitest PASS) as canonical Lattice phases (14-18). Track B opens the previously out-of-scope **Delegation** surface by shipping a runtime-agnostic agent capability that any host application can consume — not just browser extensions (Phases 19-23, TBD via `/gsd-discuss-phase`). See `.planning/milestones/v1.2-ROADMAP.md`.
 
-No active milestone. Next milestone defines goals via `/gsd-new-milestone`.
+**v1.1 Capability Receipts shipped 2026-05-12.** All 36 v1.1 requirements wired end-to-end (zero blockers, zero remaining limitations). 451 tests passing across `lattice` (307) and `lattice-cli` (144).
 
 ## Shipped Milestones
 
@@ -41,9 +41,12 @@ No active milestone. Next milestone defines goals via `/gsd-new-milestone`.
 
 ### Active
 
-No active requirements. v1.0 and v1.1 fully validated. Define v1.2 via `/gsd-new-milestone`.
+v1.2 active requirements live in `.planning/milestones/v1.2-REQUIREMENTS.md`. Two tracks:
 
-### Known v1.2 Carry-Forward
+- **Track A — FSB Integration (retro):** PKG-01, INDEX-01..05, RECEIPT-EXT-01..03, BAND-01..05, LIFECYCLE-01, TRACE-01, CHECKPOINT-01..04, PROV-01..05, PARITY-01, SURV-01..04, TRACE-EXT-01. Code already exists on `local-fsb-integration`; phases 14-18 backfill GSD artifacts and merge each commit group into the `v1.2` branch.
+- **Track B — Agent Capability (forward):** DELEG-01, AGENT-01..04, HOST-01..03, AGENT-INFRA-01..04, PERM-01, SHOWCASE-AGENT-01..02. Final shape locked during `/gsd-discuss-phase` for Phase 19 onward.
+
+### Known v1.2 Carry-Forward (from v1.1 audit)
 
 - `lattice repro` / `lattice eval` cannot replay or grade against a receipt alone — receipts intentionally minimal (no task/outputs/policy embedded). v1.2 will accept a sidecar JSON file with the original RunIntent inputs, enabling end-to-end replay round-trips.
 - Vitest-compatible JSON/JUnit reporter for `lattice eval`.
@@ -59,7 +62,7 @@ No active requirements. v1.0 and v1.1 fully validated. Define v1.2 via `/gsd-new
 
 - Hosted control plane — the first version should prove the runtime SDK before adding hosted infrastructure.
 - Graph DSL — the v0.1 product should feel smaller than orchestration frameworks and avoid making users design graphs first.
-- Multi-agent handoff framework — agent orchestration is not the initial differentiator.
+- Multi-agent handoff framework (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination) — multi-agent orchestration is not the initial differentiator. **Updated 2026-05-31 for v1.2:** single-agent execution is now in scope (Track B / DELEG-01); multi-agent stays out of scope.
 - Building 100 custom provider adapters from scratch — broad provider coverage should initially lean on an existing provider/routing surface where practical.
 - Frontend hook library as the center of the product — UI bindings can exist, but the core bet is the runtime.
 - Opaque AI-selected routing in v1 — routing should be deterministic and inspectable first.
@@ -129,4 +132,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 — Milestone v1.1 (Capability Receipts) shipped and archived*
+*Last updated: 2026-05-31 — Milestone v1.2 (FSB Integration + Agent Capability) opened*
