@@ -40,13 +40,13 @@
     }
   },
   "dependencies": {
-    "@standard-schema/spec": "catalog:",
-    "canonicalize": "catalog:",
-    "mime": "catalog:"
+    "@standard-schema/spec": "1.1.0",
+    "canonicalize": "3.0.0",
+    "mime": "4.1.0"
   },
   "devDependencies": {
-    "@noble/ed25519": "catalog:",
-    "@types/node": "catalog:",
-    "zod": "catalog:"
+    "@noble/ed25519": "3.1.0",
+    "@types/node": "24.12.2",
+    "zod": "4.3.6"
   }
 }

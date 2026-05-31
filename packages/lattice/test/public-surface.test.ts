@@ -223,9 +223,16 @@ describe("Phase 9 public surface", () => {
     expect(keySet.lookup("unknown")).toBeUndefined();
   });
 
-  it("createReceipt is NOT exported from the public surface", async () => {
+  it("createReceipt IS exported from the public surface (Phase 1 re-export)", async () => {
+    // Phase 1 commit ab6c1f6 (FSB v0.10.0-attempt-2) deliberately re-exported
+    // createReceipt + CreateReceiptInput from src/index.ts so the FSB
+    // integration smoke (tests/lattice-smoke.test.js) can mint receipts via
+    // the public package surface. Prior to that commit, callers had to reach
+    // into internal paths; the re-export collapses the gap. This test asserts
+    // the re-export holds.
     const mod = (await import("../src/index.js")) as Record<string, unknown>;
-    expect("createReceipt" in mod).toBe(false);
+    expect("createReceipt" in mod).toBe(true);
+    expect(typeof mod.createReceipt).toBe("function");
   });
 
   it("end-to-end public-surface integration — createAI + signer + verifyReceipt", async () => {
@@ -296,6 +303,133 @@ describe("Phase 10 public surface", () => {
   it("type-only: ReplayEnvelope carries optional receipt and contract fields", () => {
     const _env: ReplayEnvelope | undefined = undefined;
     void _env;
+    expect(true).toBe(true);
+  });
+});
+
+describe("public-surface — Phase 19 agent runtime", () => {
+  it("re-exports runAgent + formatToolsForProvider + AgentDeniedError as values", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.runAgent).toBe("function");
+    expect(typeof mod.formatToolsForProvider).toBe("function");
+    expect(typeof mod.toolSchemaToJsonSchema).toBe("function");
+    expect(typeof mod.AgentDeniedError).toBe("function");
+    expect(new mod.AgentDeniedError("x", 0).name).toBe("AgentDeniedError");
+  });
+
+  it("type-only: AgentIntent / AgentResult / AgentSuccess / AgentFailure / IterationRecord / ToolUseRequest are exported", async () => {
+    // Imports go through src/index.ts to assert reachability; the values are
+    // never executed.
+    type _AgentIntent = import("../src/index.js").AgentIntent;
+    type _AgentResult = import("../src/index.js").AgentResult;
+    type _AgentSuccess = import("../src/index.js").AgentSuccess;
+    type _AgentFailure = import("../src/index.js").AgentFailure;
+    type _AgentFailureKind = import("../src/index.js").AgentFailureKind;
+    type _AgentHost = import("../src/index.js").AgentHost;
+    type _IterationRecord = import("../src/index.js").IterationRecord;
+    type _ToolUseRequest = import("../src/index.js").ToolUseRequest;
+    type _ConversationTurn = import("../src/index.js").ConversationTurn;
+    type _FormatToolsMode = import("../src/index.js").FormatToolsMode;
+    type _FormatToolsOptions = import("../src/index.js").FormatToolsOptions;
+    type _FormattedToolsHandle = import("../src/index.js").FormattedToolsHandle;
+    type _HookControls = import("../src/index.js").HookControls;
+    type _HookDenyDirective = import("../src/index.js").HookDenyDirective;
+    // Touch the placeholders so TypeScript treats the imports as used.
+    void (null as unknown as
+      | _AgentIntent
+      | _AgentResult
+      | _AgentSuccess
+      | _AgentFailure
+      | _AgentFailureKind
+      | _AgentHost
+      | _IterationRecord
+      | _ToolUseRequest
+      | _ConversationTurn
+      | _FormatToolsMode
+      | _FormatToolsOptions
+      | _FormattedToolsHandle
+      | _HookControls
+      | _HookDenyDirective);
+    expect(true).toBe(true);
+  });
+
+  it("createAI() returns a runtime exposing ai.runAgent next to ai.run", () => {
+    const ai = createAI();
+    expect(typeof ai.runAgent).toBe("function");
+    expect(typeof ai.run).toBe("function");
+    expect(typeof ai.plan).toBe("function");
+    expect(typeof ai.session).toBe("function");
+  });
+});
+
+describe("public-surface — Phase 20 AgentHost adapter", () => {
+  it("re-exports createNoopAgentHost as a value", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.createNoopAgentHost).toBe("function");
+    const host = mod.createNoopAgentHost();
+    expect(host.kind).toBe("agent-host");
+    expect(typeof host.scheduler?.scheduleNext).toBe("function");
+    expect(typeof host.transport?.call).toBe("function");
+    expect(typeof host.storage?.save).toBe("function");
+  });
+
+  it("type-only: AgentScheduler / AgentTransport / AgentStorage / AgentSnapshot are exported", async () => {
+    type _AgentScheduler = import("../src/index.js").AgentScheduler;
+    type _AgentTransport = import("../src/index.js").AgentTransport;
+    type _AgentStorage = import("../src/index.js").AgentStorage;
+    type _AgentSnapshot = import("../src/index.js").AgentSnapshot;
+    void (null as unknown as
+      | _AgentScheduler
+      | _AgentTransport
+      | _AgentStorage
+      | _AgentSnapshot);
+    expect(true).toBe(true);
+  });
+});
+
+describe("public-surface — Phase 21 agent infrastructure primitives", () => {
+  it("re-exports the 5 primitive factories + STUCK_REASONS as values", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.createCostTracker).toBe("function");
+    expect(typeof mod.createTranscriptStore).toBe("function");
+    expect(typeof mod.createGoalProgressTracker).toBe("function");
+    expect(typeof mod.createActionHistory).toBe("function");
+    expect(typeof mod.createPermissionContext).toBe("function");
+    expect(typeof mod.createPermissionGuardHook).toBe("function");
+    expect(typeof mod.permissionGuardRegisterOptions).toBe("function");
+    expect(Array.isArray(mod.STUCK_REASONS)).toBe(true);
+  });
+
+  it("type-only: 14 Phase 21 types are exported", async () => {
+    type _CostTracker = import("../src/index.js").CostTracker;
+    type _CostBudgetStatus = import("../src/index.js").CostBudgetStatus;
+    type _TranscriptStore = import("../src/index.js").TranscriptStore;
+    type _TokenEstimator = import("../src/index.js").TokenEstimator;
+    type _GoalProgressTracker = import("../src/index.js").GoalProgressTracker;
+    type _GoalProgressOptions = import("../src/index.js").GoalProgressOptions;
+    type _GoalProgressStep = import("../src/index.js").GoalProgressStep;
+    type _ProgressStatus = import("../src/index.js").ProgressStatus;
+    type _ActionHistory = import("../src/index.js").ActionHistory;
+    type _ActionRecord = import("../src/index.js").ActionRecord;
+    type _StuckReason = import("../src/index.js").StuckReason;
+    type _PermissionContext = import("../src/index.js").PermissionContext;
+    type _PermissionRule = import("../src/index.js").PermissionRule;
+    type _PermissionVerdict = import("../src/index.js").PermissionVerdict;
+    void (null as unknown as
+      | _CostTracker
+      | _CostBudgetStatus
+      | _TranscriptStore
+      | _TokenEstimator
+      | _GoalProgressTracker
+      | _GoalProgressOptions
+      | _GoalProgressStep
+      | _ProgressStatus
+      | _ActionHistory
+      | _ActionRecord
+      | _StuckReason
+      | _PermissionContext
+      | _PermissionRule
+      | _PermissionVerdict);
     expect(true).toBe(true);
   });
 });

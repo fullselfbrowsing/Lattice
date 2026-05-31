@@ -24,7 +24,13 @@ export type RunEventKind =
   | "run.failed"
   | "tool.call"
   | "replay.offline"
-  | "replay.live";
+  | "replay.live"
+  | "step.transition"
+  // Phase 20 (v1.2): recovery / eviction-resume markers paired with the
+  // AgentHost storage seam + SurvivabilityAdapter. Closes TRACE-EXT-01.
+  | "recovery.start"
+  | "recovery.complete"
+  | "recovery.failed";
 
 export interface RunEvent {
   readonly kind: RunEventKind;

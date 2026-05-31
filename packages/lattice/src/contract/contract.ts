@@ -18,9 +18,17 @@ import type { InvariantDeclaration as InvariantDeclarationUnion } from "./invari
  * Phase 7 implements `maxCostUsd` enforcement at pre-flight. The
  * `p95LatencyMs` field is declared per CONTRACT-02 but is informational
  * only in Phase 7 — latency observations are wired in a later phase.
+ *
+ * Phase 19 (v1.2) adds `maxIterations` and `maxWallTimeMs` for the agent
+ * runtime. Both are additive and optional; non-agent callers ignore them.
+ * `maxIterations` caps the number of `runAgent` iterations; `maxWallTimeMs`
+ * caps wall-clock duration per `runAgent` invocation. Both are enforced
+ * pre-iteration in the agent loop.
  */
 export interface BudgetInvariant {
   readonly maxCostUsd?: number;
+  readonly maxIterations?: number;
+  readonly maxWallTimeMs?: number;
   readonly p95LatencyMs?: number;
 }
 

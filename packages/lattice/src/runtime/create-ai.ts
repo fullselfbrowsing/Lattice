@@ -102,6 +102,18 @@ export interface AI {
   run<const TOutputs extends OutputContractMap>(
     intent: RunIntent<TOutputs>,
   ): Promise<RunResult<TOutputs>>;
+  /**
+   * Phase 19 (v1.2): single-agent execution loop. Drives multiple provider
+   * iterations under one call, dispatching tool requests between iterations.
+   * Composes with the v1.2 hook pipeline (SAFETY-band veto, OBSERVABILITY-band
+   * checkpoint receipts) and the v1.1 capability receipts (when
+   * `intent.signer` is provided + `intent.autoRegisterCheckpoint !== false`).
+   *
+   * See `packages/lattice/src/agent/runtime.ts` for orchestration details.
+   */
+  runAgent<const TOutputs extends OutputContractMap>(
+    intent: import("../agent/types.js").AgentIntent<TOutputs>,
+  ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
 }
 
 interface BuiltPlan {
@@ -134,6 +146,13 @@ export function createAI(config: LatticeConfig = {}): AI {
       intent: RunIntent<TOutputs>,
     ): Promise<RunResult<TOutputs>> {
       return runWithConfig(normalized, intent);
+    },
+    runAgent<const TOutputs extends OutputContractMap>(
+      intent: import("../agent/types.js").AgentIntent<TOutputs>,
+    ): Promise<import("../agent/types.js").AgentResult<TOutputs>> {
+      // Lazy import avoids a hard cycle (agent/runtime.ts imports from
+      // ../runtime/config.js for its `LatticeConfig` parameter type only).
+      return import("../agent/runtime.js").then((mod) => mod.runAgent(intent, config));
     },
   };
 }
