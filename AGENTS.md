@@ -124,7 +124,7 @@ The product is for developers building multimodal AI features who do not want to
 | Avoid | Why | Use Instead | Confidence |
 |-------|-----|-------------|------------|
 | LangChain/LangGraph as the core runtime | They solve orchestration/agent graph problems, but Lattice's differentiator is a tiny capability runtime with artifact/context/routing plans. Depending on them would pull the public model toward chains/graphs. | Own core runtime; optional adapters later. | HIGH |
-| OpenAI Agents SDK as the core runtime | It is strong for OpenAI agent loops, sessions, tracing, MCP, and voice, but Lattice is intentionally not a multi-agent framework and must route across providers/artifact packaging rules. | Use `openai` JS SDK for OpenAI adapter; study Agents SDK patterns for sessions/tracing/voice. | HIGH |
+| OpenAI Agents SDK as the core runtime | It is strong for OpenAI agent loops, sessions, tracing, MCP, and voice, but Lattice is provider-agnostic and ships its own single-agent loop (`ai.runAgent`) on top of the capability runtime + hook pipeline + step-transition tracing. Lattice does not embed a multi-agent crew framework (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination remain Out of Scope; see Agent Execution Policy below). | Use `openai` JS SDK for OpenAI adapter; ship native `ai.runAgent` for the single-agent loop; study Agents SDK patterns for sessions/tracing/voice. | HIGH |
 | LiteLLM Python SDK embedded in Lattice | Lattice is TypeScript-first. Embedding Python adds process/deployment complexity and hides provider envelopes. | Treat LiteLLM as an optional OpenAI-compatible gateway target. | HIGH |
 | Provider SDK sprawl in core | Direct dependencies on every provider make install size, auth, errors, and upgrades unmanageable. | Provider adapter packages plus AI SDK/OpenAI-compatible reuse. | HIGH |
 | Proprietary plugin protocol | MCP is now the standard integration protocol for tools/context. A custom plugin surface would isolate the ecosystem. | MCP client/server bridge plus internal capability metadata. | HIGH |
@@ -133,6 +133,29 @@ The product is for developers building multimodal AI features who do not want to
 | Required native media dependencies in core | `sharp`, FFmpeg, and SQLite are useful but create platform friction. | Optional Node packages. | HIGH |
 | Opaque AI-selected routing in v0.1 | It conflicts with the project requirement for deterministic, inspectable routing. | Capability matrix + policy scoring + explicit fallbacks. | HIGH |
 | Global mutable provider configuration as the main API | Hard to replay, branch, test, or explain. | Explicit `createAI({ providers, policy, storage, tracing })`. | HIGH |
+## Agent Execution Policy
+**Policy flip in v1.2 (2026-05-31, Phase 19).** Lattice's prior v1.x stance — "multi-agent: Out of Scope" — has been narrowed. Single-agent execution is now first-class; multi-agent crews remain Out of Scope.
+
+### Agent Execution — In Scope (v1.2+)
+
+`ai.runAgent(intent)` ships as a method on the runtime returned by `createAI`. The orchestrator drives a `tool_use` protocol loop across the 7 v1.2 provider adapters (OpenAI, OpenAI-compatible, Anthropic, Gemini, xAI, OpenRouter, LM Studio) without coupling to any host platform. Composition surfaces:
+
+- **HookPipeline** (v1.2 Phase 15) — `BAND.SAFETY` handlers can deny iterations via `context.deny = { reason }`; `BAND.OBSERVABILITY` handlers receive per-iteration `step.transition` events.
+- **createCheckpointHook** (v1.2 Phase 16) — auto-registered on `BAND.OBSERVABILITY` when `intent.signer` is provided so each iteration mints a v1.1 Capability Receipt with step-marker linked-list threading.
+- **Provider adapters** (v1.2 Phase 17) — single `ProviderAdapter` shape preserved; tool_use protocol formatting is the agent orchestrator's responsibility via `formatToolsForProvider`.
+- **SurvivabilityAdapter** (v1.2 Phase 18) — composes with `AgentHost` (v1.2 Phase 20) so the agent loop resumes after MV3 SW eviction, Cloudflare Worker freeze, Lambda thaw, or equivalent host-controlled execution interruption.
+- **Contract budget** (v1.1 Phase 7, extended Phase 19) — `maxIterations` and `maxWallTimeMs` invariants enforced alongside `maxCostUsd`.
+
+The runtime is host-agnostic. Node, MV3 SW, edge worker, Lambda, and equivalent runtimes consume the same `ai.runAgent` API; per-runtime concerns (scheduler, transport, storage) live behind the pluggable `AgentHost` adapter shipping in Phase 20.
+
+### Multi-Agent Crews — Out of Scope
+
+Parent-child loops, summary-return, cache-prefix sharing across agents, rate-limit-group coordination, and crew-level orchestration remain Out of Scope. Callers who need multi-agent patterns build them by composing multiple `ai.runAgent` invocations at the application layer; Lattice does not ship a crew primitive.
+
+### Rationale
+
+The original audit trail (`automation/.planning/LATTICE-PIN.md` from FSB v0.10.0-attempt-2 → Lattice v1.2 retro Phases 14-18) demonstrated that the underlying primitives — capability receipts, hook bands, step-transition tracing, provider adapter parity, survivability — compose cleanly into a single-agent loop without requiring a separate framework dependency (LangGraph, OpenAI Agents SDK, etc.). The agent loop is small and runtime-agnostic by design. Multi-agent orchestration introduces parent-child state-management complexity that would dominate the public API and pull the design toward a "crew framework" surface, which is explicitly not the product.
+
 ## Initial Install Sets
 ### Core Workspace
 ### Provider Adapters
