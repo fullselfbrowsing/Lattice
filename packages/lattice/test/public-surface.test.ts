@@ -386,3 +386,50 @@ describe("public-surface — Phase 20 AgentHost adapter", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("public-surface — Phase 21 agent infrastructure primitives", () => {
+  it("re-exports the 5 primitive factories + STUCK_REASONS as values", async () => {
+    const mod = await import("../src/index.js");
+    expect(typeof mod.createCostTracker).toBe("function");
+    expect(typeof mod.createTranscriptStore).toBe("function");
+    expect(typeof mod.createGoalProgressTracker).toBe("function");
+    expect(typeof mod.createActionHistory).toBe("function");
+    expect(typeof mod.createPermissionContext).toBe("function");
+    expect(typeof mod.createPermissionGuardHook).toBe("function");
+    expect(typeof mod.permissionGuardRegisterOptions).toBe("function");
+    expect(Array.isArray(mod.STUCK_REASONS)).toBe(true);
+  });
+
+  it("type-only: 14 Phase 21 types are exported", async () => {
+    type _CostTracker = import("../src/index.js").CostTracker;
+    type _CostBudgetStatus = import("../src/index.js").CostBudgetStatus;
+    type _TranscriptStore = import("../src/index.js").TranscriptStore;
+    type _TokenEstimator = import("../src/index.js").TokenEstimator;
+    type _GoalProgressTracker = import("../src/index.js").GoalProgressTracker;
+    type _GoalProgressOptions = import("../src/index.js").GoalProgressOptions;
+    type _GoalProgressStep = import("../src/index.js").GoalProgressStep;
+    type _ProgressStatus = import("../src/index.js").ProgressStatus;
+    type _ActionHistory = import("../src/index.js").ActionHistory;
+    type _ActionRecord = import("../src/index.js").ActionRecord;
+    type _StuckReason = import("../src/index.js").StuckReason;
+    type _PermissionContext = import("../src/index.js").PermissionContext;
+    type _PermissionRule = import("../src/index.js").PermissionRule;
+    type _PermissionVerdict = import("../src/index.js").PermissionVerdict;
+    void (null as unknown as
+      | _CostTracker
+      | _CostBudgetStatus
+      | _TranscriptStore
+      | _TokenEstimator
+      | _GoalProgressTracker
+      | _GoalProgressOptions
+      | _GoalProgressStep
+      | _ProgressStatus
+      | _ActionHistory
+      | _ActionRecord
+      | _StuckReason
+      | _PermissionContext
+      | _PermissionRule
+      | _PermissionVerdict);
+    expect(true).toBe(true);
+  });
+});

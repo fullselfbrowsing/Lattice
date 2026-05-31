@@ -85,6 +85,40 @@ export type {
   AgentStorage,
   AgentTransport,
 } from "./agent/host.js";
+// Agent infrastructure primitives (v1.2 Phase 21) — small, standalone
+// modules for cost tracking, transcript management, stuck detection,
+// action-history dedup, and tool-permission gating. Each ships pure
+// (no I/O); compose with the agent runtime via hook handlers.
+export { createCostTracker } from "./agent/infra/cost-tracker.js";
+export type { CostTracker, CostBudgetStatus } from "./agent/infra/cost-tracker.js";
+export { createTranscriptStore } from "./agent/infra/transcript-store.js";
+export type { TranscriptStore, TokenEstimator } from "./agent/infra/transcript-store.js";
+export { createGoalProgressTracker } from "./agent/infra/goal-progress.js";
+export type {
+  GoalProgressOptions,
+  GoalProgressStep,
+  GoalProgressTracker,
+  ProgressStatus,
+} from "./agent/infra/goal-progress.js";
+export { createActionHistory, STUCK_REASONS } from "./agent/infra/action-history.js";
+export type {
+  ActionHistory,
+  ActionHistoryOptions,
+  ActionRecord,
+  StuckReason,
+} from "./agent/infra/action-history.js";
+export {
+  createPermissionContext,
+  createPermissionGuardHook,
+  permissionGuardRegisterOptions,
+} from "./agent/infra/permission-context.js";
+export type {
+  PermissionContext,
+  PermissionDecisionInput,
+  PermissionHookContext,
+  PermissionRule,
+  PermissionVerdict,
+} from "./agent/infra/permission-context.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";
