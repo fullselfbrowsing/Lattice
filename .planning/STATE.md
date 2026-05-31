@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: phase-19-in-progress
-stopped_at: Phase 19 (Track B opener) in progress on v1.2 branch. Plan 19-01 (AGENTS.md policy flip, DELEG-01) committed a0e5c9c. Plan 19-02 (agent type foundation + BudgetInvariant.maxIterations/maxWallTimeMs + bands HookControls deny pattern + BEFORE/AFTER_AGENT_ITERATION lifecycle events) committed 00dcd4a. 420/420 lattice tests pass. NEXT: Plans 19-03 (formatToolsForProvider, ~400 LOC + 21 tests across 7 native protocols), 19-04 (runAgent orchestrator, ~500 LOC + 13 tests), 19-05 (public surface + integration smoke). Recommend resuming in a fresh session for context budget.
+status: phase-19-complete
+stopped_at: Phase 19 COMPLETE (Track B opener) on v1.2 branch. 5 plans landed: 19-01 (AGENTS.md policy flip) a0e5c9c, 19-02 (foundation) 00dcd4a, 19-03 (formatToolsForProvider) 46f85a0, 19-04 (runAgent orchestrator + ai.runAgent integration) 9b066d8, 19-05 (public surface + integration smoke + verification) f5a30d7. 669/669 workspace tests pass. REQ-IDs closed: DELEG-01, AGENT-01..04 (5 of 5). Native tool_use deferred to Phase 20+ via AgentHost transport seam (documented in 19-VERIFICATION). NEXT: Phase 20 (Pluggable AgentHost Adapter + TRACE-EXT-01 recovery markers).
 last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 19 Plans 19-01 + 19-02 landed; type foundation + bands deny pattern in place; 420/420 tests pass
+last_activity: 2026-05-31 — Phase 19 closed; 5 plans + 669 tests pass; ready for Phase 20
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
-  percent: 50
+  completed_phases: 6
+  total_plans: 22
+  completed_plans: 22
+  percent: 60
 ---
 
 # Project State
@@ -21,24 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 19 Plan 19-03 (formatToolsForProvider helper + 7 native parse closures + LM Studio prompt-reencoded fallback). Foundation (types + bands deny + budget extension) already on disk.
+**Current focus:** Phase 20 — Pluggable AgentHost Adapter (scheduler / transport / storage seams) + TRACE-EXT-01 recovery markers. Composes with v1.2 Phase 18 SurvivabilityAdapter.
 
 ## Current Position
 
-Phase: 19
-Plan: 19-03 (next)
-Status: Phase 19 in progress. Plan 19-01 (AGENTS.md policy flip) + Plan 19-02 (type foundation + bands deny + budget extension) committed. 420/420 tests pass.
+Phase: 20
+Plan: Not started
+Status: Phase 19 closed. Phase 20 next (AgentHost adapter, HOST-01..03 + TRACE-EXT-01).
 Last activity: 2026-05-31
 
-Progress: [█████░░░░░] 52%
-
-### Phase 19 Plan Progress
-
-- [x] Plan 19-01 — AGENTS.md policy flip (DELEG-01) — commit a0e5c9c
-- [x] Plan 19-02 — Agent types + budget extension + bands deny pattern — commit 00dcd4a
-- [ ] Plan 19-03 — formatToolsForProvider helper (AGENT-02)
-- [ ] Plan 19-04 — runAgent orchestrator (AGENT-01, AGENT-03, AGENT-04)
-- [ ] Plan 19-05 — Public surface re-exports + integration smoke + verification
+Progress: [██████░░░░] 60%
 
 ### Completed Phases (v1.2 / Track A)
 
@@ -47,6 +39,7 @@ Progress: [█████░░░░░] 52%
 - Phase 16 — Step-Transition Tracing + Checkpoint Hook — merge commit 103a2ac — REQ-IDs closed: TRACE-01, CHECKPOINT-01..04, INDEX-03 (6)
 - Phase 17 — Provider Adapter Alignment + INV-03 Parity Smoke — merge commit 4391a70 — REQ-IDs closed: PROV-01..05, INDEX-04, PARITY-01 (7)
 - Phase 18 — Survivability Adapter Contract — merge commit 03d7f72 — REQ-IDs closed: SURV-01..04, INDEX-05 (5). TRACE-EXT-01 deferred to Track B Phase 20.
+- Phase 19 — Delegation Surface Policy Flip + Agent Runtime Entrypoint — plans 19-01..05 committed inline on v1.2 — REQ-IDs closed: DELEG-01, AGENT-01..04 (5). Native tool_use deferred to Phase 20 AgentHost transport seam.
 
 **Track A total: 30 REQ-IDs closed across 23 originating commits (cherry-picked from FSB v0.10.0-attempt-2 Phases 1-5).**
 
