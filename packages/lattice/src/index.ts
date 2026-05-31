@@ -50,6 +50,7 @@ export {
   rerunLive,
 } from "./replay/replay.js";
 export { createAI } from "./runtime/create-ai.js";
+export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";
 export { createLocalArtifactStore } from "./storage/local.js";
 export { createMemoryArtifactStore } from "./storage/memory.js";
@@ -132,3 +133,11 @@ export type {
   VerifyOk,
   VerifyResult,
 } from "./runtime/public-types.js";
+
+export type {
+  EvictionHook,
+  ResumePolicy,
+  SerializedSnapshot,
+  SurvivabilityAdapter,
+  UnsubscribeFn,
+} from "./runtime/survivability.js";
