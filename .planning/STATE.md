@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: FSB Integration + Agent Capability
-status: phase-23-audit-complete-tag-pending
-stopped_at: Phase 23 milestone audit COMPLETE on v1.2 branch. Wrote `.planning/v1.2-MILESTONE-INTEGRATION.md` (46/46 REQ-IDs WIRED, 15/15 e2e flows COMPLETE, 0 blockers, 1 non-blocking V1.2-LIMITATION-1 documented) + `.planning/milestones/v1.2-MILESTONE-AUDIT.md` (v1.1-CARRYFORWARD-TRACE-EXT-01 CLOSED in Phase 20; v1.3 carry-forward enumerated). 733/733 workspace tests pass; strict tsc clean. PENDING USER TRIGGER: cut v1.2.0 tag, push v1.2 + tag to fullselfbrowsing/Lattice, switch FSB automation/lattice to submodule pinned at the tag, update LATTICE-PIN.md.
-last_updated: "2026-05-31T00:00:00.000Z"
-last_activity: 2026-05-31 — Phase 23 milestone audit complete; 46 of 46 v1.2 REQ-IDs WIRED end-to-end; ready for v1.2.0 tag + Stage 5 distribution (user confirmation required)
+status: shipped
+stopped_at: v1.2.0 shipped on 2026-05-31. Audit + integration archived to .planning/milestones/v1.2-*. 9 phases, 25 plans, 46/46 REQ-IDs WIRED, 733/733 workspace tests passing. v1.2 branch merged to main via PR #1 (merge commit 5ca3e33); tag v1.2.0 pushed to origin (30067ba). Brand assets shipped under assets/ (mark, wordmark, app icon, favicons, social card, animated spin GIF). README rewritten for v1.2 surface. Ready for /gsd-new-milestone (v1.3).
+last_updated: "2026-06-03T00:00:00.000Z"
+last_activity: 2026-06-03 — v1.2 milestone archived
 progress:
   total_phases: 10
   completed_phases: 10

@@ -12,14 +12,15 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ## Current State
 
-**v1.2 FSB Integration + Agent Capability — started 2026-05-31.** Two tracks: Track A retroactively wraps five FSB-integration extensions already implemented on `local-fsb-integration` (HEAD `e95067b`, 23 commits, 414 vitest PASS) as canonical Lattice phases (14-18). Track B opens the previously out-of-scope **Delegation** surface by shipping a runtime-agnostic agent capability that any host application can consume — not just browser extensions (Phases 19-23, TBD via `/gsd-discuss-phase`). See `.planning/milestones/v1.2-ROADMAP.md`.
+**v1.2 FSB Integration + Agent Capability shipped 2026-05-31.** All 46 v1.2 requirements wired end-to-end (zero blockers, one documented non-blocking limitation V1.2-LIMITATION-1: native tool-use deferred to v1.3). 733 / 733 workspace tests passing (589 lattice core + 144 lattice-cli). v1.2 branch merged to `main` via PR #1; tag `v1.2.0` cut and pushed.
 
-**v1.1 Capability Receipts shipped 2026-05-12.** All 36 v1.1 requirements wired end-to-end (zero blockers, zero remaining limitations). 451 tests passing across `lattice` (307) and `lattice-cli` (144).
+**Next: v1.3 (planned).** Carryforward themes from v1.2: native tool-use across providers via an additive `ProviderAdapter` extension that preserves INV-03 parity, `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel, multi-scenario agent-loop showcase, KMS adapter shapes for `ReceiptSigner`, lineage merkle root signed inside receipts, `lattice receipt diff` subcommand, OpenTelemetry exporter for `RunEventKind`.
 
 ## Shipped Milestones
 
 - **v1.0 milestone** (2026-04-22) — Foundation: package/API spine, artifact lifecycle, deterministic planning, sessions+context+packaging, tools+replay+observability, work-inbox showcase.
 - **v1.1 Capability Receipts** (2026-05-12) — Contract-bound, signed, reproducible runs: contracts + pre-flight + cost, tripwire invariants, RFC 8785 + Ed25519 signed receipts with `kid`/`KeySet`, replay envelope integration, `lattice` CLI (`repro`/`verify`/`eval`), sidecar support, end-to-end showcase exercising all 36 REQ-IDs.
+- **v1.2 FSB Integration + Agent Capability** (2026-05-31) — Five FSB-integration extensions backfilled onto canonical Lattice (Phases 14-18): public surface index + packaging readiness, receipt v1.1 schema extension, tripwire band pipeline + lifecycle events, step-transition tracing + checkpoint hook, 5 new provider adapters (Anthropic, Gemini, xAI, OpenRouter, LM Studio) + INV-03 parity smoke across 7 providers, survivability adapter contract. Plus a runtime-agnostic single-agent capability (Phases 19-22): `ai.runAgent(intent)` with uniform tool-use across 7 providers + per-iteration signed receipts + SAFETY-band veto, pluggable `AgentHost` with scheduler / transport / storage seams + recovery markers closing v1.1 TRACE-EXT-01, five agent infrastructure primitives (cost / transcript / goal-progress / action-history / permission-context), `examples/agent-loop` showcase + `evalAgentRun` regression gate. Brand identity also shipped (mark + wordmark + app icon + favicons + social card + animated spin GIF, generated from a parametric 3D renderer).
 
 ## Requirements
 
@@ -39,24 +40,30 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] Phase 12 lattice eval CI gate: new `lattice eval` lazy subcommand walks `.lattice/receipts/`, replays each via `replayOffline`, gates layered determinism (Exact -> Semantic-cheap no-op -> Semantic-expensive judge with N=3 median) and baseline-relative cost / quality regressions; `--init-baseline` flag writes a fresh baseline; disk-backed judge cache keyed by `hash(fixtureId, model_fingerprint, judge_prompt, output_canonicalized)`; stdout emits single-line JSON `EvalRunReport` (with reserved `tripwireOutcomes: []` forward-compat slot); exit codes 0/1/2 deterministic; configurable cost (default 10%) and quality (default 0.05) tolerances. (EVAL-01..06)
 - [x] Phase 13 showcase + milestone validation: `examples/work-inbox` refactored into 3 deterministic scenarios (success / tripwire-violated / no-contract-match) demonstrating contract + signed receipts + redaction-aware verification end-to-end; ephemeral Ed25519 keypair generated per run; receipts written to `.lattice/receipts/`, content-addressed artifacts to `.lattice/fixtures/<sha256>.bin`; copy-pastable `lattice verify` / `lattice repro` / `lattice eval` next-step prompts; `packages/lattice-cli/test/showcase-e2e.test.ts` spawns showcase + CLI bins (6 e2e cases, 105/105 total tests passing); 36-row REQ-coverage matrix in 13-02-SUMMARY.md confirms every v1.1 requirement has an observable behavior. Known v1.1 boundary: `lattice repro` and `lattice eval` cannot fully reconstruct a `RunIntent` from a receipt alone (no embedded task/outputs/policy); the test asserts the documented `execution_unavailable` behavior with forward-compat for v1.2 sidecar-outputs. (cross-cutting integration; validates all 36 v1.1 REQ-IDs)
 
+- [x] v1.2 Track A FSB Integration (Phases 14-18): public surface index + packaging readiness (PKG-01, INDEX-01..05); receipt v1.1 schema extension (RECEIPT-EXT-01..03) with six step-marker fields and auto-bumping `createReceipt` heuristic; tripwire band pipeline (BAND-01..05) with SAFETY / OBSERVABILITY / EXTENSION priority bands, per-handler `budgetMs` race-with-log, frozen contexts, irreversible freeze, matcher regex filter; HookLifecycleEvent vocabulary (LIFECYCLE-01); step-transition tracing additive literal (TRACE-01); checkpoint hook factory with one-event-and-one-receipt-per-invocation guarantee (CHECKPOINT-01..04); five new provider adapters (Anthropic Messages, Gemini generateContent, xAI, OpenRouter, LM Studio) (PROV-01..05); INV-03 7-provider parity smoke (PARITY-01); survivability adapter contract with `SerializedSnapshot` round-trip and `ResumePolicy` taxonomy (SURV-01..04); recovery / eviction-resume markers in `RunEventKind` paired with `SurvivabilityAdapter` (TRACE-EXT-01 v1.1 carryforward closed).
+- [x] v1.2 Track B Agent Capability (Phases 19-22): delegation surface policy flip from "multi-agent crews: Out of Scope" to "agent execution: First-class, runtime-agnostic" (DELEG-01); `ai.runAgent(intent)` on the runtime returned by `createAI` driving a uniform prompt-reencoded tool-use protocol across all 7 provider adapters, per-iteration step.transition emission for observability composition with `createCheckpointHook`, SAFETY-band hook veto before provider invocation (AGENT-01..04); `AgentHost` interface with three optional seams (scheduler, transport, storage) + `createNoopAgentHost` reference impl + storage composition with `SurvivabilityAdapter` for cross-process resume (HOST-01..03); five agent infrastructure primitives — cost tracker with `contract.budget` awareness, transcript store with filtered tail reads, goal-progress tracker with stuck-detection contract, action-history dedup with `STUCK_REASONS` vocabulary, permission context with per-tool / per-iteration / per-resource gating and SAFETY-band hook helper (AGENT-INFRA-01..04, PERM-01); `examples/agent-loop` showcase exercising every Track B surface with real Ed25519 signing and 3 per-iteration receipts verified, plus `evalAgentRun` regression-gate kernel for iterations-to-goal and total cost (SHOWCASE-AGENT-01..02).
+
 ### Active
 
-v1.2 active requirements live in `.planning/milestones/v1.2-REQUIREMENTS.md`. Two tracks:
+v1.3 active requirements are TBD. Run `/gsd-new-milestone` to scope v1.3 and create the next `REQUIREMENTS.md`. Known carryforward themes from v1.2:
 
-- **Track A — FSB Integration (retro):** PKG-01, INDEX-01..05, RECEIPT-EXT-01..03, BAND-01..05, LIFECYCLE-01, TRACE-01, CHECKPOINT-01..04, PROV-01..05, PARITY-01, SURV-01..04, TRACE-EXT-01. Code already exists on `local-fsb-integration`; phases 14-18 backfill GSD artifacts and merge each commit group into the `v1.2` branch.
-- **Track B — Agent Capability (forward):** DELEG-01, AGENT-01..04, HOST-01..03, AGENT-INFRA-01..04, PERM-01, SHOWCASE-AGENT-01..02. Final shape locked during `/gsd-discuss-phase` for Phase 19 onward.
-
-### Known v1.2 Carry-Forward (from v1.1 audit)
-
-- `lattice repro` / `lattice eval` cannot replay or grade against a receipt alone — receipts intentionally minimal (no task/outputs/policy embedded). v1.2 will accept a sidecar JSON file with the original RunIntent inputs, enabling end-to-end replay round-trips.
-- Vitest-compatible JSON/JUnit reporter for `lattice eval`.
-- Cross-platform CI matrix (Windows) + published-tarball smoke test.
-- Tripwires-as-eval-scorers wiring (the report slot is reserved).
-- Typed verify error union extensions (`EnvironmentDrift`, `RedactionDrift`, `Tampered`).
+- Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
+- `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel.
+- Multi-scenario agent-loop showcase (tripwire / stall / budget-exceeded variants).
 - KMS adapter shapes for `ReceiptSigner`.
 - Lineage merkle root signed inside receipts.
-- Multi-tier cost/quality thresholds.
 - `lattice receipt diff` subcommand.
+- OpenTelemetry exporter for `RunEventKind`.
+- Streaming for the 5 new Phase 17 provider adapters (Anthropic / Gemini / xAI / OpenRouter / LM Studio).
+- OpenRouter multi-model routing / fallback array.
+- LM Studio latency-tail diagnostics module.
+- Anthropic / Gemini multimodal request shaping.
+- Mainline npm publish of `@fullselfbrowsing/lattice@1.2.0` (waiting on first external consumer ask).
+
+### v1.1-to-v1.2 carryforward outcomes (closed)
+
+- `lattice repro` / `lattice eval` replay round-trip via sidecar — closed by v1.1 sub-phase 13.1 before v1.2 opened.
+- `RunEventKind` recovery / eviction-resume markers paired with `SurvivabilityAdapter` — closed by v1.2 Phase 20 (TRACE-EXT-01).
 
 ### Out of Scope
 

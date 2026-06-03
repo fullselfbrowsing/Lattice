@@ -1,5 +1,31 @@
 # Milestones
 
+## v1.2 FSB Integration + Agent Capability (Shipped: 2026-05-31)
+
+**Phases completed:** 9 phases, 25 plans, 46 REQ-IDs WIRED end-to-end
+
+**Test posture:** 589 packages/lattice + 144 packages/lattice-cli = 733 / 733 PASS, strict tsc clean.
+
+**Key accomplishments:**
+
+- Public surface index + packaging readiness. `createReceipt` reachable via the bare `lattice` specifier. `pnpm-workspace` `catalog:` specifiers resolved so npm 11 installs Lattice via a `file:` dependency without parse errors.
+- Receipt v1.1 schema extension. `CapabilityReceiptBody.version` widens to `v1 | v1.1`; six optional step-marker fields thread receipts as a linked list; `createReceipt` auto-bumps the version when any step-marker is populated.
+- Tripwire band pipeline + lifecycle events. `createHookPipeline` ships SAFETY / OBSERVABILITY / EXTENSION bands with per-handler `budgetMs` race-with-log, frozen contexts, irreversible freeze, and `matcher` regex filter. `HookLifecycleEvent` vocabulary kept separate from `RunEventKind`.
+- Step-transition tracing + checkpoint hook. `step.transition` joins `RunEventKind` as an additive literal. `createCheckpointHook` emits exactly one event and (when a signer is configured) mints exactly one v1.1 receipt per invocation; signer failure degrades to `metadata.mintError` without throwing upstream.
+- Provider adapter alignment + INV-03 parity. Five new adapters (Anthropic Messages, Gemini `generateContent`, xAI, OpenRouter, LM Studio) ship as first-class factories. INV-03 parity smoke iterates all 7 logical providers under a fake fetch and asserts the same `ProviderAdapter` contract (shape, `rawOutputs`, normalized `Usage`, provider-name error, AbortSignal propagation, `rawResponse`, distinct request ids).
+- Survivability adapter contract. `SurvivabilityAdapter<TState>` defines what "execution context can be evicted mid-flow" means for any runtime. `SerializedSnapshot` JSON round-trips byte-equal and survives DSSE + JCS round-trip with real Ed25519 when the payload embeds a v1.1 `ReceiptEnvelope`. `createNoopSurvivabilityAdapter` ships as the reference impl.
+- Delegation surface flip + agent runtime entrypoint. `AGENTS.md` policy flips from "multi-agent crews: Out of Scope" to "agent execution: First-class, runtime-agnostic." `ai.runAgent(intent)` ships on the runtime returned by `createAI`. `formatToolsForProvider` drives a uniform prompt-reencoded tool-use protocol across all 7 provider adapters (84-case `describe.each(ALL_PROVIDERS)` parity test). SAFETY-band hooks can deny / abort an iteration before provider invocation.
+- Pluggable `AgentHost` + recovery markers. `AgentHost` exports three optional seams (scheduler, transport, storage). `createNoopAgentHost` is the Node-test reference impl. The storage seam composes with `SurvivabilityAdapter` so the agent loop re-enters at the recorded iteration index on resume. `RunEventKind` gains `recovery.start`, `recovery.complete`, `recovery.failed` markers, closing the v1.1 audit carryforward TRACE-EXT-01.
+- Agent infrastructure primitives. Five small standalone modules: cost tracker (budget-aware accumulator with ok / warning / exceeded thresholds), transcript store (tailed reads with first-user-turn preservation), goal-progress tracker (stuck detection with progressing / stalled / regressed), action-history dedup (consecutive-identical and ping-pong patterns with `STUCK_REASONS` vocabulary), permission context (per-tool / per-iteration / per-resource gating with a SAFETY-band hook helper).
+- Agent showcase + eval helper. `examples/agent-loop` exercises every Track B surface end-to-end against a fake provider and a fake tool registry with real Ed25519 signing; produces 3 per-iteration receipts that verify cleanly under the ephemeral KeySet. `evalAgentRun` ships as a pure regression-gate kernel for iterations-to-goal and total cost (11 cases). A future `lattice eval --agent` CLI subcommand can wrap it without re-implementing the kernel.
+- Brand identity. Direction C "Shell" implementation of the Claude.ai design bundle. Isometric wireframe lattice cube, hollow faces, glowing depth-scaled nodes. Static mark + animated gentle 3D sideways sway (240 frames over 14s) + wordmark + app icon + favicons + 1200x630 social card, all generated from `tools/gen-assets.mjs` (ports `lattice-core.js` into Node).
+
+**Documented v1.2 limitation (non-blocking, carry to v1.3):** Native tool-use across providers deferred. Admitting native `tools[]` cleanly requires an additive extension to the `ProviderAdapter` interface to preserve the INV-03 7-provider parity contract.
+
+**Distribution:** Tag `v1.2.0` cut at commit `f0d832a`, pushed to `fullselfbrowsing/Lattice`. v1.2 branch merged to `main` via PR #1 (merge commit `5ca3e33`). Mainline npm publish deferred until at least one external consumer requests it. FSB consumes via git submodule pinned at the tag.
+
+---
+
 ## v1.1 Capability Receipts (Shipped: 2026-05-12)
 
 **Phases completed:** 9 phases, 24 plans, 21 tasks
