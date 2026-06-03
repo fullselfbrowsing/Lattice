@@ -1,660 +1,592 @@
-# Architecture Research — Capability Receipts (v1.1)
+# Architecture Research
 
-**Domain:** TypeScript capability runtime SDK, attestation/replay subsystem
-**Researched:** 2026-05-11
-**Confidence:** HIGH (grounded in existing source code; new components designed against current type surface)
-**Scope:** Integration architecture for Capability Contracts, pre-flight contract proof, tripwire invariants, signed receipts, `lattice` CLI, and `lattice eval` CI gate on top of the v1.0 lattice runtime.
+**Domain:** npm publish + OIDC trusted publishing + external canary consumer (additive to existing pnpm monorepo)
+**Researched:** 2026-06-03
+**Confidence:** HIGH (npm OIDC verified against official docs, repo state inspected file-by-file)
 
-## Standard Architecture
+## Scope Boundary
 
-### System Overview (v1.1 with new components highlighted)
+This document covers ONLY the architecture additions for v1.3 (public release + canary). It does NOT re-research the existing Lattice runtime architecture, which is already shipped and validated through v1.2.
 
-```
-+-----------------------------------------------------------------------+
-|                            Public API (lattice)                        |
-|                                                                        |
-|  createAI({ ... }).run({ task, artifacts, outputs, policy, contract }) |
-|                                                  ^^^^^^^^ NEW          |
-|                                                                        |
-|  + createAI({ ... }).plan(intent)        + replayOffline(envelope)     |
-|  + verifyReceipt(receipt, publicKey)  NEW                              |
-|  + createReceipt(plan, result, ...)   NEW                              |
-+-----------------------------------------------------------------------+
-                                  |
-+-----------------------------------------------------------------------+
-|                       Runtime Orchestrator (create-ai.ts)              |
-|                                                                        |
-|   buildPlan() ----+----> contract.evaluate()  NEW                      |
-|                   |       (pre-flight proof)                           |
-|   runWithConfig() |                                                    |
-|        |          +----> contract.tripwire()  NEW                      |
-|        v                   (mid-stream check, abort)                   |
-|   provider exec --> validate output --> sign receipt NEW               |
-+-----------------------------------------------------------------------+
-            |                    |                  |             |
-+-----------+--+   +-------------+--+  +------------+----+ +------+----+
-|  Routing /   |   |  Outputs /     |  | Contracts /     | | Receipts |
-|  Catalog     |   |  Validation    |  | Tripwires NEW   | | NEW      |
-|  (existing)  |   |  (existing)    |  | contract/*.ts   | | receipts/|
-|              |   |                |  | tripwire/*.ts   | | *.ts     |
-+--------------+   +----------------+  +-----------------+ +----------+
-            |                    |                  |             |
-+-----------+--------------------+------------------+-------------+----+
-|        Artifacts + Storage (existing: fingerprint, lineage, refs)      |
-|        Plan + ReplayEnvelope (existing, extended with receiptRef)      |
-+-----------------------------------------------------------------------+
-                                  |
-+-----------------------------------------------------------------------+
-|                      Tooling Surface (separate packages) NEW           |
-|                                                                        |
-|  packages/lattice-cli/         packages/lattice-eval/  (or sub-CLI)    |
-|  bin: `lattice`                bin: `lattice eval`                     |
-|    - lattice repro <id>          - load receipts + fixtures            |
-|    - lattice verify <receipt>    - materialize replay envelopes        |
-|    - lattice export              - run regression gates (cost/quality) |
-+-----------------------------------------------------------------------+
-```
+Five questions in scope:
+- (a) Phase ordering for the package rename vs CI scaffolding
+- (b) Where the OIDC trust boundary lives
+- (c) How the canary's two test suites stay isolated
+- (d) Cost-ceiling enforcement architecture
+- (e) Data flow between Lattice release workflow and canary CI
 
-### Component Responsibilities
-
-| Component | New / Modified | Responsibility | Files |
-|-----------|----------------|----------------|-------|
-| `CapabilityContract` types | NEW | Public type declaring `budget`, `qualityFloor`, `invariants`, `tripwires`; serializable + hashable for receipts. | `packages/lattice/src/contract/contract.ts` (new) |
-| `evaluateContractAgainstRoute` | NEW | Pre-flight proof. Given a `RouteDecision` + `CapabilityContract`, returns `{ ok: true, proof } \| { ok: false, reasons }`. Pure, deterministic. | `packages/lattice/src/contract/preflight.ts` (new) |
-| `routeDeterministically` | MODIFIED | Carry a new `contract` field on `RouteRequest`; contract-incompatible candidates rejected via new `RouteRejectReason` codes (`contract-budget-exceeded`, `contract-quality-floor`, `contract-modality-missing`). The existing `selected === undefined` branch still drives the result. | `packages/lattice/src/routing/router.ts` |
-| `Tripwire` runtime | NEW | Streaming/structured invariant check evaluated after `provider.execute` returns (and ideally during streaming once streaming lands). Aborts with `TripwireViolationError`. | `packages/lattice/src/contract/tripwire.ts` (new) |
-| `validateOutputMap` | MODIFIED | After Standard-Schema validation succeeds, run `runTripwires(contract, outputs, plan)`. On violation, return a typed `RunFailure` with `error.kind: "tripwire_violation"`. | `packages/lattice/src/outputs/validate.ts` |
-| `CapabilityReceipt` | NEW | Canonical attested record: `{ runId, planId, inputs[], route, packagingPlan, modelVersions, contract, contractVerdict, outputHashes, signature, signerKeyId, issuedAt, redacted }`. | `packages/lattice/src/receipts/receipt.ts` (new) |
-| Ed25519 signer | NEW | Web Crypto subtle-based signer (`generateKey`/`sign`/`verify`) with key-id + JWK export, mirroring `fingerprintArtifactValue` style. | `packages/lattice/src/receipts/sign.ts` (new) |
-| Replay envelope | MODIFIED | Embed `receipt?: CapabilityReceipt` and `contract?: CapabilityContract` so a receipt fully reconstructs an envelope. | `packages/lattice/src/replay/replay.ts` |
-| `LatticeRunError` union | MODIFIED | Add `NoContractMatchError` and `TripwireViolationError`; existing kinds untouched. | `packages/lattice/src/results/errors.ts` |
-| Public exports | MODIFIED | Export `contract`, `tripwire`, `createReceipt`, `verifyReceipt`, new types from `runtime/public-types.ts`. | `packages/lattice/src/index.ts` |
-| `lattice` CLI | NEW (separate package) | Node bin: `lattice repro <id>`, `lattice verify <receipt>`. Depends on `lattice` runtime via workspace path. | `packages/lattice-cli/` (new) |
-| `lattice eval` | NEW (same CLI, sub-command) | CI gate: load receipts + fixtures dir, replay, compare cost/quality vs baselines, exit non-zero on regression. | `packages/lattice-cli/src/commands/eval.ts` (new) |
-
-## Recommended Project Structure
+## System Overview
 
 ```
-packages/
-+-- lattice/                                  # existing runtime, MODIFIED
-|   +-- src/
-|   |   +-- contract/                         # NEW
-|   |   |   +-- contract.ts                   # CapabilityContract types, contract() factory
-|   |   |   +-- preflight.ts                  # evaluateContractAgainstRoute()
-|   |   |   +-- tripwire.ts                   # Tripwire runtime, runTripwires()
-|   |   |   +-- hash.ts                       # canonicalize() + SHA-256 over contract
-|   |   |   +-- index.ts
-|   |   +-- receipts/                         # NEW
-|   |   |   +-- receipt.ts                    # createReceipt(), CapabilityReceipt type
-|   |   |   +-- sign.ts                       # Ed25519 sign/verify (Web Crypto subtle)
-|   |   |   +-- canonical.ts                  # deterministic JSON canonicalization
-|   |   |   +-- redact.ts                     # receipt-specific redaction, reuses replay
-|   |   |   +-- index.ts
-|   |   +-- routing/router.ts                 # MODIFIED: contract field + new reject codes
-|   |   +-- runtime/create-ai.ts              # MODIFIED: preflight + tripwire + receipt hooks
-|   |   +-- outputs/validate.ts               # MODIFIED: tripwire stage between schema + return
-|   |   +-- replay/replay.ts                  # MODIFIED: envelope carries receipt + contract
-|   |   +-- results/errors.ts                 # MODIFIED: new error kinds
-|   |   +-- index.ts                          # MODIFIED: new exports
-|   +-- package.json
-|
-+-- lattice-cli/                              # NEW package
-|   +-- src/
-|   |   +-- bin/lattice.ts                    # shebang entry, argv parser (citty/cac)
-|   |   +-- commands/
-|   |   |   +-- repro.ts                      # lattice repro <receipt-id>
-|   |   |   +-- verify.ts                     # lattice verify <receipt-path>
-|   |   |   +-- eval.ts                       # lattice eval (CI gate)
-|   |   |   +-- export.ts                     # optional: dump receipt -> fixture
-|   |   +-- fixtures/loader.ts                # fixture <-> receipt materialization
-|   |   +-- gate/                             # regression thresholds + diff
-|   |   |   +-- cost.ts
-|   |   |   +-- quality.ts
-|   |   +-- index.ts
-|   +-- package.json                          # bin: { lattice: dist/bin/lattice.js }
-|
-+-- examples/                                  # existing work-inbox showcase
-    +-- ...                                    # extended to demonstrate contracts/receipts
+                          [GitHub repo: fullselfbrowsing/Lattice]
+                                        │
+   ┌────────────────────────────────────┼────────────────────────────────────┐
+   │                                    │                                    │
+   │  .github/workflows/                │   packages/                        │
+   │  ┌──────────────┐  ┌────────────┐  │   ┌────────────────────────────┐  │
+   │  │   ci.yml     │  │ release.yml│  │   │ @fullselfbrowsing/lattice  │  │
+   │  │ (PR + push)  │  │ (tag push) │  │   │ @fullselfbrowsing/lattice- │  │
+   │  └──────┬───────┘  └─────┬──────┘  │   │   cli (bin: lattice)       │  │
+   │         │                │         │   └────────────────────────────┘  │
+   └─────────┼────────────────┼─────────┼────────────────────────────────────┘
+             │                │
+   typecheck │                │ permissions: { id-token: write, contents: write }
+   test      │                │ npm publish --provenance (implicit via OIDC)
+   lint:pkgs │                │
+   (publint, │                ▼
+    attw)    │       ┌────────────────────────────────┐
+             │       │  npm registry (@fullselfbrowsing) │
+             │       │   trusted publisher config:        │
+             │       │     repo = fullselfbrowsing/Lattice│
+             │       │     workflow = release.yml         │
+             │       │     environment = (optional gate)  │
+             │       └────────────┬───────────────────────┘
+             │                    │
+             │                    │ tarballs + provenance attestations
+             │                    ▼
+             │       ┌────────────────────────────────────────────────────┐
+             │       │  GitHub repo: fullselfbrowsing/lattice-canary       │
+             │       │  (separate repo, standalone install, no workspace)  │
+             │       │                                                     │
+             │       │  package.json depends on:                           │
+             │       │    "@fullselfbrowsing/lattice": "^1.3.0"            │
+             │       │    "@fullselfbrowsing/lattice-cli": "^1.3.0"        │
+             │       │                                                     │
+             │       │  .github/workflows/                                 │
+             │       │  ┌──────────────────┐  ┌────────────────────────┐  │
+             │       │  │ unit.yml         │  │ integration.yml         │  │
+             │       │  │ (PR + push)      │  │ (cron + manual dispatch)│  │
+             │       │  │ fake providers   │  │ real providers + budget │  │
+             │       │  └──────────────────┘  └────────────────────────┘  │
+             │       └─────────────────────────────────────────────────────┘
+             │                    ▲
+             │                    │ repository_dispatch event
+             │                    │ payload: { tag, lattice_version, cli_version }
+             └────────────────────┘
+                  Lattice release.yml's final job pings canary repo after publish
+
+Existing (unchanged):
+  packages/lattice/src      packages/lattice-cli/src      examples/work-inbox      examples/agent-loop
+  showcase/angular          tools                         docs                     .planning
 ```
 
-### Structure Rationale
+## Component Responsibilities
 
-- **`contract/` and `receipts/` as new top-level domains** inside `lattice` — match the existing flat domain layout (`routing/`, `outputs/`, `replay/`, `tracing/`). Avoids cross-cutting placement.
-- **`lattice-cli` is a separate package**, not inside `lattice` — keeps the runtime's `dependencies` set to `@standard-schema/spec` and `mime` only (per the current `package.json`); CLI brings in argv parsers and Node-only concerns (`fs`, `path`, `process.argv`) that would otherwise bloat the runtime bundle and break its `sideEffects: false` declaration. CLI also has different release cadence and version policy than the runtime SDK.
-- **Single `lattice` bin owning multiple subcommands** (`repro`, `verify`, `eval`, `export`) rather than separate `lattice-repro` / `lattice-eval` binaries — matches how `vitest`/`tsc`/`pnpm` operate; one install, predictable UX for CI.
-- **Canonicalization and signing isolated in `receipts/`** so contracts can be hashed (`contract/hash.ts` re-exports `receipts/canonical.ts`) without circular deps; both reuse `crypto.subtle` like `storage/fingerprint.ts`.
+| Component | Responsibility | Implementation |
+|-----------|----------------|----------------|
+| `packages/lattice/package.json` (modified) | Declare published identity, OIDC-required `repository` field | Rename `name` field; add `license`, `repository`, `bugs`, `homepage`, `publishConfig.access: "public"` |
+| `packages/lattice-cli/package.json` (modified) | Declare CLI identity, depend on renamed core | Rename `name`; rename `dependencies.lattice` → `dependencies."@fullselfbrowsing/lattice"` (still `workspace:*`); preserve `bin.lattice` |
+| `.changeset/config.json` (modified) | Tell changesets the new published names | `packages` filter unchanged (workspace globs), but `linked` / `fixed` arrays must reference the new scoped names |
+| `.github/workflows/ci.yml` (NEW) | PR-time gate: install, typecheck, test, lint:packages | Matrix on Node 24; `pnpm install --frozen-lockfile`; `pnpm -r typecheck`; `pnpm -r test`; `pnpm -r lint:packages` (publint + attw) |
+| `.github/workflows/release.yml` (NEW) | Tag/changesets-PR publish with OIDC + provenance | `permissions: { id-token: write, contents: write }`; `pnpm changeset publish` or `pnpm publish -r --access public`; npm 11.5.1+; `gh release create` step |
+| `tsd` paths map in `packages/lattice/package.json` (modified) | Type-test resolves new name | `paths."@fullselfbrowsing/lattice"` instead of `paths.lattice` |
+| `packages/lattice/scripts/check-cli-deps.mjs` (unchanged) | Already scans for `citty/commander/cac/yargs` strings; package-name-agnostic | No change required |
+| Canary repo `package.json` (NEW, separate repo) | External consumer pinning registry deps | `dependencies` references only registry packages; no workspace protocol |
+| Canary `test/unit/**` (NEW) | Fast, deterministic, runs every PR | Vitest + Lattice's own `createFakeProvider` exported from `@fullselfbrowsing/lattice` |
+| Canary `test/integration/**` (NEW) | Real-provider end-to-end gated to cron + dispatch | Vitest with separate config; `CostTracker` wrapper aborts on budget exceed |
+| Canary `test/cli/**` (NEW) | Subprocess smoke against installed `lattice` bin | `execa` or `node:child_process` against `node_modules/.bin/lattice` |
+
+## Phase Ordering (Answer to Question a)
+
+Dependency direction forces ordering. Each phase below names the smallest set of files that change.
+
+### Phase A: Package rename (FIRST, in Lattice repo only)
+
+**Why first:** CI must test the new names. If CI scaffolding lands before the rename, the workflow tests packages that won't exist after the rename, and you re-test everything. Rename first means CI is born testing the final shape.
+
+**Files modified (12, all in lattice repo):**
+1. `packages/lattice/package.json` — `name: "@fullselfbrowsing/lattice"`, add `license`, `repository`, `bugs`, `homepage`, `publishConfig`, update `tsd.paths`
+2. `packages/lattice-cli/package.json` — `name: "@fullselfbrowsing/lattice-cli"`, rename `dependencies.lattice` key, add same release metadata
+3. `packages/lattice-cli/src/io/sidecar-loader.ts` — import string
+4. `packages/lattice-cli/src/io/receipt-loader.ts` — import string
+5. `packages/lattice-cli/src/io/artifact-loader.ts` — import string
+6. `packages/lattice-cli/src/io/keyset-loader.ts` — import string
+7. `packages/lattice-cli/src/io/receipt-walker.ts` — import string
+8. `packages/lattice-cli/src/io/sidecar-walker.ts` — import string
+9. `packages/lattice-cli/src/commands/verify.ts` — import string
+10. `packages/lattice-cli/src/commands/repro.ts` — import string
+11. `packages/lattice-cli/src/eval/runner.ts` — import string
+12. `packages/lattice-cli/test/*.test.ts` (5 files) and `packages/lattice/test-d/package-types.test-d.ts` — import strings
+13. `examples/agent-loop/package.json` — workspace dep rename
+14. `examples/work-inbox/index.mjs` and friends — if any import `lattice` (currently `.mjs` calling built artifacts)
+
+**Verification:** existing test suite (733 tests) all pass against new names. No CI workflow runs yet; this is a pure local sweep validated by `pnpm -r test` on the dev machine. `pnpm install` rewrites the lockfile to reflect the new internal dep name.
+
+**Smallest possible change set:** ~15 files. Mechanical find/replace of the literal string `"lattice"` (when it's an import specifier or a `dependencies` key) → `"@fullselfbrowsing/lattice"`. Validated by Bash inventory: 15 files contain `from "lattice"` matches.
+
+### Phase B: CI scaffolding (SECOND, in Lattice repo)
+
+**Why second:** CI tests must run against the renamed packages so the workflow has the same surface that publish will produce. If CI ran first, you'd write the workflow for the old name and then have to revise the YAML during the rename phase, doubling the review surface.
+
+**Files NEW:**
+- `.github/workflows/ci.yml`
+
+**Files modified:**
+- (none — CI scaffolding is purely additive)
+
+**ci.yml shape:**
+```yaml
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.1 }
+      - uses: actions/setup-node@v5
+        with: { node-version: '24', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
+      - run: pnpm -r test:types
+      - run: pnpm -r lint:packages   # publint + attw + check-cli-deps
+```
+
+`lint:packages` already runs `publint` and `attw --pack . --profile esm-only`; both work against the renamed packages without modification because they read `name` from `package.json` at invocation time.
+
+### Phase C: OIDC binding + release workflow (THIRD)
+
+**Why third:** Publishing requires the workflow file to exist before the npm trusted-publisher config can reference it by filename. npm trust config is keyed on `(repo, workflow_filename, environment_name)`, so the file path is part of the trust tuple. Land the file in main first, then configure npm.
+
+**Files NEW:**
+- `.github/workflows/release.yml`
+
+**Files modified:**
+- `.changeset/config.json` — set `access: "public"`, ensure `changelog` plugin is configured
+
+**release.yml shape (Trusted Publisher, no NPM_TOKEN):**
+```yaml
+name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: write   # for gh release create
+  id-token: write   # MANDATORY for OIDC trusted publishing
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish   # optional but recommended; gates manual approval
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.1 }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g npm@latest   # >= 11.5.1 required for trusted publishing
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r lint:packages
+      - run: pnpm publish -r --access public --no-git-checks
+        # No NODE_AUTH_TOKEN. OIDC handshake happens inside `npm publish`.
+        # --provenance is implicit when trusted publisher is configured.
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            packages/lattice/*.tgz
+            packages/lattice-cli/*.tgz
+```
+
+**OIDC trust boundary lives in THREE places (Answer to Question b):**
+
+| Layer | Where | What it controls | Verified |
+|-------|-------|------------------|----------|
+| 1. Workflow permissions | `release.yml` `permissions.id-token: write` | Lets the job mint an OIDC token. Without it, `npm publish` fails before contacting npm. | docs.npmjs.com/trusted-publishers/ |
+| 2. npm side trust config | npmjs.com → org `@fullselfbrowsing` → package settings → Trusted Publisher | Binds `(github.com/fullselfbrowsing/Lattice, release.yml, optional environment)` to one specific package | docs.npmjs.com/trusted-publishers/ |
+| 3. package.json `repository` field | `packages/lattice/package.json` and `packages/lattice-cli/package.json` | REQUIRED for provenance attestation to be generated; without it, npm refuses to publish provenance even under OIDC | docs.npmjs.com/generating-provenance-statements/ |
+
+**Important behavior:** Configurations created after May 20, 2026 must explicitly enable `publish` in the npm trusted-publisher UI; pre-existing configs default to publish. Since this is brand-new (June 2026), the new-rule path applies. The release.yml `environment: npm-publish` line is OPTIONAL but adds a manual-approval gate before the first publish, which is cheap insurance for v1.3.0.
+
+**The first publish IS the smoke test of release.yml.** There is no way to dry-run an OIDC publish without actually publishing. Mitigations:
+- Use `pnpm publish --dry-run` in a separate workflow_dispatch job first to validate the tarball
+- Pre-create both packages on npm via a one-time manual publish using a granular token, THEN flip to OIDC trusted publisher (this is what npm recommends; their docs call this "claim then trust")
+- Tag a `v1.3.0-rc.1` first so the smoke-test failure mode is a prerelease, not the real v1.3.0
+
+### Phase D: Canary repo scaffolding (FOURTH, separate repo)
+
+**Why fourth:** Canary installs `@fullselfbrowsing/lattice@^1.3.0` from the registry. That version doesn't exist until Phase C completes a publish. Canary scaffolding can be drafted in parallel (private branch) but cannot run end-to-end until first publish.
+
+**Files NEW (separate repo fullselfbrowsing/lattice-canary):**
+
+```
+lattice-canary/
+├── package.json                # depends on registry packages, NOT workspace
+├── pnpm-lock.yaml              # pinned to specific lattice version
+├── tsconfig.json
+├── vitest.config.ts            # default config — used by unit suite
+├── vitest.integration.config.ts # separate config — used by integration only
+├── .github/
+│   └── workflows/
+│       ├── unit.yml            # on: [pull_request, push]
+│       ├── integration.yml     # on: [schedule (nightly), workflow_dispatch, repository_dispatch]
+│       └── refresh-lattice.yml # on: repository_dispatch from Lattice release.yml
+├── src/
+│   └── helpers/
+│       ├── fake-providers.ts   # imports createFakeProvider from @fullselfbrowsing/lattice
+│       ├── ephemeral-keyset.ts # generates Ed25519 keypair per test session
+│       └── cli-runner.ts       # spawns @fullselfbrowsing/lattice-cli bin via execa
+└── test/
+    ├── unit/
+    │   ├── public-api.test.ts        # named exports exist + correct shape
+    │   ├── receipts-roundtrip.test.ts # signer → verifier with ephemeral keyset
+    │   ├── tripwire-bands.test.ts    # SAFETY/OBSERVABILITY/EXTENSION priority
+    │   └── agent-loop.test.ts        # ai.runAgent against fake provider
+    └── integration/
+        ├── openai.test.ts
+        ├── anthropic.test.ts
+        ├── gemini.test.ts
+        ├── cli-subprocess.test.ts    # spawns `lattice repro` `lattice verify` `lattice eval`
+        └── cost-ceiling.guard.ts     # NOT a .test file; imported by integration setup
+```
+
+## Canary Test Suite Isolation (Answer to Question c)
+
+Two suites must never run together, must not share fixtures, and must not share Vitest config — because their reliability assumptions differ.
+
+### Two-config strategy
+
+`vitest.config.ts` (default):
+```ts
+export default defineConfig({
+  test: {
+    include: ['test/unit/**/*.test.ts'],
+    testTimeout: 5_000,                  // unit tests are fast
+    setupFiles: ['./test/unit/setup.ts'],
+    pool: 'threads',                     // parallel, deterministic
+  },
+});
+```
+
+`vitest.integration.config.ts`:
+```ts
+export default defineConfig({
+  test: {
+    include: ['test/integration/**/*.test.ts'],
+    testTimeout: 120_000,                // real API calls
+    setupFiles: ['./test/integration/setup.ts'],
+    pool: 'forks',                       // each test in fresh process
+    poolOptions: { forks: { singleFork: true } },  // serial — providers rate-limit
+    bail: 1,                             // STOP on first failure
+                                          // (so the cost-ceiling guard's abort actually stops)
+    retry: 0,                            // never retry real-provider tests; flakes mean real bugs or budget
+  },
+});
+```
+
+### CI workflow isolation
+
+`unit.yml` runs `pnpm vitest run` (default config). Triggers: `pull_request`, `push`. No secrets. Runs in <30 seconds. Gates PR merge.
+
+`integration.yml` runs `pnpm vitest run --config vitest.integration.config.ts`. Triggers:
+- `schedule: cron: '0 7 * * *'` (nightly UTC)
+- `workflow_dispatch` (manual)
+- `repository_dispatch` of type `lattice-published` (see Question e)
+
+Requires secrets: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `LATTICE_COST_CEILING_USD`. Runs as a single job in `serial` mode so the cost guard's abort actually halts the suite.
+
+### Fixture isolation
+
+- Unit suite: in-memory artifact store, ephemeral keyset generated per `beforeAll`, fake providers from `createFakeProvider({ capabilities })` (already exported from `@fullselfbrowsing/lattice`).
+- Integration suite: separate keyset (still ephemeral, still per-session), real providers, persistent `.canary/receipts/` directory written only during the run, cleaned up in `afterAll`.
+
+The two suites must not share helper modules that touch real network. `src/helpers/fake-providers.ts` is safe to import from both. `src/helpers/real-providers.ts` (NEW) is imported ONLY from `test/integration/**`. ESLint rule enforces this (`no-restricted-imports` scoped to `test/unit/`).
+
+## Cost-Ceiling Architecture (Answer to Question d)
+
+The ceiling must fire BEFORE the next provider call, must produce a structured failure, and must leave in-flight HTTP requests to complete naturally (cancelling mid-request wastes the cost you already incurred without recording it).
+
+### Architecture: suite-level guard wrapping per-test budgets
+
+Three layers, each with a different failure surface:
+
+**Layer 1: per-test budget (already exists in Lattice).** Each integration test creates an `ai` runtime with a `contract.budget.maxCostUsd` and reads `CostTracker.budgetStatus(budget)`. When status is `"exceeded"`, the TEST fails. This is normal lattice contract behavior — no new architecture.
+
+**Layer 2: suite-level cumulative guard (NEW).** A shared `SuiteCostTracker` accumulates usage across all tests in the integration suite. Lives in `test/integration/cost-ceiling.guard.ts`:
+
+```ts
+// test/integration/cost-ceiling.guard.ts
+import { createCostTracker } from '@fullselfbrowsing/lattice';
+import type { Usage } from '@fullselfbrowsing/lattice';
+
+const CEILING_USD = Number(process.env.LATTICE_COST_CEILING_USD ?? '5.00');
+const suite = createCostTracker();
+let aborted = false;
+
+export function recordSuiteUsage(usage: Usage): void {
+  if (aborted) return;
+  suite.recordIteration(usage);
+  const total = suite.total().costUsd ?? 0;
+  if (total >= CEILING_USD) {
+    aborted = true;
+    // Emit structured failure to stdout so the workflow log machine-parses it
+    console.error(JSON.stringify({
+      event: 'canary.cost-ceiling.exceeded',
+      ceilingUsd: CEILING_USD,
+      totalUsd: total,
+      timestamp: new Date().toISOString(),
+    }));
+    // Throw inside a test → vitest with bail:1 stops the suite.
+    // Cannot synchronously stop here — we are inside a test's await.
+    throw new Error(`COST_CEILING_EXCEEDED total=${total} ceiling=${CEILING_USD}`);
+  }
+}
+
+export function isAborted(): boolean { return aborted; }
+```
+
+Each integration test calls `recordSuiteUsage(result.usage)` after every `ai.run` / `ai.runAgent` call. Subsequent tests check `isAborted()` in their `beforeEach` and `test.skip` themselves with a structured reason.
+
+**Layer 3: process-level circuit breaker (defensive, fires only on bugs).** If Layer 2 fails to fire (a test forgot to call `recordSuiteUsage`), a setup-file `beforeAll` registers a 10-minute hard `setTimeout` that calls `process.exit(2)` with a structured marker. This is belt-and-suspenders: real protection is Layer 2.
+
+### Failure surface (Answer to "what happens to in-flight requests")
+
+In-flight HTTP requests are allowed to complete; cancelling them mid-call wastes prepaid cost. The guard fires AFTER `recordSuiteUsage` is called with the just-completed request's usage. The next test sees `isAborted() === true` and skips itself. With `bail: 1` in the integration vitest config, the first thrown `COST_CEILING_EXCEEDED` halts the whole suite.
+
+### Testability of the guard
+
+The guard module is pure TypeScript with one env-var input and three exported functions. Unit-testable from `test/unit/cost-ceiling.guard.test.ts` by:
+1. Setting `process.env.LATTICE_COST_CEILING_USD = '1.00'`
+2. Calling `recordSuiteUsage({ promptTokens: 0, completionTokens: 0, costUsd: 0.50 })` twice
+3. Asserting the second call throws `COST_CEILING_EXCEEDED` and emits the structured JSON
+
+That unit test runs on every canary PR (fast, no secrets), so the guard is exercised even on days nothing real publishes.
+
+### When does the guard fire?
+- After the FIRST request whose accumulated total `>= LATTICE_COST_CEILING_USD`
+- Surface: structured `JSON.stringify` log line on stderr (`canary.cost-ceiling.exceeded`)
+- Plus thrown `Error('COST_CEILING_EXCEEDED total=… ceiling=…')` → vitest `bail:1` stops suite
+- Exit code: 1 (vitest default for failed suite). CI workflow detects the structured log and fires a Slack/PagerDuty notification via a separate step.
+
+## Data Flow: Lattice repo → canary repo (Answer to Question e)
+
+The canary repo must know when a new `@fullselfbrowsing/lattice` version exists so it can refresh its pinned dep and rerun integration tests against fresh bits.
+
+### Recommended: GitHub `repository_dispatch` event from Lattice release.yml
+
+After `pnpm publish -r` succeeds, the Lattice release workflow fires a `repository_dispatch` event at the canary repo with the published tag and versions in the payload. The canary repo's `refresh-lattice.yml` workflow listens for this event, bumps the dep, opens a PR, and that PR triggers `integration.yml`.
+
+```yaml
+# tail of Lattice release.yml
+      - name: Notify canary
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CANARY_DISPATCH_TOKEN }}   # PAT or fine-grained token
+          repository: fullselfbrowsing/lattice-canary
+          event-type: lattice-published
+          client-payload: |
+            {
+              "tag": "${{ github.ref_name }}",
+              "lattice_version": "${{ steps.publish.outputs.lattice_version }}",
+              "cli_version": "${{ steps.publish.outputs.cli_version }}",
+              "commit": "${{ github.sha }}"
+            }
+```
+
+```yaml
+# lattice-canary/.github/workflows/refresh-lattice.yml
+name: Refresh Lattice
+on:
+  repository_dispatch:
+    types: [lattice-published]
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          pnpm up @fullselfbrowsing/lattice@${{ github.event.client_payload.lattice_version }} \
+                  @fullselfbrowsing/lattice-cli@${{ github.event.client_payload.cli_version }}
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          branch: refresh/lattice-${{ github.event.client_payload.lattice_version }}
+          title: "chore: bump Lattice to ${{ github.event.client_payload.lattice_version }}"
+          body: |
+            Triggered by upstream tag `${{ github.event.client_payload.tag }}`
+            (commit `${{ github.event.client_payload.commit }}`).
+            Unit suite runs on this PR. Merge to main also triggers a full integration run.
+```
+
+### Data flow diagram
+
+```
+Lattice repo                                  npm registry            Canary repo
+─────────────────────                         ──────────────          ─────────────────────────
+
+git tag v1.3.0 push
+     │
+     ▼
+release.yml
+  ┌──────────────┐
+  │ checkout     │
+  │ build        │
+  │ lint:packages│
+  │ publish ─────┼─── OIDC handshake ────────▶ verifies trust tuple
+  │              │                            (repo,workflow,env)
+  │              │                            ├─ accepts tarball
+  │              │                            ├─ generates provenance
+  │              │                            └─ publishes
+  │ gh release ──┼──▶ GitHub Release object created on Lattice repo
+  │   create     │
+  │              │
+  │ repository_ ─┼─────────────────────────────────────────────────▶  refresh-lattice.yml
+  │  dispatch    │  event: lattice-published                              │
+  │              │  payload: { tag, lattice_version, cli_version }        │
+  └──────────────┘                                                        │
+                                                                          ▼
+                                                                 pnpm up → branch → PR
+                                                                          │
+                                                                          ▼
+                                                                 unit.yml runs on PR (fast)
+                                                                 PR merged to main
+                                                                          │
+                                                                          ▼
+                                                                 next nightly cron runs
+                                                                 integration.yml against
+                                                                 the new pinned version
+```
+
+### Alternative considered: canary polls npm
+
+A scheduled canary workflow could query `https://registry.npmjs.org/@fullselfbrowsing/lattice/latest` and bump if changed. Rejected because: (1) delay between publish and detection is up to the cron interval, (2) it couples canary to npm registry availability, (3) `repository_dispatch` carries the upstream commit SHA which is more useful for triage than a version string alone. The repository_dispatch design is also simpler to reason about during incident response.
+
+### Secret needed
+
+`CANARY_DISPATCH_TOKEN` lives in Lattice repo secrets. It's a fine-grained GitHub PAT scoped to `fullselfbrowsing/lattice-canary` with permission `contents: write` + `actions: write`. Owner-rotatable. NOT an OIDC token — `repository_dispatch` does not support OIDC for cross-repo dispatch yet, so this is a deliberate long-lived secret that we accept.
 
 ## Architectural Patterns
 
-### Pattern 1: Pre-flight contract proof as router-extension, not runtime if-else
-
-**What:** Pass the `CapabilityContract` into `routeDeterministically` and let it produce `RouteRejectReason` entries in the same `noRouteReasons` list that already exists. The runtime keeps its single "no route" branch.
-
-**When to use:** Whenever a constraint can be expressed as a deterministic predicate over `ModelCapability` + `RouteEstimates`. Contract budget, quality floor (mapped to capability tier), required modalities, and required structured-output support all fit.
-
-**Trade-offs:**
-- Pro: zero new branches in `runWithConfig` — the existing `if (selected === undefined)` block (create-ai.ts:135-153) now also covers no-contract-match.
-- Pro: contract reasons appear in `plan.warnings` and `plan.route.noRouteReasons` for free, satisfying inspectability.
-- Con: requires a discriminated reason taxonomy so callers can distinguish "no capable model" from "no model under budget" — solved by stable `code` strings (`contract-budget-exceeded`, `contract-quality-floor`, `contract-modality-missing`, `contract-privacy-mismatch`).
-
-**Example:**
-```typescript
-// router.ts (modified)
-export interface RouteRequest {
-  // ... existing fields
-  readonly contract?: CapabilityContract;     // NEW
-}
-
-function addContractRejectReasons(
-  reasons: RouteRejectReason[],
-  capability: ModelCapability,
-  estimates: RouteEstimates,
-  contract: CapabilityContract,
-): void {
-  if (contract.budget?.maxCostUsd !== undefined &&
-      estimates.costUsd !== undefined &&
-      estimates.costUsd > contract.budget.maxCostUsd) {
-    reasons.push({
-      code: "contract-budget-exceeded",
-      message: `Estimated ${estimates.costUsd} exceeds contract budget ${contract.budget.maxCostUsd}.`,
-    });
-  }
-  if (contract.qualityFloor !== undefined &&
-      capability.qualityTier !== undefined &&
-      capability.qualityTier < contract.qualityFloor) {
-    reasons.push({
-      code: "contract-quality-floor",
-      message: `${capability.modelId} below required quality floor ${contract.qualityFloor}.`,
-    });
-  }
-  // ... etc
-}
-```
-
-Then in create-ai.ts, the only change is to add a typed surface — the existing no-route failure becomes:
-```typescript
-if (selected === undefined) {
-  const contractReasons = plan.route.noRouteReasons.filter(r => r.code.startsWith("contract-"));
-  const kind = contractReasons.length > 0 ? "no_contract_match" : "no_route";
-  // ... return typed failure
-}
-```
-
-### Pattern 2: Tripwires as a validation-stage decorator
-
-**What:** Tripwires are output predicates that run after Standard Schema validation succeeds but before `validateOutputMap` returns success. Each tripwire receives the validated outputs + the `ExecutionPlan` and returns `{ ok: true } | { ok: false, reason }`.
-
-**When to use:** When invariants are semantic, not structural — "no PII in output", "policy citation count >= 1", "tool action is in allow-list". Schema validation cannot express these.
-
-**Trade-offs:**
-- Pro: composes cleanly with existing `validateOutputMap` — adding a second pass after schema-valid is one new branch.
-- Pro: tripwire violations produce a typed `RunFailure` with `error.kind: "tripwire_violation"`, plan stays inspectable.
-- Pro: stage tracking in `plan.stages` extends naturally — add `"tripwire"` to `ExecutionStageKind` between `"validation"` and `"persistence"`.
-- Con: streaming/mid-stream abort is harder than post-execution; v1.1 should specify post-execution semantics first and document "mid-stream" as a forward-compatible extension once streaming providers land.
-
-**Example:**
-```typescript
-// outputs/validate.ts (modified, after schema loop)
-export async function validateOutputMap<TOutputs extends OutputContractMap>(
-  contracts: TOutputs,
-  rawOutputs: Record<string, unknown>,
-  plan: ResultPlan,
-  contract?: CapabilityContract,            // NEW optional param
-): Promise<RunResult<TOutputs>> {
-  // ... existing schema validation produces `outputs`
-
-  if (contract?.tripwires?.length) {
-    const violation = await runTripwires(contract.tripwires, outputs, plan);
-    if (!violation.ok) {
-      return {
-        ok: false,
-        error: {
-          kind: "tripwire_violation",
-          message: violation.reason,
-          tripwireName: violation.name,
-        },
-        raw: rawOutputs,
-        partialOutputs: outputs,
-        plan,
-      };
-    }
-  }
-
-  return { ok: true, outputs, artifacts: [], plan };
-}
-```
-
-### Pattern 3: Receipt as a post-run side effect with deterministic canonicalization
-
-**What:** A `CapabilityReceipt` is built after the successful (or failed) run terminates inside `runWithConfig` and signed with a configured Ed25519 key. Receipts are returned as part of `RunSuccess` (new `receipt: CapabilityReceipt` field) and embedded in `ReplayEnvelope`. Failed runs may also emit a receipt — the `contractVerdict` field encodes pass/fail.
-
-**When to use:** Always, when a signer key is configured on `LatticeConfig`. When no signer, receipts are still produced but `signature` is omitted and a warning is added to the plan.
-
-**Trade-offs:**
-- Pro: receipts are derived data — no new orchestrator branches, just a final `await issueReceipt(...)` call before `return`.
-- Pro: canonical JSON enables deterministic hashing and CI fixture round-trips.
-- Pro: re-using `redactPlan`/`redactArtifactRef` from `replay.ts` keeps a single redaction surface.
-- Con: signing has async overhead and key-material lifecycle concerns — must define `LatticeConfig.signer?: { keyId, sign(bytes), publicKeyJwk }`.
-
-**Example:**
-```typescript
-// receipts/receipt.ts (new)
-export interface CapabilityReceipt {
-  readonly kind: "capability-receipt";
-  readonly version: 1;
-  readonly id: string;                       // receipt:<uuid>
-  readonly runId: string;
-  readonly planId: string;
-  readonly issuedAt: string;
-  readonly runtimeVersion: string;
-  readonly catalogVersion: string;
-  readonly contract?: CapabilityContractRef; // hash + canonical form
-  readonly contractVerdict: "satisfied" | "violated" | "absent";
-  readonly route: { providerId: string; modelId: string; score: number };
-  readonly modelVersions: Record<string, string>;
-  readonly inputs: readonly { artifactId: string; fingerprint: ArtifactFingerprint }[];
-  readonly outputHashes: Record<string, ArtifactFingerprint>;
-  readonly usage?: UsageRecord;
-  readonly redaction: "default" | "none" | "custom";
-  readonly signature?: { algorithm: "ed25519"; keyId: string; value: string };
-}
-
-export async function createReceipt(input: {
-  plan: ExecutionPlan;
-  result: RunResult<OutputContractMap>;
-  contract?: CapabilityContract;
-  signer?: ReceiptSigner;
-}): Promise<CapabilityReceipt> { /* ... */ }
-```
-
-### Pattern 4: CLI as thin replay-envelope materializer
-
-**What:** `lattice repro <receipt-id>` is a CLI that (a) reads the receipt from a known location (`.lattice/receipts/<id>.json` by convention, or path arg), (b) rebuilds a `ReplayEnvelope` from receipt + referenced artifact fixtures, (c) calls `replayOffline(envelope)` from the runtime. CLI never re-implements runtime logic.
-
-**When to use:** Local repro of a production thumbs-down ("I have receipt-abc, what did this run actually do?"), CI regression checks.
-
-**Trade-offs:**
-- Pro: CLI surface stays tiny — argv parsing + filesystem IO + a single runtime call.
-- Pro: keeps runtime free of `process`/`fs` imports; runtime stays runnable in workers/edge.
-- Con: receipts must reference artifact storage in a portable way — `ArtifactStorageRef` already supports `local`/`memory`, but CLI needs a stable convention for fixture directory layout (proposed `.lattice/fixtures/<sha256>.bin`).
-
-### Pattern 5: `lattice eval` regression gates as plan-comparison
-
-**What:** `lattice eval` walks a directory of receipts treated as fixtures, replays each, and compares replay outcome against the recorded receipt on three axes: contract verdict (must still be `"satisfied"`), cost (`usage.costUsd` within threshold), and quality floor (any new tripwire violation fails the gate). Exits non-zero on regression.
-
-**When to use:** CI on every PR for any project that has captured production receipts as fixtures.
-
-**Trade-offs:**
-- Pro: fixtures *are* receipts — no parallel fixture format to maintain.
-- Pro: leverages `replayOffline` and `rerunLive` already in `replay/replay.ts`.
-- Con: fake-provider configuration must be reconstructable from receipts when running offline; live re-run requires real provider config + cost budget for CI.
-
-## Data Flow
-
-### Request Flow (new components annotated NEW)
-
-```
-ai.run({ task, artifacts, outputs, policy, contract })       (NEW: contract)
-    |
-    v
-buildPlan()
-    |
-    +-> prepareArtifacts (existing)
-    +-> mergePolicy (existing)
-    +-> createCapabilityCatalog (existing)
-    +-> routeDeterministically(catalog, { ..., contract })   (NEW: contract field)
-    |        |
-    |        +-> evaluateCapability (existing) + addContractRejectReasons (NEW)
-    |        +-> RouteDecision { selected?, noRouteReasons }
-    |
-    +-> buildContextPack (existing)
-    +-> packageArtifactsForProvider (existing)
-    +-> createExecutionPlan (existing; warnings now include contract reasons)
-    |
-    v
-runWithConfig()
-    |
-    +-> selected === undefined ?
-    |      \-- YES: classify reasons; return RunFailure with
-    |              error.kind = "no_contract_match" | "no_route"          (NEW kind)
-    |              + still emit receipt with contractVerdict="absent"     (NEW)
-    |
-    +-> for each route in [selected, ...fallbackChain]:
-    |      adapter.execute(request)
-    |      validateOutputMap(outputs, rawOutputs, plan, contract)         (NEW: contract)
-    |          +-> schema validation (existing)
-    |          +-> runTripwires(contract.tripwires, outputs, plan)        (NEW)
-    |                  \-- on violation: return RunFailure
-    |                          error.kind = "tripwire_violation"          (NEW)
-    |                          + emit receipt with contractVerdict="violated"
-    |
-    +-> on success:
-    |      createReceipt({ plan, result, contract, signer })              (NEW)
-    |      attach receipt to RunResult                                    (NEW)
-    |      emit run.complete event with receiptId                         (NEW)
-    |
-    v
-RunResult { ok, outputs?, artifacts, plan, events, receipt }              (NEW: receipt)
-```
-
-### Receipt -> Repro Flow
-
-```
-production run --> createReceipt() --> sign --> RunResult.receipt
-                                                  |
-                                                  v
-                                         (developer or CI stores .lattice/receipts/<id>.json
-                                          and any referenced artifacts at .lattice/fixtures/<sha256>.bin)
-                                                  |
-                                                  v
-              `lattice repro receipt-abc`
-                                                  |
-                                                  v
-              loader: read receipt + verify signature + load fixtures
-                                                  |
-                                                  v
-              materializeReplayEnvelope(receipt, fixtures) -> ReplayEnvelope
-                                                  |
-                                                  v
-              replayOffline(envelope) -> RunResult (deterministic)
-                                                  |
-                                                  v
-              CLI prints diff vs receipt.outputHashes; exits 0/1
-```
-
-### `lattice eval` Flow
-
-```
-.lattice/fixtures/*.receipt.json --> loader --> [Receipt, Fixture[]]
-                                                |
-                                                v
-                            for each: replayOffline()
-                                                |
-                                                v
-                                regression diff:
-                                  - contract verdict still "satisfied" ?
-                                  - cost within thresholds.cost.maxDelta ?
-                                  - tripwires still pass ?
-                                  - output hashes match ?
-                                                |
-                                                v
-                            summary table -> exit 0 (pass) or 1 (regression)
-```
-
-### Key Data Flows
-
-1. **Contract proof flow:** `CapabilityContract` flows from `RunIntent` -> `buildPlan` -> `RouteRequest` -> `evaluateCapability` -> `RouteRejectReason[]` -> `RouteDecision.noRouteReasons` -> `RunFailure.error`. No new orchestrator branch; only a refinement of the existing `selected === undefined` branch.
-2. **Tripwire flow:** Contract flows from `RunIntent` -> `runWithConfig` -> `validateOutputMap(contract)` -> `runTripwires` -> `RunFailure` (on violation) or continued success path.
-3. **Receipt flow:** Plan + result + contract + signer -> `createReceipt` -> canonical JSON -> Ed25519 sign -> attach to `RunResult` and to `ReplayEnvelope`.
-4. **Replay reconstruction:** `Receipt` -> `materializeReplayEnvelope` -> `ReplayEnvelope` -> `replayOffline` -> deterministic `RunResult`.
-
-## Public API Impact
-
-### `index.ts` exports (new)
-
-```typescript
-// Value exports
-export { contract } from "./contract/contract.js";
-export { tripwire } from "./contract/tripwire.js";
-export { createReceipt, verifyReceipt } from "./receipts/receipt.js";
-export { createEd25519Signer, generateEd25519KeyPair } from "./receipts/sign.js";
-
-// Type exports
-export type {
-  CapabilityContract,
-  CapabilityContractBudget,
-  CapabilityContractRef,
-  Tripwire,
-  TripwireResult,
-} from "./runtime/public-types.js";
-export type {
-  CapabilityReceipt,
-  ReceiptSigner,
-  ReceiptVerification,
-} from "./runtime/public-types.js";
-```
-
-### `RunIntent` extension (modified)
-
-```typescript
-export interface RunIntent<TOutputs extends OutputContractMap> {
-  // ... existing fields
-  readonly contract?: CapabilityContract;     // NEW, optional -> backwards compatible
-}
-```
-
-### `RunSuccess` / `RunFailure` extension (modified)
-
-```typescript
-export interface RunSuccess<TOutputs extends OutputContractMap> {
-  // ... existing fields
-  readonly receipt?: CapabilityReceipt;       // NEW, optional
-}
-
-export interface RunFailure {
-  // ... existing fields
-  readonly receipt?: CapabilityReceipt;       // NEW, optional
-}
-```
-
-### `LatticeRunError` union (modified)
-
-```typescript
-export interface NoContractMatchError {
-  readonly kind: "no_contract_match";
-  readonly message: string;
-  readonly contractReasons: readonly { code: string; message: string }[];
-}
-export interface TripwireViolationError {
-  readonly kind: "tripwire_violation";
-  readonly message: string;
-  readonly tripwireName: string;
-}
-export type LatticeRunError =
-  | ValidationError
-  | ExecutionUnavailableError
-  | NoRouteError
-  | ProviderExecutionError
-  | TimeoutError
-  | NoContractMatchError      // NEW
-  | TripwireViolationError;   // NEW
-```
-
-### `ReplayEnvelope` extension (modified)
-
-```typescript
-export interface ReplayEnvelope<TOutputs extends OutputContractMap = OutputContractMap> {
-  // ... existing fields
-  readonly contract?: CapabilityContract;     // NEW
-  readonly receipt?: CapabilityReceipt;       // NEW
-}
-```
-
-### `LatticeConfig` extension (modified)
-
-```typescript
-export interface LatticeConfig {
-  // ... existing fields
-  readonly signer?: ReceiptSigner;            // NEW, optional
-  readonly defaults?: {                       // existing
-    // ...
-    readonly contract?: CapabilityContract;   // NEW
-  };
-}
-```
-
-### Backwards Compatibility
-
-- All new `RunIntent`, `RunSuccess`, `RunFailure`, `ReplayEnvelope`, `LatticeConfig` fields are **optional** -> v1.0 consumer code compiles unchanged.
-- New `LatticeRunError` variants are additive; v1.0 callers that exhaustively switch on `error.kind` will see TypeScript flag missing branches but only at compile time, never at runtime — code without `default` clauses still receives a typed object.
-- `validateOutputMap` adds an optional `contract` parameter -> existing call sites in `create-ai.ts` continue compiling; the new behavior is opt-in.
-- `routeDeterministically`'s new `contract` field on `RouteRequest` is optional; existing callers (only one: `buildPlan`) keep working.
-- New `RouteRejectReason.code` values are strings; the existing taxonomy is untouched and the reason code space is open.
-- `lattice-cli` is a separate package — zero impact on `lattice` runtime consumers who do not install the CLI.
-
-## Suggested Build Order (respects dependencies)
-
-Phases are ordered so each phase only depends on prior phases.
-
-1. **Phase A — Contract Types & Pre-flight Proof** (depends on: existing router only)
-   - Add `contract/contract.ts` (types + `contract()` factory).
-   - Add `contract/preflight.ts` (`addContractRejectReasons`).
-   - Extend `routing/router.ts` `RouteRequest` with optional `contract`.
-   - Extend `runtime/create-ai.ts` `buildPlan` to pass `intent.contract` through.
-   - Extend `runWithConfig` no-route branch to classify `no_contract_match`.
-   - Extend `LatticeRunError` with `NoContractMatchError`.
-   - Tests: catalog with all candidates over-budget -> `no_contract_match`.
-
-2. **Phase B — Tripwire Runtime** (depends on: A for contract type)
-   - Add `contract/tripwire.ts` (`tripwire()` factory + `runTripwires`).
-   - Modify `outputs/validate.ts` to take optional `contract` and run tripwires after schema validation.
-   - Modify `runWithConfig` provider-loop validation call to pass `intent.contract`.
-   - Extend `ExecutionStageKind` with `"tripwire"`; insert stage between `validation` and `persistence`.
-   - Extend `LatticeRunError` with `TripwireViolationError`.
-   - Tests: a fake provider returns output, schema valid, tripwire fails -> `tripwire_violation`.
-
-3. **Phase C — Receipt Issuance + Signing** (depends on: A, B; also depends on `plan/plan.ts` + `storage/fingerprint.ts`)
-   - Add `receipts/canonical.ts` (deterministic JSON).
-   - Add `receipts/sign.ts` (Ed25519 via `crypto.subtle`; mirrors `fingerprintArtifactValue` style).
-   - Add `receipts/receipt.ts` (`createReceipt`, `verifyReceipt`).
-   - Add `LatticeConfig.signer` and `defaults.contract`.
-   - In `runWithConfig`, after success and after failure paths, call `createReceipt` and attach to result.
-   - Add tests for: receipt determinism (same plan + result -> same canonical bytes), signature round-trip, redaction.
-
-4. **Phase D — Replay Envelope Integration** (depends on: C)
-   - Extend `ReplayEnvelope` with `contract` + `receipt`.
-   - Modify `createReplayEnvelope` to copy receipt from `result.receipt`.
-   - Add `materializeReplayEnvelope(receipt, artifactLoader)` helper for CLI use.
-   - Tests: round-trip receipt -> envelope -> `replayOffline` -> matching outputs.
-
-5. **Phase E — `lattice` CLI scaffolding** (depends on: C, D)
-   - Create `packages/lattice-cli/` workspace package.
-   - Wire `bin: { lattice: dist/bin/lattice.js }` and `dependencies: { lattice: "workspace:*", citty: "^x" }` (or similar small argv parser).
-   - Implement `lattice repro <receipt-id|path>` -> load -> materialize -> `replayOffline` -> diff vs receipt.outputHashes.
-   - Implement `lattice verify <receipt-path>` -> verify signature against provided public key (`--key` flag or `.lattice/keys/`).
-   - Tests: snapshot the CLI output for a fixture receipt.
-
-6. **Phase F — `lattice eval` CI gate** (depends on: E)
-   - Implement `lattice eval [--fixtures dir] [--thresholds file]`.
-   - Implement gate diffs: `gate/cost.ts`, `gate/quality.ts`.
-   - Document fixture layout: `.lattice/fixtures/<name>.receipt.json` + `.lattice/fixtures/artifacts/<sha256>.bin`.
-   - Tests: a fixture with a baseline + a fake provider that costs more -> exit 1 with diff table.
-
-7. **Phase G — Showcase update** (depends on: A-F)
-   - Update `examples/work-inbox` to declare a contract, exercise a tripwire, capture a receipt, and run `lattice eval` on its fixtures.
-   - Verify the end-to-end demo: contract refusal, tripwire abort, signed receipt, repro CLI, eval gate.
-
-## Architectural Decisions to Lock Before Implementation
-
-1. **CLI package location.** Recommended: separate workspace package `packages/lattice-cli` with a single `lattice` bin owning subcommands. Locks: runtime stays Node-version-agnostic and free of `fs`/`process` imports; CLI can pin Node features without affecting runtime consumers.
-2. **`contract` is a first-class `RunIntent` field**, not a member of `policy`. Rationale: policy is provider-routing constraints, contract is run-level attestation. Mixing them confuses semantics and complicates the receipt schema. (Backwards compatible — `policy` unchanged.)
-3. **Tripwire timing: post-execution in v1.1.** Defer mid-stream abort to v1.2 once streaming providers land. Document the forward-compat hook so contracts that declare streaming tripwires still load.
-4. **Receipts are produced on both success and failure.** A failure receipt with `contractVerdict: "violated"` is more valuable for repro than no receipt; CI can distinguish via `contractVerdict`.
-5. **Canonical JSON is internal to `receipts/`.** No public canonicalization helper — keeps the surface small. Receipts are *consumed* via `verifyReceipt`; canonicalization is an implementation detail.
-6. **Ed25519 via Web Crypto subtle.** Matches `storage/fingerprint.ts` style (SHA-256 via subtle). Avoids a Node-only crypto dependency and keeps the runtime portable to workers/edge environments.
-7. **`signer` is a configuration on `createAI`, not on `ai.run`.** Per-run signer override is out of scope for v1.1; one signer per AI instance keeps key lifecycle predictable.
-8. **Fixture directory convention** under `.lattice/` (not project root). Locks CLI defaults; users can override via `--fixtures` flag.
-9. **No contract serialization format split — contracts are typed JS values, hashed at runtime.** No YAML/JSON file loader in v1.1; CLI loads contracts indirectly via the embedded contract in receipts. Defer file-format support to v1.2.
+### Pattern 1: Workspace-internal `workspace:*` survives the rename
+
+**What:** `packages/lattice-cli/package.json` continues to declare `"@fullselfbrowsing/lattice": "workspace:*"` after the rename. pnpm resolves the scoped name to the local workspace package by reading the renamed `packages/lattice/package.json#name`. At publish time, pnpm rewrites `workspace:*` to the actual published version (`^1.3.0`).
+
+**When to use:** Always, for any workspace cross-dep that will be published. Avoids manual version sync between sibling packages.
+
+**Trade-off:** During the rename phase, the `workspace:` protocol means pnpm catches the mismatch immediately. `pnpm install` will error if `dependencies."@fullselfbrowsing/lattice"` exists but no package in the workspace has that name yet — so the two file edits (CLI dep key + core package name) must land in the same commit. Stage them together.
+
+### Pattern 2: First-publish-as-smoke-test
+
+**What:** The OIDC publish path cannot be dry-run without contacting npm. The first real `v1.3.0-rc.1` tag IS the workflow's first integration test.
+
+**When to use:** Any OIDC-trusted publish where you cannot mock the registry handshake.
+
+**Trade-off:** Failure mode is a public release with a typo or missing file. Mitigations: cut `-rc.N` tags first, use `--dry-run` in a separate `workflow_dispatch` job for tarball validation, use `environment: npm-publish` for manual approval before publish step runs.
+
+### Pattern 3: Two vitest configs, two CI workflows, one repo
+
+**What:** Unit and integration suites share a repo but never share a config or a CI run. Each has its own `vitest.config.*.ts`, its own `.github/workflows/*.yml`, its own setup files.
+
+**When to use:** When two test classes have fundamentally different reliability and cost profiles (fast/free vs slow/paid). Separating configs is cheaper than fighting `test.skip` annotations and environment-variable gating inside one suite.
+
+**Trade-off:** Two configs to keep in sync (shared `setupFiles` pattern helps). Worth it because the unit suite must NEVER need a real API key to run.
+
+### Pattern 4: Cumulative cost guard at suite scope, not test scope
+
+**What:** Per-test budgets catch a single runaway test. A suite-scoped cumulative tracker catches the more dangerous case: every test under-budget individually but their sum exceeds the night's allowance.
+
+**When to use:** Any test suite that makes real, paid API calls in batch.
+
+**Trade-off:** Module-level mutable state (`aborted`, the singleton `CostTracker`) is ugly but isolated to test infrastructure. Process-level cleanup at suite end is sufficient because each workflow run is a fresh process.
+
+### Pattern 5: Cross-repo signal via repository_dispatch, not registry polling
+
+**What:** Upstream repo pushes an event to downstream repo on publish. Downstream listens and acts.
+
+**When to use:** When you want low-latency, payload-carrying signals between repos you control, and the signal needs to carry context (commit SHA, version) the receiver can't easily re-derive.
+
+**Trade-off:** Requires a long-lived cross-repo PAT. Worth it for the latency and the payload richness vs cron polling.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Embedding contract evaluation inside `runWithConfig` as separate guards
+### Anti-Pattern 1: Land CI scaffolding before the rename
 
-**What people do:** Add `if (intent.contract && estimates.costUsd > intent.contract.budget) throw` style guards directly inside the runtime loop, separate from routing.
-**Why it's wrong:** Bypasses the deterministic-router invariant. Contract violations would now appear in two places: as a router rejection (good) and as a runtime throw (bad). Also splits the no-route taxonomy.
-**Do this instead:** Push the predicate into `evaluateCapability`/`addPolicyRejectReasons`-style helpers; let the existing `noRouteReasons` mechanism surface them. Runtime only classifies the final failure kind.
+**What people do:** Write `ci.yml` referencing `lattice` and `lattice-cli`, then rename the packages a week later, then edit the workflow YAML to match.
 
-### Anti-Pattern 2: Putting the CLI in the same package as the runtime
+**Why it's wrong:** Doubles the review surface. The workflow's first green run is against the old names, providing no signal about the renamed surface. PRs become harder to review because YAML diffs and package.json diffs mix.
 
-**What people do:** Add `bin: { lattice: dist/bin/lattice.js }` to `packages/lattice/package.json` and import `node:fs`/`node:path` from runtime modules behind feature flags.
-**Why it's wrong:** Breaks `sideEffects: false`; forces runtime to depend on Node-only modules; bloats the install for SDK consumers that only want `createAI`; complicates `attw`/`publint` checks already in CI (`lint:packages` script).
-**Do this instead:** Separate `lattice-cli` workspace package with `workspace:*` dependency on `lattice`. CLI ships separately and can be installed only where needed (CI, dev tooling).
+**Do this instead:** Rename in commit N. Land CI in commit N+1. CI's first green run is against the publish-shape.
 
-### Anti-Pattern 3: Treating receipts as opaque logs
+### Anti-Pattern 2: Use a long-lived NPM_TOKEN "just to ship v1.3.0 fast"
 
-**What people do:** Stringify the receipt as JSON and stash it in stdout/log files without canonicalization, signing, or schema.
-**Why it's wrong:** Defeats the point. Receipts must be deterministic (so two correct runs hash to the same canonical bytes), signed (so tampering is detectable), and structured (so `lattice eval` can compare). Opaque logs cannot back a CI gate.
-**Do this instead:** Always go through `createReceipt()`. Always canonicalize before signing. Always include `runtimeVersion`, `catalogVersion`, `modelVersions` — the three things that invalidate replays.
+**What people do:** Skip the npm Trusted Publisher dance for the first release, use a classic token, plan to migrate later.
 
-### Anti-Pattern 4: Schema validation doing tripwire work
+**Why it's wrong:** v1.3 is the foundation that every subsequent release inherits. A token-based first release means provenance attestations are missing from the v1.3.0 tarball forever — they cannot be retroactively added. Provenance is a per-tarball signature.
 
-**What people do:** Cram semantic checks into the Zod/Standard Schema definition (`.refine(noPii)`, `.refine(hasCitations)`).
-**Why it's wrong:** Schemas describe structure; refinements lose the ability to report a stable `tripwireName` and don't compose with contract-level redaction. They also can't be authored separately from output contracts.
-**Do this instead:** Keep schemas structural. Express semantic invariants as `tripwire()` declarations on the contract, owned by the same team that owns the contract, not the team that owns the output shape.
+**Do this instead:** Configure Trusted Publisher BEFORE the first publish. Accept the one-time inconvenience of pre-creating the package shells via a granular token, then flipping to OIDC for all future versions including v1.3.0 itself.
 
-### Anti-Pattern 5: Re-implementing replay inside the CLI
+### Anti-Pattern 3: Put the canary inside `examples/` as a third workspace package
 
-**What people do:** Have `lattice repro` build providers, call adapters, validate outputs itself.
-**Why it's wrong:** Drift. Any router or validator change must be replicated. Defeats the purpose of `replayOffline` already existing.
-**Do this instead:** CLI's only job is artifact + receipt IO -> envelope materialization -> single call to `replayOffline(envelope)`.
+**What people do:** Skip the separate repo. Add `examples/canary` to the existing workspace, install runs `pnpm install`, tests use `workspace:*`.
+
+**Why it's wrong:** Workspace symlinks silently bypass `npm pack`, `exports` field validation, `publishConfig`, file inclusion via `files` array. The whole point of the canary is to catch packaging bugs. Workspace-internal cannot do that.
+
+**Do this instead:** Separate public repo, registry-installed deps, completely isolated install graph.
+
+### Anti-Pattern 4: Per-test cost ceiling without a suite-level cumulative guard
+
+**What people do:** Set `contract.budget.maxCostUsd: 0.50` on each test, assume nightly budget = 0.50 × N.
+
+**Why it's wrong:** Per-test budgets only catch a runaway single test. The dangerous failure mode is 50 tests each spending $0.49 in unfortunate combinations summing to $24.50 nightly. No single test trips its budget; the bill is the failure.
+
+**Do this instead:** Suite-level cumulative `SuiteCostTracker` with `LATTICE_COST_CEILING_USD` as the upper bound on total nightly spend. Per-test budgets remain useful as additional defense in depth.
+
+### Anti-Pattern 5: Cron-poll npm registry from canary
+
+**What people do:** Canary cron job queries `npm view @fullselfbrowsing/lattice version` every hour, bumps if changed.
+
+**Why it's wrong:** Cron interval is the lower bound on detection latency. Loses upstream context (commit SHA, tag name). Adds dependency on registry uptime to canary's correctness.
+
+**Do this instead:** `repository_dispatch` from Lattice's release workflow. Carries `{ tag, lattice_version, cli_version, commit }`. Latency is whatever the GitHub event bus contributes (sub-second typically).
 
 ## Integration Points
 
-### Existing modules + new touch points
+### External services
 
-| Existing module | Change | Public-API breaking? |
-|-----------------|--------|----------------------|
-| `runtime/create-ai.ts` (createAI, buildPlan, runWithConfig) | Add `contract` field through `RunIntent` -> `RouteRequest` -> `validateOutputMap`; call `createReceipt` at terminal branches | No (additive optional fields) |
-| `routing/router.ts` (RouteRequest, evaluateCapability) | Add optional `contract`; add `addContractRejectReasons` | No |
-| `plan/plan.ts` (ExecutionStageKind) | Add `"tripwire"` stage kind | No (new union variant) |
-| `outputs/validate.ts` (validateOutputMap) | Optional `contract` param; run tripwires post-schema | No (param is optional) |
-| `replay/replay.ts` (ReplayEnvelope, createReplayEnvelope, redact*) | Carry receipt + contract; reuse `redactPlan`/`redactArtifactRef` for receipts | No |
-| `results/result.ts` (RunSuccess, RunFailure) | Add optional `receipt` | No |
-| `results/errors.ts` (LatticeRunError) | Add 2 new error kinds | No (additive) |
-| `runtime/public-types.ts` | Re-export new types | No |
-| `index.ts` | Add new value + type exports | No |
-| `storage/fingerprint.ts` | Reused as-is for input/output hashing inside receipts | No |
-| `tracing/tracing.ts` (RunEvent kinds) | Add `contract.evaluated`, `tripwire.fired`, `receipt.issued` | No (new event kinds; consumers ignore unknown) |
+| Service | Integration pattern | Notes |
+|---------|---------------------|-------|
+| npm registry | OIDC trusted publisher via `npm publish` (npm CLI 11.5.1+) | NO `NODE_AUTH_TOKEN`; trust is config'd at registry side. Provenance auto-generated when `repository` field present. |
+| GitHub Releases | `softprops/action-gh-release@v2` | Attach `*.tgz` from `npm pack` if reproducibility verification is desired |
+| OpenAI / Anthropic / Gemini APIs | Real HTTPS calls via existing Lattice provider adapters | Canary integration suite only. Keys in canary repo secrets. |
+| GitHub cross-repo dispatch | `peter-evans/repository-dispatch@v3` | Requires fine-grained PAT (`CANARY_DISPATCH_TOKEN`) since OIDC doesn't span cross-repo dispatch yet |
 
-### New modules (boundaries)
+### Internal boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| `lattice/contract` <-> `lattice/routing` | `routing/router.ts` imports types + `addContractRejectReasons` from `contract/preflight.ts` | One-way dependency. `contract/` never imports from `routing/`. |
-| `lattice/contract` <-> `lattice/outputs` | `outputs/validate.ts` imports `runTripwires` from `contract/tripwire.ts` | One-way. |
-| `lattice/receipts` <-> `lattice/replay` | `replay/replay.ts` imports `CapabilityReceipt` type; `receipts/` imports `redactPlan` from `replay/`. To break the cycle, move `redactPlan` to a small `redact/` module both depend on, or duplicate the receipt-specific redactor inside `receipts/redact.ts`. **Decision: keep redaction primitives in `replay/replay.ts`; `receipts/` imports from `replay/`, and `replay/` imports types-only from `receipts/` (`import type`).** | type-only import avoids cycle. |
-| `lattice-cli` <-> `lattice` | `workspace:*` dep; CLI imports public `createAI`, `replayOffline`, `verifyReceipt`, `createEd25519Signer` | One-way. CLI never reaches into `lattice/src/`. |
-| `lattice-cli` <-> filesystem | Node `fs/promises`, `path` | Isolated to `lattice-cli`. Runtime stays portable. |
-
-### External services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Ed25519 (Web Crypto) | `crypto.subtle.generateKey({ name: "Ed25519" })`, `.sign()`, `.verify()` | Available in Node >=24 (already required per `engines.node`), browsers (recent), and modern workers. |
-| Filesystem (CLI only) | `node:fs/promises` for receipt + fixture IO | Lives only in `lattice-cli`. |
+| `packages/lattice` ↔ `packages/lattice-cli` (in workspace) | `workspace:*` protocol resolves by package `name` | After rename, both files must change atomically |
+| Lattice repo ↔ canary repo (post-release) | `repository_dispatch` GitHub event | Long-lived PAT — accept the secret rather than block on OIDC cross-repo |
+| Canary unit suite ↔ canary integration suite | Separate vitest configs, separate workflows, separate setup files | Hard isolation — unit must run without any real-provider env |
+| Canary integration tests ↔ cost guard | Module-level singleton in `cost-ceiling.guard.ts` | Each test calls `recordSuiteUsage(result.usage)` after every `ai.run` |
 
 ## Scaling Considerations
 
-The runtime is a per-call SDK rather than a server; "scaling" maps to throughput per process and to receipt-storage growth.
-
-| Scale | Architecture Adjustments |
+| Scale | Architecture adjustments |
 |-------|--------------------------|
-| 0-100 receipts/day (developer machine) | In-process signing; receipts in-memory or to `.lattice/receipts/`. No optimization needed. |
-| 100-100k receipts/day (production app) | Async receipt emission (don't block `ai.run` return on disk write); user provides a `signer` whose `sign(bytes)` may proxy to a KMS. Receipt body is < 4 KB redacted; storage cost is negligible. |
-| 100k+ receipts/day (high-volume) | Sampled receipts (configured at `LatticeConfig` with `receipts.sampleRate`); receipt fingerprint index so `lattice eval` can pick representative fixtures without scanning all. Out of scope for v1.1 but the schema's `id` + `issuedAt` already supports it. |
+| 1 release/week (current scope) | Manual trigger via tag push is sufficient |
+| 5+ releases/week | Move to changesets PR workflow (auto-versioning) — already supported by changesets in workspace |
+| Multiple consumers beyond canary | Add a fanout `lattice-published` event handler — each consumer registers via a small list in Lattice repo's release.yml |
 
-### Scaling Priorities
+### Scaling priorities
 
-1. **First bottleneck — signing throughput.** Ed25519 is fast (~30k sig/s on modern CPU), but signing inline still adds latency. Mitigation: make signing post-response with a hook, so `ai.run` returns immediately and the receipt resolves on a follow-up promise. v1.1 keeps it synchronous for determinism; v1.2 can add async mode.
-2. **Second bottleneck — receipt storage IO.** When CI fixtures live in git, repos grow. Mitigation: store artifact bodies content-addressed under `.lattice/fixtures/<sha256>.bin`; receipts only carry refs. CLI's loader resolves refs to artifact stores already abstracted by `ArtifactStorageRef`.
+1. **First bottleneck:** Manual `npm publish` flake during first 3-5 releases. Mitigate via `-rc.N` tags as smoke tests until release.yml has 3+ successful runs.
+2. **Second bottleneck:** Real-provider cost growth as integration suite expands. Mitigate by tightening `LATTICE_COST_CEILING_USD` per quarter and pinning model versions to cheaper tiers in `test/integration/setup.ts`.
 
 ## Sources
 
-- Codebase ground truth (read on 2026-05-11):
-  - `packages/lattice/src/runtime/create-ai.ts` (lines 119-383 govern run lifecycle)
-  - `packages/lattice/src/routing/router.ts` (lines 26-81, 166-238 govern route + policy rejection)
-  - `packages/lattice/src/plan/plan.ts` (lines 9-161 govern plan + reason taxonomy)
-  - `packages/lattice/src/outputs/validate.ts` (lines 43-78 govern validation entry point)
-  - `packages/lattice/src/replay/replay.ts` (lines 25-114 govern envelope + redaction)
-  - `packages/lattice/src/results/errors.ts` (lines 36-42 govern run error union)
-  - `packages/lattice/src/storage/fingerprint.ts` (entire file; pattern for crypto.subtle usage)
-  - `packages/lattice/src/index.ts` (entire file; current public surface)
-  - `packages/lattice/package.json` (engines.node >= 24 confirms Ed25519/Web Crypto availability)
-  - `.planning/PROJECT.md` (v1.1 milestone goals, constraints, validated phases)
-  - `pnpm-workspace.yaml` (workspace shape supports adding `packages/lattice-cli`)
-- Web Crypto Ed25519 support in Node >= 24: Node release notes (training-data; HIGH confidence given Node 22+ has Ed25519 in subtle).
-- Standard Schema spec: existing dependency `@standard-schema/spec` already used by validation pipeline; no new dep needed for tripwires.
+- [Trusted publishing for npm packages | npm Docs](https://docs.npmjs.com/trusted-publishers/) — HIGH confidence, official docs (verified the `id-token: write` permission requirement, the `repo + workflow + environment` trust tuple, and the May 20 2026 explicit-action requirement)
+- [Generating provenance statements | npm Docs](https://docs.npmjs.com/generating-provenance-statements/) — HIGH confidence (verified `repository` field requirement, npm 11.5.1+ requirement, automatic provenance when trusted publisher is configured)
+- [npm Trusted Publishing — Philip Nash blog](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/) — MEDIUM (practitioner notes corroborate official docs)
+- Lattice repo inspection (file-by-file) — HIGH confidence (15 import sites grep-confirmed, CostTracker API surface read line-by-line, pnpm-workspace.yaml read, package.json fields enumerated)
 
 ---
-*Architecture research for: Capability Receipts (v1.1) integration with Lattice runtime SDK*
-*Researched: 2026-05-11*
+*Architecture research for: v1.3 npm publish + canary architecture additions to existing Lattice monorepo*
+*Researched: 2026-06-03*

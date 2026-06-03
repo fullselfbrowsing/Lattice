@@ -1,266 +1,255 @@
-# Technology Stack — v1.1 Capability Receipts
+# Stack Research
 
-**Project:** Lattice
-**Research dimension:** Stack additions for Capability Contracts, signed Ed25519 receipts, `lattice` CLI (`repro`, `eval`), and CI regression gates
-**Researched:** 2026-05-11
-**Confidence:** HIGH
+**Domain:** TypeScript SDK monorepo — first public npm release pipeline (OIDC Trusted Publisher + provenance + changesets) plus minimal external canary consumer for real-provider integration smoke
+**Researched:** 2026-06-03
+**Confidence:** HIGH on publish pipeline (Context-free verification: npm docs + GitHub Changelog + changesets/action README), MEDIUM on canary scaffolding (opinionated from ecosystem patterns)
 
-This document only enumerates stack changes for the v1.1 Capability Receipts milestone. The v1.0 baseline (pnpm 10.33 workspace, Node 24, TypeScript 6 strict + `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess`, ESM-only `lattice` package, `tsdown` build, `vitest` tests, `@standard-schema/spec`, Zod 4 catalog dependency, `mime`) is taken as given.
+## Scope Discipline
 
----
+This research only covers the NEW additions for v1.3. The validated existing stack (TypeScript 6.0.3, tsdown 0.21.9, Vitest 4.1.5, tsd 0.33.0, changesets 2.31.0, publint 0.3.18, @arethetypeswrong/cli 0.18.2, pnpm 10.33.1 workspace, Node >= 24) is NOT re-litigated. Where an existing tool already solves a v1.3 need, this doc says "already in repo, do not add a sibling."
 
-## Recommended Stack
+## Recommended Stack — Lattice Repo (v1.3 additions only)
 
-### Core Additions
+### Core Additions to Existing Repo
 
-| Concern | Recommendation | Version (May 2026) | Rationale |
-|---|---|---|---|
-| Ed25519 signing/verification | **Node 24 WebCrypto** (`globalThis.crypto.subtle`) as the runtime path, with a tiny adapter so callers can inject an alternate signer | Built-in (Node `>=24.0.0`, Ed25519 marked stable since v23.5 / v22.13) | Zero new dependency, no audit surface added, ESM-native, isomorphic with browser SubtleCrypto, supports `generateKey`, `sign`, `verify`, `importKey`, `exportKey` in `raw`/`pkcs8`/`spki`/`jwk` formats. Matches Lattice's "one umbrella package with modular internals" constraint and the Node 24 floor already declared in `packages/lattice/package.json`. |
-| Ed25519 fallback / structural test fixtures | **`@noble/ed25519`** as an *optional* devDependency for tests and as a documented escape hatch for environments without WebCrypto Ed25519 (older bundlers, edge runtimes that lag) | `3.1.0` (audited Mar–Apr 2026) | ESM-only, ~3.9 KB gzipped, zero runtime dependencies, audited (paulmillr noble suite). Used **only** in tests for cross-implementation signature parity vectors; not exported from the public package. |
-| JSON canonicalization (signed payload bytes) | **`canonicalize`** (RFC 8785 / JCS) | `3.0.0` (released 2026-04-07) | Tiny (single file), TypeScript types included, zero deps, 100% RFC 8785 test-vector compliant. JCS is the right substrate because (a) Lattice already emits stable execution-plan JSON, replay envelopes, and metadata JSON — every adjacent artifact is JSON-shaped, (b) JCS is deterministic for any I-JSON value Lattice already produces, (c) it's debuggable in plain text (essential for `lattice repro` and CI diff failure output), (d) it composes naturally with `crypto.subtle.digest('SHA-256', ...)` which Lattice already uses for fingerprints. CBOR (RFC 8949 §4.2 deterministic encoding) would force a binary wire format and a new dependency without a real win for receipts that humans must read in CI logs. |
-| CLI argument / subcommand parser | **`citty`** (unjs) | `0.2.2` (released 2026-04-01, ESM-only) | Declarative `defineCommand` API (`repro` and `eval` map cleanly to subcommands), lazy subcommand loading (keeps `lattice repro` cold-start cheap), `Resolvable<T>` for dynamic command trees, native `node:util.parseArgs` under the hood (no custom parser to audit), TypeScript-first with strict typed args, ~34 KB unpacked / 3 KB gzip, ESM-only — matches Lattice's `"type": "module"` and `sideEffects: false` constraints. Commander 13 was the runner-up but its option-coercion model (everything is a string unless you write a coercer) is awkward under `exactOptionalPropertyTypes` and it ships CJS dual builds that confuse the `attw --profile esm-only` lint already in `packages/lattice` scripts. |
-| Invariant DSL | **Standard Schema-shaped invariants** with a thin declarative builder layer | Reuses existing `@standard-schema/spec@1.1.0` (already in catalog) | Standard Schema is already the contract for outputs (`packages/lattice/src/outputs/validate.ts`) and tools (`packages/lattice/src/tools/tools.ts`). Reusing the same shape for `inv.semantic(schema)` and `inv.policy(...)` keeps one validator interface across outputs, tools, and contracts — one `~standard.validate` entry point, one Zod-or-anything escape hatch, one TypeScript inference path. A small builder façade (`inv.mustCite()`, `inv.maxToxicity(x)`, `inv.matches(schema)`) compiles **down** to Standard Schema validators, so the DSL stays ergonomic without introducing a parallel validation engine. |
-| Receipt envelope shape | **DSSE-inspired envelope** (`payloadType`, `payload`, `signatures[]`) with PAE-style pre-auth encoding | No new dependency; ~80 LOC implementation against WebCrypto + `canonicalize` | DSSE (in-toto / sigstore) is the industry-standard "boring" envelope for signed JSON attestations. Adopting its shape costs nothing, makes Lattice receipts inspectable by existing tooling, and gives a documented answer to "what does the signed payload bytes look like?" — namely `PAE("DSSEv1", "application/vnd.lattice.receipt+json", canonicalize(receipt))`. We **do not** add the `@sigstore/*` dependencies — they pull in Fulcio/Rekor/OCI machinery Lattice does not need. |
-| CLI bin wiring | **`tsdown` shebang auto-bin** | Already `0.21.9` in catalog | tsdown automatically writes `package.json#bin` for any entry chunk that contains `#!/usr/bin/env node`. No new build tool. One new entry in `tsdown.config.ts` (`src/cli/index.ts`) and a `"bin": { "lattice": "./dist/cli.js" }` field that tsdown maintains. |
-| CI regression assertions | **Reuse `vitest@4.1.5`** (already in catalog) with a thin `defineLatticeEval()` helper that wraps `expect()` and emits a structured JSON report | Already in catalog | `lattice eval` should not become a new test runner. Instead it loads receipts + fixtures, drives `ai.run` in replay or live mode, and asserts cost-per-task / quality-floor / invariant gates. Surfacing this via vitest means CI integrations (GitHub Actions matrix, JUnit reporters, Vitest's built-in `--reporter=junit`) work for free. For non-vitest consumers, `lattice eval` exits non-zero with a stable JSON report on stdout — that is the contract. |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `actions/checkout` | `@v5` | Source checkout in workflows | v5 is the GA major built on Node 24 runtime; v4 still works but emits deprecation warnings after GitHub's June 2 2026 forced Node 24 default. v5 (not v6) is the current stable major as of 2026-06; v6 is referenced in some upgrade issues but v5 is the established choice. |
+| `actions/setup-node` | `@v4` | Install Node 24 + configure pnpm cache | v4 is the current stable major. Supports `cache: 'pnpm'` natively (>= 6.10) and ships an npm CLI >= 11.5.1 when paired with `node-version: '24'`, which is the floor for OIDC Trusted Publisher. v6 is in flight for Node 24 runtime parity but v4 with `node-version: '24'` works today and is what every shipping monorepo uses. |
+| `pnpm/action-setup` | `@v4` | Install pnpm before setup-node cache resolves | Required because `actions/setup-node` reads `packageManager` from root `package.json` (already `pnpm@10.33.1`) but does NOT itself install pnpm; must run BEFORE `setup-node` so the cache step can probe `pnpm store path`. v4 targets Node 24 runtime. |
+| `changesets/action` | `@v1` | Drive PR-based version bumps + tag-driven publish | Already wired locally (`@changesets/cli@2.31.0` installed); the GH Action is the missing CI half. v1 is the only major; minor revisions (v1.4.x) bring publish hardening. Pair with `publish: pnpm release` script that runs `pnpm -r build` then `changeset publish`. |
 
-### Supporting Libraries (already in workspace, listed for completeness)
+### Existing Repo Tools That Cover v1.3 Needs (DO NOT add siblings)
 
-| Library | Role in v1.1 |
-|---|---|
-| `@standard-schema/spec@1.1.0` (catalog) | Backing validators for invariants |
-| `zod@4.3.6` (catalog, dev) | Authoring path for invariant schemas in tests and docs; not required at runtime |
-| `mime@4.1.0` (catalog) | Unchanged; receipts reuse existing artifact mime annotations |
-| `vitest@4.1.5` (catalog) | Backbone of `lattice eval`'s assertion + reporter surface |
-| `tsdown@0.21.9` (catalog) | Builds new `bin/lattice` entry chunk; auto-injects bin field |
-| `publint@0.3.18` + `@arethetypeswrong/cli@0.18.2` | Existing lint pipeline must continue to pass after the `bin` entry is added |
+| Need | Existing Tool | Why It Covers v1.3 |
+|------|---------------|---------------------|
+| Version bumping + CHANGELOG | `@changesets/cli@2.31.0` | Already in `devDependencies`; produces `CHANGELOG.md` files and orchestrates `changeset publish`. No need for `semantic-release`, `np`, `release-it`, `lerna`. |
+| Package publish lint | `publint@0.3.18` | Already wired in `lint:packages` script per package; catches missing `exports`, wrong `type`, broken `files` globs. Sufficient pre-publish gate. |
+| Types-on-publish verification | `@arethetypeswrong/cli@0.18.2` | Already in `lint:packages` (`attw --pack . --profile esm-only`). The ESM-only profile is correct for this repo. |
+| Test runner across both packages | `vitest@4.1.5` + `@vitest/coverage-v8@4.1.5` | Already at workspace root; `pnpm -r test` already aggregates. CI just calls the existing script. |
+| Type tests on public surface | `tsd@0.33.0` | Already configured per `packages/lattice/package.json` with its own `compilerOptions`. CI just calls `pnpm -r test:types`. |
+| Bundler / type emit | `tsdown@0.21.9` | Already shipping; ESM-only with shebang detection for the CLI. No need for `tsup`, `rollup`, or `unbuild`. |
+| TypeScript compiler | `typescript@6.0.3` | Pinned via pnpm catalog; CI uses it transitively via `tsc -p ... --noEmit`. |
+| Workspace manager | `pnpm@10.33.1` workspace | Catalog versions stay authoritative; canary repo deliberately does NOT inherit the catalog (consumes published tarball). |
 
-### Development Tools
+### Required Workflow Permissions
 
-| Tool | Purpose | Notes |
-|---|---|---|
-| `node --test` snapshot of WebCrypto Ed25519 keypair | Generate fixed test keys for receipt unit tests | Avoid embedding a real production private key; generate per-test or load from `fixtures/keys/*.jwk` |
-| `vitest --typecheck` (already wired) | Enforce strict typing on the new `Contract`, `Receipt`, `Invariant` types | Existing `test:types` script extends to new modules |
-| `attw --pack . --profile esm-only` (already wired) | Verify the new `bin` and any new subpath exports remain ESM-only and properly typed | Already in `lint:packages` |
+`release.yml` (publish job) must include:
 
----
+```yaml
+permissions:
+  contents: write       # changesets/action writes commits + tags
+  pull-requests: write  # changesets/action opens / updates version PR
+  id-token: write       # OIDC token minting for npm Trusted Publisher
+```
+
+`ci.yml` (PR job) only needs `contents: read` (default).
+
+The `id-token: write` permission is the single irreversible decision that unlocks OIDC publish; without it, `npm publish` falls back to looking for `NPM_TOKEN` and fails with E401.
+
+### Required `package.json` Metadata (Both Publishable Packages)
+
+These are not new dependencies but new fields needed before any publish succeeds. `publint` will flag them as warnings; npm registry will accept them but provenance tooling expects them.
+
+| Field | Value (both packages) | Why |
+|-------|-----------------------|-----|
+| `name` | `@fullselfbrowsing/lattice` / `@fullselfbrowsing/lattice-cli` | Scope flip per Phase-1 decision in PROJECT.md (currently unscoped `lattice` / `lattice-cli`). |
+| `version` | `1.3.0` | First public release per PROJECT.md "First publish: @fullselfbrowsing/lattice@1.3.0". |
+| `license` | `MIT` | Currently MISSING in all three package.jsons; LICENSE file exists but the field is required for provenance attestation rendering on npm. |
+| `repository` | `{ "type": "git", "url": "git+https://github.com/fullselfbrowsing/lattice.git", "directory": "packages/lattice" }` | Provenance attestations link the published tarball back to the source repo + commit; npm refuses provenance without `repository.url`. The `directory` field is required for monorepo path attribution. |
+| `bugs` | `{ "url": "https://github.com/fullselfbrowsing/lattice/issues" }` | publint warning; surfaces on npm package page. |
+| `homepage` | `https://github.com/fullselfbrowsing/lattice#readme` | publint warning. |
+| `publishConfig` | `{ "access": "public", "provenance": true }` | Scoped packages default to `restricted` (private) on npm; explicit `"access": "public"` is mandatory or `npm publish` 402s. `"provenance": true` is belt-and-suspenders even though OIDC auto-enables it. |
+| Internal dep (lattice-cli) | `"@fullselfbrowsing/lattice": "workspace:^"` | Changesets rewrites `workspace:^` to `^1.3.0` at publish time. Current `"lattice": "workspace:*"` becomes wrong both because of the rename AND because `*` resolves to whatever's there (changesets handles `^` better for SemVer ranges in the published tarball). |
+
+## Recommended Stack — Canary Repo (separate `fullselfbrowsing/lattice-canary`)
+
+Minimum-viable scaffolding. This is a smoke-test consumer, not a product. Resist adding ESLint, Prettier, Husky, lint-staged, commit hooks, or a build step — there is no published artifact, only test runs.
+
+### Canary Core
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| TypeScript | `^6.0.0` | Type checking against the published `.d.ts` | Match Lattice's compiler floor exactly — canary's value is catching `attw`-clean-but-still-broken type emission. Loose caret because canary should track future TS minors automatically. |
+| Vitest | `^4.1.0` | Test runner | Same family as Lattice so failure traces look familiar; no value in introducing Jest / Mocha. |
+| `@types/node` | `^24.12.0` | Node 24 ambient types | Match Lattice engines floor. |
+| `tsx` | `^4.19.0` | Run `.ts` directly for CLI subprocess smoke and ad-hoc scripts | Alternative is Node 24's experimental `--experimental-strip-types`, but `tsx` is dependency-free at runtime and predictable across CI matrix. The canary is short-lived enough that adding tsx is cheaper than fighting Node strip-types edge cases. |
+
+### Canary Test Targets — Real Provider Clients
+
+**Decision: use official provider SDKs, NOT raw `fetch`.**
+
+Rationale: the canary's job is to prove that *a real consumer's typical setup* (which is "install the official SDK") works against Lattice's adapters. Going raw-fetch optimizes for a goal nobody has and accidentally tests Lattice's adapter against a different shape than real users hit.
+
+| Provider | Package | Version | Why this one |
+|----------|---------|---------|--------------|
+| OpenAI | `openai` | `^6.41.0` | Official OpenAI Node SDK. ESM + CJS dual; Node 18+. v6 is current major as of 2026-06 (v6.41.0 published 2026-06). |
+| Anthropic | `@anthropic-ai/sdk` | `^0.100.0` | Official Anthropic TypeScript SDK. v0.100.1 published 2026-05-30; pre-1.0 versioning is intentional (Anthropic policy), the SDK is production-stable. |
+| Google Gemini | `@google/genai` | `^2.7.0` | The NEW unified Google GenAI SDK (GA since May 2025). The OLDER `@google/generative-ai` is DEPRECATED as of November 30 2025 and lacks Live API / Veo. v2.7.0 is current. |
+
+**What NOT to pull in for the canary:**
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `ai` (Vercel AI SDK) | It's a different runtime philosophy that would shadow Lattice's adapters; canary's job is to prove Lattice's surface, not Vercel's. | Direct provider SDKs above. |
+| `@google/generative-ai` | Deprecated November 2025. | `@google/genai`. |
+| `dotenv` | Node 24 has `--env-file` flag; CI already exposes secrets as env vars. | Bare `process.env.OPENAI_API_KEY` etc. |
+| `xai-sdk` / OpenRouter SDK / LM Studio client | INV-03 parity is Lattice's internal concern. The canary only validates the three providers that have official, well-maintained Node SDKs in 2026. xAI / OpenRouter / LM Studio coverage stays inside Lattice's internal test matrix. | Three official SDKs above; flag remaining providers as Lattice-internal CI coverage. |
+
+### Canary GitHub Actions
+
+| Action | Version | Notes |
+|--------|---------|-------|
+| `actions/checkout` | `@v5` | Same as Lattice. |
+| `actions/setup-node` | `@v4` | `node-version: '24'`, no pnpm cache (canary uses npm to consume the tarball, NOT pnpm). |
+
+Canary uses **npm**, not pnpm, intentionally. Justification: the canary must consume `@fullselfbrowsing/lattice` from the registry exactly as a typical external user would, and `npm install` is the lowest common denominator. Using pnpm in the canary would hide tarball-resolution bugs that surface for plain-npm users (peer dep resolution differences, hoisting differences).
+
+### Canary `workflow_dispatch` Inputs
+
+For the nightly cron + manual dispatch workflow, expose at minimum:
+
+```yaml
+on:
+  schedule:
+    - cron: '17 7 * * *'   # 07:17 UTC nightly; offset from :00 to avoid GitHub scheduler congestion
+  workflow_dispatch:
+    inputs:
+      cost_ceiling_usd:
+        description: 'Override per-run USD cost ceiling (Lattice CostTracker)'
+        type: string
+        default: '1.00'
+      providers:
+        description: 'Comma-separated providers to exercise'
+        type: string
+        default: 'openai,anthropic,gemini'
+```
+
+The cost ceiling input is forwarded into a Node process that constructs a Lattice `CostTracker` with that budget — the canary uses Lattice's own cost primitive as the kill switch, which doubles as a real-world validation of `CostTracker` correctness. Off-the-shelf "cost cap" actions (e.g. third-party budget-guard actions) are deliberately avoided because they would duplicate functionality Lattice already provides AND fail to dogfood the SDK.
+
+### Canary Secrets
+
+Repository secrets (set via `gh secret set` or repo settings UI, not committed):
+
+| Secret | Provider | Notes |
+|--------|----------|-------|
+| `OPENAI_API_KEY` | OpenAI | Standard env name the OpenAI SDK reads automatically. |
+| `ANTHROPIC_API_KEY` | Anthropic | Standard env name the Anthropic SDK reads automatically. |
+| `GEMINI_API_KEY` | Google | `@google/genai` reads this OR `GOOGLE_API_KEY`; pick `GEMINI_API_KEY` for clarity. |
+
+No NPM token is needed in the canary — it consumes from npm public registry, it does not publish.
 
 ## Installation
 
-No new runtime dependencies are added to `packages/lattice/package.json`. The only catalog/devDependency change required:
+### Lattice Repo (add to existing)
+
+No new `package.json` dependencies. v1.3 additions are entirely:
+1. New files in `.github/workflows/` (no `npm install` needed).
+2. Field additions in existing `package.json` files (`license`, `repository`, `bugs`, `homepage`, `publishConfig`, scoped `name`, `version: 1.3.0`).
+3. New `release` script at root: `"release": "pnpm -r build && changeset publish"`.
+
+### Canary Repo (greenfield)
 
 ```bash
-# Workspace root: extend the pnpm catalog
-# pnpm-workspace.yaml additions
-#   "@noble/ed25519": 3.1.0          # devDependency for cross-impl parity tests only
-#   citty: 0.2.2                     # runtime dep of lattice package (CLI)
-#   canonicalize: 3.0.0              # runtime dep of lattice package (receipts)
-
-pnpm -F lattice add citty@catalog: canonicalize@catalog:
-pnpm -F lattice add -D @noble/ed25519@catalog:
+mkdir lattice-canary && cd lattice-canary
+npm init -y
+npm install -D typescript@^6.0.0 vitest@^4.1.0 @types/node@^24.12.0 tsx@^4.19.0
+npm install @fullselfbrowsing/lattice@^1.3.0 \
+            openai@^6.41.0 \
+            @anthropic-ai/sdk@^0.100.0 \
+            @google/genai@^2.7.0
 ```
 
-Resulting `packages/lattice/package.json` deltas:
-
-```jsonc
-{
-  "dependencies": {
-    "@standard-schema/spec": "catalog:",
-    "canonicalize": "catalog:",
-    "citty": "catalog:",
-    "mime": "catalog:"
-  },
-  "devDependencies": {
-    "@noble/ed25519": "catalog:",
-    "@types/node": "catalog:",
-    "zod": "catalog:"
-  },
-  "bin": {
-    "lattice": "./dist/cli.js"
-  },
-  "exports": {
-    ".":          { "types": "./dist/index.d.ts",    "import": "./dist/index.js" },
-    "./receipts": { "types": "./dist/receipts.d.ts", "import": "./dist/receipts.js" },
-    "./cli":      { "types": "./dist/cli.d.ts",      "import": "./dist/cli.js" }
-  }
-}
-```
-
-The `./receipts` subpath export is recommended so consumers can verify receipts without dragging in the CLI's `citty` graph, preserving tree-shakability for downstream apps that only need verification (e.g., a webhook endpoint that validates inbound receipts).
-
----
+Note: the canary installs `@fullselfbrowsing/lattice` as a regular dependency (not devDependency) because the integration tests genuinely consume it as application code; this matches what an external user's `dependencies` block would look like.
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not (for v1.1) |
-|---|---|---|
-| Node 24 WebCrypto Ed25519 | `@noble/ed25519@3.1.0` as the primary signer | Adds a dependency where Node 24 already ships a stable, standardized, free implementation. Pulling in `@noble/ed25519` for runtime would also force a `noble-hashes` peer for the sync path, growing the dependency closure for zero functional gain. We still ship it as a dev-only parity oracle. |
-| Node 24 WebCrypto Ed25519 | `@noble/curves@2.x` (omnibus EC bundle) | Larger attack surface and ~10× the code of `@noble/ed25519` without needing any of the extra primitives (ristretto255, x25519, ed25519ph, hash-to-curve). The noble project itself recommends `@noble/ed25519` when only basic Ed25519 is required. |
-| `canonicalize@3.0.0` | `@truestamp/canonify` | Comparable RFC 8785 conformance and passes the same test vectors, but `canonicalize` has the longer track record (Erdtman, the JCS RFC's reference author, maintains it), smaller surface, and is already the de-facto JCS package in the JS ecosystem. |
-| `canonicalize@3.0.0` | `json-canonicalize` | Solid alternative; we pick `canonicalize` for provenance (RFC author) and zero-dep posture. Either would work; the choice is reversible. |
-| `canonicalize@3.0.0` (JCS / JSON) | CBOR deterministic encoding (RFC 8949 §4.2, e.g., `cbor-x`) | Binary, opaque in CI logs, harder to diff in failure output, forces consumers to add a CBOR decoder to verify receipts, and provides no measurable size win at receipt scales (a typical Lattice receipt is a few KB of JSON metadata, dominated by hashes and string IDs that CBOR cannot compress further than gzip already does). The use case for deterministic CBOR is constrained-device telemetry, not developer-facing audit artifacts. |
-| `citty@0.2.2` | `commander@13.x` | Commander is mature but ships dual CJS/ESM, has weaker TS inference under `exactOptionalPropertyTypes`, and lacks declarative subcommand lazy loading. Its option coercion (every option arrives as `string \| undefined` unless you write a custom parser) fights `noUncheckedIndexedAccess`. |
-| `citty@0.2.2` | `cac` | Lighter than commander but smaller community, fewer recent releases, and no native lazy-subcommand story. Citty's unjs maintenance cadence and ESM-only stance fit better. |
-| `citty@0.2.2` | `oclif` / `stricli` | Both are framework-grade — plugin systems, command discovery, scaffolding. Vast overkill for two subcommands and would dwarf the `lattice` package on install size. |
-| `citty@0.2.2` | Hand-rolled `node:util.parseArgs` | Tempting (zero deps, native), and we will **use it underneath** because citty already wraps it. Writing a subcommand router by hand for `repro` and `eval` plus help generation plus arg type coercion is ~150 LOC of code we don't want to own. Citty is ~3 KB gzip — cheaper than the bug surface of a custom parser. |
-| Standard Schema-shaped invariants | A bespoke fluent DSL (e.g., `inv.mustCite().withSeverity('hard')`) backed by its own evaluator | Forking validation logic from Standard Schema would create two parallel validation engines inside Lattice and break the "outputs, tools, and contracts all speak the same validator" property. The Standard Schema-shaped approach **wraps** a fluent builder over Standard Schema, getting the best of both: builder ergonomics at authoring time, one validator surface at runtime. |
-| DSSE-shaped envelope | JWS (RFC 7515) / JWT | JWS is fine for JOSE shops but ties payload encoding to base64url and brings JWA/JWK ambiguity. DSSE was explicitly designed to replace JWS for software-supply-chain attestations and has cleaner semantics for "sign this canonical JSON payload of media type X." No JOSE library needed. |
-
----
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| changesets (already in repo) | semantic-release | Never for this repo — changesets is wired, semantic-release would duplicate. |
+| changesets (already in repo) | `np` / `release-it` | Never — both are interactive and don't model pnpm workspaces well. |
+| OIDC Trusted Publisher | Long-lived `NPM_TOKEN` | Only if the GitHub repo were private (provenance is skipped on private repos anyway, but OIDC publish still works). Lattice repo is public; no reason to fall back. |
+| Official provider SDKs in canary | Raw `fetch` to provider REST APIs | If a provider's official SDK had a known bug that masked Lattice issues. None of the three providers currently does. |
+| `@google/genai` | `@google/generative-ai` | Never — deprecated Nov 2025. |
+| Separate canary repo | `examples/canary/` directory | Never — workspace symlinks defeat the test (per PROJECT.md Key Decision: "A workspace-internal example silently uses pnpm symlinks and misses packaging bugs"). |
+| npm in canary | pnpm in canary | Never — defeats the "act like a typical external consumer" purpose. |
+| `actions/setup-node@v4` with explicit `node-version: '24'` | Reading `.nvmrc` | If repo grows a `.nvmrc`. Currently it doesn't; `engines.node >= 24` is the single source of truth. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
-|---|---|---|
-| Heavy crypto frameworks (`node-forge`, `jose`, full PKI stacks) | Lattice only needs Ed25519 sign/verify + SHA-256. Pulling in JOSE-style frameworks adds RSA, ECDSA P-256/384/521, AES-KW, PBKDF2 surface area and audit weight that v1.1 does not require. | Node 24 WebCrypto (`crypto.subtle`) directly. |
-| `sodium-native` / `libsodium-wrappers` | Native bindings, install-time toolchain dependency, mismatched browser story, and overlaps WebCrypto entirely. | Node 24 WebCrypto. |
-| `commander` v12 or earlier | CJS/ESM dual builds, weaker TS types, no lazy subcommands. | `citty@0.2.2`. |
-| `yargs` | Heavy (~200 KB), CJS-leaning, parser-heavy, more configurability than two subcommands need. | `citty@0.2.2`. |
-| `oclif` | Plugin/scaffolding framework — wrong tier for `lattice repro` + `lattice eval`. | `citty@0.2.2`. |
-| `cbor-x` / any CBOR codec for receipts | Opaque payloads defeat the "every Lattice run must be inspectable" constraint from `PROJECT.md`. | `canonicalize` JSON (RFC 8785). |
-| `protobufjs` for receipts | Adds schema-compilation toolchain, hides field meanings in numeric tags, no humans-can-read property. | Same — stay JSON. |
-| Re-exporting `@noble/ed25519` from the public package | Users would inherit a runtime dep we don't need; also forks the signature implementation between Node and browser. | Keep `@noble/ed25519` as devDep only. Receipts produced and verified via WebCrypto end-to-end. |
-| A second validation engine for invariants | Forks contracts from outputs/tools and doubles the maintenance surface. | Standard Schema-shaped invariants, with Zod 4 as the convenient authoring path. |
-| `@sigstore/sign`, `@sigstore/verify`, `cosign` integration | v1.1 needs **local** signed receipts, not a public transparency log. Sigstore brings Fulcio/Rekor/OCI dependencies and a network trust model that is out of scope. | DSSE-shaped envelope with locally-managed Ed25519 keys; sigstore integration can be a v1.2 add-on without changing the envelope. |
-| Custom canonicalization (sorting keys ourselves) | Easy to get subtly wrong (Unicode code-point ordering, number serialization edge cases per ECMAScript spec) — and any bug invalidates every signed receipt. | `canonicalize@3.0.0` with RFC 8785 conformance. |
-
----
+|-------|-----|-------------|
+| `lerna` | Workspace + changesets already cover release orchestration; lerna would conflict. | pnpm workspace + changesets (already in repo). |
+| `semantic-release` | Configuration overlap with changesets; commit-message-driven versioning conflicts with changesets' explicit-changeset-file model. | changesets (already in repo). |
+| `np` / `release-it` | Interactive flows incompatible with OIDC GitHub Actions automation. | changesets/action@v1. |
+| `husky` / `lint-staged` (canary) | Canary has no human commits to gate; CI is the only consumer of its tests. | Bare scripts. |
+| `ESLint` / `Prettier` (canary) | Adds maintenance burden for ~200 LOC of test code. | TypeScript strict mode alone. |
+| `dotenv` (canary) | Node 24 has `--env-file`; CI exposes secrets directly. | `process.env.*` or Node 24 `--env-file=.env` for local dev. |
+| `@google/generative-ai` (canary) | Deprecated November 30 2025; lacks current features. | `@google/genai`. |
+| `ai` package / Vercel AI SDK (canary) | Wrong layer — would shadow what Lattice's adapters do. | Direct OpenAI / Anthropic / Google SDKs. |
+| `NPM_TOKEN` in Lattice release.yml | Long-lived credential when OIDC short-lived tokens exist. | `permissions: id-token: write` + Trusted Publisher config in npmjs.com package settings. |
+| `--provenance` CLI flag override | Redundant when Trusted Publishing is configured; can mask config errors. | Let OIDC auto-detect; set `NPM_CONFIG_PROVENANCE: true` as belt-and-suspenders env var. |
+| Manual `npm version` / git tag in release workflow | Changesets handles this. | `changeset publish` (changesets/action creates the GitHub Release object too). |
 
 ## Stack Patterns by Variant
 
-**If a downstream consumer needs to verify receipts in a browser / edge runtime:**
-- Import only `lattice/receipts` (verify-only entry).
-- Use the same WebCrypto path — every modern browser and most edge runtimes (Cloudflare Workers, Deno Deploy, Vercel Edge) now ship WebCrypto Ed25519.
-- Because `lattice/receipts` carries only `canonicalize` as a real runtime dep, the verifier closure is single-digit KB.
+**If a publish run needs to skip a package (e.g. CLI breaks but core ships):**
+- Don't add a new tool.
+- Use changesets' `ignore` config in `.changeset/config.json` plus per-package `private: true` toggle. Already supported by changesets.
 
-**If a Lattice deployment is locked to Node <23.5 (no stable WebCrypto Ed25519):**
-- Out of scope for v1.1 (package.json sets `engines.node >=24`), but the WebCrypto-shaped adapter makes it trivial to wire `@noble/ed25519` as the implementation — one factory function swap, no contract change.
+**If a provider SDK breaks the canary nightly (upstream regression):**
+- Pin the offending SDK to a known-good minor in the canary's `package.json`.
+- Open a Lattice issue tagged `canary-regression`, do NOT mask the failure in the workflow.
 
-**If a Lattice user wants to author invariants without Zod:**
-- They pass any Standard Schema-compatible validator (Valibot, ArkType, or a hand-written `~standard.validate`). The `inv.matches(schema)` builder accepts the spec, not the library.
+**If the npm scope `@fullselfbrowsing` cannot be claimed:**
+- Fallback per PROJECT.md is unstated; recommend `@fsb-runtime` or `@lattice-sdk` as second-choice scopes. Not part of v1.3 stack research scope to pick; flag for owner.
 
-**If a CI job already runs vitest:**
-- `lattice eval --reporter=vitest` returns vitest-compatible JSON; CI can route it to existing PR comment bots.
-
-**If a CI job does not run vitest:**
-- `lattice eval --reporter=json` emits a stable JSON shape `{ runs, regressions, costDelta, qualityDelta, exitCode }`. Non-zero exit on regression.
-
----
+**If real-provider tests need budget that exceeds the default cost ceiling:**
+- Use the `workflow_dispatch` input (`cost_ceiling_usd`) rather than hardcoding higher defaults — keeps nightly cost predictable, lets humans opt in.
 
 ## Version Compatibility
 
-| Package | Compatible With | Notes |
-|---|---|---|
-| `citty@0.2.2` | Node `>=18.10` (uses `node:util.parseArgs`). Node 24 is fully supported. | ESM-only — matches our `"type": "module"`. |
-| `canonicalize@3.0.0` | Any modern JS runtime; no Node version floor required by the package itself. | Pairs cleanly with `crypto.subtle.digest('SHA-256', ...)`. |
-| `@noble/ed25519@3.1.0` | Node `>=20.19`, all modern browsers. | DevDep only in our use; the Node 24 floor in our package is comfortably above the package's floor. |
-| Node 24 WebCrypto Ed25519 | Stable since v23.5 / v22.13; available in all v24.x. | Algorithm name is the literal string `"Ed25519"`; `subtle.sign`, `subtle.verify`, `subtle.generateKey`, `subtle.importKey`, `subtle.exportKey` all supported. |
-| `tsdown@0.21.9` (catalog) | Auto-detects `#!/usr/bin/env node` shebang and writes `bin` field. | No new tooling needed for the CLI build. |
-| `vitest@4.1.5` (catalog) | Vitest 4 ships built-in visual-regression hooks and stable snapshot semantics in CI (`process.env.CI` → snapshots fail rather than write). | We rely only on the long-stable `expect()`, `describe()`, snapshot, and JSON reporter surfaces — nothing v4-specific is required, so a future downgrade is safe. |
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| npm CLI >= 11.5.1 | OIDC Trusted Publisher | Hard floor. Shipped by default with Node 24+, so `actions/setup-node@v4` + `node-version: '24'` satisfies it. |
+| Node >= 22.14.0 | OIDC Trusted Publisher | Lattice's `engines.node >= 24` already exceeds this. |
+| `actions/setup-node@v4` | `pnpm/action-setup@v4` | setup-node must run AFTER pnpm/action-setup so the cache step can call `pnpm store path`. Reversed order silently breaks pnpm caching. |
+| `changesets/action@v1` | `@changesets/cli@2.31.0` | The GH Action shells out to the local CLI version; major-version-locked. v1 is the only major. |
+| `@changesets/cli@2.31.0` | pnpm workspace `workspace:^` | Changesets transforms `workspace:^` -> `^X.Y.Z` at publish time. Currently `packages/lattice-cli` uses `workspace:*`; change to `workspace:^` before first publish (else the published tarball pins exact). |
+| `publint@0.3.18` | ESM-only packages | The repo's `--profile esm-only` is correct given `"type": "module"` everywhere. |
+| `@arethetypeswrong/cli@0.18.2` | `tsdown@0.21.9` output | tsdown emits dual `.d.ts` + ESM that `attw` validates clean under `esm-only` profile. Keep as-is. |
+| `@google/genai@^2.7.0` | Node 18+ | Compatible with Node 24 floor; no peer conflicts with `openai` or `@anthropic-ai/sdk`. |
+| `openai@^6.41.0` | `@anthropic-ai/sdk@^0.100.0` | No shared deps; coexist cleanly. |
+| `tsx@^4.19.0` | TypeScript 6.0.3 | tsx tracks recent TS; 4.19 supports TS 5.x and 6.x. |
 
----
+## Pitfalls Flagged Here (Cross-Reference for PITFALLS.md)
 
-## Build & Wiring Notes
+These are stack-decision pitfalls; capture cross-cuts as well in PITFALLS.md.
 
-### CLI entry
-
-```ts
-// packages/lattice/src/cli/index.ts
-#!/usr/bin/env node
-import { defineCommand, runMain } from "citty";
-
-const main = defineCommand({
-  meta: { name: "lattice", version: LATTICE_VERSION, description: "Lattice CLI" },
-  subCommands: {
-    repro: () => import("./repro.js").then((m) => m.default),
-    eval:  () => import("./eval.js").then((m) => m.default),
-  },
-});
-
-runMain(main);
-```
-
-- The shebang triggers tsdown's auto-`bin` field on build.
-- `subCommands` use citty's `Resolvable<T>` dynamic import to keep `lattice repro` from loading the eval runner (and vice versa) — relevant because `lattice eval` will transitively load vitest.
-
-### Receipt envelope
-
-```ts
-// packages/lattice/src/receipts/envelope.ts
-import canonicalize from "canonicalize";
-
-const PAE = (type: string, body: string): Uint8Array => {
-  const enc = new TextEncoder();
-  const parts = ["DSSEv1", `${type.length}`, type, `${body.length}`, body];
-  return enc.encode(parts.join(" "));
-};
-
-export const signReceipt = async (
-  receipt: ReceiptPayload,
-  privateKey: CryptoKey,
-): Promise<DsseEnvelope> => {
-  const payload = canonicalize(receipt);           // RFC 8785
-  if (payload === undefined) throw new Error("...");
-  const sig = await crypto.subtle.sign(
-    "Ed25519",
-    privateKey,
-    PAE("application/vnd.lattice.receipt+json", payload),
-  );
-  return {
-    payloadType: "application/vnd.lattice.receipt+json",
-    payload: btoa(payload),
-    signatures: [{ keyid, sig: bufToB64(sig) }],
-  };
-};
-```
-
-- All bytes are derived deterministically: same receipt → same canonical payload → same signed bytes.
-- Verification reverses the steps using `crypto.subtle.verify("Ed25519", ...)`.
-- No `Buffer` usage — `TextEncoder` + `btoa` keep the path isomorphic between Node 24 and browsers.
-
-### Invariant DSL
-
-```ts
-// packages/lattice/src/contracts/invariants.ts
-import type { StandardSchemaV1 } from "@standard-schema/spec";
-
-export interface Invariant<T = unknown> {
-  readonly kind: "semantic" | "policy" | "schema";
-  readonly id: string;
-  readonly severity: "hard" | "soft";
-  readonly check: (value: T) => InvariantResult | Promise<InvariantResult>;
-}
-
-export const inv = {
-  matches: <T>(schema: StandardSchemaV1<unknown, T>, opts?: InvOpts) =>
-    schemaInvariant(schema, opts),
-  mustCite: (opts?: InvOpts) => semanticInvariant(/* ...precanned ... */),
-  maxToxicity: (threshold: number, opts?: InvOpts) => policyInvariant(/* ... */),
-};
-```
-
-- The fluent surface (`inv.mustCite()`) compiles down to `Invariant`s whose `check` ultimately delegates to a Standard Schema `~standard.validate`.
-- Tripwire mid-stream evaluation calls `check(partial)` on streamed chunks; a `hard` failure aborts the run via the existing typed run-event mechanism.
-
----
+1. **Forgetting `id-token: write` permission** — publish silently falls back to looking for `NPM_TOKEN` and fails with E401. The error message does NOT mention OIDC.
+2. **Forgetting `repository.directory` in monorepo packages** — provenance attestation links to repo root instead of `packages/lattice/`, making the attestation less useful for auditors.
+3. **`workspace:*` vs `workspace:^` in `lattice-cli`** — `*` pins exact version in the published tarball, locking CLI users to a single patch of `@fullselfbrowsing/lattice`. Must change to `workspace:^` BEFORE first publish.
+4. **Trusted Publisher npmjs.com config drift** — the workflow filename (`release.yml`) must match what's registered in npm package settings literally; renaming the workflow silently breaks publish.
+5. **Canary using pnpm workspace** — accidentally symlinks back to local Lattice source, defeating the whole point.
+6. **Scoped package default access** — npm defaults scoped packages to `restricted` (private). Without `publishConfig.access: "public"`, the first publish 402s with "private packages require a paid plan."
+7. **Provenance and private repos** — if the GitHub repo were ever made private, provenance silently stops being generated even though OIDC publish keeps working. Lattice repo is public; flag for any future visibility change.
+8. **`@google/generative-ai` lingering** — easy to copy-paste from old docs; deprecated. Lock canary to `@google/genai`.
 
 ## Sources
 
-- [Node.js v24 WebCrypto API documentation — Ed25519 marked stable since v23.5 / v22.13, full sign/verify/import/export/generateKey support](https://nodejs.org/docs/latest-v24.x/api/webcrypto.html) — HIGH confidence (official Node docs).
-- [paulmillr/noble-ed25519 — README and 3.1.0 release notes (Apr 2026), self-audit Mar 2026](https://github.com/paulmillr/noble-ed25519) — HIGH confidence.
-- [@noble/ed25519 on npm](https://www.npmjs.com/package/@noble/ed25519) — HIGH confidence (release metadata).
-- [paulmillr/noble-curves — recommends @noble/ed25519 when only Ed25519 is needed](https://github.com/paulmillr/noble-curves) — HIGH confidence.
-- [RFC 8785 — JSON Canonicalization Scheme (JCS)](https://www.rfc-editor.org/rfc/rfc8785) — HIGH confidence (IETF standard).
-- [erdtman/canonicalize — RFC 8785 reference implementation, v3.0.0 released 2026-04-07, TypeScript types included, zero deps](https://github.com/erdtman/canonicalize) — HIGH confidence.
-- [unjs/citty — v0.2.2 (2026-04-01), ESM-only, native node:util.parseArgs, declarative subcommands](https://github.com/unjs/citty/releases) — HIGH confidence.
-- [citty on npm](https://www.npmjs.com/package/citty) — HIGH confidence (release metadata).
-- [tsdown — auto-generates `bin` field for entry chunks containing a shebang](https://tsdown.dev/reference/cli) — HIGH confidence (official docs); confirmed against tsdown 0.21.x release notes.
-- [in-toto/attestation — DSSE envelope spec v1](https://github.com/in-toto/attestation/blob/main/spec/v1/envelope.md) — HIGH confidence.
-- [secure-systems-lab/dsse — Dead Simple Signing Envelope v1.0.0 protocol, PAE definition](https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md) — HIGH confidence.
-- [Vitest 4 — snapshots fail (do not write) under `process.env.CI`, structured JSON reporter](https://vitest.dev/guide/snapshot) — HIGH confidence (official docs).
-- Local: `packages/lattice/src/outputs/validate.ts`, `packages/lattice/src/tools/tools.ts` — confirms `@standard-schema/spec` is the existing validator contract that invariants should reuse.
-- Local: `pnpm-workspace.yaml` — confirms catalog versions used as the integration baseline.
+- [npm Trusted Publishing docs](https://docs.npmjs.com/trusted-publishers/) — HIGH confidence; authoritative on `id-token: write`, npm CLI >= 11.5.1 floor, automatic provenance behavior.
+- [GitHub Changelog: npm trusted publishing GA (2025-07-31)](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — HIGH confidence; GA announcement.
+- [changesets/action GitHub README](https://github.com/changesets/action) — HIGH confidence; v1.9.0 latest, `publish:` script pattern, env var contract.
+- [npm Generating Provenance Statements](https://docs.npmjs.com/generating-provenance-statements/) — HIGH confidence; `publishConfig.provenance` and `repository` field requirements.
+- [actions/setup-node README + advanced-usage](https://github.com/actions/setup-node) — HIGH confidence; `cache: 'pnpm'` minimum pnpm 6.10, Node 24 runtime support timeline.
+- [pnpm/action-setup README](https://github.com/pnpm/action-setup) — HIGH confidence; v4 targets Node 24 runtime, must run before setup-node for cache resolution.
+- [openai npm package (v6.41.0, 2026-06)](https://www.npmjs.com/package/openai) — HIGH confidence; official SDK, current major.
+- [@anthropic-ai/sdk npm package (v0.100.1, 2026-05-30)](https://www.npmjs.com/package/@anthropic-ai/sdk) — HIGH confidence; official SDK, pre-1.0 by policy.
+- [@google/genai npm package (v2.7.0)](https://www.npmjs.com/package/@google/genai) — HIGH confidence; new official unified GenAI SDK, GA May 2025.
+- [Gemini API libraries — Google AI for Developers](https://ai.google.dev/gemini-api/docs/libraries) — HIGH confidence; confirms `@google/generative-ai` deprecation Nov 30 2025.
+- [GitHub Actions workflow syntax (cron + workflow_dispatch inputs)](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions) — HIGH confidence; cron 5-field POSIX, input limits.
+- Existing repo files read: `/Users/lakshmanturlapati/Desktop/FSB/lattice/package.json`, `/Users/lakshmanturlapati/Desktop/FSB/lattice/packages/lattice/package.json`, `/Users/lakshmanturlapati/Desktop/FSB/lattice/packages/lattice-cli/package.json`, `/Users/lakshmanturlapati/Desktop/FSB/lattice/pnpm-workspace.yaml`, `/Users/lakshmanturlapati/Desktop/FSB/lattice/.planning/PROJECT.md` — HIGH confidence; ground truth for catalog versions and milestone scope.
 
 ---
-*Stack research for: Lattice v1.1 Capability Receipts (signed receipts, contracts, CLI, CI gate)*
-*Researched: 2026-05-11*
+*Stack research for: v1.3 npm publish pipeline + canary consumer*
+*Researched: 2026-06-03*
