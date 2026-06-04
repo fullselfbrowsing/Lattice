@@ -62,7 +62,10 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. `packages/lattice-cli/package.json#dependencies` reads `"@fullselfbrowsing/lattice": "workspace:^"` (the `*` to `^` flip is in the same commit as the rename).
   3. `pnpm pack` on both packages produces tarballs whose `package/package.json` references only `@fullselfbrowsing/*` names; a grep for the unscoped string `"lattice"` in dependency keys, exports, types, or tsd paths returns nothing.
   4. `pnpm install && pnpm -r test && pnpm -r test:types && pnpm -r lint:packages` (publint + attw) all pass clean on the renamed surface, with `license: "MIT"`, `repository`, `bugs`, `homepage`, and `publishConfig.access: "public"` present on both publishable packages and `private: true` preserved on root.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 24-01-PLAN.md — Rename packages/lattice + add release metadata + root license (RENAME-01, PKG-01/02/03/04)
+- [ ] 24-02-PLAN.md — Rename packages/lattice-cli + workspace:^ flip + add release metadata (RENAME-02/03, PKG-01/02/03)
+- [ ] 24-03-PLAN.md — tsd paths + import rewrites + changeset + lockfile + atomic commit + tarball inspection (RENAME-04/05, PKG-05)
 
 ### Phase 25: PR-Time CI Workflow
 **Goal**: Every PR and push to main runs install + typecheck + test + publint + attw against the renamed surface via a SHA-pinned GitHub Actions workflow.
