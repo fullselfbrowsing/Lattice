@@ -166,7 +166,7 @@ describe("runAgent — AgentHost storage seam (Phase 20)", () => {
     const { host } = makeInMemoryStorageHost(snapshot);
 
     // Track emitted recovery events.
-    const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> }> = [];
+    const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> | undefined }> = [];
     const tracer = {
       kind: "tracer" as const,
       event: (kind: string, payload?: Record<string, unknown>) => {
@@ -213,7 +213,7 @@ describe("runAgent — AgentHost storage seam (Phase 20)", () => {
       capturedAt: "2026-05-31T00:00:00.000Z",
     };
     const { host, clears } = makeInMemoryStorageHost(corrupt);
-    const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> }> = [];
+    const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> | undefined }> = [];
     const tracer = {
       kind: "tracer" as const,
       event: (kind: string, payload?: Record<string, unknown>) => {

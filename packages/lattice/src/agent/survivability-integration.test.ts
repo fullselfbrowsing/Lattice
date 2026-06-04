@@ -164,7 +164,7 @@ describe("Phase 20 survivability integration — end-to-end resume across simula
         }),
       });
 
-      const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> }> = [];
+      const recoveryEvents: Array<{ kind: string; payload?: Record<string, unknown> | undefined }> = [];
       const secondTracer = {
         kind: "tracer" as const,
         event: (kind: string, payload?: Record<string, unknown>) => {
