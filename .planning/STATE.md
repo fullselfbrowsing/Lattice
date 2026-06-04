@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation
-status: defining_requirements
-stopped_at: Milestone v1.3 opened on 2026-06-03. PROJECT.md updated with Current Milestone section. STATE reset. Next step is requirements scoping then roadmap.
+status: phase_24_next
+stopped_at: Roadmap for v1.3 (Phases 24-32) created on 2026-06-03. 54/54 REQ-IDs mapped. Phase 24 (Atomic Scope Rename + License Hygiene) is next. Awaiting /gsd-plan-phase 24.
 last_updated: "2026-06-03T00:00:00.000Z"
-last_activity: 2026-06-03 — milestone v1.3 started
+last_activity: 2026-06-03 — v1.3 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 9
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-03)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Scope v1.3 (Public Release + Canary Validation). Requirements being defined.
+**Current focus:** v1.3 Public Release + Canary Validation. Roadmap landed; Phase 24 (Atomic Scope Rename + License Hygiene) is next.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 24 — Atomic Scope Rename + License Hygiene
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-03 — Milestone v1.3 started
+Status: Phase 24 next (awaiting `/gsd-plan-phase 24`)
+Last activity: 2026-06-03 — v1.3 roadmap created (Phases 24-32, 54/54 REQ-IDs mapped)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
 ## Performance Metrics
 
@@ -43,7 +43,7 @@ Progress: [░░░░░░░░░░] 0%
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03; trend resets at first v1.3 plan completion.
+- v1.3 milestone opened 2026-06-03; roadmap created same day (9 phases, 54 REQ-IDs). Trend resets at first v1.3 plan completion.
 
 *Updated after each plan completion*
 
@@ -60,25 +60,26 @@ Recent decisions affecting current work:
 - [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow). Changesets PR-driven version bumps.
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
+- [v1.3 Phase plan]: 9 phases (24-32). Phase 24 atomic rename + hygiene; Phase 25 PR-time CI; Phase 26 release docs + CRYPTO-01 receipt downgrade defense; Phase 27 user-driven npm org claim; Phase 28 release.yml + rc.0 OIDC smoke; Phase 29 v1.3.0 stable publish; Phase 30 canary bootstrap + Layer 1; Phase 31 canary Layer 2 real-provider + 3-layer cost ceiling; Phase 32 cross-repo dispatch + milestone audit.
 
 ### Pending Todos
 
-- Step 8: Research decision (skip vs. parallel research agents).
-- Step 9: Define REQUIREMENTS.md for v1.3.
-- Step 10: Spawn gsd-roadmapper for v1.3 phase breakdown.
-- Step 11: User-driven npm org registration + Trusted Publisher binding (executes during the relevant phase).
+- Phase 24: Spawn `/gsd-plan-phase 24` for the atomic scope rename + license hygiene plans (RENAME-01..05 + PKG-01..05).
+- Phase 27 / 28 baton: Plan must hand the user the npm org + Trusted Publisher binding steps explicitly; FSB cannot fully automate the npmjs.com UI.
+- Phase 30: Canary repo bootstrap requires v1.3.0 (or rc.0) to exist on the public registry before integration steps can run.
 - Carryforward to v1.4: native tool-use, `lattice eval --agent`, KMS adapters, lineage merkle, receipt diff, OTel exporter, streaming, multimodal, OpenRouter routing, LM Studio diagnostics.
 
 ### Blockers/Concerns
 
-- Package rename `lattice` → `@fullselfbrowsing/lattice` touches every import site (workspace + examples + tests). Surface is large but mechanical. publint + arethetypeswrong will catch regressions.
-- `lattice-cli` ships `dependencies: { "lattice": "workspace:*" }`. pnpm rewrites `workspace:*` at publish time, but the rename phase must update the dep name itself before publint passes.
-- No `.github/workflows/` exists at all in Lattice repo. CI scaffolding starts from zero (not a tweak of existing workflows).
-- npm `@fullselfbrowsing` org creation requires user-driven sign-in on npmjs.com (no FSB credential saved). Trusted Publisher binding likewise. These steps cannot be fully automated; the relevant phase plan must hand the baton to the user at the right moment.
+- Package rename `lattice` → `@fullselfbrowsing/lattice` touches every import site (workspace + examples + tests). Surface is large but mechanical. publint + arethetypeswrong will catch regressions. The 5-surface atomic-rename gate (RENAME-01) is the long pole in Phase 24.
+- `lattice-cli` ships `dependencies: { "lattice": "workspace:*" }`. The `* → ^` flip is the most easily-missed surface and propagates silently into the tarball if not caught — must land in the same commit as the rename.
+- No `.github/workflows/` exists at all in Lattice repo. CI scaffolding starts from zero (not a tweak of existing workflows). All third-party actions must be SHA-pinned (TanStack 2026 mitigation).
+- npm `@fullselfbrowsing` org creation requires user-driven sign-in on npmjs.com (no FSB credential saved). Trusted Publisher binding likewise. Phase 27 must hand the baton explicitly and verify completion via FSB recon before Phase 28 attempts the first publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
+- First publish (Phase 28) IS the smoke test of `release.yml` — OIDC cannot be dry-run against npm. rc.0 prerelease tag absorbs the failure mode without burning the v1.3.0 stable slot.
 
 ## Session Continuity
 
 Last session: 2026-06-03
-Stopped at: v1.3 milestone opened, PROJECT.md updated, STATE.md reset. Next is research decision + REQUIREMENTS.md scoping.
-Resume file: None
+Stopped at: v1.3 roadmap created. ROADMAP.md + STATE.md + REQUIREMENTS.md traceability all updated. Next is `/gsd-plan-phase 24` for the atomic scope rename + license hygiene.
+Resume file: .planning/ROADMAP.md (v1.3 Public Release + Canary Validation section)

@@ -164,25 +164,68 @@ Carried over from v1.2 close-out. Out of scope for v1.3 to keep the first public
 
 ## Traceability
 
-To be filled by `gsd-roadmapper` during roadmap creation. Each REQ-ID maps to exactly one phase.
+Each REQ-ID maps to exactly one phase. Plan placeholders (`TBD`) will be filled by `/gsd-plan-phase` for each phase.
 
 | REQ-ID | Phase | Plan | Status |
 |---|---|---|---|
-| RENAME-01..05 | Phase 24 | TBD | pending |
-| PKG-01..05 | Phase 24 | TBD | pending |
-| CI-01..02 | Phase 25 | TBD | pending |
-| DOC-01..05 | Phase 26 | TBD | pending |
+| RENAME-01 | Phase 24 | TBD | pending |
+| RENAME-02 | Phase 24 | TBD | pending |
+| RENAME-03 | Phase 24 | TBD | pending |
+| RENAME-04 | Phase 24 | TBD | pending |
+| RENAME-05 | Phase 24 | TBD | pending |
+| PKG-01 | Phase 24 | TBD | pending |
+| PKG-02 | Phase 24 | TBD | pending |
+| PKG-03 | Phase 24 | TBD | pending |
+| PKG-04 | Phase 24 | TBD | pending |
+| PKG-05 | Phase 24 | TBD | pending |
+| CI-01 | Phase 25 | TBD | pending |
+| CI-02 | Phase 25 | TBD | pending |
+| DOC-01 | Phase 26 | TBD | pending |
+| DOC-02 | Phase 26 | TBD | pending |
+| DOC-03 | Phase 26 | TBD | pending |
+| DOC-04 | Phase 26 | TBD | pending |
+| DOC-05 | Phase 26 | TBD | pending |
 | CRYPTO-01 | Phase 26 | TBD | pending |
-| ORG-01..03 | Phase 27 | TBD | pending |
-| REL-01..06 | Phase 28 | TBD | pending |
+| ORG-01 | Phase 27 | TBD | pending |
+| ORG-02 | Phase 27 | TBD | pending |
+| ORG-03 | Phase 27 | TBD | pending |
+| REL-01 | Phase 28 | TBD | pending |
+| REL-02 | Phase 28 | TBD | pending |
+| REL-03 | Phase 28 | TBD | pending |
+| REL-04 | Phase 28 | TBD | pending |
+| REL-05 | Phase 28 | TBD | pending |
+| REL-06 | Phase 28 | TBD | pending |
 | PUB-01 | Phase 28 | TBD | pending |
-| PUB-02..04 | Phase 29 | TBD | pending |
-| CAN-01..04 | Phase 30 | TBD | pending |
-| UNIT-01..06 | Phase 30 | TBD | pending |
-| INTEG-01..06 | Phase 31 | TBD | pending |
-| COST-01..04 | Phase 31 | TBD | pending |
-| DISPATCH-01..03 | Phase 32 | TBD | pending |
+| PUB-02 | Phase 29 | TBD | pending |
+| PUB-03 | Phase 29 | TBD | pending |
+| PUB-04 | Phase 29 | TBD | pending |
+| CAN-01 | Phase 30 | TBD | pending |
+| CAN-02 | Phase 30 | TBD | pending |
+| CAN-03 | Phase 30 | TBD | pending |
+| CAN-04 | Phase 30 | TBD | pending |
+| UNIT-01 | Phase 30 | TBD | pending |
+| UNIT-02 | Phase 30 | TBD | pending |
+| UNIT-03 | Phase 30 | TBD | pending |
+| UNIT-04 | Phase 30 | TBD | pending |
+| UNIT-05 | Phase 30 | TBD | pending |
+| UNIT-06 | Phase 30 | TBD | pending |
+| INTEG-01 | Phase 31 | TBD | pending |
+| INTEG-02 | Phase 31 | TBD | pending |
+| INTEG-03 | Phase 31 | TBD | pending |
+| INTEG-04 | Phase 31 | TBD | pending |
+| INTEG-05 | Phase 31 | TBD | pending |
+| INTEG-06 | Phase 31 | TBD | pending |
+| COST-01 | Phase 31 | TBD | pending |
+| COST-02 | Phase 31 | TBD | pending |
+| COST-03 | Phase 31 | TBD | pending |
+| COST-04 | Phase 31 | TBD | pending |
+| DISPATCH-01 | Phase 32 | TBD | pending |
+| DISPATCH-02 | Phase 32 | TBD | pending |
+| DISPATCH-03 | Phase 32 | TBD | pending |
+
+**Coverage:** 54 / 54 v1.3 REQ-IDs mapped. No orphans. No duplicates.
 
 ---
 
 *Created: 2026-06-03 — Milestone v1.3 (Public Release + Canary Validation) opened*
+*Traceability filled: 2026-06-03 — by gsd-roadmapper during v1.3 roadmap creation*
