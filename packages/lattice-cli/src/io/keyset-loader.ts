@@ -24,7 +24,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { createMemoryKeySet, type KeyEntry, type KeySet } from "lattice";
+import { createMemoryKeySet, type KeyEntry, type KeySet } from "@fullselfbrowsing/lattice";
 
 export interface KeysetLoadError {
   readonly kind: "missing" | "malformed";

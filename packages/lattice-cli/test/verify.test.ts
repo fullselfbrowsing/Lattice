@@ -23,7 +23,7 @@ import {
   type KeyEntry,
   type ReceiptEnvelope,
   type ReceiptSigner,
-} from "lattice";
+} from "@fullselfbrowsing/lattice";
 
 import { runVerify } from "../src/commands/verify.js";
 

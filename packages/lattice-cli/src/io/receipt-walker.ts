@@ -24,7 +24,7 @@ import { readdir } from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import { resolve } from "node:path";
 
-import type { ReceiptEnvelope } from "lattice";
+import type { ReceiptEnvelope } from "@fullselfbrowsing/lattice";
 
 import {
   isReceiptLoadError,

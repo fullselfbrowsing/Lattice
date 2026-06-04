@@ -201,24 +201,24 @@ describe("showcase v1.1 end-to-end", () => {
     // runtime, so we do it explicitly here.
     const latticeBuild = await runProc("pnpm", [
       "--filter",
-      "lattice",
+      "@fullselfbrowsing/lattice",
       "build",
     ]);
     if (latticeBuild.code !== 0) {
       throw new Error(
-        `pnpm --filter lattice build failed (code=${latticeBuild.code}): ${latticeBuild.stderr}`,
+        `pnpm --filter @fullselfbrowsing/lattice build failed (code=${latticeBuild.code}): ${latticeBuild.stderr}`,
       );
     }
 
     // Build the CLI bin so CLI_BIN resolves to a real file.
     const cliBuild = await runProc("pnpm", [
       "--filter",
-      "lattice-cli",
+      "@fullselfbrowsing/lattice-cli",
       "build",
     ]);
     if (cliBuild.code !== 0) {
       throw new Error(
-        `pnpm --filter lattice-cli build failed (code=${cliBuild.code}): ${cliBuild.stderr}`,
+        `pnpm --filter @fullselfbrowsing/lattice-cli build failed (code=${cliBuild.code}): ${cliBuild.stderr}`,
       );
     }
 

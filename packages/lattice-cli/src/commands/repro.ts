@@ -41,7 +41,7 @@ import {
   verifyReceipt,
   type CapabilityReceiptBody,
   type ReceiptEnvelope,
-} from "lattice";
+} from "@fullselfbrowsing/lattice";
 
 import {
   createFilesystemArtifactLoader,

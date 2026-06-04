@@ -14,7 +14,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { ReceiptEnvelope } from "lattice";
+import type { ReceiptEnvelope } from "@fullselfbrowsing/lattice";
 
 const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json" as const;
 

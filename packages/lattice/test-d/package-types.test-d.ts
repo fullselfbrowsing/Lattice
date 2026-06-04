@@ -7,7 +7,7 @@ import {
   createLocalArtifactStore,
   createMemoryArtifactStore,
   output,
-} from "lattice";
+} from "@fullselfbrowsing/lattice";
 import type {
   ArtifactFingerprint,
   ArtifactInput,
@@ -22,7 +22,7 @@ import type {
   SessionRef,
   StorageLike,
   StoredArtifactEnvelope,
-} from "lattice";
+} from "@fullselfbrowsing/lattice";
 
 const schema = z.object({
   kind: z.literal("refund"),

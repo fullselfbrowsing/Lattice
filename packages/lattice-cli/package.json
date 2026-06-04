@@ -1,7 +1,20 @@
 {
-  "name": "lattice-cli",
+  "name": "@fullselfbrowsing/lattice-cli",
   "version": "0.0.0",
   "description": "Lattice CLI — repro and verify signed capability receipts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fullselfbrowsing/Lattice.git",
+    "directory": "packages/lattice-cli"
+  },
+  "homepage": "https://github.com/fullselfbrowsing/Lattice",
+  "bugs": {
+    "url": "https://github.com/fullselfbrowsing/Lattice/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -27,7 +40,7 @@
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "lattice": "workspace:*",
+    "@fullselfbrowsing/lattice": "workspace:^",
     "citty": "catalog:"
   },
   "devDependencies": {
