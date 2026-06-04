@@ -58,11 +58,11 @@ process.stdout.write(`\nWrote 4 receipts to ${receiptsDirRel}/.\n`);
 process.stdout.write(`Wrote 4 sidecars to ${sidecarsDirRel}/.\n`);
 process.stdout.write("Next steps (run from repo root):\n");
 process.stdout.write(
-  `  pnpm --filter lattice-cli exec lattice verify ${successReceiptPathRel} --key ${keysetPathRel}\n`,
+  `  pnpm --filter @fullselfbrowsing/lattice-cli exec lattice verify ${successReceiptPathRel} --key ${keysetPathRel}\n`,
 );
 process.stdout.write(
-  `  pnpm --filter lattice-cli exec lattice repro ${qualityFloorReceiptPathRel} --key ${keysetPathRel} --fixtures ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel}\n`,
+  `  pnpm --filter @fullselfbrowsing/lattice-cli exec lattice repro ${qualityFloorReceiptPathRel} --key ${keysetPathRel} --fixtures ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel}\n`,
 );
 process.stdout.write(
-  `  pnpm --filter lattice-cli exec lattice eval --fixtures ${receiptsDirRel} --key ${keysetPathRel} --artifacts ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel} --baseline ${relPath(ctx.baselinePath)} --init-baseline\n`,
+  `  pnpm --filter @fullselfbrowsing/lattice-cli exec lattice eval --fixtures ${receiptsDirRel} --key ${keysetPathRel} --artifacts ${fixturesDirRel} --sidecar-dir ${sidecarsDirRel} --baseline ${relPath(ctx.baselinePath)} --init-baseline\n`,
 );

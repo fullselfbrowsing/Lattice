@@ -6,8 +6,8 @@
  *
  *   beforeAll
  *     - wipe examples/work-inbox/.lattice/                 (clean slate)
- *     - pnpm --filter lattice build                        (runtime dist)
- *     - pnpm --filter lattice-cli build                    (CLI bin dist)
+ *     - pnpm --filter @fullselfbrowsing/lattice build      (runtime dist)
+ *     - pnpm --filter @fullselfbrowsing/lattice-cli build  (CLI bin dist)
  *     - node examples/work-inbox/index.mjs                 (Plan 13-01 showcase)
  *
  *   it cases
@@ -196,7 +196,7 @@ describe("showcase v1.1 end-to-end", () => {
     await rm(LATTICE_DIR, { recursive: true, force: true });
 
     // Build the runtime first — the showcase imports the lattice dist.
-    // `pnpm --filter lattice-cli test` only triggers the CLI build via the
+    // `pnpm --filter @fullselfbrowsing/lattice-cli test` only triggers the CLI build via the
     // package.json `test` script; it does NOT transitively build the
     // runtime, so we do it explicitly here.
     const latticeBuild = await runProc("pnpm", [
