@@ -355,7 +355,7 @@ describe("receipt.ts — v1.1 step-marker fields (Phase 2)", () => {
     }
   });
 
-  it("mints v1 receipt (backward compat) when no step-marker fields are set", async () => {
+  it("mints v1.1 receipt by default even when no step-marker fields are set (Phase 26 CRYPTO-01)", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -385,7 +385,9 @@ describe("receipt.ts — v1.1 step-marker fields (Phase 2)", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1");
+      // Phase 26 collapsed the version-bump heuristic: createReceipt always
+      // mints v1.1 since v1 receipts can no longer pass verifyReceipt.
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
       expect(result.body.stepName).toBeUndefined();
       expect(result.body.stepIndex).toBeUndefined();
       expect(result.body.sessionId).toBeUndefined();

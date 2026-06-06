@@ -1,3 +1,5 @@
+[![npm version](https://img.shields.io/npm/v/@full-self-browsing/lattice.svg)](https://www.npmjs.com/package/@full-self-browsing/lattice) ![npm provenance](https://img.shields.io/badge/provenance-attested-success.svg) ![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
 <div align="center">
 
 <img src="assets/logo-mark-spin.gif" alt="Lattice" width="220" />
@@ -144,16 +146,24 @@ pnpm build
 pnpm test
 ```
 
-### Install via tag pin
+### Install
 
-Distribution for v1.2.0 is tag plus GitHub release. Mainline npm publish of `@fullselfbrowsing/lattice@1.2.0` is deferred until at least one external consumer requests it. Consume via a git submodule pinned at `v1.2.0`, or via a `file:` dependency under npm 11 (PKG-01 makes this work).
+The runtime SDK and the CLI are published as two scoped packages under `@full-self-browsing`.
 
 ```bash
-# submodule
-git submodule add https://github.com/fullselfbrowsing/Lattice.git vendor/lattice
-git -C vendor/lattice checkout v1.2.0
-pnpm add file:./vendor/lattice/packages/lattice
+# Runtime SDK
+pnpm add @full-self-browsing/lattice
+# or
+npm install @full-self-browsing/lattice
 ```
+
+```bash
+# CLI (global)
+pnpm add -g @full-self-browsing/lattice-cli
+lattice --version
+```
+
+> The CLI package name is `@full-self-browsing/lattice-cli`, but the bin name is `lattice`. The user-facing command stays short even though the package is scoped (RENAME-2 from PITFALLS).
 
 ### Hello world (synchronous run)
 
@@ -270,6 +280,19 @@ The receipt body commits to:
 * The model both requested and observed.
 * The output hash on success, or a typed failure on tripwire violation or no-contract-match.
 * When step-markers are populated, the receipt auto-bumps to `lattice-receipt/v1.1` with the six step-marker fields threading the linked list.
+
+---
+
+## Provenance Verification
+
+Every `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. You can verify the attestation with stock tooling.
+
+```bash
+npm view @full-self-browsing/lattice --json | jq .dist
+# then inspect .dist.attestations.provenance
+```
+
+The provenance attestation lights up after the first OIDC-signed publish lands (Phase 28). The npm version badge at the top of this README will display the live attestation badge from npmjs.com once `@full-self-browsing/lattice@1.3.0` is on the registry. See `SECURITY.md` for the full supply-chain posture (no long-lived `NPM_TOKEN`, SHA-pinned GitHub Actions, `npm-publish` manual reviewer gate for the first three publishes).
 
 ---
 

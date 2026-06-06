@@ -66,12 +66,12 @@ importers:
 
   packages/lattice-cli:
     dependencies:
+      '@full-self-browsing/lattice':
+        specifier: workspace:^
+        version: link:../lattice
       citty:
         specifier: 'catalog:'
         version: 0.2.2
-      lattice:
-        specifier: workspace:*
-        version: link:../lattice
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

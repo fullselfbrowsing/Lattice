@@ -35,7 +35,7 @@ import {
   type ArtifactInput,
   type KeyEntry,
   type ReceiptEnvelope,
-} from "lattice";
+} from "@full-self-browsing/lattice";
 
 import type { Baseline, BaselineEntry } from "../src/eval/baseline.js";
 import type { Judge } from "../src/eval/judge.js";
@@ -207,8 +207,8 @@ async function writeKeyset(paths: SandboxPaths, entries: KeyEntry[]): Promise<vo
  * no way to carry outputs; `repro.test.ts` uses the same trick).
  */
 function mockReplayWithOutputs(outputs: Record<string, unknown>): void {
-  vi.doMock("lattice", async (importOriginal) => {
-    const mod = await importOriginal<typeof import("lattice")>();
+  vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+    const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
     return {
       ...mod,
       replayOffline: vi.fn(async () => ({
@@ -228,11 +228,11 @@ describe("runEvalSession", () => {
   beforeEach(() => {
     saved = process.cwd();
     vi.resetModules();
-    vi.doUnmock("lattice");
+    vi.doUnmock("@full-self-browsing/lattice");
   });
   afterEach(() => {
     process.chdir(saved);
-    vi.doUnmock("lattice");
+    vi.doUnmock("@full-self-browsing/lattice");
     vi.restoreAllMocks();
   });
 
@@ -295,8 +295,8 @@ describe("runEvalSession", () => {
       makeBaseline({ "fx-drift": makeBaselineEntry("0", null) }),
     );
 
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -353,8 +353,8 @@ describe("runEvalSession", () => {
     // by mocking verifyReceipt to return a body with a high cost. Mock
     // replayOffline as well so the materialized envelope yields the same
     // outputs that match body.outputHash (Stage 5 must pass first).
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const realVerify = mod.verifyReceipt;
       return {
         ...mod,
@@ -418,8 +418,8 @@ describe("runEvalSession", () => {
     // Inject a body that declares qualityFloor (so the runner enters Stage 7).
     // Mock replayOffline so Stage 5 (Exact) passes; otherwise drift would
     // short-circuit Stage 7 and the judge would never run.
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const realVerify = mod.verifyReceipt;
       return {
         ...mod,
@@ -555,8 +555,8 @@ describe("runEvalSession", () => {
     await seedFixtureOnDisk(paths, "fx-cache", fixture);
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
 
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const realVerify = mod.verifyReceipt;
       return {
         ...mod,
@@ -652,8 +652,8 @@ describe("runEvalSession", () => {
     await seedFixtureOnDisk(paths, "fx-sc", fixture);
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
 
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const realVerify = mod.verifyReceipt;
       return {
         ...mod,
@@ -742,8 +742,8 @@ describe("runEvalSession", () => {
     // outputs ONLY when the envelope corresponds to b-drift. For the others,
     // we return the matching outputs from their original fixture so Stage 5
     // passes. We detect which fixture via the envelope's first signature kid.
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const outputsByKid: Record<string, Record<string, unknown>> = {
         [fxMatch.kid]: fxMatch.outputs,
         [fxDrift.kid]: { text: "DRIFTED" },
@@ -953,8 +953,8 @@ describe("runEvalSession", () => {
     await seedFixtureOnDisk(paths, "fx-sc-cost", fixture);
     await writeKeyset(paths, [keyEntry(fixture.kid, fixture.publicKeyJwk)]);
 
-    vi.doMock("lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       const realVerify = mod.verifyReceipt;
       return {
         ...mod,

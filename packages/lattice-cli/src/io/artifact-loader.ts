@@ -16,7 +16,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { ArtifactInput } from "lattice";
+import type { ArtifactInput } from "@full-self-browsing/lattice";
 
 const HASH_REGEX = /^[a-f0-9]{64}$/u;
 

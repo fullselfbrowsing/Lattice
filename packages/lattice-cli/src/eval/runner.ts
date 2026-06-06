@@ -52,7 +52,7 @@ import {
   type CapabilityReceiptBody,
   type KeySet,
   type ReceiptEnvelope,
-} from "lattice";
+} from "@full-self-browsing/lattice";
 
 import { createFilesystemArtifactLoader } from "../io/artifact-loader.js";
 import { loadKeySetFromPath } from "../io/keyset-loader.js";

@@ -68,7 +68,8 @@ describe("verify.ts — happy path", () => {
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1");
+      // Phase 26 (CRYPTO-01): createReceipt always emits v1.1.
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
     }
@@ -216,7 +217,7 @@ describe("verify.ts — error kinds", () => {
     }
   });
 
-  it("returns version-mismatch when body.version !== 'lattice-receipt/v1'", async () => {
+  it("returns version-mismatch for unknown body.version literal (e.g. v2)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("k1");
     const keySet = createMemoryKeySet([entryWith("k1", publicKeyJwk, "active")]);
 
@@ -261,8 +262,10 @@ describe("verify.ts — error kinds", () => {
 
     // Hand-craft a body where body.kid = "different" but the envelope's
     // signature is over THIS canonical form, signed by the real "actual" key.
+    // Uses v1.1 so the body clears the schema-version-too-low gate and
+    // reaches the body.kid mismatch check at step 8 of the decision tree.
     const body: CapabilityReceiptBody = {
-      version: "lattice-receipt/v1",
+      version: "lattice-receipt/v1.1",
       receiptId: "00000000-0000-4000-8000-000000000000",
       runId: "run-x",
       issuedAt: "2026-05-11T00:00:00Z",
@@ -419,6 +422,129 @@ describe("verify.ts — v1.1 backward-compatible verification (Phase 2)", () => 
     expect(result.ok).toBe(false);
     if (result.ok === false) {
       expect(result.error.kind).toBe("version-mismatch");
+    }
+  });
+});
+
+describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", () => {
+  it("rejects a receipt whose body.version field is absent", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-undef");
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-undef", publicKeyJwk, "active"),
+    ]);
+
+    // Build a valid v1.1 body, then construct a sibling object with the
+    // `version` field stripped. CapabilityReceiptBody.version is a required
+    // literal union at compile time; the only way to model "absent version"
+    // is to spread an Omit type at the value level.
+    const valid: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.1",
+      receiptId: "00000000-0000-4000-8000-000000000000",
+      runId: "downgrade-undef",
+      issuedAt: "2026-06-06T00:00:00.000Z",
+      kid: "crypto-01-undef",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+    };
+    const { version: _ignored, ...rest } = valid;
+    void _ignored;
+    const stripped = rest as unknown as CapabilityReceiptBody;
+
+    const payloadBytes = canonicalizeReceiptBody(stripped);
+    const payload = base64Encode(payloadBytes);
+    const pae = buildPae(PAYLOAD_TYPE, payload);
+    const sig = await signer.sign(pae);
+    const env: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload,
+      signatures: [{ keyid: "crypto-01-undef", sig: base64Encode(sig) }],
+    };
+
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      // Body fails asReceiptBody first (version absent -> structural shape
+      // check returns undefined -> version-mismatch), OR if the structural
+      // gate is bypassed, the downgrade branch fires. Either outcome proves
+      // the codebase rejects version-absent receipts. We assert the strongest
+      // available verdict surface: the runtime never returns ok=true here.
+      expect(
+        result.error.kind === "schema-version-too-low" ||
+          result.error.kind === "version-mismatch",
+      ).toBe(true);
+    }
+  });
+
+  it("rejects a receipt whose body.version equals 'lattice-receipt/v1' (downgrade attack)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-v1");
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-v1", publicKeyJwk, "active"),
+    ]);
+
+    // Hand-craft a body with the OLD v1 literal. The body is otherwise
+    // valid: it canonicalizes, the kid matches the keyset, and we sign
+    // it with a real key so signature verification WOULD pass if the
+    // downgrade branch were absent. This proves the branch short-circuits
+    // before signature verification.
+    const v1Body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1",
+      receiptId: "00000000-0000-4000-8000-000000000001",
+      runId: "downgrade-v1",
+      issuedAt: "2026-06-06T00:00:00.000Z",
+      kid: "crypto-01-v1",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+    };
+    const payloadBytes = canonicalizeReceiptBody(v1Body);
+    const payload = base64Encode(payloadBytes);
+    const pae = buildPae(PAYLOAD_TYPE, payload);
+    const sig = await signer.sign(pae);
+    const env: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload,
+      signatures: [{ keyid: "crypto-01-v1", sig: base64Encode(sig) }],
+    };
+
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("schema-version-too-low");
+    }
+  });
+
+  it("accepts a normally-minted v1.1 receipt (positive control regression guard)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
+    const env = await createReceipt(
+      {
+        ...minimalInput(),
+        runId: "downgrade-positive-control",
+        stepName: "crypto-01-positive",
+        stepIndex: 0,
+      },
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-positive", publicKeyJwk, "active"),
+    ]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.stepName).toBe("crypto-01-positive");
     }
   });
 });
