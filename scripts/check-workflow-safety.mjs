@@ -39,8 +39,8 @@ import { dirname, join, basename } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const wfDir = join(here, "..", ".github", "workflows");
 
-const PR_TARGET_RE = /^pull_request_target\s*:/;
-const ID_TOKEN_WRITE_RE = /^-?\s*id-token\s*:\s*write\s*$/;
+const PR_TARGET_RE = /^\s*"?pull_request_target"?\s*:/;
+const ID_TOKEN_WRITE_RE = /^-?\s*"?id-token"?\s*:\s*write\s*(?:#.*)?\s*$/;
 const JOB_KEY_RE = /^\s{2,4}([a-z0-9_-]+):\s*$/;
 
 async function listWorkflowFiles() {
