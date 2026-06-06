@@ -283,6 +283,19 @@ The receipt body commits to:
 
 ---
 
+## Provenance Verification
+
+Every `@fullselfbrowsing/lattice` and `@fullselfbrowsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. You can verify the attestation with stock tooling.
+
+```bash
+npm view @fullselfbrowsing/lattice --json | jq .dist
+# then inspect .dist.attestations.provenance
+```
+
+The provenance attestation lights up after the first OIDC-signed publish lands (Phase 28). The npm version badge at the top of this README will display the live attestation badge from npmjs.com once `@fullselfbrowsing/lattice@1.3.0` is on the registry. See `SECURITY.md` for the full supply-chain posture (no long-lived `NPM_TOKEN`, SHA-pinned GitHub Actions, `npm-publish` manual reviewer gate for the first three publishes).
+
+---
+
 ## Agent Capability
 
 `ai.runAgent(intent)` drives a tool-use loop with native composition surfaces.
