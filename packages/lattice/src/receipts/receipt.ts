@@ -21,7 +21,7 @@ import type {
 
 /**
  * Public input to createReceipt. Mirrors CapabilityReceiptBody minus:
- *   - `version` (forced to "lattice-receipt/v1")
+ *   - `version` (forced to "lattice-receipt/v1.1" per CRYPTO-01)
  *   - `kid` (forced from signer.kid — caller cannot mismatch)
  *   - `redactions[]` (populated by redactReceiptBody)
  *   - `usage.costUsd` (converted to canonical string by usageToCanonical)
@@ -43,10 +43,10 @@ export interface CreateReceiptInput {
   readonly redactionPolicyId?: string;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
-  // Phase 2 v1.1 step-marker fields. When ANY of these is provided, the
-  // emitted receipt body's `version` is bumped to "lattice-receipt/v1.1";
-  // when ALL are absent, the body's `version` stays "lattice-receipt/v1"
-  // for backward compatibility with v1 verifiers.
+  // Phase 2 v1.1 step-marker fields. All optional; populated when a step
+  // transition emits a receipt. Phase 26 (CRYPTO-01) collapsed the v1/v1.1
+  // version-bump heuristic to ALWAYS emit "lattice-receipt/v1.1" since v1
+  // receipts can no longer pass verifyReceipt (receipt-downgrade defense).
   readonly stepName?: string;
   readonly stepIndex?: number;
   readonly parentStepName?: string;
@@ -83,18 +83,12 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
-  // Phase 2 version-bump heuristic: any step-marker field set -> v1.1;
-  // otherwise v1 (preserves backward compatibility with Phase 1 callers).
-  const hasStepMarker =
-    input.stepName !== undefined ||
-    input.stepIndex !== undefined ||
-    input.parentStepName !== undefined ||
-    input.previousStepName !== undefined ||
-    input.sessionId !== undefined ||
-    input.timestamp !== undefined;
-  const version: "lattice-receipt/v1" | "lattice-receipt/v1.1" = hasStepMarker
-    ? "lattice-receipt/v1.1"
-    : "lattice-receipt/v1";
+  // Phase 26 (CRYPTO-01): always emit v1.1. The previous version-bump
+  // heuristic produced v1 when no step-marker fields were set, but v1
+  // receipts are now rejected by verifyReceipt (schema-version-too-low),
+  // so minting them would produce instantly-unverifiable receipts.
+  const version: "lattice-receipt/v1" | "lattice-receipt/v1.1" =
+    "lattice-receipt/v1.1";
 
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).

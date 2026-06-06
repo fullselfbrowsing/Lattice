@@ -68,7 +68,8 @@ describe("verify.ts — happy path", () => {
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1");
+      // Phase 26 (CRYPTO-01): createReceipt always emits v1.1.
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
     }
@@ -261,8 +262,10 @@ describe("verify.ts — error kinds", () => {
 
     // Hand-craft a body where body.kid = "different" but the envelope's
     // signature is over THIS canonical form, signed by the real "actual" key.
+    // Uses v1.1 so the body clears the schema-version-too-low gate and
+    // reaches the body.kid mismatch check at step 8 of the decision tree.
     const body: CapabilityReceiptBody = {
-      version: "lattice-receipt/v1",
+      version: "lattice-receipt/v1.1",
       receiptId: "00000000-0000-4000-8000-000000000000",
       runId: "run-x",
       issuedAt: "2026-05-11T00:00:00Z",
