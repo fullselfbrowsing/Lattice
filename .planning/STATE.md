@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation
 status: executing
-stopped_at: v1.3 roadmap created. ROADMAP.md + STATE.md + REQUIREMENTS.md traceability all updated. Next is `/gsd-plan-phase 24` for the atomic scope rename + license hygiene.
-last_updated: "2026-06-04T21:57:23.288Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-06-06T03:37:19.123Z"
 last_activity: 2026-06-04
 progress:
   total_phases: 5
@@ -80,6 +80,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-03
-Stopped at: v1.3 roadmap created. ROADMAP.md + STATE.md + REQUIREMENTS.md traceability all updated. Next is `/gsd-plan-phase 24` for the atomic scope rename + license hygiene.
-Resume file: .planning/ROADMAP.md (v1.3 Public Release + Canary Validation section)
+Last session: 2026-06-06T03:37:19.120Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-pr-time-ci-workflow/25-CONTEXT.md
