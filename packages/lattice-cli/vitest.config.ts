@@ -10,6 +10,16 @@ export default defineConfig({
     // only affects the e2e test which still runs in well under 120s.
     testTimeout: 120_000,
     hookTimeout: 120_000,
+    // Inline the workspace runtime so vite-node loads it via the workspace
+    // symlink rather than treating it as an external dep. Without this,
+    // vite-node's external resolver hits "Failed to resolve entry" for
+    // workspace packages on cold CI runners, even though Node's own ESM
+    // resolver matches the import condition fine. See PR #2 CI debug.
+    server: {
+      deps: {
+        inline: [/^@full-self-browsing\//]
+      }
+    },
     typecheck: {
       ignoreSourceErrors: true,
       include: ["test/**/*.test.ts"],
