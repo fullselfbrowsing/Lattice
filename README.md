@@ -1,3 +1,5 @@
+[![npm version](https://img.shields.io/npm/v/@fullselfbrowsing/lattice.svg)](https://www.npmjs.com/package/@fullselfbrowsing/lattice) ![npm provenance](https://img.shields.io/badge/provenance-attested-success.svg) ![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
 <div align="center">
 
 <img src="assets/logo-mark-spin.gif" alt="Lattice" width="220" />
