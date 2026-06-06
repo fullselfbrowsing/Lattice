@@ -36,10 +36,15 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const v = value as Record<string, unknown>;
-  // v1.1 bump (Phase 2): accept BOTH v1 and v1.1 literals. Receipts whose
-  // version is neither still fall through to the `version-mismatch` path
-  // via the existing return-undefined contract (see verify.ts decision tree).
-  if (v.version !== "lattice-receipt/v1" && v.version !== "lattice-receipt/v1.1") {
+  // CRYPTO-01: accept undefined / v1 / v1.1 so they all reach Step 4 (the
+  // schema-version-too-low chokepoint). An unknown non-undefined literal
+  // (e.g. lattice-receipt/v2 or "garbage") is still a structural shape
+  // failure and falls through to the version-mismatch path here.
+  if (
+    v.version !== undefined &&
+    v.version !== "lattice-receipt/v1" &&
+    v.version !== "lattice-receipt/v1.1"
+  ) {
     return undefined;
   }
   if (typeof v.receiptId !== "string") return undefined;

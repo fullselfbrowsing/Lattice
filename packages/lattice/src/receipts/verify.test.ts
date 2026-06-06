@@ -217,7 +217,7 @@ describe("verify.ts — error kinds", () => {
     }
   });
 
-  it("returns version-mismatch when body.version !== 'lattice-receipt/v1'", async () => {
+  it("returns version-mismatch for unknown body.version literal (e.g. v2)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("k1");
     const keySet = createMemoryKeySet([entryWith("k1", publicKeyJwk, "active")]);
 
