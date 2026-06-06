@@ -74,7 +74,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Success Criteria** (what must be TRUE):
   1. A new PR against `main` triggers `.github/workflows/ci.yml`, runs `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r test:types`, and `pnpm -r lint:packages`, and reports green status before the merge button enables.
   2. Every third-party action used in `ci.yml` (actions/checkout, actions/setup-node, pnpm/action-setup, etc.) is pinned by a 40-character commit SHA — `grep -E "uses: .+@[0-9a-f]{40}"` matches every `uses:` line, with no `@v5` or `@main` tag references.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 25-01-PLAN.md — Three workspace-root Node 24 ESM gate scripts (check-tarball-leak.mjs, verify-rename.mjs, check-workflow-safety.mjs) implementing D-04/D-05/D-06 (CI-01)
+- [ ] 25-02-PLAN.md — .github/workflows/ci.yml with SHA-pinned actions, contents:read permissions, PR-only-cancel concurrency, and 11-step ci job consuming the Plan 01 scripts (CI-01, CI-02)
 
 ### Phase 26: Release Hygiene Docs + Receipt Downgrade Defense
 **Goal**: Author the docs npm requires for a credible first publish and harden `verifyReceipt` against the receipt-downgrade attack, coupling the security writeup to the code change in one phase.
@@ -190,7 +192,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 24. Atomic Scope Rename + License Hygiene | 3/3 | Complete    | 2026-06-04 |
-| 25. PR-Time CI Workflow | 0/0 | Not started | - |
+| 25. PR-Time CI Workflow | 0/2 | Planned     | - |
 | 26. Release Hygiene Docs + Receipt Downgrade Defense | 0/0 | Not started | - |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Not started | - |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Not started | - |
