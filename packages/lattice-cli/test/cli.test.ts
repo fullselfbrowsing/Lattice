@@ -18,7 +18,12 @@ function runBin(args: readonly string[]): { status: number | null; stdout: strin
 
 describe("lattice CLI bin smoke test", () => {
   it("prints help and exits 0 for --help", () => {
-    const { status, stdout } = runBin(["--help"]);
+    const { status, stdout, stderr } = runBin(["--help"]);
+    // TEMP DEBUG (PR #2): if status is not 0, surface stderr in the message
+    // so we can see what the spawned bin actually output.
+    if (status !== 0) {
+      throw new Error(`Got status=${status}\nstdout=${stdout.slice(0,500)}\nstderr=${stderr.slice(0,1500)}\nbinPath=${binPath}\nexecPath=${process.execPath}\nNODE_OPTIONS=${process.env.NODE_OPTIONS ?? "(unset)"}`);
+    }
     expect(status).toBe(0);
     expect(stdout).toMatch(/repro/);
     expect(stdout).toMatch(/verify/);
