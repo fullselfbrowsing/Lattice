@@ -146,16 +146,24 @@ pnpm build
 pnpm test
 ```
 
-### Install via tag pin
+### Install
 
-Distribution for v1.2.0 is tag plus GitHub release. Mainline npm publish of `@fullselfbrowsing/lattice@1.2.0` is deferred until at least one external consumer requests it. Consume via a git submodule pinned at `v1.2.0`, or via a `file:` dependency under npm 11 (PKG-01 makes this work).
+The runtime SDK and the CLI are published as two scoped packages under `@fullselfbrowsing`.
 
 ```bash
-# submodule
-git submodule add https://github.com/fullselfbrowsing/Lattice.git vendor/lattice
-git -C vendor/lattice checkout v1.2.0
-pnpm add file:./vendor/lattice/packages/lattice
+# Runtime SDK
+pnpm add @fullselfbrowsing/lattice
+# or
+npm install @fullselfbrowsing/lattice
 ```
+
+```bash
+# CLI (global)
+pnpm add -g @fullselfbrowsing/lattice-cli
+lattice --version
+```
+
+> The CLI package name is `@fullselfbrowsing/lattice-cli`, but the bin name is `lattice`. The user-facing command stays short even though the package is scoped (RENAME-2 from PITFALLS).
 
 ### Hello world (synchronous run)
 
