@@ -31,7 +31,7 @@
 
 import { join, resolve } from "node:path";
 
-import type { ReceiptEnvelope } from "@fullselfbrowsing/lattice";
+import type { ReceiptEnvelope } from "@full-self-browsing/lattice";
 
 import {
   isWalkedReceiptError as isUnderlyingReceiptError,

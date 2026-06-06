@@ -25,8 +25,8 @@ pnpm install --frozen-lockfile
 
 **Workspace layout.**
 
-- `packages/lattice` is the runtime SDK published as `@fullselfbrowsing/lattice`.
-- `packages/lattice-cli` is the CLI published as `@fullselfbrowsing/lattice-cli` (bin name stays `lattice`).
+- `packages/lattice` is the runtime SDK published as `@full-self-browsing/lattice`.
+- `packages/lattice-cli` is the CLI published as `@full-self-browsing/lattice-cli` (bin name stays `lattice`).
 - `examples/` contains executable showcases against the public surface.
 
 ## Pre-PR Checks

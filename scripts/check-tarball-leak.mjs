@@ -5,12 +5,12 @@
  * Runs `pnpm pack` against each publishable package, extracts the in-tarball
  * `package.json`, and fails if any unscoped "lattice" reference appears in:
  *   - dependencies / devDependencies / peerDependencies / optionalDependencies keys
- *   - exports map (any value containing the bare word "lattice" not preceded by "@fullselfbrowsing/")
+ *   - exports map (any value containing the bare word "lattice" not preceded by "@full-self-browsing/")
  *   - types field (string)
  *   - tsd.compilerOptions.paths keys
  *
  * Implements PITFALLS RENAME-1 / RENAME-3 forever-guard: catches a regression
- * where the rename to @fullselfbrowsing/* leaves a stale bare "lattice"
+ * where the rename to @full-self-browsing/* leaves a stale bare "lattice"
  * reference that would ship to the registry tarball.
  *
  * Exit codes:
@@ -33,14 +33,14 @@ const repoRoot = resolve(here, "..");
 // Hard-coded publishable set. Changing this list should be a deliberate edit
 // to this script, not a side-effect of adding a new workspace directory.
 const PACKAGES = [
-  { dir: "packages/lattice", name: "@fullselfbrowsing/lattice" },
-  { dir: "packages/lattice-cli", name: "@fullselfbrowsing/lattice-cli" },
+  { dir: "packages/lattice", name: "@full-self-browsing/lattice" },
+  { dir: "packages/lattice-cli", name: "@full-self-browsing/lattice-cli" },
 ];
 
 // Matches the bare token "lattice" when it is NOT preceded by the
-// @fullselfbrowsing/ scope. Same logic the Phase 24 tarball-inspection
+// @full-self-browsing/ scope. Same logic the Phase 24 tarball-inspection
 // step used.
-const BARE_LATTICE = /(?<!@fullselfbrowsing\/)\blattice\b/;
+const BARE_LATTICE = /(?<!@full-self-browsing\/)\blattice\b/;
 
 function runCommand(cmd, args, options) {
   return new Promise((resolvePromise, rejectPromise) => {

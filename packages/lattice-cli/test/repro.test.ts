@@ -26,7 +26,7 @@ import {
   type ArtifactInput,
   type KeyEntry,
   type ReceiptEnvelope,
-} from "@fullselfbrowsing/lattice";
+} from "@full-self-browsing/lattice";
 
 import { runRepro } from "../src/commands/repro.js";
 
@@ -109,12 +109,12 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     savedCwd = process.cwd();
     process.chdir(sandbox);
     vi.resetModules();
-    vi.doUnmock("@fullselfbrowsing/lattice");
+    vi.doUnmock("@full-self-browsing/lattice");
   });
 
   afterEach(() => {
     process.chdir(savedCwd);
-    vi.doUnmock("@fullselfbrowsing/lattice");
+    vi.doUnmock("@full-self-browsing/lattice");
     vi.restoreAllMocks();
   });
 
@@ -170,8 +170,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
 
     // Mock replayOffline to return the same outputs the original run produced,
     // so JSON.stringify(outputs) hashes to body.outputHash.
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -209,8 +209,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     const fixture = await makeReproFixture("drift-kid");
     const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
 
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -310,8 +310,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     });
 
     // Mock replayOffline so we don't depend on real replay to verify id resolution worked.
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -391,8 +391,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     const fixture = await makeReproFixture("nohash-fixture-kid");
     const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
 
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         verifyReceipt: vi.fn(async () => ({
@@ -467,8 +467,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     if (!verified.ok) throw new Error("side-channel verify failed");
     const body = verified.body;
 
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -528,8 +528,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
    * report `execution_unavailable` (no outputs were threaded historically).
    */
   function mockReplayWithFixtureOutputs(outputs: Record<string, unknown>): void {
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({
@@ -776,8 +776,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     await writeValidSidecar(sidecarPath);
 
     // Mock replayOffline to return DRIFTED outputs (different from fixture.outputs).
-    vi.doMock("@fullselfbrowsing/lattice", async (importOriginal) => {
-      const mod = await importOriginal<typeof import("@fullselfbrowsing/lattice")>();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
       return {
         ...mod,
         replayOffline: vi.fn(async () => ({

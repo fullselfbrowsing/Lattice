@@ -1,5 +1,5 @@
 {
-  "name": "@fullselfbrowsing/lattice-cli",
+  "name": "@full-self-browsing/lattice-cli",
   "version": "0.0.0",
   "description": "Lattice CLI — repro and verify signed capability receipts",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@fullselfbrowsing/lattice": "workspace:^",
+    "@full-self-browsing/lattice": "workspace:^",
     "citty": "catalog:"
   },
   "devDependencies": {

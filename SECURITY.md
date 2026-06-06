@@ -20,8 +20,8 @@ We will credit reporters in the published advisory unless they ask to remain ano
 
 **In scope:**
 
-- `@fullselfbrowsing/lattice` (runtime SDK published to npm).
-- `@fullselfbrowsing/lattice-cli` (CLI published to npm; bin name remains `lattice`).
+- `@full-self-browsing/lattice` (runtime SDK published to npm).
+- `@full-self-browsing/lattice-cli` (CLI published to npm; bin name remains `lattice`).
 - The publish pipeline itself. Release supply-chain trust is enforced via npm OIDC Trusted Publisher with provenance attestations, so there is no long-lived `NPM_TOKEN` to steal. Compromise of the publishing pipeline (the OIDC trust tuple, the release workflow, or any SHA-pinned third-party action it uses) is in scope.
 - The receipt verification path, the KeySet rotation surface, the redaction manifest, and the replay envelope materialization path.
 
@@ -83,7 +83,7 @@ This writeup and the defense are auditably linked: searching for the literal str
 Once the first OIDC-signed publish lands in Phase 28, the npm registry will surface provenance attestations on the tarball. Anyone can verify with stock tooling:
 
 ```bash
-npm view @fullselfbrowsing/lattice --json | jq .dist
+npm view @full-self-browsing/lattice --json | jq .dist
 ```
 
 Inspect `.dist.attestations.provenance` for the signed claim that links the tarball to the GitHub workflow run that produced it. See `README.md` for the user-facing copy-pastable example and the expected output shape.

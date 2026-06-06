@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@fullselfbrowsing/lattice` are documented in this file.
+All notable changes to `@full-self-browsing/lattice` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- v1.3.0 prepares the first public npm release under the `@fullselfbrowsing` scope. See `.changeset/v1.3.0-initial.md` for the full release notes.
+- v1.3.0 prepares the first public npm release under the `@full-self-browsing` scope. See `.changeset/v1.3.0-initial.md` for the full release notes.
 
 ## [1.2.0] - 2026-05-31
 

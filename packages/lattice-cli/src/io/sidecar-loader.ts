@@ -27,7 +27,7 @@ import {
   type CapabilityContract,
   type OutputContractMap,
   type PolicySpec,
-} from "@fullselfbrowsing/lattice";
+} from "@full-self-browsing/lattice";
 
 /** v1.1 sidecar wire format. The `version` field is REQUIRED. */
 export interface SidecarFile {

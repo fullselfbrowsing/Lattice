@@ -4,6 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@fullselfbrowsing/lattice": "workspace:^"
+    "@full-self-browsing/lattice": "workspace:^"
   }
 }

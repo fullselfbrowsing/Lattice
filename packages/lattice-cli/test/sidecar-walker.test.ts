@@ -26,7 +26,7 @@ import {
   generateEd25519KeyPairJwk,
   type ArtifactInput,
   type ReceiptEnvelope,
-} from "@fullselfbrowsing/lattice";
+} from "@full-self-browsing/lattice";
 
 import {
   isWalkedReceiptError,

@@ -1,5 +1,5 @@
 {
-  "name": "@fullselfbrowsing/lattice",
+  "name": "@full-self-browsing/lattice",
   "version": "0.0.0",
   "description": "TypeScript-first capability runtime SDK for AI applications",
   "license": "MIT",
@@ -44,7 +44,7 @@
       "module": "ESNext",
       "noUncheckedIndexedAccess": true,
       "paths": {
-        "@fullselfbrowsing/lattice": [
+        "@full-self-browsing/lattice": [
           "./dist/index.d.ts"
         ]
       },

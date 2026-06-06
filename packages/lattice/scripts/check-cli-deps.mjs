@@ -3,7 +3,7 @@
  * Phase 11 depcheck gate (CLI-06).
  *
  * Asserts that the BUILT lattice runtime (packages/lattice/dist/*.js) does NOT
- * reference any CLI-only dependency. Run after `pnpm --filter @fullselfbrowsing/lattice build`.
+ * reference any CLI-only dependency. Run after `pnpm --filter @full-self-browsing/lattice build`.
  *
  * Forbidden runtime imports (must stay in packages/lattice-cli only):
  *   - citty, commander, cac, yargs
@@ -46,7 +46,7 @@ try {
   }
 } catch (err) {
   if (err && err.code === "ENOENT") {
-    console.error(`[check-cli-deps] dist directory not found at ${distDir}. Run \`pnpm --filter @fullselfbrowsing/lattice build\` first.`);
+    console.error(`[check-cli-deps] dist directory not found at ${distDir}. Run \`pnpm --filter @full-self-browsing/lattice build\` first.`);
     process.exit(1);
   }
   throw err;

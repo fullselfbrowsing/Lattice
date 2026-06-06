@@ -4,7 +4,7 @@
  *
  * Walks the workspace and fails if any source file outside the allowlist
  * still imports the unscoped name "lattice". The canonical scoped name is
- * @fullselfbrowsing/lattice; any bare "lattice" import is a Phase 24 rename
+ * @full-self-browsing/lattice; any bare "lattice" import is a Phase 24 rename
  * regression (PITFALLS RENAME-1) that the tarball gate would also catch but
  * this script catches earlier — at commit time, not at pack time.
  *

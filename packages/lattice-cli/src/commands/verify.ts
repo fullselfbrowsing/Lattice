@@ -25,7 +25,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { defineCommand } from "citty";
-import { verifyReceipt, type ReceiptEnvelope } from "@fullselfbrowsing/lattice";
+import { verifyReceipt, type ReceiptEnvelope } from "@full-self-browsing/lattice";
 
 import {
   isKeysetLoadError,

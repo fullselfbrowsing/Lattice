@@ -6,8 +6,8 @@
  *
  *   beforeAll
  *     - wipe examples/work-inbox/.lattice/                 (clean slate)
- *     - pnpm --filter @fullselfbrowsing/lattice build      (runtime dist)
- *     - pnpm --filter @fullselfbrowsing/lattice-cli build  (CLI bin dist)
+ *     - pnpm --filter @full-self-browsing/lattice build      (runtime dist)
+ *     - pnpm --filter @full-self-browsing/lattice-cli build  (CLI bin dist)
  *     - node examples/work-inbox/index.mjs                 (Plan 13-01 showcase)
  *
  *   it cases
@@ -196,29 +196,29 @@ describe("showcase v1.1 end-to-end", () => {
     await rm(LATTICE_DIR, { recursive: true, force: true });
 
     // Build the runtime first — the showcase imports the lattice dist.
-    // `pnpm --filter @fullselfbrowsing/lattice-cli test` only triggers the CLI build via the
+    // `pnpm --filter @full-self-browsing/lattice-cli test` only triggers the CLI build via the
     // package.json `test` script; it does NOT transitively build the
     // runtime, so we do it explicitly here.
     const latticeBuild = await runProc("pnpm", [
       "--filter",
-      "@fullselfbrowsing/lattice",
+      "@full-self-browsing/lattice",
       "build",
     ]);
     if (latticeBuild.code !== 0) {
       throw new Error(
-        `pnpm --filter @fullselfbrowsing/lattice build failed (code=${latticeBuild.code}): ${latticeBuild.stderr}`,
+        `pnpm --filter @full-self-browsing/lattice build failed (code=${latticeBuild.code}): ${latticeBuild.stderr}`,
       );
     }
 
     // Build the CLI bin so CLI_BIN resolves to a real file.
     const cliBuild = await runProc("pnpm", [
       "--filter",
-      "@fullselfbrowsing/lattice-cli",
+      "@full-self-browsing/lattice-cli",
       "build",
     ]);
     if (cliBuild.code !== 0) {
       throw new Error(
-        `pnpm --filter @fullselfbrowsing/lattice-cli build failed (code=${cliBuild.code}): ${cliBuild.stderr}`,
+        `pnpm --filter @full-self-browsing/lattice-cli build failed (code=${cliBuild.code}): ${cliBuild.stderr}`,
       );
     }
 
