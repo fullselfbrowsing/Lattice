@@ -1,0 +1,64 @@
+# Lattice PR-Time CI Workflow
+# Closes CI-01 (install + typecheck + test + test:types + lint:packages) and CI-02 (40-char SHA pinning).
+# Decisions traced to .planning/phases/25-pr-time-ci-workflow/25-CONTEXT.md:
+#   D-01 ubuntu-only, D-02 Node 24 only, D-03 sequential gate order,
+#   D-04 tarball leak audit, D-05 source-import rename audit, D-06 workflow safety audit,
+#   D-07 pnpm-store cache only, D-08 single ci job ubuntu-latest, D-09 PR-only cancel concurrency,
+#   D-10 contents: read root permissions, D-11 hard ban on the pwn-request trigger,
+#   D-12 40-char SHA pinning, D-13 pnpm/action-setup + setup-node order.
+# This workflow has ZERO OIDC capability and ZERO secrets references.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check workspace
+        run: pnpm -r typecheck
+
+      - name: Run unit tests
+        run: pnpm -r test
+
+      - name: Validate package types (tsd)
+        run: pnpm -r test:types
+
+      - name: Lint packages (publint + attw)
+        run: pnpm -r lint:packages
+
+      - name: Audit tarballs for stale names
+        run: node scripts/check-tarball-leak.mjs
+
+      - name: Audit source imports for stale rename
+        run: node scripts/verify-rename.mjs
+
+      - name: Audit workflows for OIDC and PR-target drift
+        run: node scripts/check-workflow-safety.mjs
