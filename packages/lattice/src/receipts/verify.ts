@@ -66,13 +66,14 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
  * Decision tree (first match wins):
  *   1. decodeEnvelope throws OR signatures[] empty       -> envelope-malformed
  *   2. payload bytes are not valid JSON                  -> envelope-malformed
- *   3. body shape check fails OR version != v1           -> version-mismatch
- *   4. keySet.lookup(keyid) === undefined                -> key-not-found
- *   5. entry.state === "revoked"                         -> key-revoked
- *   6. re-canonicalized body != signed payloadBytes      -> canonicalization-mismatch
- *   7. Ed25519 verification of PAE fails                 -> signature-invalid
- *   8. body.kid !== entry.kid (defense in depth)         -> signature-invalid
- *   9. otherwise                                         -> ok + keyState
+ *   3. body shape check fails OR version unknown literal -> version-mismatch
+ *   4. body.version === undefined OR "lattice-receipt/v1"-> schema-version-too-low (CRYPTO-01)
+ *   5. keySet.lookup(keyid) === undefined                -> key-not-found
+ *   6. entry.state === "revoked"                         -> key-revoked
+ *   7. re-canonicalized body != signed payloadBytes      -> canonicalization-mismatch
+ *   8. Ed25519 verification of PAE fails                 -> signature-invalid
+ *   9. body.kid !== entry.kid (defense in depth)         -> signature-invalid
+ *  10. otherwise                                         -> ok + keyState
  */
 export async function verifyReceipt(
   envelope: ReceiptEnvelope,
@@ -108,7 +109,22 @@ export async function verifyReceipt(
     );
   }
 
-  // Step 4: keyset lookup (use first signature; multi-sig deferred to v1.2).
+  // Step 4: receipt-downgrade defense (CRYPTO-01).
+  // Reject receipts whose body.version is absent or equals the v1 literal.
+  // v1 receipts predate the step-marker integrity surface added in v1.2;
+  // an attacker holding a valid signing key could mint a v1-shaped body
+  // and submit it to a v1.1 verifier to bypass step-chain commitments.
+  // Short-circuits before any cryptographic work (keyset lookup, canonical
+  // re-check, signature verify) so the downgrade verdict is unambiguous.
+  // See SECURITY.md (Phase 26 threat model) and Radicle 2026-03 precedent.
+  if (body.version === undefined || body.version === "lattice-receipt/v1") {
+    return fail(
+      "schema-version-too-low",
+      "Receipt body.version must be 'lattice-receipt/v1.1' — v1 receipts are not accepted (CRYPTO-01).",
+    );
+  }
+
+  // Step 5: keyset lookup (use first signature; multi-sig deferred to v1.2).
   const firstSig = decoded.signatures[0]!;
   const entry: KeyEntry | undefined = keySet.lookup(firstSig.keyid);
   if (entry === undefined) {
@@ -121,7 +137,7 @@ export async function verifyReceipt(
     return fail("key-revoked", `key "${entry.kid}" is revoked`);
   }
 
-  // Step 5: re-canonicalize body and compare byte-for-byte against
+  // Step 6: re-canonicalize body and compare byte-for-byte against
   // decoded.payloadBytes. Catches any swap of canonical form mid-flight
   // (the signed bytes must canonicalize back to themselves).
   const reCanonical = canonicalizeReceiptBody(body);
@@ -132,7 +148,7 @@ export async function verifyReceipt(
     );
   }
 
-  // Step 6: rebuild PAE and verify Ed25519 signature.
+  // Step 7: rebuild PAE and verify Ed25519 signature.
   const payloadB64 = base64Encode(decoded.payloadBytes);
   const pae = buildPae(PAYLOAD_TYPE, payloadB64);
   const sigValid = await verifyEd25519Signature(
@@ -144,7 +160,7 @@ export async function verifyReceipt(
     return fail("signature-invalid", "Ed25519 signature does not verify");
   }
 
-  // Step 7: defense-in-depth — body.kid MUST equal envelope keyid.
+  // Step 8: defense-in-depth — body.kid MUST equal envelope keyid.
   if (body.kid !== entry.kid) {
     return fail(
       "signature-invalid",
@@ -152,6 +168,6 @@ export async function verifyReceipt(
     );
   }
 
-  // Step 8: success — surface the key state so callers can warn on retired.
+  // Step 9: success — surface the key state so callers can warn on retired.
   return { ok: true, body, keyState: entry.state };
 }
