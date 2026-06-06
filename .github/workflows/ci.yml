@@ -42,6 +42,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace
+        # Required before typecheck so workspace packages (lattice-cli) can
+        # resolve types from the runtime's published exports (./dist/index.d.ts).
+        # Without this, tsc cannot find @full-self-browsing/lattice from cli source.
+        run: pnpm -r build
+
       - name: Type-check workspace
         run: pnpm -r typecheck
 
