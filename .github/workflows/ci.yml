@@ -51,18 +51,6 @@ jobs:
       - name: Type-check workspace
         run: pnpm -r typecheck
 
-      - name: Diagnostic dump (subprocess env probe)
-        # PR #2 CI debug stage 2: probe what cli.test.ts subprocess inherits.
-        run: |
-          echo '--- direct CLI invocation in CI env ---'
-          (cd packages/lattice-cli && node dist/cli.js --help 2>&1; echo "EXIT=$?") | head -10
-          echo '--- with NODE_OPTIONS unset ---'
-          (cd packages/lattice-cli && env -u NODE_OPTIONS node dist/cli.js eval 2>&1; echo "EXIT=$?") | head -10
-          echo '--- node ESM resolver for our scope from cli ---'
-          (cd packages/lattice-cli && node --input-type=module -e "import('@full-self-browsing/lattice').then(m => console.log('import keys:', Object.keys(m).length)).catch(e => console.log('FAIL:', e.message))") 2>&1 || true
-          echo '--- current NODE_OPTIONS in step ---'
-          echo "NODE_OPTIONS=[$NODE_OPTIONS]"
-
       - name: Run unit tests
         run: pnpm -r test
 
