@@ -103,7 +103,8 @@ export type VerifyErrorKind =
   | "canonicalization-mismatch"
   | "signature-invalid"
   | "envelope-malformed"
-  | "version-mismatch";
+  | "version-mismatch"
+  | "schema-version-too-low";
 
 export interface VerifyError {
   readonly kind: VerifyErrorKind;
