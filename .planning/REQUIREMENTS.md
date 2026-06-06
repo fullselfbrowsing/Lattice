@@ -29,15 +29,15 @@
 
 ### Release Docs + Hygiene (`DOC-*`)
 
-- [ ] **DOC-01**: `CONTRIBUTING.md` added at repo root with contribution flow, codeowner notes, and commit conventions
-- [ ] **DOC-02**: `SECURITY.md` added at repo root with CVE disclosure address, Ed25519 entropy-source assumptions, signing-key rotation guidance, receipt downgrade defense documentation
-- [ ] **DOC-03**: `CHANGELOG.md` auto-managed by changesets (already installed); seeded with v1.0 / v1.1 / v1.2 history retrospectively
-- [ ] **DOC-04**: Initial changeset created seeding v1.3.0 release notes
-- [ ] **DOC-05**: `README.md` updated with install instructions (`@fullselfbrowsing/lattice`), npm + provenance + license badges, and provenance verification example
+- [x] **DOC-01**: `CONTRIBUTING.md` added at repo root with contribution flow, codeowner notes, and commit conventions
+- [x] **DOC-02**: `SECURITY.md` added at repo root with CVE disclosure address, Ed25519 entropy-source assumptions, signing-key rotation guidance, receipt downgrade defense documentation
+- [x] **DOC-03**: `CHANGELOG.md` auto-managed by changesets (already installed); seeded with v1.0 / v1.1 / v1.2 history retrospectively
+- [x] **DOC-04**: Initial changeset created seeding v1.3.0 release notes
+- [x] **DOC-05**: `README.md` updated with install instructions (`@fullselfbrowsing/lattice`), npm + provenance + license badges, and provenance verification example
 
 ### Receipt Crypto Defense (`CRYPTO-*`)
 
-- [ ] **CRYPTO-01**: `verifyReceipt` enforces minimum `schemaVersion >= 1.1` signed into the canonical bytes; new `VerifyResult` error kind `schema-version-too-low`; receipt-downgrade attack documented in `SECURITY.md` (Radicle 2026-03 precedent)
+- [x] **CRYPTO-01**: `verifyReceipt` enforces minimum `schemaVersion >= 1.1` signed into the canonical bytes; new `VerifyResult` error kind `schema-version-too-low`; receipt-downgrade attack documented in `SECURITY.md` (Radicle 2026-03 precedent)
 
 ### PR-Time CI (`CI-*`)
 

@@ -227,7 +227,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 |-------|----------------|--------|-----------|
 | 24. Atomic Scope Rename + License Hygiene | 3/3 | Complete    | 2026-06-04 |
 | 25. PR-Time CI Workflow | 2/2 | Complete    | 2026-06-06 |
-| 26. Release Hygiene Docs + Receipt Downgrade Defense | 4/4 | Complete   | 2026-06-06 |
+| 26. Release Hygiene Docs + Receipt Downgrade Defense | 4/4 | Complete    | 2026-06-06 |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Not started | - |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Not started | - |
 | 29. First v1.3.0 Stable Publish | 0/0 | Not started | - |
