@@ -52,21 +52,27 @@ jobs:
         run: pnpm -r typecheck
 
       - name: Diagnostic dump (workspace symlinks + dist state)
-        # Temporary diagnostic for PR #2 CI debug. Once CI is green and the
-        # vitest resolution failure is root-caused, this step can be removed.
+        # Temporary diagnostic for PR #2 CI debug. Resolved after root-cause.
         run: |
-          echo '--- packages/lattice/dist ---'
-          ls -la packages/lattice/dist/ | head -10
-          echo '--- packages/lattice-cli/dist ---'
-          ls -la packages/lattice-cli/dist/ | head -10
           echo '--- workspace symlink from cli ---'
           ls -la packages/lattice-cli/node_modules/@full-self-browsing/ 2>&1 || true
-          echo '--- exports map ---'
-          node -e "console.log(JSON.stringify(require('./packages/lattice/package.json').exports, null, 2))"
-          echo '--- direct require.resolve probe ---'
-          node -e "process.chdir('packages/lattice-cli'); try { console.log('require.resolve OK:', require.resolve('@full-self-browsing/lattice')); } catch (e) { console.log('require.resolve FAIL:', e.message); }"
-          echo '--- direct import probe ---'
-          node --input-type=module -e "import('@full-self-browsing/lattice').then(m => console.log('import OK, keys:', Object.keys(m).slice(0,5))).catch(e => console.log('import FAIL:', e.message))"
+          ls -la packages/lattice-cli/node_modules/@full-self-browsing/lattice/dist/ 2>&1 | head -5 || true
+          echo '--- probe from inside lattice-cli ---'
+          cat > /tmp/probe.mjs <<'EOF'
+          try {
+            const m = await import('@full-self-browsing/lattice');
+            console.log('import OK, keys:', Object.keys(m).slice(0,5));
+          } catch (e) {
+            console.log('import FAIL:', e.message);
+          }
+          EOF
+          cp /tmp/probe.mjs packages/lattice-cli/probe.mjs
+          (cd packages/lattice-cli && node probe.mjs 2>&1) || true
+          rm -f packages/lattice-cli/probe.mjs
+          echo '--- run the failing spec in isolation ---'
+          (cd packages/lattice-cli && node --input-type=module -e "
+          import('./node_modules/@full-self-browsing/lattice/package.json', { with: { type: 'json' } }).then(m => console.log('cli/node_modules/.../package.json contents OK:', JSON.stringify(m.default, null, 2).slice(0, 400))).catch(e => console.log('FAIL:', e.message));
+          " 2>&1) || true
 
       - name: Run unit tests
         run: pnpm -r test
