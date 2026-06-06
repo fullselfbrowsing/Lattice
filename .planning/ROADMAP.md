@@ -42,7 +42,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Coverage:** 54 / 54 REQ-IDs mapped (no orphans).
 
 - [x] **Phase 24: Atomic Scope Rename + License Hygiene** — Rename both publishable packages to `@fullselfbrowsing/*` and add release-required manifest fields in a single atomic commit. (completed 2026-06-04)
-- [ ] **Phase 25: PR-Time CI Workflow** — Stand up `.github/workflows/ci.yml` (install + typecheck + test + publint + attw) with SHA-pinned actions; first green CI run validates the renamed surface.
+- [x] **Phase 25: PR-Time CI Workflow** — Stand up `.github/workflows/ci.yml` (install + typecheck + test + publint + attw) with SHA-pinned actions; first green CI run validates the renamed surface. (completed 2026-06-06)
 - [ ] **Phase 26: Release Hygiene Docs + Receipt Downgrade Defense** — Author `CONTRIBUTING.md`, `SECURITY.md`, README provenance section, seed changeset; harden `verifyReceipt` with minimum `schemaVersion >= 1.1` enforcement.
 - [ ] **Phase 27: npm Org + Trusted Publisher Setup** — User-driven via FSB on npmjs.com: claim `@fullselfbrowsing` scope, create `npm-publish` GitHub Environment, bind Trusted Publisher trust tuple `(repo, workflow_filename, environment)` for both packages.
 - [ ] **Phase 28: Release Workflow + rc.0 OIDC Smoke** — Land split-job `release.yml` (version-PR job + publish job with separate `permissions:`); publish `@fullselfbrowsing/lattice@1.3.0-rc.0` + `@fullselfbrowsing/lattice-cli@1.3.0-rc.0` end-to-end via OIDC with verifiable provenance.
@@ -75,8 +75,8 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   1. A new PR against `main` triggers `.github/workflows/ci.yml`, runs `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r test:types`, and `pnpm -r lint:packages`, and reports green status before the merge button enables.
   2. Every third-party action used in `ci.yml` (actions/checkout, actions/setup-node, pnpm/action-setup, etc.) is pinned by a 40-character commit SHA — `grep -E "uses: .+@[0-9a-f]{40}"` matches every `uses:` line, with no `@v5` or `@main` tag references.
 **Plans**: 2 plans
-- [ ] 25-01-PLAN.md — Three workspace-root Node 24 ESM gate scripts (check-tarball-leak.mjs, verify-rename.mjs, check-workflow-safety.mjs) implementing D-04/D-05/D-06 (CI-01)
-- [ ] 25-02-PLAN.md — .github/workflows/ci.yml with SHA-pinned actions, contents:read permissions, PR-only-cancel concurrency, and 11-step ci job consuming the Plan 01 scripts (CI-01, CI-02)
+- [x] 25-01-PLAN.md — Three workspace-root Node 24 ESM gate scripts (check-tarball-leak.mjs, verify-rename.mjs, check-workflow-safety.mjs) implementing D-04/D-05/D-06 (CI-01)
+- [x] 25-02-PLAN.md — .github/workflows/ci.yml with SHA-pinned actions, contents:read permissions, PR-only-cancel concurrency, and 11-step ci job consuming the Plan 01 scripts (CI-01, CI-02)
 
 ### Phase 26: Release Hygiene Docs + Receipt Downgrade Defense
 **Goal**: Author the docs npm requires for a credible first publish and harden `verifyReceipt` against the receipt-downgrade attack, coupling the security writeup to the code change in one phase.
@@ -192,7 +192,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 24. Atomic Scope Rename + License Hygiene | 3/3 | Complete    | 2026-06-04 |
-| 25. PR-Time CI Workflow | 0/2 | Planned     | - |
+| 25. PR-Time CI Workflow | 2/2 | Complete    | 2026-06-06 |
 | 26. Release Hygiene Docs + Receipt Downgrade Defense | 0/0 | Not started | - |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Not started | - |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Not started | - |

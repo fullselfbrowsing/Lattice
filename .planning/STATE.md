@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Public Release + Canary Validation
 status: executing
 stopped_at: Phase 25 context gathered
-last_updated: "2026-06-06T04:51:31.226Z"
-last_activity: 2026-06-06 -- Phase 25 planning complete
+last_updated: "2026-06-06T09:55:30.891Z"
+last_activity: 2026-06-06
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-03)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 24 — atomic-scope-rename-license-hygiene
+**Current focus:** Phase 25 — pr-time-ci-workflow
 
 ## Current Position
 
-Phase: 25
+Phase: 26
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-06 -- Phase 25 planning complete
+Status: Executing Phase 25
+Last activity: 2026-06-06
 
 Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
