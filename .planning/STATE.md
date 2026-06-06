@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Public Release + Canary Validation
 status: executing
 stopped_at: Phase 25 context gathered
-last_updated: "2026-06-06T10:11:51.748Z"
-last_activity: 2026-06-06 -- Phase 26 planning complete
+last_updated: "2026-06-06T10:11:51.972Z"
+last_activity: 2026-06-06 -- Phase 26 execution started
 progress:
   total_phases: 9
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-03)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 25 — pr-time-ci-workflow
+**Current focus:** Phase 26 — release-hygiene-docs-receipt-downgrade-defense
 
 ## Current Position
 
-Phase: 26
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-06 -- Phase 26 planning complete
+Phase: 26 (release-hygiene-docs-receipt-downgrade-defense) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 26
+Last activity: 2026-06-06 -- Phase 26 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
