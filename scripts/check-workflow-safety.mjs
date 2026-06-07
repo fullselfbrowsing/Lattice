@@ -42,6 +42,24 @@ const wfDir = join(here, "..", ".github", "workflows");
 const PR_TARGET_RE = /^\s*"?pull_request_target"?\s*:/;
 const ID_TOKEN_WRITE_RE = /^-?\s*"?id-token"?\s*:\s*write\s*(?:#.*)?\s*$/;
 const JOB_KEY_RE = /^\s{2,4}([a-z0-9_-]+):\s*$/;
+// Well-known structural keys that GitHub Actions allows at job scope. They
+// match JOB_KEY_RE (bare identifier, colon, end of line) but are not job
+// names. Without this skip-list, a job-level `permissions:` block would be
+// mistaken for the enclosing job key during the backward walk in
+// findEnclosingJobKey, causing a false positive on legitimate
+// `id-token: write` declarations inside the publish job's permissions block.
+const STRUCTURAL_KEYS = new Set([
+  "permissions",
+  "env",
+  "with",
+  "secrets",
+  "outputs",
+  "defaults",
+  "concurrency",
+  "strategy",
+  "container",
+  "services",
+]);
 
 async function listWorkflowFiles() {
   let entries;
@@ -61,12 +79,14 @@ async function listWorkflowFiles() {
 function findEnclosingJobKey(lines, hitIndex) {
   // Walk backwards up to 200 lines to find the nearest preceding line that
   // matches the conventional GitHub Actions job key indentation (2-4 spaces,
-  // identifier, colon, end-of-line).
+  // identifier, colon, end-of-line). Skip structural keys (permissions, env,
+  // etc.) that match the same shape but are not job names; the first
+  // non-structural match is the real enclosing job.
   const limit = Math.max(0, hitIndex - 200);
   for (let i = hitIndex - 1; i >= limit; i -= 1) {
     const line = lines[i];
     const m = line.match(JOB_KEY_RE);
-    if (m) return m[1];
+    if (m && !STRUCTURAL_KEYS.has(m[1])) return m[1];
   }
   return null;
 }
