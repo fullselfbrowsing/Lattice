@@ -1,0 +1,133 @@
+# Lattice Release Workflow
+# Phase 28: REL-01..REL-06, PUB-01
+#
+# Two-job pattern (Phase 28 SC-1):
+#   version-pr: opens/updates the changesets release PR; needs contents:write
+#               and pull-requests:write but NO id-token. Triggered by pushes
+#               to main.
+#   publish:    publishes both packages to npm via OIDC with provenance;
+#               needs id-token:write but no PR write. Triggered by tag push
+#               v*.*.* (the changesets PR merge auto-creates this tag).
+#               Runs in environment npm-publish so the required reviewer
+#               (LakshmanTurlapati) approves each release.
+#
+# OIDC trust tuple registered on npmjs.com in Phase 27:
+#   (repository: fullselfbrowsing/Lattice,
+#    workflow_filename: release.yml,
+#    environment: npm-publish)
+# Both packages have this tuple, so pnpm publish exchanges the GitHub OIDC
+# token for an npm short-lived publish credential. Zero NODE_AUTH_TOKEN.
+# All third-party actions SHA-pinned per CI-02 / Phase 25 D-12.
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'
+
+# Root permissions are minimum-trust; each job re-declares what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version-pr:
+    # Opens/updates the changesets "Version Packages" PR on push to main.
+    # Does NOT publish; intentionally no id-token permission.
+    name: version-pr
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create or update Version Packages PR
+        uses: changesets/action@3841a0683d3cfa6dae0f9bb335290003010fe3f0
+        with:
+          # Bump versions and update CHANGELOG.md from .changeset/*.md.
+          # No `publish:` input here -- publishing is the next job's job.
+          version: pnpm changeset version
+          title: 'chore(release): Version Packages'
+          commit: 'chore(release): version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    # Publishes both packages to npm via OIDC.
+    # Triggered only by tag push v*.*.* (changesets auto-creates these).
+    # Gated by environment npm-publish so the required reviewer approves.
+    name: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      # contents:write -> create the GitHub Release object.
+      contents: write
+      # id-token:write -> mint the OIDC token pnpm publish exchanges with npm.
+      id-token: write
+    steps:
+      - name: Checkout repository at the tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          # Required so pnpm publish hits the public registry, not a private one.
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm -r build
+
+      - name: Validate tarball contents
+        # Same lint pass as CI; cheap insurance the release tarball is clean.
+        run: pnpm -r lint:packages
+
+      - name: Publish to npm with provenance
+        # No NODE_AUTH_TOKEN here. pnpm publish picks up the OIDC token from
+        # ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN that
+        # the runner injects when id-token:write is set, exchanges it with
+        # npm using the trust tuple registered in Phase 27, and signs the
+        # tarball with Sigstore for provenance.
+        run: pnpm -r publish --access public --provenance --no-git-checks
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        with:
+          # Release notes default to the auto-generated diff; we'll move to
+          # changesets-extracted notes after rc.0 ships and we see the shape.
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
