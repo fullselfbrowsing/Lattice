@@ -54,7 +54,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [ ] **Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite** *(runs against rc.x while 33-39 land)* — Public repo `fullselfbrowsing/lattice-canary` scaffolded; `npm install` (not pnpm) with exact-version pin; resolve-path assertion + Layer 1 unit suite exercises every public export against the registry tarball with fake providers.
 - [ ] **Phase 31: Canary Layer 2 Real-Provider Integration + Cost Ceiling** — Nightly cron + manual dispatch integration suite against OpenAI / Anthropic / Gemini cheapest competent models; three-layer cost ceiling (Lattice CostTracker per-run, workflow-level per-month, provider portal alerts).
 - [x] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy. (completed 2026-06-08)
-- [ ] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry.
+- [x] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry. (completed 2026-06-08)
 - [ ] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases.
 - [ ] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case).
 - [ ] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests.
@@ -229,7 +229,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] 34-02-PLAN.md — Anthropic adapter: thick reference impl with /v1/models capabilities-block intersection + 3 fixtures + cache + inflight + retry + auth + fallback + event (QUIRK-02, NEG-01, NEG-02)
 - [x] 34-03-PLAN.md — OpenAI + OpenAI-compat + xAI adapters: sparse /models -> registry intersection (OpenAI-compat is registry-only) + 5 fixtures (QUIRK-02, NEG-01, NEG-02)
 - [x] 34-04-PLAN.md — Gemini + OpenRouter adapters: medium-thick + rich /models intersection + ANCHOR CASE STUDY session_1780792387779 (QUIRK-02, NEG-01, NEG-02)
-- [ ] 34-05-PLAN.md — LM Studio adapter (registry-only) + integration suite covering consumer-adapter fallback + 7-adapter quirks smoke + anchor case study via top-level helper + changeset entry (QUIRK-02, NEG-01)
+- [x] 34-05-PLAN.md — LM Studio adapter (registry-only) + integration suite covering consumer-adapter fallback + 7-adapter quirks smoke + anchor case study via top-level helper + changeset entry (QUIRK-02, NEG-01)
 
 ### Phase 35: Prompt Scaffolding Helpers
 
@@ -362,7 +362,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
 | 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
-| 34. Adapter Quirk Flags + Capability Negotiation API | 4/5 | In Progress|  |
+| 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete   | 2026-06-08 |
 | 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
 | 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
 | 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |
