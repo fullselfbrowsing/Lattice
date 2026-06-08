@@ -24,6 +24,33 @@ export type CapabilityAdapter =
   | "lm-studio";
 
 /**
+ * Runtime list of the closed `CapabilityAdapter` union. MUST stay in sync with
+ * the type above; the test suite asserts membership equivalence so drift fails
+ * CI. Used by `isCapabilityAdapter` (below) and Phase 34 `negotiateCapabilities`
+ * to narrow `string` -> `CapabilityAdapter` without an unsafe cast (IN-04).
+ */
+export const CAPABILITY_ADAPTERS: readonly CapabilityAdapter[] = [
+  "openrouter",
+  "anthropic",
+  "openai",
+  "openai-compat",
+  "xai",
+  "gemini",
+  "lm-studio",
+] as const;
+
+/**
+ * Runtime type guard for the closed `CapabilityAdapter` union (IN-04). Returns
+ * true iff `id` is one of the 7 first-party adapter identifiers. Consumers passing
+ * a third-party adapter id (e.g., `"openrouter-prod"` typo) get `false` and the
+ * caller can route to the graceful-degradation empty-stub path without performing
+ * a registry lookup that would silently miss.
+ */
+export function isCapabilityAdapter(id: string): id is CapabilityAdapter {
+  return (CAPABILITY_ADAPTERS as readonly string[]).includes(id);
+}
+
+/**
  * Closed enum of the 5 training-lineage buckets (D-14). Receipt v1.2
  * (Phase 38) carries this value verbatim via the `modelClass` field.
  * Stable across model patches — gpt-4o-2024-05-13 and gpt-4o-2024-08-06

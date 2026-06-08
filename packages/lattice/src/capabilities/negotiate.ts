@@ -9,6 +9,7 @@
 // and drift over time.
 
 import type { CapabilityAdapter, KnownFailureMode, ModelCapabilityProfile } from "./profile.js";
+import { isCapabilityAdapter } from "./profile.js";
 import type { SanitizerKey } from "./sanitizer-recommendations.js";
 import { getCapabilityProfile } from "./lookup.js";
 import { getRecommendedSanitizers } from "./sanitizer-recommendations.js";
@@ -106,8 +107,26 @@ export async function negotiateCapabilities(
   if (adapter.negotiateCapabilities !== undefined) {
     return adapter.negotiateCapabilities(modelId);
   }
+  // IN-04: validate adapter.id against the closed CapabilityAdapter union before
+  // looking it up in the registry. An unknown id (e.g., typo "openrouter-prod")
+  // routes to the empty-stub path directly -- the prior `as CapabilityAdapter`
+  // cast silently produced an empty stub via the registry not-found branch,
+  // which is the same observable outcome but obscured the failure mode at the
+  // type level. The guard narrows `string` to `CapabilityAdapter` without an
+  // unsafe cast and makes the graceful-degradation contract explicit.
+  if (!isCapabilityAdapter(adapter.id)) {
+    return synthesizeNegotiatedCapabilitiesFromRegistry(
+      // Pass an arbitrary known adapter to drive the not-found stub path; the
+      // returned shape sets `streaming: adapter !== "lm-studio"` and zero values
+      // elsewhere. We use "openai" (the most permissive default) so consumers
+      // with an unrecognized adapter id still get streaming: true.
+      "openai",
+      modelId,
+      "registry",
+    );
+  }
   return synthesizeNegotiatedCapabilitiesFromRegistry(
-    adapter.id as CapabilityAdapter,
+    adapter.id,
     modelId,
     "registry",
   );
