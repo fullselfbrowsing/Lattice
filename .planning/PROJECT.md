@@ -14,7 +14,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.2 FSB Integration + Agent Capability shipped 2026-05-31.** All 46 v1.2 requirements wired end-to-end (zero blockers, one documented non-blocking limitation V1.2-LIMITATION-1: native tool-use deferred to v1.3). 733 / 733 workspace tests passing (589 lattice core + 144 lattice-cli). v1.2 branch merged to `main` via PR #1; tag `v1.2.0` cut and pushed.
 
-**Next: v1.3 (in scoping).** Carryforward themes from v1.2 are deferred to v1.4. v1.3 is intentionally narrow: ship Lattice's first public npm release and prove it with an external canary consumer.
+**v1.3 in progress.** Phase 34 (Adapter Quirk Flags + Capability Negotiation API) complete 2026-06-08 — all 7 first-party adapters expose typed `quirks` blocks and a runtime `negotiateCapabilities()` method intersecting upstream `/models` truth with the Phase 33 static registry. Phases 24-26 (release hygiene), 33 (capability registry), and 34 verified; 875 workspace tests passing (731 lattice + 144 lattice-cli).
 
 ## Current Milestone: v1.3 Public Release + Canary Validation
 
@@ -169,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-03 — Milestone v1.3 (Public Release + Canary Validation) opened*
+*Last updated: 2026-06-08 — Phase 34 (Adapter Quirk Flags + Capability Negotiation API) complete*
