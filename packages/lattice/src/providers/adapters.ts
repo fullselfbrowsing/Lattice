@@ -438,9 +438,12 @@ export function createOpenAIProvider(
 
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     const url = `${baseUrl}/v1/models`;
+    // IN-02: omit Authorization entirely when apiKey is undefined; sending
+    // "Bearer " literal would trigger noisy 401s and intrusion-detection flags.
+    // Mirrors the OpenAI-compat execute path (line 137).
     const headers: Record<string, string> = {
-      "authorization": `Bearer ${options.apiKey ?? ""}`,
       "accept": "application/json",
+      ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
     };
     const attempts = retryCount + 1;
     const backoffMs = [0, 200, 1000];

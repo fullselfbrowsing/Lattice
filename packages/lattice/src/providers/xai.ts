@@ -193,9 +193,12 @@ export function createXaiProvider(
     // For xAI, the baseUrl already includes "/v1" (default: https://api.x.ai/v1),
     // so we append "/models" not "/v1/models". This produces: https://api.x.ai/v1/models.
     const url = `${resolvedBaseUrl}/models`;
+    // IN-02: omit Authorization entirely when apiKey is undefined; sending
+    // "Bearer " literal would trigger noisy 401s and intrusion-detection flags.
+    // Mirrors the OpenAI-compat execute path (adapters.ts:137).
     const headers: Record<string, string> = {
-      "authorization": `Bearer ${options.apiKey ?? ""}`,
       "accept": "application/json",
+      ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
     };
     const attempts = retryCount + 1;
     const backoffMs = [0, 200, 1000];
