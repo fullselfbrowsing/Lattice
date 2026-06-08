@@ -166,7 +166,18 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     if (found === undefined) {
       // Model not found in live response -- treat as registry-fallback
       // (200 received but this modelId isn't listed; signal to consumer that
-      // something is off, per planner advisory in task spec)
+      // something is off, per planner advisory in task spec).
+      //
+      // WR-04 (Phase 34 review): emit the fallback event here so consumers
+      // observing the event stream can detect that an Anthropic model was
+      // missing from a successful /v1/models response. Matches the OpenAI
+      // (adapters.ts:362-366), Gemini, and OpenRouter behavior.
+      emitFallbackEvent({
+        adapter: "anthropic",
+        modelId,
+        errorReason: "model not found in /v1/models response",
+        fallbackSource: "registry-fallback",
+      });
       return synthesizeNegotiatedCapabilitiesFromRegistry("anthropic", modelId, "registry-fallback");
     }
 
