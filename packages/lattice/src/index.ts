@@ -243,3 +243,11 @@ export {
   getCapabilityProfile,
   stripOpenRouterVariant,
 } from "./capabilities/index.js";
+
+// Phase 34 — Adapter Quirk Flags + Capability Negotiation API
+// SanitizerKey dispatch keys + recommendation table (D-13/D-14/D-15/D-16)
+export type { SanitizerKey } from "./capabilities/index.js";
+export {
+  SANITIZER_BY_FAILURE_MODE,
+  getRecommendedSanitizers,
+} from "./capabilities/index.js";
