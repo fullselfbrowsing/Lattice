@@ -193,6 +193,9 @@ export type {
   ReceiptSigner,
   ReceiptUsageCanonical,
   ReplayEnvelope,
+  RunEvent,
+  RunEventKind,
+  RunEventSink,
   RunFailure,
   RunResult,
   RunSuccess,
@@ -243,3 +246,29 @@ export {
   getCapabilityProfile,
   stripOpenRouterVariant,
 } from "./capabilities/index.js";
+
+// Phase 34 — Adapter Quirk Flags + Capability Negotiation API
+// SanitizerKey dispatch keys + recommendation table (D-13/D-14/D-15/D-16)
+export type { SanitizerKey } from "./capabilities/index.js";
+export {
+  SANITIZER_BY_FAILURE_MODE,
+  getRecommendedSanitizers,
+} from "./capabilities/index.js";
+// Phase 34 — NegotiatedCapabilities + NegotiationAuthError + helpers (D-02/D-04)
+export type { NegotiatedCapabilities } from "./capabilities/index.js";
+export {
+  NegotiationAuthError,
+  negotiateCapabilities,
+  synthesizeNegotiatedCapabilitiesFromRegistry,
+} from "./capabilities/index.js";
+// Phase 34 — AdapterQuirks base + 7 per-adapter narrowed sub-interfaces (D-03)
+export type {
+  AdapterQuirks,
+  AnthropicQuirks,
+  GeminiQuirks,
+  LmStudioQuirks,
+  OpenAICompatQuirks,
+  OpenAIQuirks,
+  OpenRouterQuirks,
+  XaiQuirks,
+} from "./providers/quirks.js";

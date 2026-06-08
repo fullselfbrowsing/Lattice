@@ -30,7 +30,13 @@ export type RunEventKind =
   // AgentHost storage seam + SurvivabilityAdapter. Closes TRACE-EXT-01.
   | "recovery.start"
   | "recovery.complete"
-  | "recovery.failed";
+  | "recovery.failed"
+  // Phase 34 (v1.3): capability-negotiation fallback marker. Fires when
+  // adapter.negotiateCapabilities() falls back from /models to the static
+  // Phase 33 registry due to transient (5xx, network, timeout) failure.
+  // Auth errors (401, 403) do NOT fire this event -- they throw
+  // NegotiationAuthError instead.
+  | "capabilities.negotiation.fallback";
 
 export interface RunEvent {
   readonly kind: RunEventKind;
