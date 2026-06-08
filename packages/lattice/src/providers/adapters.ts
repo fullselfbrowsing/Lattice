@@ -377,7 +377,25 @@ function mergeOpenAIModelsWithRegistry(
   // Model exists in org (/models confirmed) but Phase 33 registry doesn't have it.
   // Use source: "live" per planning_context note 2 (the model id was verified).
   // Supports.* are unknown — return empty-stub shape with source: "live".
-  return synthesizeNegotiatedCapabilitiesFromRegistry("openai", modelId, "registry-fallback");
+  //
+  // We construct the empty stub inline because synthesizeNegotiatedCapabilitiesFromRegistry
+  // only accepts "registry" | "registry-fallback" as source values. The shape below mirrors
+  // the not-found branch of that helper (negotiate.ts:149-162) but with source: "live"
+  // since the model id was verified via /v1/models.
+  return {
+    modelId,
+    contextWindow: 0,
+    supports: {
+      nativeToolCalling: false,
+      structuredOutputs: false,
+      parallelToolCalls: false,
+      extendedThinking: false,
+      streaming: true,
+    },
+    knownFailureModes: [],
+    recommendedSanitizers: [],
+    source: "live",
+  };
 }
 
 /**
