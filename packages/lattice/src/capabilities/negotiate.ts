@@ -146,6 +146,11 @@ export function synthesizeNegotiatedCapabilitiesFromRegistry(
     // Return a graceful-degradation empty shape rather than throwing.
     // Documented here so the behavior is traceable: Plans 02-05 may log
     // the capabilities.negotiation.fallback event in this case.
+    //
+    // IN-03: keep `streaming` consistent with mapProfileToNegotiatedCapabilities
+    // (line 198 below) -- LM Studio defaults to streaming: false even when no
+    // profile exists, so consumers querying an unknown lm-studio model get the
+    // same conservative default as a known one.
     return {
       modelId,
       contextWindow: 0,
@@ -154,7 +159,7 @@ export function synthesizeNegotiatedCapabilitiesFromRegistry(
         structuredOutputs: false,
         parallelToolCalls: false,
         extendedThinking: false,
-        streaming: true,
+        streaming: adapter !== "lm-studio",
       },
       knownFailureModes: [],
       recommendedSanitizers: [],
