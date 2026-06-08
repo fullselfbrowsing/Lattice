@@ -223,7 +223,13 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. Each adapter ships `negotiateCapabilities(modelId): Promise<NegotiatedCapabilities>` that, when the provider's `/models` endpoint exists (Anthropic, OpenAI, Gemini, OpenRouter), queries it and intersects the response with Phase 33's `getCapabilityProfile()`; for providers without a `/models` endpoint (LM Studio local, custom OpenAI-compat) it falls back to the static profile with `source: "registry"`.
   3. The negotiated result exposes `{ modelId, contextWindow, supports: { nativeToolCalling, structuredOutputs, parallelToolCalls, extendedThinking, streaming }, knownFailureModes, recommendedSanitizers, source }` and is consumed by a vitest scenario that picks `openai/gpt-oss-120b:free` from OpenRouter and asserts `knownFailureModes` includes `internal_envelope_leak` and `recommendedSanitizers` includes `unwrapInternalEnvelope`.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 34-01-PLAN.md — Author QUIRK-01..03 + NEG-01..02 REQ-IDs + AdapterQuirks types + 7 narrowed sub-interfaces + NegotiatedCapabilities + NegotiationAuthError + top-level negotiateCapabilities helper + SanitizerKey + SANITIZER_BY_FAILURE_MODE + getRecommendedSanitizers + RunEventKind addition + tsd type tests (QUIRK-01, QUIRK-03, NEG-01)
+- [ ] 34-02-PLAN.md — Anthropic adapter: thick reference impl with /v1/models capabilities-block intersection + 3 fixtures + cache + inflight + retry + auth + fallback + event (QUIRK-02, NEG-01, NEG-02)
+- [ ] 34-03-PLAN.md — OpenAI + OpenAI-compat + xAI adapters: sparse /models -> registry intersection (OpenAI-compat is registry-only) + 5 fixtures (QUIRK-02, NEG-01, NEG-02)
+- [ ] 34-04-PLAN.md — Gemini + OpenRouter adapters: medium-thick + rich /models intersection + ANCHOR CASE STUDY session_1780792387779 (QUIRK-02, NEG-01, NEG-02)
+- [ ] 34-05-PLAN.md — LM Studio adapter (registry-only) + integration suite covering consumer-adapter fallback + 7-adapter quirks smoke + anchor case study via top-level helper + changeset entry (QUIRK-02, NEG-01)
 
 ### Phase 35: Prompt Scaffolding Helpers
 
