@@ -332,6 +332,8 @@ export function createGeminiProvider(
     if (options.runEventSink === undefined) return;
     const event = createRunEvent("capabilities.negotiation.fallback", {
       runId: `negotiate-gemini-${payload.modelId}`,
+      providerId: id,
+      modelId: payload.modelId,
       metadata: {
         adapter: payload.adapter,
         modelId: payload.modelId,

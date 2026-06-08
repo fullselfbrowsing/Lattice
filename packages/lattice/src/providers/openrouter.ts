@@ -355,6 +355,8 @@ export function createOpenRouterProvider(
     if (options.runEventSink === undefined) return;
     const event = createRunEvent("capabilities.negotiation.fallback", {
       runId: `negotiate-openrouter-${payload.modelId}`,
+      providerId: options.id ?? "openrouter",
+      modelId: payload.modelId,
       metadata: {
         adapter: payload.adapter,
         modelId: payload.modelId,
