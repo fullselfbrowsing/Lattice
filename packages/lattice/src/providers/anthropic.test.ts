@@ -563,10 +563,16 @@ describe("Phase 34: Anthropic negotiateCapabilities", () => {
   });
 
   it("Test 7: inflight cleanup on rejection -- Map cleared; subsequent call triggers fresh fetch", async () => {
-    // First wave: all 5 concurrent calls get a 503 (transient error -> fallback)
-    // After they settle, the 6th call should trigger a fresh fetch that succeeds.
+    // First wave: all 5 concurrent calls for the SAME modelId get a 503 (transient -> fallback).
+    // After they settle, the 6th call FOR THE SAME modelId must trigger a fresh fetch.
     // This tests Pitfall 4: the inflight Map must be cleared by .finally even on failure,
-    // so the 6th call makes a new fetch instead of re-using the old rejected promise.
+    // so the 6th call makes a NEW fetch instead of re-using the old (now-settled) promise.
+    //
+    // WR-05 (Phase 34 review): the prior version of this test used a different modelId
+    // for the 6th call. Because the inflight Map is keyed by modelId, a different modelId
+    // would have triggered a fresh fetch REGARDLESS of whether inflight cleanup ran --
+    // so the test passed even without the .finally cleanup. Using the SAME modelId
+    // throughout makes the inflight Map state the only path to a second fetch.
     let fetchCallCount = 0;
     const fakeFetch = (async (_url: string, _init: RequestInit) => {
       fetchCallCount += 1;
@@ -578,7 +584,10 @@ describe("Phase 34: Anthropic negotiateCapabilities", () => {
           headers: { "content-type": "application/json" },
         });
       }
-      // Second fetch (6th negotiateCapabilities call after first wave settles) -- returns 200
+      // Second fetch (6th negotiateCapabilities call after first wave settles) -- returns 200.
+      // MODELS_OK_BODY does NOT contain "claude-opus-4" (only claude-opus-4-6 and claude-haiku-3-5),
+      // so the merge yields source: "registry-fallback" via the not-found branch -- but the
+      // assertion target is fetchCallCount === 2, which proves the inflight Map was cleared.
       return new Response(JSON.stringify(MODELS_OK_BODY), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -586,15 +595,16 @@ describe("Phase 34: Anthropic negotiateCapabilities", () => {
     }) as unknown as typeof fetch;
 
     const adapter = createAnthropicProvider({
-      model: "claude-opus-4-6",
+      model: "claude-opus-4",
       apiKey: "sk-ant-test",
       fetch: fakeFetch,
       modelsRetryCount: 0,  // 1 attempt total; keeps test simple
-      modelsCacheTtlMs: 0,  // disable cache so 6th call hits the wire
+      modelsCacheTtlMs: 0,  // disable cache so 6th call hits the wire (not the TTL cache)
     });
 
-    // 5 concurrent calls for "claude-opus-4-6" -- all will get registry-fallback from the 503
-    // (claude-opus-4 is in the static registry; used for the fallback source check)
+    // 5 concurrent calls for "claude-opus-4" -- all will get registry-fallback from the 503.
+    // claude-opus-4 IS in the static registry (anthropic:claude-opus-4, contextWindow 200000),
+    // so registry-fallback returns a populated profile (not the empty stub).
     const firstWave = await Promise.all([
       adapter.negotiateCapabilities("claude-opus-4"),
       adapter.negotiateCapabilities("claude-opus-4"),
@@ -612,12 +622,14 @@ describe("Phase 34: Anthropic negotiateCapabilities", () => {
     expect(fetchCallCount).toBe(1);
 
     // Pitfall 4: After all settle, inflight Map MUST be cleared.
-    // The 6th call should trigger a FRESH fetch (fetchCallCount should become 2).
-    // Use "claude-opus-4-6" for the 6th call so it IS found in MODELS_OK_BODY -> source: "live"
-    const sixthResult = await adapter.negotiateCapabilities("claude-opus-4-6");
-    expect(fetchCallCount).toBe(2);  // fresh fetch was attempted
-    // This time fetch returned 200 with claude-opus-4-6 in the body -> source: "live"
-    expect(sixthResult.source).toBe("live");
+    // The 6th call (SAME modelId) should trigger a FRESH fetch -> fetchCallCount becomes 2.
+    // If the .finally cleanup were missing, the 6th call would re-use the cached settled
+    // Promise from the inflight Map (keyed by modelId) and fetchCallCount would stay at 1.
+    const sixthResult = await adapter.negotiateCapabilities("claude-opus-4");
+    expect(fetchCallCount).toBe(2);  // fresh fetch was attempted -- proves inflight cleanup ran
+    // 6th call hit a 200 response, but MODELS_OK_BODY doesn't contain claude-opus-4,
+    // so the merge yields source: "registry-fallback" via the not-found branch.
+    expect(sixthResult.source).toBe("registry-fallback");
   });
 
   it("Test 8: retry timing -- 503 on attempts 1+2, 200 on attempt 3; total 3 fetch calls", async () => {
