@@ -454,6 +454,7 @@ export function createOpenAIProvider(
         const resp = await fetchImpl(url, {
           method: "GET",
           headers,
+          signal: AbortSignal.timeout(30_000),
         });
         if (resp.status === 401 || resp.status === 403) {
           throw new NegotiationAuthError(
