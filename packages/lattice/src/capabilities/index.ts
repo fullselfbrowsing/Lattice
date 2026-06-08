@@ -27,3 +27,10 @@ export {
   SANITIZER_BY_FAILURE_MODE,
   getRecommendedSanitizers,
 } from "./sanitizer-recommendations.js";
+// Phase 34 — NegotiatedCapabilities + NegotiationAuthError + helpers (D-02/D-04)
+export type { NegotiatedCapabilities } from "./negotiate.js";
+export {
+  NegotiationAuthError,
+  negotiateCapabilities,
+  synthesizeNegotiatedCapabilitiesFromRegistry,
+} from "./negotiate.js";

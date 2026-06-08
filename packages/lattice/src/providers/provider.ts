@@ -2,6 +2,10 @@ import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import type { ContextPack } from "../context/context-pack.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { ExecutionPlan, ProviderPackagingPlan, UsageRecord } from "../plan/plan.js";
+// Phase 34 — D-01 / D-02 optional fields on ProviderAdapter (non-breaking for
+// v1.2 consumer adapters; existing 4-field literals still satisfy the interface)
+import type { AdapterQuirks } from "./quirks.js";
+import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 
 export type CapabilityModality =
   | "text"
@@ -120,6 +124,29 @@ export interface ProviderAdapter {
   readonly kind: "provider-adapter";
   readonly capabilities?: readonly ModelCapability[];
   readonly execute?: (request: ProviderRunRequest) => Promise<ProviderRunResponse>;
+  /**
+   * Phase 34 — D-01 — Per-adapter behavioral deviation flags. OPTIONAL on the
+   * base interface so v1.2 consumer adapters (4-field literals) continue to work
+   * without modification (non-breaking). First-party adapter factories narrow the
+   * return type to require `quirks` with the specific sub-interface for their adapter.
+   *
+   * D-03 discriminant-narrowing contract: consumers reading this field get
+   * `AdapterQuirks` autocomplete. To access adapter-specific flags, cast after
+   * an `adapter.id` discriminant check OR use the typed factory return directly.
+   * Example: `(adapter.quirks as AnthropicQuirks).promptCachingSupported`.
+   */
+  readonly quirks?: AdapterQuirks;
+  /**
+   * Phase 34 — D-02 — Capability negotiation via the provider's /models endpoint.
+   * OPTIONAL on the base interface (non-breaking for v1.2 consumer adapters).
+   * First-party adapters that have a /models endpoint implement this; adapters
+   * without one (LM Studio, openai-compat) fall back to the Phase 33 registry.
+   *
+   * The top-level `negotiateCapabilities(adapter, modelId)` helper in
+   * `capabilities/negotiate.ts` delegates to this method when present and
+   * synthesizes from the registry otherwise (D-04).
+   */
+  readonly negotiateCapabilities?: (modelId: string) => Promise<NegotiatedCapabilities>;
 }
 
 export type ProviderRegistryInput = readonly (ProviderRef | ProviderAdapter | string)[];
