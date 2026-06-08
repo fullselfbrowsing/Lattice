@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createXaiProvider } from "./xai.js";
+import { NegotiationAuthError } from "../capabilities/negotiate.js";
 
 /**
  * Phase 4 xAI adapter -- vitest cases.
  * D-09 contract: 7 cases minimum; this file ships 8 (extra case for
  * D-09.4 reasoning_tokens quirk per CONTEXT.md).
+ *
+ * Phase 34 additions: xAI quirks + negotiateCapabilities() tests.
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4.
  */
@@ -30,9 +33,66 @@ function makeFakeFetch(body: unknown, status = 200): {
   return { fetch: fakeFetch, capture };
 }
 
+/**
+ * Multi-response fetch for negotiate() retry/sequence tests.
+ * Each call returns the next response in the array; last response repeats.
+ */
+function makeSequenceFetch(
+  responses: Array<{ body: unknown; status?: number }>,
+): {
+  fetch: typeof fetch;
+  callCount: () => number;
+  urls: string[];
+  inits: RequestInit[];
+} {
+  let idx = 0;
+  const urls: string[] = [];
+  const inits: RequestInit[] = [];
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    urls.push(url);
+    inits.push(init ?? {});
+    const r = responses[Math.min(idx, responses.length - 1)];
+    idx += 1;
+    const resp = r ?? { body: {}, status: 200 };
+    return new Response(JSON.stringify(resp.body), {
+      status: resp.status ?? 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof fetch;
+  return {
+    fetch: fakeFetch,
+    callCount: () => idx,
+    urls,
+    inits,
+  };
+}
+
 const HAPPY_BODY = {
   choices: [{ message: { content: "hello xai" } }],
   usage: { prompt_tokens: 100, completion_tokens: 50 },
+};
+
+// xAI /v1/models fixtures
+const xaiModelsOk = {
+  object: "list",
+  data: [
+    { id: "grok-4-0709", object: "model", created: 1720000000, owned_by: "xai" },
+    { id: "grok-4", object: "model", created: 1720000000, owned_by: "xai" },
+  ],
+};
+
+const xaiModels401 = {
+  error: {
+    message: "Invalid API key. Please check your API key and try again.",
+    type: "authentication_error",
+  },
+};
+
+const xaiModels503 = {
+  error: {
+    message: "Service temporarily unavailable.",
+    type: "server_error",
+  },
 };
 
 describe("Phase 4 xAI adapter", () => {
@@ -199,5 +259,183 @@ describe("Phase 4 xAI adapter", () => {
     });
     await adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] });
     expect(capture.url).toMatch(/proxy\.example\.com\/xai\/v1\/chat\/completions/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 34: xAI quirks + negotiateCapabilities tests (Task 3)
+// ---------------------------------------------------------------------------
+
+describe("Phase 34: xAI quirks + negotiateCapabilities", () => {
+  it("Test 1: factory return type narrows to expose quirks: XaiQuirks + negotiateCapabilities", () => {
+    const { fetch } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch,
+    });
+    expect(adapter.quirks).toBeDefined();
+    expect(typeof adapter.negotiateCapabilities).toBe("function");
+    // XaiQuirks has reasoningTokensReported + logprobsSupported
+    expect("reasoningTokensReported" in adapter.quirks).toBe(true);
+    expect("logprobsSupported" in adapter.quirks).toBe(true);
+  });
+
+  it("Test 2: quirks block populated per RESEARCH §Q6 xAI vocabulary", () => {
+    const { fetch } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch,
+    });
+    expect(adapter.quirks).toEqual({
+      supportsToolChoice: true,
+      parallelToolCalls: true,
+      structuredOutputs: true,
+      responseFormatHonored: true,
+      streamingDiverges: false,
+      reasoningTokensReported: true,
+      logprobsSupported: false,
+    });
+  });
+
+  it("Test 3 (happy path with lenient parse): negotiateCapabilities resolves for grok-4 (in registry)", async () => {
+    const { fetch: negotiateFetch, urls, inits } = makeSequenceFetch([
+      { body: xaiModelsOk, status: 200 },
+    ]);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: negotiateFetch,
+    });
+    const result = await adapter.negotiateCapabilities("grok-4");
+    // grok-4 is in registry.static.ts (xai:grok-4) AND in xai-models-ok fixture
+    // -> source: "live" with registry profile data
+    expect(result.source).toBe("live");
+    expect(result.modelId).toBe("grok-4");
+    // contextWindow from registry profile (131072)
+    expect(result.contextWindow).toBe(131072);
+    // Verify fetch used the xAI base URL with Bearer auth
+    // xAI baseUrl includes "/v1", so we append "/models" -> "/v1/models"
+    expect(urls[0]).toMatch(/api\.x\.ai\/v1\/models$/);
+    const authHeader = (inits[0]?.headers as Record<string, string>)?.["authorization"];
+    expect(authHeader).toBe("Bearer xai-test");
+  });
+
+  it("Test 4 (lenient parse -- Pitfall 1): weird body shape falls back to registry without crash", async () => {
+    // xAI may return unexpected shape in the future; lenient parse must handle gracefully
+    const weirdBody = { weird: "shape", data: "not-an-array" };
+    const { fetch: negotiateFetch } = makeSequenceFetch([
+      { body: weirdBody, status: 200 },
+    ]);
+    const sinkCalls: unknown[] = [];
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: negotiateFetch,
+      runEventSink: (e) => { sinkCalls.push(e); },
+    });
+    // Should NOT throw; should gracefully fall back
+    const result = await adapter.negotiateCapabilities("grok-4");
+    expect(result.source).toBe("registry-fallback");
+    // Fallback event should be emitted
+    expect(sinkCalls.length).toBeGreaterThan(0);
+  });
+
+  it("Test 5 (401): rejects with NegotiationAuthError; adapter === 'xai', httpStatus === 401", async () => {
+    const { fetch: negotiateFetch } = makeSequenceFetch([
+      { body: xaiModels401, status: 401 },
+    ]);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-bad-key",
+      fetch: negotiateFetch,
+    });
+    await expect(adapter.negotiateCapabilities("grok-4")).rejects.toThrow(NegotiationAuthError);
+    const { fetch: negotiateFetch2 } = makeSequenceFetch([
+      { body: xaiModels401, status: 401 },
+    ]);
+    const adapter2 = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-bad-key",
+      fetch: negotiateFetch2,
+    });
+    await expect(adapter2.negotiateCapabilities("grok-4")).rejects.toMatchObject({
+      kind: "negotiation-auth-failed",
+      adapter: "xai",
+      httpStatus: 401,
+    });
+  });
+
+  it("Test 6 (503 fallback): source: 'registry-fallback' after all retries exhausted", async () => {
+    const { fetch: negotiateFetch, callCount } = makeSequenceFetch([
+      { body: xaiModels503, status: 503 },
+      { body: xaiModels503, status: 503 },
+      { body: xaiModels503, status: 503 },
+    ]);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: negotiateFetch,
+      modelsRetryCount: 2,
+      modelsCacheTtlMs: 0,
+    });
+    const result = await adapter.negotiateCapabilities("grok-4");
+    expect(result.source).toBe("registry-fallback");
+    expect(callCount()).toBe(3);
+  });
+
+  it("Test 7 (cache + inflight + retry timing): mirrors Plan 34-02 pattern", async () => {
+    // Cache: second call returns cached result
+    const { fetch: cacheFetch, callCount: cacheCount } = makeSequenceFetch([
+      { body: xaiModelsOk, status: 200 },
+    ]);
+    const cacheAdapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: cacheFetch,
+      modelsCacheTtlMs: 60_000,
+    });
+    await cacheAdapter.negotiateCapabilities("grok-4");
+    await cacheAdapter.negotiateCapabilities("grok-4");
+    expect(cacheCount()).toBe(1); // cached
+
+    // Inflight coalescing: 3 concurrent calls trigger only 1 fetch
+    const { fetch: inflightFetch, callCount: inflightCount } = makeSequenceFetch([
+      { body: xaiModelsOk, status: 200 },
+    ]);
+    const inflightAdapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: inflightFetch,
+      modelsCacheTtlMs: 60_000,
+    });
+    await Promise.all([
+      inflightAdapter.negotiateCapabilities("grok-4"),
+      inflightAdapter.negotiateCapabilities("grok-4"),
+      inflightAdapter.negotiateCapabilities("grok-4"),
+    ]);
+    expect(inflightCount()).toBe(1); // coalesced
+
+    // Retry timing: 503 x2 then 200 on third attempt
+    vi.useFakeTimers();
+    const { fetch: retryFetch, callCount: retryCount } = makeSequenceFetch([
+      { body: xaiModels503, status: 503 },
+      { body: xaiModels503, status: 503 },
+      { body: xaiModelsOk, status: 200 },
+    ]);
+    const retryAdapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test",
+      fetch: retryFetch,
+      modelsRetryCount: 2,
+      modelsCacheTtlMs: 0,
+    });
+    const retryPromise = retryAdapter.negotiateCapabilities("grok-4");
+    await vi.advanceTimersByTimeAsync(2000);
+    const retryResult = await retryPromise;
+    expect(retryCount()).toBe(3);
+    expect(retryResult.source).toBe("live"); // grok-4 in registry + in fixture
+    vi.useRealTimers();
   });
 });
