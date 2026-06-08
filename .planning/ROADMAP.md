@@ -362,7 +362,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
 | 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
-| 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete   | 2026-06-08 |
+| 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
 | 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
 | 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
 | 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |

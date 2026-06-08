@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: executing
-stopped_at: Phase 34 context gathered
-last_updated: "2026-06-08T13:38:14.709Z"
+status: ready_to_plan
+stopped_at: Phase 34 complete (5/5) — ready to discuss Phase 35
+last_updated: 2026-06-08T17:09:11.571Z
 last_activity: 2026-06-08 -- Phase 34 execution started
 progress:
   total_phases: 16
   completed_phases: 4
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 22
   percent: 25
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-03)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 34 — adapter-quirk-flags-capability-negotiation-api
+**Current focus:** Phase 35 — prompt scaffolding helpers
 
 ## Current Position
 
-Phase: 34 (adapter-quirk-flags-capability-negotiation-api) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 34
-Last activity: 2026-06-08 -- Phase 34 execution started
+Phase: 35
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-08
 
 Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
