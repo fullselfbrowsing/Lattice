@@ -1,0 +1,97 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-oss-120b:free",
+      "name": "OpenAI GPT-OSS 120B (free)",
+      "description": "Free-tier variant of openai/gpt-oss-120b. Anchor case study session_1780792387779.",
+      "created": 1700000000,
+      "context_length": 131072,
+      "top_provider": {
+        "context_length": 131072,
+        "max_completion_tokens": 32768,
+        "is_moderated": false
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0"
+      },
+      "architecture": {
+        "modality": "text->text",
+        "tokenizer": "tiktoken",
+        "instruct_type": "instruct"
+      },
+      "supported_parameters": [
+        "tools",
+        "tool_choice",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "seed",
+        "stop",
+        "stream"
+      ]
+    },
+    {
+      "id": "anthropic/claude-3.5-sonnet",
+      "name": "Anthropic Claude 3.5 Sonnet",
+      "description": "Frontier RLHF model from Anthropic.",
+      "created": 1700000001,
+      "context_length": 200000,
+      "top_provider": {
+        "context_length": 200000,
+        "max_completion_tokens": 8192,
+        "is_moderated": true
+      },
+      "pricing": {
+        "prompt": "0.000003",
+        "completion": "0.000015"
+      },
+      "architecture": {
+        "modality": "text+image->text",
+        "tokenizer": "claude",
+        "instruct_type": "none"
+      },
+      "supported_parameters": [
+        "tools",
+        "tool_choice",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "stream",
+        "response_format"
+      ]
+    },
+    {
+      "id": "openai/gpt-4o",
+      "name": "OpenAI GPT-4o",
+      "description": "Frontier RLHF model from OpenAI.",
+      "created": 1700000002,
+      "context_length": 128000,
+      "top_provider": {
+        "context_length": 128000,
+        "max_completion_tokens": 16384,
+        "is_moderated": false
+      },
+      "pricing": {
+        "prompt": "0.0000025",
+        "completion": "0.00001"
+      },
+      "architecture": {
+        "modality": "text+image->text",
+        "tokenizer": "tiktoken",
+        "instruct_type": "none"
+      },
+      "supported_parameters": [
+        "tools",
+        "tool_choice",
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "seed",
+        "stream",
+        "response_format",
+        "reasoning"
+      ]
+    }
+  ]
+}
