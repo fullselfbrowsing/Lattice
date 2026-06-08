@@ -220,3 +220,24 @@ export type {
   SurvivabilityAdapter,
   UnsubscribeFn,
 } from "./runtime/survivability.js";
+
+// Phase 33 — Model Capability Registry (CAPS-01)
+// Typed capability profile + 6 closed string-literal unions describing how
+// each model class misbehaves and which prompt strategy it wants. Sibling
+// to the v1.0 `ModelCapability` modality/cost surface — they answer
+// orthogonal questions. Plans 33-02 / 33-04 will append
+// `getCapabilityProfile`, `findCapabilityProfile`, and
+// `stripOpenRouterVariant` under this comment header.
+export type {
+  CapabilityAdapter,
+  KnownFailureMode,
+  ModelCapabilityProfile,
+  ReasoningSurface,
+  RecommendedPromptStrategy,
+  ToolCallSurface,
+  TrainingClass,
+} from "./capabilities/index.js";
+export {
+  ALL_KNOWN_FAILURE_MODES,
+  ALL_TRAINING_CLASSES,
+} from "./capabilities/index.js";
