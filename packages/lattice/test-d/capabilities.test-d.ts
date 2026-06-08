@@ -1,10 +1,12 @@
-// Phase 33 — CAPS-01 type-level tests. Cover:
+// Phase 33 — CAPS-01 / CAPS-02 type-level tests. Cover:
 //   - ModelCapabilityProfile has the right shape (9 readonly fields)
 //   - Closed adapter enum rejects unknown values
 //   - Exhaustive switch on KnownFailureMode (compile-time enforcement)
 //   - TrainingClass and RecommendedPromptStrategy are TWO distinct enums
-//   - getCapabilityProfile-shaped function (Plan 02 will land the real one)
-//     narrows to ModelCapabilityProfile | undefined
+//   - Plan 02 lookup surface narrows to ModelCapabilityProfile | undefined
+//     (strict) and ModelCapabilityProfile[] (fuzzy)
+//   - stripOpenRouterVariant accepts a string and returns a string
+//   - getCapabilityProfile rejects non-string arguments
 //
 // Anchor case study: session_1780792387779 — gpt-oss-120b on FSB
 // autopilot emitting `{"summary": "Greeted the user."}` as the user-visible
@@ -13,6 +15,11 @@
 // `knownFailureModes`; if it does not, the type design is wrong.
 
 import { expectAssignable, expectError, expectType } from "tsd";
+import {
+  findCapabilityProfile,
+  getCapabilityProfile,
+  stripOpenRouterVariant,
+} from "@full-self-browsing/lattice";
 import type {
   CapabilityAdapter,
   KnownFailureMode,
@@ -104,12 +111,18 @@ expectAssignable<RecommendedPromptStrategy>("open_weight");
 expectAssignable<RecommendedPromptStrategy>("reasoning");
 expectAssignable<RecommendedPromptStrategy>("local");
 
-// CAPS-01 — forward reference to Plan 02's lookup. Uses a placeholder
-// shim so this plan stays self-contained. Plan 02 replaces the shim
-// with the real `getCapabilityProfile` import from the public surface.
-declare function getCapabilityProfilePlaceholder(
-  key: string,
-): ModelCapabilityProfile | undefined;
+// CAPS-02 — runtime lookup type-narrowing. Plan 02 replaced the Plan 01
+// placeholder shim with the real lookup imports above.
 expectType<ModelCapabilityProfile | undefined>(
-  getCapabilityProfilePlaceholder("openrouter:openai/gpt-oss-120b"),
+  getCapabilityProfile("openrouter:openai/gpt-oss-120b"),
 );
+expectType<ModelCapabilityProfile[]>(
+  findCapabilityProfile("openai/gpt-oss-120b:free"),
+);
+expectType<string>(stripOpenRouterVariant("openai/gpt-oss-120b:free"));
+
+// CAPS-02 — getCapabilityProfile rejects non-string arguments. Only the
+// canonical-key string shape is accepted (D-08 / D-09). A bare numeric
+// literal is not assignable to `string` and must be rejected at compile
+// time.
+expectError(getCapabilityProfile(123));
