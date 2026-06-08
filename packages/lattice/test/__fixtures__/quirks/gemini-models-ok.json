@@ -1,0 +1,59 @@
+{
+  "models": [
+    {
+      "name": "models/gemini-2.0-flash",
+      "baseModelId": "gemini-2.0-flash",
+      "version": "2.0",
+      "displayName": "Gemini 2.0 Flash",
+      "description": "Gemini 2.0 Flash delivers next-gen features and improved capabilities.",
+      "inputTokenLimit": 1000000,
+      "outputTokenLimit": 8192,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "streamGenerateContent",
+        "countTokens"
+      ],
+      "thinking": false,
+      "temperature": 1.0,
+      "maxTemperature": 2.0,
+      "topP": 0.95,
+      "topK": 40
+    },
+    {
+      "name": "models/gemini-2.5-pro",
+      "baseModelId": "gemini-2.5-pro",
+      "version": "2.5",
+      "displayName": "Gemini 2.5 Pro",
+      "description": "Google's most capable model with extended thinking capabilities.",
+      "inputTokenLimit": 1000000,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "streamGenerateContent",
+        "countTokens"
+      ],
+      "thinking": true,
+      "temperature": 1.0,
+      "maxTemperature": 2.0,
+      "topP": 0.95,
+      "topK": 40
+    },
+    {
+      "name": "models/gemini-1.5-flash-001",
+      "baseModelId": "gemini-1.5-flash-001",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Flash 001",
+      "description": "Legacy Gemini 1.5 Flash model variant.",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 4096,
+      "supportedGenerationMethods": [
+        "generateContent"
+      ],
+      "temperature": 1.0,
+      "maxTemperature": 2.0,
+      "topP": 0.95,
+      "topK": 40
+    }
+  ],
+  "nextPageToken": ""
+}
