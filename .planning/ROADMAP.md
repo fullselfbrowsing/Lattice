@@ -53,7 +53,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [ ] **Phase 29: First v1.3.0 Stable Publish** *(deferred to end of milestone; depends on 30, 31, 33-39)* — Promote the full Phase 33-39 surface to stable; `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` live on npmjs.com with provenance badge + auto-generated GitHub Release object.
 - [ ] **Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite** *(runs against rc.x while 33-39 land)* — Public repo `fullselfbrowsing/lattice-canary` scaffolded; `npm install` (not pnpm) with exact-version pin; resolve-path assertion + Layer 1 unit suite exercises every public export against the registry tarball with fake providers.
 - [ ] **Phase 31: Canary Layer 2 Real-Provider Integration + Cost Ceiling** — Nightly cron + manual dispatch integration suite against OpenAI / Anthropic / Gemini cheapest competent models; three-layer cost ceiling (Lattice CostTracker per-run, workflow-level per-month, provider portal alerts).
-- [ ] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy.
+- [x] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy. (completed 2026-06-08)
 - [ ] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry.
 - [ ] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases.
 - [ ] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case).
@@ -209,8 +209,8 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] 33-01-PLAN.md — Author CAPS-01..05 REQ-IDs + ModelCapabilityProfile types + 6 closed unions + tsd type tests (CAPS-01)
 - [x] 33-02-PLAN.md — Lookup module: getCapabilityProfile + findCapabilityProfile + stripOpenRouterVariant + bootstrap registry placeholders + vitest suite (CAPS-02)
 - [x] 33-03-PLAN.md — scripts/capabilities/classifier.mjs (hybrid prefix + family overrides) + scripts/refresh-model-registry.mjs (fetch + transform + write + --check) + golden fixture + classifier tests (CAPS-03)
-- [ ] 33-04-PLAN.md — Run generator against live OpenRouter to populate registry.generated.ts + 4 static profiles in registry.static.ts + integration test suite + Plan 02 lookup test update + changeset entry (CAPS-05, CAPS-02 verification)
-- [ ] 33-05-PLAN.md — .github/workflows/registry-drift.yml weekly cron + workflow_dispatch + peter-evans/create-pull-request@v8.1.1 SHA-pinned auto-PR (CAPS-04)
+- [x] 33-04-PLAN.md — Run generator against live OpenRouter to populate registry.generated.ts + 4 static profiles in registry.static.ts + integration test suite + Plan 02 lookup test update + changeset entry (CAPS-05, CAPS-02 verification)
+- [x] 33-05-PLAN.md — .github/workflows/registry-drift.yml weekly cron + workflow_dispatch + peter-evans/create-pull-request@v8.1.1 SHA-pinned auto-PR (CAPS-04)
 
 ### Phase 34: Adapter Quirk Flags + Capability Negotiation API
 
@@ -355,7 +355,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 30. Canary Bootstrap + Layer 1 Fake-Provider Suite | 0/0 | Not started | - |
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
-| 33. Model Capability Registry (~200+ via OpenRouter feed) | 3/5 | In Progress|  |
+| 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
 | 34. Adapter Quirk Flags + Capability Negotiation API | 0/0 | Not started | - |
 | 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
 | 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
