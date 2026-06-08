@@ -204,7 +204,13 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. A repo-scoped build-time script `scripts/refresh-model-registry.mjs` fetches `openrouter.ai/api/v1/models`, transforms each entry into a `ModelCapabilityProfile` using a curated training-class classifier, and commits the resulting `packages/lattice/src/capabilities/registry.generated.ts` to the repo; CI re-runs the script and fails if the snapshot drifts (forcing intentional refresh PRs).
   3. Static supplemental profiles cover models that OpenRouter does not surface (direct Anthropic `claude-opus-4`, direct Gemini `gemini-2.5-pro`, direct xAI `grok-4`, LM Studio local model template); total registry covers at least 200 distinct profiles at v1.3.0 cut.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 33-01-PLAN.md — Author CAPS-01..05 REQ-IDs + ModelCapabilityProfile types + 6 closed unions + tsd type tests (CAPS-01)
+- [ ] 33-02-PLAN.md — Lookup module: getCapabilityProfile + findCapabilityProfile + stripOpenRouterVariant + bootstrap registry placeholders + vitest suite (CAPS-02)
+- [ ] 33-03-PLAN.md — scripts/capabilities/classifier.mjs (hybrid prefix + family overrides) + scripts/refresh-model-registry.mjs (fetch + transform + write + --check) + golden fixture + classifier tests (CAPS-03)
+- [ ] 33-04-PLAN.md — Run generator against live OpenRouter to populate registry.generated.ts + 4 static profiles in registry.static.ts + integration test suite + Plan 02 lookup test update + changeset entry (CAPS-05, CAPS-02 verification)
+- [ ] 33-05-PLAN.md — .github/workflows/registry-drift.yml weekly cron + workflow_dispatch + peter-evans/create-pull-request@v8.1.1 SHA-pinned auto-PR (CAPS-04)
 
 ### Phase 34: Adapter Quirk Flags + Capability Negotiation API
 
@@ -349,7 +355,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 30. Canary Bootstrap + Layer 1 Fake-Provider Suite | 0/0 | Not started | - |
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
-| 33. Model Capability Registry (~200+ via OpenRouter feed) | 0/0 | Not started | - |
+| 33. Model Capability Registry (~200+ via OpenRouter feed) | 0/5 | Not started | - |
 | 34. Adapter Quirk Flags + Capability Negotiation API | 0/0 | Not started | - |
 | 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
 | 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
