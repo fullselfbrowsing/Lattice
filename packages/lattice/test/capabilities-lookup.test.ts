@@ -53,45 +53,134 @@ describe("Phase 33 lookup — stripOpenRouterVariant (D-11)", () => {
   });
 });
 
-describe("Phase 33 lookup — getCapabilityProfile (D-09) against bootstrap registry", () => {
-  it("returns undefined when the registry has no profiles for the key", async () => {
+describe("Phase 33 lookup — populated registry end-to-end (CAPS-02 + CAPS-05)", () => {
+  // These tests intentionally do NOT mock the registry — they exercise
+  // the real Plan 33-04 data through the public surface. The integration
+  // suite at `capabilities-registry-integration.test.ts` covers the
+  // structural assertions in depth; these two cases live alongside the
+  // existing lookup unit tests to keep the lookup module's contract
+  // observable from this file as well.
+  //
+  // This describe block runs FIRST so the mocks installed by the
+  // empty-registry describes below cannot pollute its module cache.
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doUnmock("../src/capabilities/registry.static.js");
+    vi.doUnmock("../src/capabilities/registry.generated.js");
+  });
+
+  it("getCapabilityProfile resolves the anchor case study against the live registry", async () => {
     const { getCapabilityProfile } = await import("../src/index.js");
+    const profile = getCapabilityProfile("openrouter:openai/gpt-oss-120b");
+    expect(profile).toBeDefined();
+    expect(profile?.trainingClass).toBe("open_weight_instruct");
+    expect(profile?.knownFailureModes).toContain("internal_envelope_leak");
+  });
+
+  it("findCapabilityProfile strips :free and resolves the anchor case study against the live registry", async () => {
+    const { findCapabilityProfile } = await import("../src/index.js");
+    const profiles = findCapabilityProfile("openai/gpt-oss-120b:free");
+    expect(profiles.length).toBeGreaterThanOrEqual(1);
+    expect(
+      profiles.some(
+        (p) => p.adapter === "openrouter" && p.id === "openai/gpt-oss-120b",
+      ),
+    ).toBe(true);
+    expect(profiles[0]?.knownFailureModes).toContain("internal_envelope_leak");
+  });
+});
+
+describe("Phase 33 lookup — getCapabilityProfile (D-09) against an empty registry (mocked)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("returns undefined when the registry has no profiles for the key", async () => {
+    // Mock both registry inputs as empty so the lookup module rebuilds
+    // its Map cache from `[]`. Plan 04 populated the real registries, so
+    // these assertions now describe the documented "empty registry"
+    // behavior rather than relying on bootstrap state.
+    vi.doMock("../src/capabilities/registry.static.js", () => ({
+      STATIC_PROFILES: [],
+    }));
+    vi.doMock("../src/capabilities/registry.generated.js", () => ({
+      GENERATED_PROFILES: [],
+    }));
+    const { getCapabilityProfile } = await import(
+      "../src/capabilities/lookup.js"
+    );
     expect(
       getCapabilityProfile("openrouter:openai/gpt-oss-120b"),
     ).toBeUndefined();
   });
 
   it("returns undefined for an obviously bogus key (no throw)", async () => {
-    const { getCapabilityProfile } = await import("../src/index.js");
+    vi.doMock("../src/capabilities/registry.static.js", () => ({
+      STATIC_PROFILES: [],
+    }));
+    vi.doMock("../src/capabilities/registry.generated.js", () => ({
+      GENERATED_PROFILES: [],
+    }));
+    const { getCapabilityProfile } = await import(
+      "../src/capabilities/lookup.js"
+    );
     expect(getCapabilityProfile("not-a-real-key")).toBeUndefined();
   });
 
-  it("is case-sensitive on canonical keys", async () => {
-    const { getCapabilityProfile } = await import("../src/index.js");
-    // Both queries fail against the empty bootstrap registry; the
-    // contract is that strict lookup does no case folding — Plan 04
-    // will populate `openrouter:openai/gpt-oss-120b` (lower-case) and
-    // an upper-case query MUST still miss.
+  it("is case-sensitive on canonical keys (mocked empty registry — uppercase miss)", async () => {
+    vi.doMock("../src/capabilities/registry.static.js", () => ({
+      STATIC_PROFILES: [],
+    }));
+    vi.doMock("../src/capabilities/registry.generated.js", () => ({
+      GENERATED_PROFILES: [],
+    }));
+    const { getCapabilityProfile } = await import(
+      "../src/capabilities/lookup.js"
+    );
+    // The contract is that strict lookup does no case folding. An
+    // upper-case query MUST miss against any registry shape.
     expect(
       getCapabilityProfile("OPENROUTER:openai/gpt-oss-120b"),
     ).toBeUndefined();
   });
 });
 
-describe("Phase 33 lookup — findCapabilityProfile (D-10) against bootstrap registry", () => {
+describe("Phase 33 lookup — findCapabilityProfile (D-10) against an empty registry (mocked)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
   it("returns [] when the registry has no profiles", async () => {
-    const { findCapabilityProfile } = await import("../src/index.js");
+    vi.doMock("../src/capabilities/registry.static.js", () => ({
+      STATIC_PROFILES: [],
+    }));
+    vi.doMock("../src/capabilities/registry.generated.js", () => ({
+      GENERATED_PROFILES: [],
+    }));
+    const { findCapabilityProfile } = await import(
+      "../src/capabilities/lookup.js"
+    );
     expect(findCapabilityProfile("openai/gpt-oss-120b")).toEqual([]);
   });
 
-  it("returns [] for the case-study id with variant (suffix stripped, still no match)", async () => {
-    const { findCapabilityProfile } = await import("../src/index.js");
+  it("returns [] for the case-study id with variant (suffix stripped, still no match in empty registry)", async () => {
+    vi.doMock("../src/capabilities/registry.static.js", () => ({
+      STATIC_PROFILES: [],
+    }));
+    vi.doMock("../src/capabilities/registry.generated.js", () => ({
+      GENERATED_PROFILES: [],
+    }));
+    const { findCapabilityProfile } = await import(
+      "../src/capabilities/lookup.js"
+    );
     // session_1780792387779 anchor: gpt-oss-120b:free — strip + lookup,
-    // still empty pre-Plan-04. Plan 04 will replace this assertion with
-    // the populated-registry equivalent.
+    // still empty under a mocked-empty registry. See the integration
+    // suite (capabilities-registry-integration.test.ts) for the
+    // populated-registry equivalent.
     expect(findCapabilityProfile("openai/gpt-oss-120b:free")).toEqual([]);
   });
 });
+
 
 describe("Phase 33 lookup — adapter ordering (D-10) via vi.doMock injection", () => {
   beforeEach(() => {
