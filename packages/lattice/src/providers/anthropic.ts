@@ -8,6 +8,11 @@ import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } fr
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import { parseToolUseEnvelope } from "../agent/format-tools.js";
+import {
+  validateToolCallRequests,
+  type ValidateToolCallsOption,
+} from "../tools/tool-call-validation.js";
 import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
@@ -65,6 +70,7 @@ export interface AnthropicProviderOptions {
    */
   readonly runEventSink?: RunEventSink;
   readonly sanitizeOutput?: SanitizeOutputOption;
+  readonly validateToolCalls?: ValidateToolCallsOption;
 }
 
 /** Internal TTL cache entry shape (D-07 lazy-expiry). */
@@ -420,6 +426,10 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         providerId: id,
         modelId: options.model,
       });
+      const parsedToolCalls = parseToolUseEnvelope(text);
+      const toolCalls = parsedToolCalls === null
+        ? undefined
+        : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
       const usage = normalizeAnthropicUsage(body.usage);
       const normalizedUsage = normalizeAnthropicUsageToRunUsage(body.usage, options.pricing);
 
@@ -427,6 +437,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
+        ...(toolCalls !== undefined ? { toolCalls } : {}),
         rawResponse: body,
       };
     },
