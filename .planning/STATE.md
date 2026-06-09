@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_execute
-stopped_at: Phase 36 planned; ready to execute
-last_updated: "2026-06-09T17:34:53.000Z"
-last_activity: 2026-06-09 -- Phase 36 planning complete; ready to execute
+status: ready_to_discuss
+stopped_at: Phase 36 complete; ready to discuss Phase 37
+last_updated: "2026-06-09T17:56:19.000Z"
+last_activity: 2026-06-09 -- Phase 36 complete; output sanitizer hook verified
 progress:
   total_phases: 16
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 24
-  completed_plans: 21
-  percent: 50
+  completed_plans: 24
+  percent: 56
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 36 — output sanitizer hook (opt-in)
+**Current focus:** Phase 37 — tool-call validation layer (opt-in)
 
 ## Current Position
 
-Phase: 36
+Phase: 37
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 36 planning complete; ready to execute
+Status: Ready to discuss
+Last activity: 2026-06-09 -- Phase 36 complete; output sanitizer hook verified
 
-Progress: [█████░░░░░] 50% (8/16 v1.3 phases complete; 8 phases remaining)
+Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 phases remaining)
 
 ## Performance Metrics
 
@@ -38,13 +38,13 @@ Progress: [█████░░░░░] 50% (8/16 v1.3 phases complete; 8 pha
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 21 across Phases 24, 25, 26, 33, 34, and 35; Phase 36 has 3 planned-but-not-executed plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 24 across Phases 24, 25, 26, 33, 34, 35, and 36; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 8/16 phases complete, 42/72 authored REQ-IDs complete, 15 planned REQ-IDs still need to be authored for Phases 37-39.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 9/16 phases complete, 46/72 authored REQ-IDs complete, 15 planned REQ-IDs still need to be authored for Phases 37-39.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -62,11 +62,11 @@ Recent decisions affecting current work:
 - [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow publish job). Changesets PR-driven version bumps.
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
-- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35. Remaining: 36, 37, 38, 39, 29, 30, 31, 32.
+- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36. Remaining: 37, 38, 39, 29, 30, 31, 32.
 
 ### Pending Todos
 
-- Phase 36: Execute the 3 planned output sanitizer hook plans.
+- Phase 37: Discuss and author `VALID` requirements before planning the opt-in tool-call validation layer.
 - Phase 37-39: Author the remaining planned REQ-ID groups (`VALID`, `RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
@@ -76,7 +76,7 @@ Recent decisions affecting current work:
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- Phases 36-39 have no implementation in any checked branch/tag as of the 2026-06-09 audit.
+- Phases 37-39 have no implementation in any checked branch/tag as of the 2026-06-09 audit.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
 - First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
@@ -87,9 +87,10 @@ Recent decisions affecting current work:
 | --- | --- | --- |
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
+| 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
 
 ## Session Continuity
 
-Last session: 2026-06-09T17:34:53.000Z
-Stopped at: Phase 36 planned; ready to execute
-Resume file: .planning/phases/36-output-sanitizer-hook-opt-in/36-01-PLAN.md
+Last session: 2026-06-09T17:56:19.000Z
+Stopped at: Phase 36 complete; ready to discuss Phase 37
+Resume file: .planning/ROADMAP.md

@@ -129,16 +129,16 @@
 
 ### Output Sanitizer Hook (`SANITIZE-*`)
 
-- [ ] **SANITIZE-01**: Each of the 7 real first-party provider adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) accepts optional `sanitizeOutput?: SanitizerFn | readonly SanitizerFn[]`. When absent, adapter behavior is unchanged. When present, string-valued `rawOutputs` are piped through the sanitizer(s) in order after provider response text extraction and before the adapter returns `ProviderRunResponse`; non-string outputs are preserved.
-- [ ] **SANITIZE-02**: Built-in sanitizer factories ship in `packages/lattice/src/sanitizers/` and root exports: `stripReasoningTags()`, `stripChatTemplateArtifacts()`, and `unwrapInternalEnvelope(schemaOrPath)`. Minimal public types include `SanitizerFn`, `SanitizerContext`, and `SanitizeOutputOption`; sanitizer context exposes provider id, optional model id, and output name only.
-- [ ] **SANITIZE-03**: `unwrapInternalEnvelope(...)` supports explicit dotted path usage and the anchor object form `unwrapInternalEnvelope({ field: "summary" })`; invalid JSON, missing fields, non-object JSON, and non-string extracted values no-op. The `session_1780792387779` shape `{"summary":"Greeted the user."}` round-trips through OpenRouter with visible output `Greeted the user.`.
-- [ ] **SANITIZE-04**: Regression coverage includes direct built-in tests, no-op tests, custom sanitizer composition-order tests, custom sanitizer exception propagation, all-seven adapter wiring parity, `rawResponse` preservation, root public-surface smoke coverage, package type tests, and a changeset documenting the opt-in sanitizer API.
+- [x] **SANITIZE-01**: Each of the 7 real first-party provider adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) accepts optional `sanitizeOutput?: SanitizerFn | readonly SanitizerFn[]`. When absent, adapter behavior is unchanged. When present, string-valued `rawOutputs` are piped through the sanitizer(s) in order after provider response text extraction and before the adapter returns `ProviderRunResponse`; non-string outputs are preserved.
+- [x] **SANITIZE-02**: Built-in sanitizer factories ship in `packages/lattice/src/sanitizers/` and root exports: `stripReasoningTags()`, `stripChatTemplateArtifacts()`, and `unwrapInternalEnvelope(schemaOrPath)`. Minimal public types include `SanitizerFn`, `SanitizerContext`, and `SanitizeOutputOption`; sanitizer context exposes provider id, optional model id, and output name only.
+- [x] **SANITIZE-03**: `unwrapInternalEnvelope(...)` supports explicit dotted path usage and the anchor object form `unwrapInternalEnvelope({ field: "summary" })`; invalid JSON, missing fields, non-object JSON, and non-string extracted values no-op. The `session_1780792387779` shape `{"summary":"Greeted the user."}` round-trips through OpenRouter with visible output `Greeted the user.`.
+- [x] **SANITIZE-04**: Regression coverage includes direct built-in tests, no-op tests, custom sanitizer composition-order tests, custom sanitizer exception propagation, all-seven adapter wiring parity, `rawResponse` preservation, root public-surface smoke coverage, package type tests, and a changeset documenting the opt-in sanitizer API.
 
 ---
 
 ## Total Requirements
 
-**72 authored REQ-IDs** across **17 categories** are mapped in this file. **42 / 72** are complete as of the 2026-06-09 Phase 36 planning pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **15 planned REQ-IDs** for Phases 37-39 must be authored before the milestone audit can claim 87/87 coverage.
+**72 authored REQ-IDs** across **17 categories** are mapped in this file. **46 / 72** are complete as of the 2026-06-09 Phase 36 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **15 planned REQ-IDs** for Phases 37-39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -278,12 +278,12 @@ Each authored REQ-ID maps to exactly one phase. Phases 37-39 still need detailed
 | SCAFF-02 | Phase 35 | 35-01 / 35-02 | complete |
 | SCAFF-03 | Phase 35 | 35-01 / 35-02 | complete |
 | SCAFF-04 | Phase 35 | 35-02 | complete |
-| SANITIZE-01 | Phase 36 | 36-02 / 36-03 | pending |
-| SANITIZE-02 | Phase 36 | 36-01 | pending |
-| SANITIZE-03 | Phase 36 | 36-01 / 36-02 / 36-03 | pending |
-| SANITIZE-04 | Phase 36 | 36-01 / 36-02 / 36-03 | pending |
+| SANITIZE-01 | Phase 36 | 36-02 / 36-03 | complete |
+| SANITIZE-02 | Phase 36 | 36-01 | complete |
+| SANITIZE-03 | Phase 36 | 36-01 / 36-02 / 36-03 | complete |
+| SANITIZE-04 | Phase 36 | 36-01 / 36-02 / 36-03 | complete |
 
-**Coverage:** 72 / 87 planned v1.3 REQ-IDs authored. 42 / 72 authored REQ-IDs complete. 15 planned REQ-IDs remain to be authored for Phases 37-39. No authored orphans. No duplicates.
+**Coverage:** 72 / 87 planned v1.3 REQ-IDs authored. 46 / 72 authored REQ-IDs complete. 15 planned REQ-IDs remain to be authored for Phases 37-39. No authored orphans. No duplicates.
 
 ---
 
@@ -294,3 +294,4 @@ Each authored REQ-ID maps to exactly one phase. Phases 37-39 still need detailed
 *Phase 35 REQ-IDs (SCAFF-01..04) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 35 REQ-IDs (SCAFF-01..04) completed: 2026-06-09 — prompt scaffold helpers executed and verified*
 *Phase 36 REQ-IDs (SANITIZE-01..04) added: 2026-06-09 — plan-phase prerequisite*
+*Phase 36 REQ-IDs (SANITIZE-01..04) completed: 2026-06-09 — output sanitizer hook executed and verified*

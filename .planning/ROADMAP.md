@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 72 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 42 / 72 authored REQ-IDs are complete. The 15 remaining planned REQ-IDs are for Phases 37-39 (`VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
+**Coverage:** 72 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 46 / 72 authored REQ-IDs are complete. The 15 remaining planned REQ-IDs are for Phases 37-39 (`VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -56,7 +56,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy. (completed 2026-06-08)
 - [x] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry. (completed 2026-06-08)
 - [x] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases. (completed 2026-06-09)
-- [ ] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case).
+- [x] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case). (completed 2026-06-09)
 - [ ] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests.
 - [ ] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Adapters populate `modelClass` when the registry knows the model.
 - [ ] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks.
@@ -260,9 +260,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Plans**: 3 plans
 
-- [ ] 36-01-PLAN.md — Core sanitizer module + built-in factories + public exports + direct tests (SANITIZE-02, SANITIZE-03, SANITIZE-04)
-- [ ] 36-02-PLAN.md — OpenAI-compatible adapter family wiring: OpenAI-compatible, OpenAI, OpenRouter, xAI, LM Studio (SANITIZE-01, SANITIZE-03, SANITIZE-04)
-- [ ] 36-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (SANITIZE-01, SANITIZE-03, SANITIZE-04)
+- [x] 36-01-PLAN.md — Core sanitizer module + built-in factories + public exports + direct tests (SANITIZE-02, SANITIZE-03, SANITIZE-04)
+- [x] 36-02-PLAN.md — OpenAI-compatible adapter family wiring: OpenAI-compatible, OpenAI, OpenRouter, xAI, LM Studio (SANITIZE-01, SANITIZE-03, SANITIZE-04)
+- [x] 36-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (SANITIZE-01, SANITIZE-03, SANITIZE-04)
 
 ### Phase 37: Tool-Call Validation Layer (opt-in)
 
@@ -346,7 +346,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-72 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-35 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`) are authored and complete. Phase 36 (`SANITIZE`) is authored and planned. The 15 remaining planned REQ-IDs (`VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 37-39. No authored orphans expected.
+72 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-36 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`) are authored and complete. The 15 remaining planned REQ-IDs (`VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 37-39. No authored orphans expected.
 
 ## Progress
 
@@ -371,7 +371,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
 | 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
 | 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
-| 36. Output Sanitizer Hook (opt-in) | 0/3 | Planned | - |
+| 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
 | 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |
 | 38. Receipt v1.2 Schema + modelClass Tag | 0/0 | Not started | - |
 | 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |
