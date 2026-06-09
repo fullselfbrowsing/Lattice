@@ -122,16 +122,16 @@
 
 ### Prompt Scaffolding Helpers (`SCAFF-*`)
 
-- [ ] **SCAFF-01**: `packages/lattice/src/prompts/scaffolds.ts` exports `getStructuredOutputContract(strategy, schema): string` and `getToolUseContract(strategy, tools): string`, using Phase 33's `RecommendedPromptStrategy` union (`"frontier" | "mid_tier" | "open_weight" | "reasoning" | "local"`) as the strategy parameter rather than defining a parallel prompt-strategy type.
-- [ ] **SCAFF-02**: Both scaffold helpers return deterministic, version-pinned prompt fragments. Returned strings include a stable scaffold version marker and canonical serialization of schema/tool inputs so semantically identical object-key ordering produces byte-identical fragments suitable for prompt-cache keys and snapshot tests.
-- [ ] **SCAFF-03**: The `open_weight` strategy explicitly distinguishes meta-instruction from literal output instruction. Structured-output and tool-use fragments include example-driven positive/negative framing that tells open-weight instruct models to follow the schema/tool contract without emitting the contract, internal envelope, or tool descriptor verbatim as the user-visible answer.
-- [ ] **SCAFF-04**: Regression coverage includes per-strategy byte snapshots or exact-string assertions for both helpers, fake provider stubs modeling strategy behavior, and an anchor test for `session_1780792387779` / `openai/gpt-oss-120b` proving the open-weight scaffold prevents the internal-envelope leak that previously emitted `{"summary": "Greeted the user."}` as the reply.
+- [x] **SCAFF-01**: `packages/lattice/src/prompts/scaffolds.ts` exports `getStructuredOutputContract(strategy, schema): string` and `getToolUseContract(strategy, tools): string`, using Phase 33's `RecommendedPromptStrategy` union (`"frontier" | "mid_tier" | "open_weight" | "reasoning" | "local"`) as the strategy parameter rather than defining a parallel prompt-strategy type.
+- [x] **SCAFF-02**: Both scaffold helpers return deterministic, version-pinned prompt fragments. Returned strings include a stable scaffold version marker and canonical serialization of schema/tool inputs so semantically identical object-key ordering produces byte-identical fragments suitable for prompt-cache keys and snapshot tests.
+- [x] **SCAFF-03**: The `open_weight` strategy explicitly distinguishes meta-instruction from literal output instruction. Structured-output and tool-use fragments include example-driven positive/negative framing that tells open-weight instruct models to follow the schema/tool contract without emitting the contract, internal envelope, or tool descriptor verbatim as the user-visible answer.
+- [x] **SCAFF-04**: Regression coverage includes per-strategy byte snapshots or exact-string assertions for both helpers, fake provider stubs modeling strategy behavior, and an anchor test for `session_1780792387779` / `openai/gpt-oss-120b` proving the open-weight scaffold prevents the internal-envelope leak that previously emitted `{"summary": "Greeted the user."}` as the reply.
 
 ---
 
 ## Total Requirements
 
-**68 authored REQ-IDs** across **16 categories** are mapped in this file. **38 / 68** are complete as of the 2026-06-09 Phase 35 planning pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **19 planned REQ-IDs** for Phases 36-39 must be authored before the milestone audit can claim 87/87 coverage.
+**68 authored REQ-IDs** across **16 categories** are mapped in this file. **42 / 68** are complete as of the 2026-06-09 Phase 35 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **19 planned REQ-IDs** for Phases 36-39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -165,7 +165,7 @@ Planned but not yet authored:
 
 ## Future Requirements (deferred to v1.4+)
 
-Carried over from v1.2 close-out. Out of scope for v1.3 unless explicitly pulled into Phases 35-39.
+Carried over from v1.2 close-out. Out of scope for v1.3 unless explicitly pulled into Phases 36-39.
 
 - Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract
 - `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel
@@ -199,7 +199,7 @@ Carried over from v1.2 close-out. Out of scope for v1.3 unless explicitly pulled
 
 ## Traceability
 
-Each authored REQ-ID maps to exactly one phase. Phases 35-39 still need detailed REQ-ID authoring before execution.
+Each authored REQ-ID maps to exactly one phase. Phases 36-39 still need detailed REQ-ID authoring before execution.
 
 | REQ-ID | Phase | Plan | Status |
 |---|---|---|---|
@@ -267,12 +267,12 @@ Each authored REQ-ID maps to exactly one phase. Phases 35-39 still need detailed
 | QUIRK-03 | Phase 34 | 34-01 | complete |
 | NEG-01 | Phase 34 | 34-01 | complete |
 | NEG-02 | Phase 34 | 34-02 / 34-03 / 34-04 | complete |
-| SCAFF-01 | Phase 35 | 35-01 / 35-02 | pending |
-| SCAFF-02 | Phase 35 | 35-01 / 35-02 | pending |
-| SCAFF-03 | Phase 35 | 35-01 / 35-02 | pending |
-| SCAFF-04 | Phase 35 | 35-02 | pending |
+| SCAFF-01 | Phase 35 | 35-01 / 35-02 | complete |
+| SCAFF-02 | Phase 35 | 35-01 / 35-02 | complete |
+| SCAFF-03 | Phase 35 | 35-01 / 35-02 | complete |
+| SCAFF-04 | Phase 35 | 35-02 | complete |
 
-**Coverage:** 68 / 87 planned v1.3 REQ-IDs authored. 38 / 68 authored REQ-IDs complete. 19 planned REQ-IDs remain to be authored for Phases 36-39. No authored orphans. No duplicates.
+**Coverage:** 68 / 87 planned v1.3 REQ-IDs authored. 42 / 68 authored REQ-IDs complete. 19 planned REQ-IDs remain to be authored for Phases 36-39. No authored orphans. No duplicates.
 
 ---
 
@@ -281,3 +281,4 @@ Each authored REQ-ID maps to exactly one phase. Phases 35-39 still need detailed
 *Phase 34 REQ-IDs (QUIRK-01..03 + NEG-01..02) added: 2026-06-08 — Plan 34-01*
 *Planning state reconciled: 2026-06-09 — code/git/npm audit confirmed 38 authored REQ-IDs complete and stable 1.3.0 not published*
 *Phase 35 REQ-IDs (SCAFF-01..04) added: 2026-06-09 — plan-phase prerequisite*
+*Phase 35 REQ-IDs (SCAFF-01..04) completed: 2026-06-09 — prompt scaffold helpers executed and verified*
