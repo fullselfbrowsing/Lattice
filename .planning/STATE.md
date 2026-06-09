@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: ready_to_plan
-stopped_at: Phase 35 complete (2/2 plans); ready to plan Phase 36
-last_updated: "2026-06-09T16:43:33Z"
-last_activity: 2026-06-09 -- Phase 35 prompt scaffolding helpers implemented and verified
+stopped_at: Phase 36 context gathered
+last_updated: "2026-06-09T16:53:53.422Z"
+last_activity: 2026-06-09 -- Phase 36 context gathered; ready to plan
 progress:
   total_phases: 16
   completed_phases: 8
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase: 36
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-09 -- Phase 35 prompt scaffolding helpers implemented and verified
+Last activity: 2026-06-09 -- Phase 36 context gathered; ready to plan
 
 Progress: [█████░░░░░] 50% (8/16 v1.3 phases complete; 8 phases remaining)
 
@@ -90,6 +90,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T16:43:33Z
-Stopped at: Phase 35 complete (2/2 plans); ready to plan Phase 36
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-09T16:53:53.419Z
+Stopped at: Phase 36 context gathered
+Resume file: .planning/phases/36-output-sanitizer-hook-opt-in/36-CONTEXT.md
