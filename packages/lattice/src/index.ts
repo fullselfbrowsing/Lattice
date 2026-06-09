@@ -193,6 +193,9 @@ export type {
   ReceiptSigner,
   ReceiptUsageCanonical,
   ReplayEnvelope,
+  RunEvent,
+  RunEventKind,
+  RunEventSink,
   RunFailure,
   RunResult,
   RunSuccess,
@@ -220,3 +223,52 @@ export type {
   SurvivabilityAdapter,
   UnsubscribeFn,
 } from "./runtime/survivability.js";
+
+// Phase 33 — Model Capability Registry (CAPS-01 / CAPS-02)
+// Typed capability profile + 6 closed string-literal unions describing how
+// each model class misbehaves and which prompt strategy it wants. Sibling
+// to the v1.0 `ModelCapability` modality/cost surface — they answer
+// orthogonal questions. Plan 33-04 will populate the static + generated
+// registries; the lookup surface (CAPS-02) is wired below.
+export type {
+  CapabilityAdapter,
+  KnownFailureMode,
+  ModelCapabilityProfile,
+  ReasoningSurface,
+  RecommendedPromptStrategy,
+  ToolCallSurface,
+  TrainingClass,
+} from "./capabilities/index.js";
+export {
+  ALL_KNOWN_FAILURE_MODES,
+  ALL_TRAINING_CLASSES,
+  findCapabilityProfile,
+  getCapabilityProfile,
+  stripOpenRouterVariant,
+} from "./capabilities/index.js";
+
+// Phase 34 — Adapter Quirk Flags + Capability Negotiation API
+// SanitizerKey dispatch keys + recommendation table (D-13/D-14/D-15/D-16)
+export type { SanitizerKey } from "./capabilities/index.js";
+export {
+  SANITIZER_BY_FAILURE_MODE,
+  getRecommendedSanitizers,
+} from "./capabilities/index.js";
+// Phase 34 — NegotiatedCapabilities + NegotiationAuthError + helpers (D-02/D-04)
+export type { NegotiatedCapabilities } from "./capabilities/index.js";
+export {
+  NegotiationAuthError,
+  negotiateCapabilities,
+  synthesizeNegotiatedCapabilitiesFromRegistry,
+} from "./capabilities/index.js";
+// Phase 34 — AdapterQuirks base + 7 per-adapter narrowed sub-interfaces (D-03)
+export type {
+  AdapterQuirks,
+  AnthropicQuirks,
+  GeminiQuirks,
+  LmStudioQuirks,
+  OpenAICompatQuirks,
+  OpenAIQuirks,
+  OpenRouterQuirks,
+  XaiQuirks,
+} from "./providers/quirks.js";

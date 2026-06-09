@@ -1,6 +1,16 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import type { GeminiQuirks } from "./quirks.js";
+import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
+import {
+  NegotiationAuthError,
+  synthesizeNegotiatedCapabilitiesFromRegistry,
+} from "../capabilities/negotiate.js";
+import { getCapabilityProfile } from "../capabilities/lookup.js";
+import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
+import type { RunEventSink } from "../tracing/tracing.js";
+import { createRunEvent } from "../tracing/tracing.js";
 
 /**
  * Options for {@link createGeminiProvider}.
@@ -9,7 +19,7 @@ import { defaultCapabilityForProvider } from "../routing/catalog.js";
  * for Google's Generative Language API at
  * `/v1beta/models/{model}:generateContent` -- which uses `contents[].parts[].text`
  * (NOT OpenAI's `messages[]`), `role: "model"` for assistant turns (NOT
- * `"assistant"`), authenticates via `?key=` query string, and applies a
+ * `"assistant"`), authenticates via `?key=` query string for execute(), and applies a
  * 4-category `safetySettings` block at `BLOCK_NONE` thresholds (FSB convention
  * mirrored from `extension/ai/universal-provider.js:255-272`).
  *
@@ -20,6 +30,10 @@ import { defaultCapabilityForProvider } from "../routing/catalog.js";
  *   - streaming           -- deferred (single-shot Promise per CONTEXT.md D-06)
  *   - tool use            -- deferred
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
+ *
+ * NOTE (Phase 34): negotiate() uses x-goog-api-key HEADER (preferred per RESEARCH §Q3).
+ * The existing execute() path uses ?key= query string -- execute() migration is out-of-scope
+ * for Phase 34 (additive only; T-34-04-01).
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-02 + D-07: full custom adapter; preserve role:"model").
  */
@@ -34,6 +48,23 @@ export interface GeminiProviderOptions {
     readonly inputPer1kTokens?: number;
     readonly outputPer1kTokens?: number;
   };
+  /**
+   * D-08: TTL for per-instance /models response cache, in milliseconds.
+   * Default: 300_000ms (5 minutes). 0 = always refetch (tests). Infinity = process-lifetime.
+   */
+  readonly modelsCacheTtlMs?: number;
+  /**
+   * D-11: Number of retries on transient /models fetch errors. Default: 2.
+   * Retry schedule: immediate + 200ms + 1000ms (3 total attempts at retryCount=2).
+   * 0 = no retries (1 attempt total).
+   */
+  readonly modelsRetryCount?: number;
+  /**
+   * D-12: Optional event sink for observability. When provided, the adapter
+   * emits a "capabilities.negotiation.fallback" RunEvent on transient /models failure.
+   * If absent, no event is emitted (silent fallback).
+   */
+  readonly runEventSink?: RunEventSink;
 }
 
 const DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com";
@@ -54,10 +85,264 @@ const SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ] as const;
 
-export function createGeminiProvider(options: GeminiProviderOptions): ProviderAdapter {
+/**
+ * Phase 34 — D-03 — Gemini quirks block. Values verified against
+ * Gemini API documentation and gemini.ts:50-55 (safety settings) behavior.
+ *
+ * CITED: https://ai.google.dev/api/generate-content#v1beta.GenerationConfig
+ *   - responseSchemaSupported: gemini-1.5-pro+ and gemini-2.x
+ *   - safetySettingsConfigurable: verified in gemini.ts:50-55
+ *   - systemInstructionSupported: gemini-1.5+ systemInstruction field
+ */
+const GEMINI_QUIRKS: GeminiQuirks = {
+  supportsToolChoice: true,
+  parallelToolCalls: true,
+  structuredOutputs: true,
+  responseFormatHonored: true,
+  streamingDiverges: false,
+  responseSchemaSupported: true,       // CITED: Gemini API responseSchema/responseJsonSchema
+  safetySettingsConfigurable: true,    // VERIFIED: gemini.ts:50-55 4-category BLOCK_NONE
+  systemInstructionSupported: true,    // CITED: gemini-1.5+ supports system_instruction
+};
+
+/**
+ * Phase 34 — D-03 / D-05..D-12 — Extended Gemini provider factory.
+ *
+ * Returns a `ProviderAdapter` narrowed to expose:
+ *   - `quirks: GeminiQuirks` — static adapter capability flags
+ *   - `negotiateCapabilities(modelId)` — live /v1beta/models fetch with medium-thick
+ *     derivation (inputTokenLimit + thinking + supportedGenerationMethods from upstream)
+ *     intersected with Phase 33 registry; TTL cache + inflight coalescing + retry +
+ *     auth-throw + transient-fallback + event.
+ *
+ * NOTE on auth strategy (T-34-04-01): negotiate() uses x-goog-api-key HEADER
+ * (preferred per RESEARCH §Q3 -- avoids leaking the key in server-side logs that
+ * capture URL query strings). The existing execute() path uses ?key= query string
+ * and is NOT changed by Phase 34 (out-of-scope migration).
+ */
+export function createGeminiProvider(
+  options: GeminiProviderOptions,
+): ProviderAdapter & {
+  readonly quirks: GeminiQuirks;
+  readonly negotiateCapabilities: (modelId: string) => Promise<NegotiatedCapabilities>;
+} {
   const id = options.id ?? "gemini";
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/u, "");
+
+  // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
+  // each createGeminiProvider({}) call gets its own Map (no cross-contamination).
+  const ttlMs = options.modelsCacheTtlMs ?? 300_000;
+  const retryCount = options.modelsRetryCount ?? 2;
+  const cache = new Map<string, { result: NegotiatedCapabilities; expiresAt: number }>();
+  const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
+
+  /**
+   * D-07 lazy expiry + Q7 inflight coalescing + Pitfall 4 .finally cleanup.
+   * Public surface: `adapter.negotiateCapabilities(modelId)`.
+   */
+  async function negotiate(modelId: string): Promise<NegotiatedCapabilities> {
+    // 1. Cache check (D-07 lazy expiry)
+    const cached = cache.get(modelId);
+    if (cached !== undefined && cached.expiresAt > Date.now()) return cached.result;
+
+    // 2. Inflight coalesce (Q7)
+    const existing = inflight.get(modelId);
+    if (existing !== undefined) return existing;
+
+    // 3. New fetch promise; clear inflight in .finally (Pitfall 4)
+    const fetchPromise = (async () => {
+      try {
+        const result = await fetchAndNegotiate(modelId);
+        if (ttlMs > 0) {
+          cache.set(modelId, { result, expiresAt: Date.now() + ttlMs });
+        }
+        return result;
+      } finally {
+        inflight.delete(modelId);
+      }
+    })();
+
+    inflight.set(modelId, fetchPromise);
+    return fetchPromise;
+  }
+
+  /**
+   * Phase 34 — D-09..D-11 — Fetches /v1beta/models and merges with registry.
+   *
+   * URL: ${baseUrl}/v1beta/models (NOT /v1/models -- Gemini uses /v1beta/ prefix)
+   * Auth: x-goog-api-key HEADER (preferred per RESEARCH §Q3 -- NOT ?key= query-string;
+   *   avoids leaking the key in server-side log captures of request URLs).
+   * Retry: [0ms, 200ms, 1000ms] backoff on transient errors (D-11).
+   * Auth error (401/403): throws NegotiationAuthError (D-10, no fallback).
+   * Transient error (5xx/network): falls back to registry with "registry-fallback" (D-09).
+   */
+  async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
+    // NOTE: URL is /v1beta/models (not /v1/models -- Gemini API prefix differs from OpenAI)
+    const url = `${baseUrl}/v1beta/models`;
+    const headers: Record<string, string> = {
+      // SECURITY: key sent as HEADER (x-goog-api-key), NOT as ?key= query-string.
+      // RESEARCH §Q3: header form is preferred to avoid leaking the key in upstream logs.
+      "x-goog-api-key": options.apiKey,
+      "accept": "application/json",
+    };
+
+    const attempts = retryCount + 1;
+    const backoffSchedule = [0, 200, 1000];
+    let lastErr: unknown;
+
+    for (let i = 0; i < attempts; i += 1) {
+      const delay = backoffSchedule[i] ?? 1000;
+      if (delay > 0) {
+        await new Promise<void>((r) => setTimeout(r, delay));
+      }
+      try {
+        const resp = await fetchImpl(url, {
+          method: "GET",
+          headers,
+          signal: AbortSignal.timeout(30_000),
+        });
+
+        if (resp.status === 401 || resp.status === 403) {
+          throw new NegotiationAuthError(
+            "gemini",
+            modelId,
+            resp.status as 401 | 403,
+            `Gemini /v1beta/models returned ${resp.status}: check apiKey config.`,
+          );
+        }
+
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}`);
+        }
+
+        const body: unknown = await resp.json();
+        return mergeGeminiModelsWithRegistry(modelId, body);
+      } catch (err) {
+        if (err instanceof NegotiationAuthError) throw err; // D-10: auth never falls back
+        lastErr = err;
+      }
+    }
+
+    // All retries exhausted -- fallback + event (D-09/D-12)
+    emitFallbackEvent({
+      adapter: "gemini",
+      modelId,
+      errorReason: stringifyErr(lastErr),
+      fallbackSource: "registry-fallback",
+    });
+    return synthesizeNegotiatedCapabilitiesFromRegistry("gemini", modelId, "registry-fallback");
+  }
+
+  /**
+   * MEDIUM-THICK derivation: consumes upstream truth from Gemini /v1beta/models
+   * where available (inputTokenLimit -> contextWindow, thinking -> extendedThinking,
+   * supportedGenerationMethods -> streaming + nativeToolCalling) and falls back
+   * to registry for the rest (knownFailureModes, recommendedSanitizers).
+   *
+   * Lenient parsing per Pitfall 1: all field accesses use optional chaining.
+   * Missing `thinking` field does not crash -- defaults to false.
+   */
+  function mergeGeminiModelsWithRegistry(
+    modelId: string,
+    body: unknown,
+  ): NegotiatedCapabilities {
+    const models = (body as Record<string, unknown>)?.models;
+
+    // Lenient model search: Gemini names are "models/${id}", base id, or exact name
+    const found = Array.isArray(models)
+      ? (models as unknown[]).find((m: unknown) => {
+          const rec = m as Record<string, unknown>;
+          return (
+            rec?.name === `models/${modelId}` ||
+            rec?.baseModelId === modelId ||
+            rec?.name === modelId
+          );
+        })
+      : undefined;
+
+    if (found === undefined) {
+      // Model not found in /models response -- treat as registry-fallback
+      emitFallbackEvent({
+        adapter: "gemini",
+        modelId,
+        errorReason: "model not found in /v1beta/models response",
+        fallbackSource: "registry-fallback",
+      });
+      return synthesizeNegotiatedCapabilitiesFromRegistry("gemini", modelId, "registry-fallback");
+    }
+
+    const foundRec = found as Record<string, unknown>;
+    const registryProfile = getCapabilityProfile(`gemini:${modelId}`);
+
+    // THICK derivation from upstream
+    const contextWindow =
+      typeof foundRec.inputTokenLimit === "number" && foundRec.inputTokenLimit > 0
+        ? foundRec.inputTokenLimit
+        : (registryProfile?.contextWindow ?? 0);
+
+    // thinking field: THICK from upstream; missing field -> false (lenient parse)
+    const extendedThinking =
+      foundRec.thinking === true;
+
+    // supportedGenerationMethods: THICK from upstream
+    const methods = Array.isArray(foundRec.supportedGenerationMethods)
+      ? (foundRec.supportedGenerationMethods as unknown[]).map(String)
+      : [];
+    const streaming = methods.includes("streamGenerateContent");
+    // nativeToolCalling: generateContent method indicates tools surface
+    const nativeToolCalling = methods.includes("generateContent") || methods.length > 0;
+
+    // structuredOutputs and parallelToolCalls: from quirks-block-style adapter posture
+    // (Gemini 1.5+ supports responseSchema; per-model truth lives in registry)
+    const structuredOutputs = true; // quirks.responseSchemaSupported (adapter posture)
+    const parallelToolCalls = true; // Gemini supports parallel tool calls
+
+    const knownFailureModes = registryProfile?.knownFailureModes ?? [];
+    const recommendedSanitizers = getRecommendedSanitizers(knownFailureModes);
+
+    return {
+      modelId,
+      contextWindow,
+      supports: {
+        nativeToolCalling,
+        structuredOutputs,
+        parallelToolCalls,
+        extendedThinking,
+        streaming,
+      },
+      knownFailureModes,
+      recommendedSanitizers,
+      source: "live",
+    };
+  }
+
+  /**
+   * D-12: Emit capabilities.negotiation.fallback RunEvent via the optional sink.
+   * SECURITY (T-34-04-02): stringifyErr extracts err.message only -- NOT err.stack
+   * or JSON.stringify(headers), so the apiKey cannot leak into the event payload.
+   * Synthetic runId pattern: negotiate happens outside a run; documented here.
+   */
+  function emitFallbackEvent(payload: {
+    adapter: string;
+    modelId: string;
+    errorReason: string;
+    fallbackSource: string;
+  }): void {
+    if (options.runEventSink === undefined) return;
+    const event = createRunEvent("capabilities.negotiation.fallback", {
+      runId: `negotiate-gemini-${payload.modelId}`,
+      providerId: id,
+      modelId: payload.modelId,
+      metadata: {
+        adapter: payload.adapter,
+        modelId: payload.modelId,
+        errorReason: payload.errorReason,
+        fallbackSource: payload.fallbackSource,
+      },
+    });
+    void options.runEventSink(event);
+  }
 
   return {
     id,
@@ -69,6 +354,8 @@ export function createGeminiProvider(options: GeminiProviderOptions): ProviderAd
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
       },
     ],
+    quirks: GEMINI_QUIRKS,
+    negotiateCapabilities: negotiate,
     async execute(request) {
       const init: RequestInit = {
         method: "POST",
@@ -173,4 +460,12 @@ function normalizeGeminiUsage(usage: unknown): UsageRecord | undefined {
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
   const value = record[key];
   return typeof value === "number" ? value : undefined;
+}
+
+/**
+ * T-34-04-02: Returns err.message only -- NOT err.stack (which could include
+ * headers or the apiKey via a fetch rejection), NOT JSON.stringify(err).
+ */
+function stringifyErr(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

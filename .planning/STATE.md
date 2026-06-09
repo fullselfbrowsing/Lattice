@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
-milestone_name: Public Release + Canary Validation
-status: executing
-stopped_at: Phase 25 context gathered
-last_updated: "2026-06-06T10:47:29.131Z"
-last_activity: 2026-06-06
+milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
+status: ready_to_plan
+stopped_at: Phase 34 complete (5/5) — ready to discuss Phase 35
+last_updated: 2026-06-08T17:09:11.571Z
+last_activity: 2026-06-08 -- Phase 34 execution started
 progress:
-  total_phases: 9
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 33
+  total_phases: 16
+  completed_phases: 4
+  total_plans: 19
+  completed_plans: 22
+  percent: 25
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-03)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 26 — release-hygiene-docs-receipt-downgrade-defense
+**Current focus:** Phase 35 — prompt scaffolding helpers
 
 ## Current Position
 
-Phase: 27
+Phase: 35
 Plan: Not started
-Status: Executing Phase 26
-Last activity: 2026-06-06
+Status: Ready to plan
+Last activity: 2026-06-08
 
 Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
@@ -80,6 +80,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T03:37:19.120Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-pr-time-ci-workflow/25-CONTEXT.md
+Last session: 2026-06-08T11:26:54.341Z
+Stopped at: Phase 34 context gathered
+Resume file: .planning/phases/34-adapter-quirk-flags-capability-negotiation-api/34-CONTEXT.md

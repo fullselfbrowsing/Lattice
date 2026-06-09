@@ -1,0 +1,114 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-oss-120b",
+      "name": "OpenAI GPT-OSS 120B",
+      "description": "OpenAI open-weight family. Anchor case study session_1780792387779.",
+      "created": 1700000000,
+      "context_length": 131072,
+      "top_provider": { "context_length": 131072, "max_completion_tokens": 4096 },
+      "pricing": { "prompt": "0.0", "completion": "0.0" },
+      "architecture": { "modality": "text->text", "tokenizer": "tiktoken", "instruct_type": "instruct" },
+      "supported_parameters": ["tools", "tool_choice"]
+    },
+    {
+      "id": "openai/gpt-oss-120b:free",
+      "name": "OpenAI GPT-OSS 120B (free)",
+      "description": "Free-tier variant of openai/gpt-oss-120b. Variant suffix MUST classify symmetric to base id.",
+      "created": 1700000000,
+      "context_length": 131072,
+      "top_provider": { "context_length": 65536, "max_completion_tokens": 2048 },
+      "pricing": { "prompt": "0.0", "completion": "0.0" },
+      "architecture": { "modality": "text->text", "tokenizer": "tiktoken", "instruct_type": "instruct" },
+      "supported_parameters": ["tools", "tool_choice"]
+    },
+    {
+      "id": "anthropic/claude-3.5-sonnet",
+      "name": "Anthropic Claude 3.5 Sonnet",
+      "description": "Anthropic frontier RLHF model. Native strict tool surface.",
+      "created": 1719500000,
+      "context_length": 200000,
+      "top_provider": { "context_length": 200000, "max_completion_tokens": 8192 },
+      "pricing": { "prompt": "0.000003", "completion": "0.000015" },
+      "architecture": { "modality": "text+image->text", "tokenizer": "claude", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "tool_choice", "structured_outputs"]
+    },
+    {
+      "id": "anthropic/claude-3-haiku",
+      "name": "Anthropic Claude 3 Haiku",
+      "description": "Anthropic mid-tier RLHF model. Family override demotes from frontier to mid_tier_rlhf.",
+      "created": 1709000000,
+      "context_length": 200000,
+      "top_provider": { "context_length": 200000, "max_completion_tokens": 4096 },
+      "pricing": { "prompt": "0.00000025", "completion": "0.00000125" },
+      "architecture": { "modality": "text->text", "tokenizer": "claude", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "tool_choice"]
+    },
+    {
+      "id": "openai/o1",
+      "name": "OpenAI o1",
+      "description": "OpenAI reasoning model. Family override sets reasoningSurface=hidden_cot.",
+      "created": 1730000000,
+      "context_length": 200000,
+      "top_provider": { "context_length": 200000, "max_completion_tokens": 100000 },
+      "pricing": { "prompt": "0.000015", "completion": "0.00006" },
+      "architecture": { "modality": "text->text", "tokenizer": "tiktoken", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "reasoning"]
+    },
+    {
+      "id": "deepseek/deepseek-r1",
+      "name": "DeepSeek R1",
+      "description": "Open-weight reasoning model. Family override adds reasoning_tag_leak to failure modes.",
+      "created": 1736000000,
+      "context_length": 128000,
+      "top_provider": { "context_length": 128000, "max_completion_tokens": 8192 },
+      "pricing": { "prompt": "0.00000014", "completion": "0.0000028" },
+      "architecture": { "modality": "text->text", "tokenizer": "deepseek", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "reasoning"]
+    },
+    {
+      "id": "qwen/qwen-2.5-72b-instruct",
+      "name": "Qwen 2.5 72B Instruct",
+      "description": "Open-weight Qwen instruct model. Prefix rule covers default open_weight_instruct.",
+      "created": 1727500000,
+      "context_length": 32768,
+      "top_provider": { "context_length": 32768, "max_completion_tokens": 4096 },
+      "pricing": { "prompt": "0.0000004", "completion": "0.0000012" },
+      "architecture": { "modality": "text->text", "tokenizer": "qwen", "instruct_type": "chat" },
+      "supported_parameters": ["tools"]
+    },
+    {
+      "id": "google/gemini-2.0-flash-001",
+      "name": "Google Gemini 2.0 Flash 001",
+      "description": "Google frontier Flash model. Family override pins to frontier_rlhf, not the older Flash mid-tier.",
+      "created": 1738000000,
+      "context_length": 1048576,
+      "top_provider": { "context_length": 1048576, "max_completion_tokens": 8192 },
+      "pricing": { "prompt": "0.00000015", "completion": "0.0000006" },
+      "architecture": { "modality": "text+image+audio->text", "tokenizer": "gemini", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "structured_outputs"]
+    },
+    {
+      "id": "meta-llama/llama-3.3-70b-instruct",
+      "name": "Meta Llama 3.3 70B Instruct",
+      "description": "Meta open-weight Llama instruct model. Prefix rule applies, no family override.",
+      "created": 1732000000,
+      "context_length": 131072,
+      "top_provider": { "context_length": 131072, "max_completion_tokens": 4096 },
+      "pricing": { "prompt": "0.00000023", "completion": "0.0000004" },
+      "architecture": { "modality": "text->text", "tokenizer": "llama", "instruct_type": "chat" },
+      "supported_parameters": ["tools"]
+    },
+    {
+      "id": "~anthropic/claude-sonnet-latest",
+      "name": "Anthropic Claude Sonnet (latest alias)",
+      "description": "Pitfall 3 phantom alias. MUST be skipped by classifier (returns null).",
+      "created": 1740000000,
+      "context_length": 200000,
+      "top_provider": { "context_length": 200000, "max_completion_tokens": 8192 },
+      "pricing": { "prompt": "0.000003", "completion": "0.000015" },
+      "architecture": { "modality": "text+image->text", "tokenizer": "claude", "instruct_type": "chat" },
+      "supported_parameters": ["tools", "structured_outputs"]
+    }
+  ]
+}

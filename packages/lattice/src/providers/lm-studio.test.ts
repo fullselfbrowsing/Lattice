@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createLmStudioProvider } from "./lm-studio.js";
+import type { LmStudioQuirks } from "./quirks.js";
+import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 
 /**
  * Phase 4 LM Studio adapter -- vitest cases (D-09 contract: 7 minimum; ships 8).
@@ -10,16 +12,18 @@ import { createLmStudioProvider } from "./lm-studio.js";
 interface FakeFetchCapture {
   url: string;
   init: RequestInit;
+  urls: string[];
 }
 
 function makeFakeFetch(body: unknown, status = 200): {
   fetch: typeof fetch;
   capture: FakeFetchCapture;
 } {
-  const capture: FakeFetchCapture = { url: "", init: {} };
+  const capture: FakeFetchCapture = { url: "", init: {}, urls: [] };
   const fakeFetch = (async (url: string, init: RequestInit) => {
     capture.url = url;
     capture.init = init;
+    capture.urls.push(url);
     return new Response(JSON.stringify(body), {
       status,
       headers: { "content-type": "application/json" },
@@ -177,5 +181,102 @@ describe("Phase 4 LM Studio adapter", () => {
       Object.prototype.hasOwnProperty.call(headers, "authorization") ||
       Object.prototype.hasOwnProperty.call(headers, "Authorization");
     expect(hasAuth).toBe(false);
+  });
+});
+
+describe("Phase 34: LM Studio quirks + negotiateCapabilities (registry-only)", () => {
+  it("Test 1: factory return narrows to expose quirks + negotiateCapabilities", () => {
+    const { fetch } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createLmStudioProvider({ model: "local-template", fetch });
+    // quirks must be present and be the LmStudioQuirks type
+    expect(adapter.quirks).toBeDefined();
+    expect(typeof adapter.quirks).toBe("object");
+    // negotiateCapabilities must be a function
+    expect(typeof adapter.negotiateCapabilities).toBe("function");
+    // Verify the narrowed quirks type fields exist
+    const q = adapter.quirks as LmStudioQuirks;
+    expect(typeof q.supportsToolChoice).toBe("boolean");
+    expect(typeof q.customChatTemplateRiskFlag).toBe("boolean");
+    expect(typeof q.noAuthRequired).toBe("boolean");
+  });
+
+  it("Test 2: quirks block populated per RESEARCH Q6/Pattern 2 LM Studio vocabulary", () => {
+    const adapter = createLmStudioProvider({ model: "local-template" });
+    const q = adapter.quirks as LmStudioQuirks;
+    // 5 universal booleans (conservative defaults for local quantized models)
+    expect(q.supportsToolChoice).toBe(false);
+    expect(q.parallelToolCalls).toBe(false);
+    expect(q.structuredOutputs).toBe(false);
+    expect(q.responseFormatHonored).toBe(false);
+    // streamingDiverges: true -- some LM Studio chat templates produce different output streaming vs buffered
+    expect(q.streamingDiverges).toBe(true);
+    // LM Studio-specific flags
+    // CITED: lmstudio-bug-tracker issue 1342 -- Jinja template mismatches cause output format corruption
+    expect(q.customChatTemplateRiskFlag).toBe(true);
+    // VERIFIED: lm-studio.ts:35-37 -- apiKey is optional; local LM Studio needs no auth
+    expect(q.noAuthRequired).toBe(true);
+  });
+
+  it("Test 3: negotiateCapabilities('local-template') resolves with source: registry + registry data", async () => {
+    const adapter = createLmStudioProvider({ model: "local-template" });
+    const result: NegotiatedCapabilities = await adapter.negotiateCapabilities("local-template");
+    // Source must always be "registry" (no fetch, no /models endpoint)
+    expect(result.source).toBe("registry");
+    expect(result.modelId).toBe("local-template");
+    // Phase 33 static profile: lm-studio:local-template has contextWindow: 8192
+    expect(result.contextWindow).toBe(8192);
+    // local_quantized class has limited capabilities -- these booleans should reflect registry profile
+    expect(typeof result.supports.nativeToolCalling).toBe("boolean");
+    expect(typeof result.supports.structuredOutputs).toBe("boolean");
+    // knownFailureModes from registry: local_quantized has 5 failure modes per Phase 33 D-14
+    expect(Array.isArray(result.knownFailureModes)).toBe(true);
+    expect(result.knownFailureModes.length).toBeGreaterThan(0);
+    // recommendedSanitizers: local_quantized has template_artifact_leak + internal_envelope_leak
+    // -> maps to stripChatTemplateArtifacts + unwrapInternalEnvelope
+    expect(Array.isArray(result.recommendedSanitizers)).toBe(true);
+    expect(result.recommendedSanitizers.length).toBeGreaterThan(0);
+    expect(result.recommendedSanitizers).toContain("stripChatTemplateArtifacts");
+    expect(result.recommendedSanitizers).toContain("unwrapInternalEnvelope");
+  });
+
+  it("Test 4: negotiateCapabilities('unknown-local-model-xyz') returns empty-stub with source: registry", async () => {
+    const adapter = createLmStudioProvider({ model: "unknown-local-model-xyz" });
+    const result = await adapter.negotiateCapabilities("unknown-local-model-xyz");
+    expect(result.source).toBe("registry");
+    // Not in registry -> empty stub
+    expect(result.contextWindow).toBe(0);
+    expect(result.knownFailureModes).toEqual([]);
+    expect(result.recommendedSanitizers).toEqual([]);
+    expect(result.supports.nativeToolCalling).toBe(false);
+    expect(result.supports.structuredOutputs).toBe(false);
+    expect(result.supports.parallelToolCalls).toBe(false);
+  });
+
+  it("Test 5: no fetch is EVER called for negotiate() -- registry-only path", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createLmStudioProvider({ model: "local-template", fetch });
+    await adapter.negotiateCapabilities("local-template");
+    // The mocked fetch must never have been called
+    expect(capture.urls.length).toBe(0);
+  });
+
+  it("Test 6: runEventSink receives zero events for registry-only path (per RESEARCH Open Question 5)", async () => {
+    const eventSink = vi.fn();
+    const adapter = createLmStudioProvider({
+      model: "local-template",
+      runEventSink: eventSink,
+    });
+    await adapter.negotiateCapabilities("local-template");
+    // No event should be emitted for source: "registry" (intentional no-endpoint)
+    expect(eventSink).not.toHaveBeenCalled();
+  });
+
+  it("Test 7: backward-compat -- existing Phase 4 tests continue to pass (factory still has execute, id, capabilities)", () => {
+    const { fetch } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createLmStudioProvider({ model: "qwen2.5-coder-32b-instruct", fetch });
+    expect(adapter.kind).toBe("provider-adapter");
+    expect(adapter.id).toBe("lm-studio");
+    expect(typeof adapter.execute).toBe("function");
+    expect(Array.isArray(adapter.capabilities)).toBe(true);
   });
 });

@@ -3,7 +3,7 @@
 **Milestone:** v1.3
 **Goal:** Cut Lattice's first public npm release under `@fullselfbrowsing/*` with OIDC Trusted Publisher + provenance attestations, then prove correctness end-to-end via a separately-repo'd canary consumer that exercises the public API against real providers.
 
-**Phase numbering:** Continues from v1.2 (last phase 23). v1.3 spans **Phases 24-32**.
+**Phase numbering:** Continues from v1.2 (last phase 23). v1.3 spans **Phases 24-33** (Phases 24-32 cover publish + canary; Phase 33 adds the Model Capability Registry).
 
 **Source:** Scope locked in conversation 2026-06-03; cross-referenced against `.planning/research/SUMMARY.md` and per-dimension research (STACK / FEATURES / ARCHITECTURE / PITFALLS).
 
@@ -104,11 +104,27 @@
 - [ ] **DISPATCH-02**: Canary `refresh-lattice.yml` listens for `lattice-published` event, bumps both deps to the new exact versions, opens a PR with auto-merge enabled (subject to canary unit suite passing)
 - [ ] **DISPATCH-03**: `CANARY_DISPATCH_TOKEN` configured as fine-grained PAT scoped to `fullselfbrowsing/lattice-canary` only with `contents: write` + `pull-requests: write`; documented in `SECURITY.md` as the one acceptable long-lived secret
 
+### Model Capability Registry (`CAPS-*`)
+
+- [ ] **CAPS-01**: Typed `ModelCapabilityProfile` interface in `packages/lattice/src/capabilities/profile.ts` carrying 9 readonly fields (`id`, `adapter`, `originFamily`, `trainingClass`, `reasoningSurface`, `toolCallSurface`, `contextWindow`, `knownFailureModes`, `recommendedPromptStrategy`) plus 6 supporting closed string-literal unions (`TrainingClass`, `RecommendedPromptStrategy`, `KnownFailureMode`, `ReasoningSurface`, `ToolCallSurface`, `CapabilityAdapter`). All re-exported from `packages/lattice/src/index.ts` per PKG-01 / INDEX-01 v1.2 discipline. `trainingClass` and `recommendedPromptStrategy` are two distinct enums (research open question 2). tsd type-level tests prove exhaustive `KnownFailureMode` coverage at compile time via the `_exhaustive: never` switch pattern (D-12 / D-13).
+- [ ] **CAPS-02**: Strict lookup `getCapabilityProfile(canonicalKey: string): ModelCapabilityProfile | undefined` (D-09) and fuzzy lookup `findCapabilityProfile(id: string): ModelCapabilityProfile[]` (D-10) in `packages/lattice/src/capabilities/lookup.ts`. Suffix-strip helper `stripOpenRouterVariant(id)` strips `:free` and `:thinking` from OpenRouter-shaped ids (`vendor/model:variant`) only; other adapters pass through verbatim (D-11). `Map<string, ModelCapabilityProfile>` built lazily at first call. Adapter order for fuzzy lookup: anthropic, openai, gemini, xai, openai-compat, lm-studio, openrouter (direct adapters first, openrouter last per D-10).
+- [ ] **CAPS-03**: Build-time generator `scripts/refresh-model-registry.mjs` fetches `https://openrouter.ai/api/v1/models`, classifies each row via `scripts/capabilities/classifier.mjs` (hybrid: provider-prefix heuristic + ~20-entry family-substring overrides per D-01 / D-03), sorts by (adapter, id), emits `packages/lattice/src/capabilities/registry.generated.ts`. Skips `~`-prefixed `*-latest` aliases (Pitfall 3). Uses `top_provider.context_length ?? context_length` for contextWindow (Pitfall 2 / A1). `--check` mode regenerates and diffs against committed file; non-zero exit on bit-exact drift (D-17). OpenRouter fetch failure in `--check` mode skips with WARN and exits 0 (D-18). Zero external runtime dependencies (`node:` built-ins only). Vitest classifier tests against frozen fixture (D-16).
+- [ ] **CAPS-04**: `.github/workflows/registry-drift.yml` runs on `schedule: '0 6 * * 1'` (Monday 06:00 UTC) plus `workflow_dispatch` (D-19). Job-scoped `permissions: { contents: write, pull-requests: write }`. Steps: `actions/checkout` (SHA-pinned), `pnpm/action-setup`, `actions/setup-node`, `pnpm install --frozen-lockfile`, regenerate registry, `peter-evans/create-pull-request@v8.1.1` (SHA `5f6978faf089d4d20b00c7766989d076bb2fc7f1` per CI-02) with `branch: chore/refresh-model-registry` (fixed) + `delete-branch: true` (Pitfall 5). PR-time `ci.yml` does NOT call OpenRouter (D-19 network-free PR loop). Repo setting "Allow GitHub Actions to create and approve pull requests" required (documented as Phase 27 prerequisite handoff).
+- [ ] **CAPS-05**: Static supplemental profiles in `packages/lattice/src/capabilities/registry.static.ts` covering models OpenRouter does not surface: `anthropic:claude-opus-4`, `gemini:gemini-2.5-pro`, `xai:grok-4`, `lm-studio:<local-template>` (generic local-quantized template). Hand-edited sibling file (separate from generated). Lookup module merges generated + static at Map-build time. Registry covers >=200 distinct profiles at v1.3.0 cut (341 OpenRouter rows minus 8 `~`-aliases plus 4 static profiles -> ~337 distinct profiles, well above threshold).
+
+### Adapter Quirk Flags + Capability Negotiation API (`QUIRK-*` / `NEG-*`)
+
+- [x] **QUIRK-01**: `AdapterQuirks` base interface in `packages/lattice/src/providers/quirks.ts` exposing 5 universal readonly booleans: `supportsToolChoice`, `parallelToolCalls`, `structuredOutputs`, `responseFormatHonored`, `streamingDiverges`; 7 per-adapter narrowed sub-interfaces (`AnthropicQuirks`, `OpenAIQuirks`, `OpenAICompatQuirks`, `GeminiQuirks`, `XaiQuirks`, `OpenRouterQuirks`, `LmStudioQuirks`) each extending `AdapterQuirks` with provider-specific flags (D-03). `quirks?: AdapterQuirks` added as OPTIONAL field to `ProviderAdapter` (D-01 non-breaking for v1.2 consumer adapters). All 8 types re-exported from `packages/lattice/src/index.ts` per PKG-01 / INDEX-01 discipline. tsd type-level tests (`test-d/quirks-negotiation.test-d.ts`) assert the 5 base booleans, `AnthropicQuirks extends AdapterQuirks` via `expectAssignable`, and backward-compatibility of existing 4-field consumer adapter literals. `SanitizerKey` closed union (`"stripReasoningTags" | "stripChatTemplateArtifacts" | "unwrapInternalEnvelope"`) + `SANITIZER_BY_FAILURE_MODE: Record<KnownFailureMode, SanitizerKey | null>` + `getRecommendedSanitizers` helper in `packages/lattice/src/capabilities/sanitizer-recommendations.ts` (D-13/D-14/D-15/D-16) re-exported from index.
+- [x] **QUIRK-02**: Each of the 7 first-party adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) returns an adapter object whose `quirks` block is populated with values matching real provider behavior per Phase 34 RESEARCH §Q6 / per-adapter quirks vocabulary; per-adapter quirk-fixture vitest tests assert each value.
+- [x] **QUIRK-03**: Per-adapter `quirks` narrowing accessible via discriminant check on `adapter.id`; tsd type-level test (`test-d/quirks-negotiation.test-d.ts`) asserts that `if (adapter.id === "anthropic")` narrows `adapter.quirks` to `AnthropicQuirks` and exposes `promptCachingSupported` / `extendedThinkingSupported` / `toolUseInputSchemaStrict` (consumer MUST cast via `adapter.quirks as AnthropicQuirks` or use typed factory return per D-03 discriminant-narrowing contract).
+- [x] **NEG-01**: `negotiateCapabilities?(modelId: string): Promise<NegotiatedCapabilities>` OPTIONAL method on `ProviderAdapter` (D-02). Top-level helper `negotiateCapabilities(adapter, modelId)` in `packages/lattice/src/capabilities/negotiate.ts` delegates to `adapter.negotiateCapabilities` when present; otherwise synthesizes from Phase 33 registry via `getCapabilityProfile("${adapter.id}:${modelId}")` with `source: "registry"` (D-04). All 7 first-party adapters with `/models` endpoints (Anthropic, OpenAI, Gemini, OpenRouter) implement; 3 without (xAI sparse, OpenAI-compat, LM Studio) fall back per D-04. Per-instance TTL cache (`modelsCacheTtlMs` factory option, default 300000ms, 0 disables, Infinity = process-lifetime per D-08); single-flight inflight-coalescing via `Map<modelId, Promise<T>>` with `.finally` cleanup (Pitfall 4 mandatory). `NegotiatedCapabilities` interface: `modelId`, `contextWindow`, `supports: { nativeToolCalling, structuredOutputs, parallelToolCalls, extendedThinking, streaming }`, `knownFailureModes`, `recommendedSanitizers`, `source: "live" | "registry-fallback" | "registry"`. `NegotiationAuthError extends Error` with `adapter: CapabilityAdapter`, `modelId: string`, `httpStatus: 401 | 403`, `kind = "negotiation-auth-failed" as const`. All public types and helpers re-exported from `packages/lattice/src/index.ts`.
+- [x] **NEG-02**: Fetch-failure policy: transient errors (5xx, network, timeout) fall back to Phase 33 registry with `source: "registry-fallback"` (D-09); auth errors (401/403) throw `NegotiationAuthError extends Error` carrying `adapter: CapabilityAdapter`, `modelId: string`, `httpStatus: 401 | 403` (D-10). Retry policy: 2 retries with exponential backoff [0ms, 200ms, 1000ms] = 3 total attempts before fallback (D-11); `modelsRetryCount` factory option (default 2, 0 disables). New `RunEventKind` literal `"capabilities.negotiation.fallback"` (D-12) added to `packages/lattice/src/tracing/tracing.ts` as the last union member with JSDoc comment. Anchor case study (`session_1780792387779`): `negotiateCapabilities(openrouterAdapter, "openai/gpt-oss-120b:free")` resolves with `recommendedSanitizers.includes("unwrapInternalEnvelope")` AND `knownFailureModes.includes("internal_envelope_leak")`.
+
 ---
 
 ## Total Requirements
 
-**54 REQ-IDs** across **13 categories** mapped to **Phases 24-32** (9 phases).
+**64 REQ-IDs** across **15 categories** mapped to **Phases 24-34** (11 phases).
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -125,6 +141,8 @@
 | INTEG | 6 | Phase 31 |
 | COST | 4 | Phase 31 |
 | DISPATCH | 3 | Phase 32 |
+| CAPS | 5 | Phase 33 |
+| QUIRK / NEG | 5 | Phase 34 |
 
 ---
 
@@ -222,10 +240,21 @@ Each REQ-ID maps to exactly one phase. Plan placeholders (`TBD`) will be filled 
 | DISPATCH-01 | Phase 32 | TBD | pending |
 | DISPATCH-02 | Phase 32 | TBD | pending |
 | DISPATCH-03 | Phase 32 | TBD | pending |
+| CAPS-01 | Phase 33 | 33-01 | pending |
+| CAPS-02 | Phase 33 | 33-02 | pending |
+| CAPS-03 | Phase 33 | 33-03 | pending |
+| CAPS-04 | Phase 33 | 33-05 | pending |
+| CAPS-05 | Phase 33 | 33-04 | pending |
+| QUIRK-01 | Phase 34 | 34-01 | pending |
+| QUIRK-02 | Phase 34 | 34-02 / 34-03 / 34-04 / 34-05 | pending |
+| QUIRK-03 | Phase 34 | 34-01 | pending |
+| NEG-01 | Phase 34 | 34-01 | pending |
+| NEG-02 | Phase 34 | 34-02 / 34-03 / 34-04 | pending |
 
-**Coverage:** 54 / 54 v1.3 REQ-IDs mapped. No orphans. No duplicates.
+**Coverage:** 64 / 64 v1.3 REQ-IDs mapped. No orphans. No duplicates.
 
 ---
 
 *Created: 2026-06-03 — Milestone v1.3 (Public Release + Canary Validation) opened*
 *Traceability filled: 2026-06-03 — by gsd-roadmapper during v1.3 roadmap creation*
+*Phase 34 REQ-IDs (QUIRK-01..03 + NEG-01..02) added: 2026-06-08 — Plan 34-01*

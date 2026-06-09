@@ -1,0 +1,132 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Phase 33 classifier — golden fixture snapshot (CAPS-03 stability gate) > classifies the frozen 10-entry fixture deterministically 1`] = `
+[
+  {
+    "classification": {
+      "knownFailureModes": [
+        "internal_envelope_leak",
+        "system_prompt_echo",
+        "malformed_tool_arguments",
+      ],
+      "originFamily": "openai",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "open_weight",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "open_weight_instruct",
+    },
+    "id": "openai/gpt-oss-120b",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [
+        "internal_envelope_leak",
+        "system_prompt_echo",
+        "malformed_tool_arguments",
+      ],
+      "originFamily": "openai",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "open_weight",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "open_weight_instruct",
+    },
+    "id": "openai/gpt-oss-120b:free",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [],
+      "originFamily": "anthropic",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "frontier",
+      "toolCallSurface": "native_strict",
+      "trainingClass": "frontier_rlhf",
+    },
+    "id": "anthropic/claude-3.5-sonnet",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [
+        "system_prompt_echo",
+      ],
+      "originFamily": "anthropic",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "mid_tier",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "mid_tier_rlhf",
+    },
+    "id": "anthropic/claude-3-haiku",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [],
+      "originFamily": "openai",
+      "reasoningSurface": "hidden_cot",
+      "recommendedPromptStrategy": "frontier",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "frontier_rlhf",
+    },
+    "id": "openai/o1",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [
+        "internal_envelope_leak",
+        "system_prompt_echo",
+        "malformed_tool_arguments",
+        "reasoning_tag_leak",
+      ],
+      "originFamily": "deepseek",
+      "reasoningSurface": "inlined_tags",
+      "recommendedPromptStrategy": "open_weight",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "open_weight_instruct",
+    },
+    "id": "deepseek/deepseek-r1",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [
+        "internal_envelope_leak",
+        "system_prompt_echo",
+        "malformed_tool_arguments",
+      ],
+      "originFamily": "qwen",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "open_weight",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "open_weight_instruct",
+    },
+    "id": "qwen/qwen-2.5-72b-instruct",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [],
+      "originFamily": "google",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "frontier",
+      "toolCallSurface": "native_strict",
+      "trainingClass": "frontier_rlhf",
+    },
+    "id": "google/gemini-2.0-flash-001",
+  },
+  {
+    "classification": {
+      "knownFailureModes": [
+        "internal_envelope_leak",
+        "system_prompt_echo",
+        "malformed_tool_arguments",
+      ],
+      "originFamily": "meta",
+      "reasoningSurface": "none",
+      "recommendedPromptStrategy": "open_weight",
+      "toolCallSurface": "native_lenient",
+      "trainingClass": "open_weight_instruct",
+    },
+    "id": "meta-llama/llama-3.3-70b-instruct",
+  },
+  {
+    "classification": null,
+    "id": "~anthropic/claude-sonnet-latest",
+  },
+]
+`;
