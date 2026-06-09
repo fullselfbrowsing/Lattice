@@ -8,6 +8,7 @@
 //     compliance per 09-CONTEXT.md "I-JSON only" decision.
 
 import type { TripwireEvidence } from "../contract/tripwire.js";
+import type { TrainingClass } from "../capabilities/profile.js";
 import type { RouteRejectReason } from "../plan/plan.js";
 
 export type ContractVerdict =
@@ -40,13 +41,20 @@ export interface ReceiptRedaction {
 }
 
 export interface CapabilityReceiptBody {
-  readonly version: "lattice-receipt/v1" | "lattice-receipt/v1.1";
+  readonly version:
+    | "lattice-receipt/v1"
+    | "lattice-receipt/v1.1"
+    | "lattice-receipt/v1.2";
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
   readonly kid: string;
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
+  // Phase 38 v1.2 model-class tag. Optional for legacy v1.1 receipts and
+  // synthetic/unknown routes; populated from the strict Phase 33 registry when
+  // runtime issuance has a known selected provider/model.
+  readonly modelClass?: TrainingClass;
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
