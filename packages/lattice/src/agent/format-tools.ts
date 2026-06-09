@@ -211,30 +211,30 @@ export function formatToolsForProvider(
     return lines.join("\n");
   }
 
-  function parseToolUse(responseText: string): ReadonlyArray<ToolUseRequest> | null {
-    if (typeof responseText !== "string" || responseText.length === 0) {
-      return null;
-    }
-    const candidates = extractJsonCandidates(responseText);
-    for (const candidate of candidates) {
-      const parsed = tryParseEnvelope(candidate);
-      if (parsed !== null) {
-        return parsed;
-      }
-    }
-    return null;
-  }
-
   function describeForSystem(): string {
     return systemBlock;
   }
 
   return {
     buildTask,
-    parseToolUse,
+    parseToolUse: parseToolUseEnvelope,
     describeForSystem,
     mode: "prompt-reencoded",
   };
+}
+
+export function parseToolUseEnvelope(responseText: string): ReadonlyArray<ToolUseRequest> | null {
+  if (typeof responseText !== "string" || responseText.length === 0) {
+    return null;
+  }
+  const candidates = extractJsonCandidates(responseText);
+  for (const candidate of candidates) {
+    const parsed = tryParseEnvelope(candidate);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
 }
 
 /**

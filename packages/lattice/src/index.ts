@@ -55,6 +55,7 @@ export {
 export { runAgent } from "./agent/runtime.js";
 export {
   formatToolsForProvider,
+  parseToolUseEnvelope,
   toolSchemaToJsonSchema,
 } from "./agent/format-tools.js";
 export { AgentDeniedError } from "./agent/types.js";
@@ -134,6 +135,12 @@ export { createMemorySessionStore } from "./sessions/session.js";
 export { createLocalArtifactStore } from "./storage/local.js";
 export { createMemoryArtifactStore } from "./storage/memory.js";
 export { defineTool, importMcpTools, runTool, toolArtifactRef } from "./tools/tools.js";
+export { ToolCallValidationError } from "./tools/tool-call-validation.js";
+export type {
+  ToolCallValidationFailureReason,
+  ValidateToolCallsOption,
+  ValidatedToolCall,
+} from "./tools/tool-call-validation.js";
 export { latticeVersion } from "./version.js";
 
 export type { AI, RunIntent } from "./runtime/create-ai.js";

@@ -2,6 +2,7 @@ import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import type { ContextPack } from "../context/context-pack.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { ExecutionPlan, ProviderPackagingPlan, UsageRecord } from "../plan/plan.js";
+import type { ValidatedToolCall } from "../tools/tool-call-validation.js";
 // Phase 34 — D-01 / D-02 optional fields on ProviderAdapter (non-breaking for
 // v1.2 consumer adapters; existing 4-field literals still satisfy the interface)
 import type { AdapterQuirks } from "./quirks.js";
@@ -116,6 +117,7 @@ export interface ProviderRunResponse {
    * 07-CONTEXT.md — distinguishes "free" from "unmeasured").
    */
   readonly normalizedUsage?: Usage;
+  readonly toolCalls?: readonly ValidatedToolCall[];
   readonly rawResponse?: unknown;
 }
 
