@@ -40,6 +40,7 @@ import type {
   ReceiptEnvelope,
   ReceiptSigner,
   ReplayEnvelope,
+  TrainingClass,
   TripwireEvidence,
   TripwireResult,
   TripwireViolationError,
@@ -265,6 +266,9 @@ describe("Phase 9 public surface", () => {
 
   it("type-only: Phase 9 types compile and are reachable from the consumer-visible path", () => {
     const _body: CapabilityReceiptBody | undefined = undefined;
+    const _class: TrainingClass | undefined = undefined;
+    const _bodyModelClass: CapabilityReceiptBody["modelClass"] | undefined =
+      _class;
     const _envelope: ReceiptEnvelope | undefined = undefined;
     const _signer: ReceiptSigner | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
@@ -273,6 +277,7 @@ describe("Phase 9 public surface", () => {
     const _verdict: ContractVerdict | undefined = undefined;
     // touch to silence unused-var lint
     void _body;
+    void _bodyModelClass;
     void _envelope;
     void _signer;
     void _keyState;

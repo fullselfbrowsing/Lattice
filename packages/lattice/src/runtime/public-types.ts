@@ -58,6 +58,7 @@ export type {
   UsageRecord,
 } from "../plan/plan.js";
 export type { PolicySpec } from "../policy/policy.js";
+export type { TrainingClass } from "../capabilities/profile.js";
 export type {
   CapabilityModality,
   ModelCapability,
