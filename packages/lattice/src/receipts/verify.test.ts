@@ -60,6 +60,21 @@ function entryWith(
   return { kid, publicKeyJwk, state };
 }
 
+async function signBody(
+  body: CapabilityReceiptBody,
+  signer: ReceiptSigner,
+): Promise<ReceiptEnvelope> {
+  const payloadBytes = canonicalizeReceiptBody(body);
+  const payload = base64Encode(payloadBytes);
+  const pae = buildPae(PAYLOAD_TYPE, payload);
+  const sig = await signer.sign(pae);
+  return {
+    payloadType: PAYLOAD_TYPE,
+    payload,
+    signatures: [{ keyid: signer.kid, sig: base64Encode(sig) }],
+  };
+}
+
 describe("verify.ts — happy path", () => {
   it("returns ok=true with keyState='active' for a freshly-signed receipt", async () => {
     const { signer, publicKeyJwk } = await makeSigner("k1");
@@ -68,8 +83,8 @@ describe("verify.ts — happy path", () => {
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Phase 26 (CRYPTO-01): createReceipt always emits v1.1.
-      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.modelClass).toBeUndefined();
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
     }
@@ -221,7 +236,7 @@ describe("verify.ts — error kinds", () => {
     const { signer, publicKeyJwk } = await makeSigner("k1");
     const keySet = createMemoryKeySet([entryWith("k1", publicKeyJwk, "active")]);
 
-    // Manually craft a v2 body — bypasses createReceipt's v1 enforcement.
+    // Manually craft a v2 body — bypasses createReceipt's v1.2 minting rule.
     const v2Body = {
       version: "lattice-receipt/v2",
       receiptId: "00000000-0000-4000-8000-000000000000",
@@ -263,7 +278,7 @@ describe("verify.ts — error kinds", () => {
     // Hand-craft a body where body.kid = "different" but the envelope's
     // signature is over THIS canonical form, signed by the real "actual" key.
     // Uses v1.1 so the body clears the schema-version-too-low gate and
-    // reaches the body.kid mismatch check at step 8 of the decision tree.
+    // reaches the body.kid mismatch check at step 9 of the decision tree.
     const body: CapabilityReceiptBody = {
       version: "lattice-receipt/v1.1",
       receiptId: "00000000-0000-4000-8000-000000000000",
@@ -280,15 +295,7 @@ describe("verify.ts — error kinds", () => {
       redactionPolicyId: "lattice.default.v1",
       redactions: [],
     };
-    const payloadBytes = canonicalizeReceiptBody(body);
-    const payload = base64Encode(payloadBytes);
-    const pae = buildPae(PAYLOAD_TYPE, payload);
-    const sig = await signer.sign(pae);
-    const env: ReceiptEnvelope = {
-      payloadType: PAYLOAD_TYPE,
-      payload,
-      signatures: [{ keyid: "actual", sig: base64Encode(sig) }],
-    };
+    const env = await signBody(body, signer);
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -359,21 +366,31 @@ describe("verify.ts — purity", () => {
   });
 });
 
-describe("verify.ts — v1.1 backward-compatible verification (Phase 2)", () => {
-  it("accepts a v1.1 receipt envelope (round-trip mint + verify)", async () => {
+describe("verify.ts — v1.1/v1.2 schema compatibility", () => {
+  it("accepts a hand-crafted signed v1.1 receipt envelope", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-2-verify-key");
-    const env = await createReceipt(
-      {
-        ...minimalInput(),
-        runId: "phase-2-verify-run",
-        stepName: "v11-verify-test",
-        stepIndex: 0,
-      },
-      signer,
-    );
     const keySet = createMemoryKeySet([
       entryWith("phase-2-verify-key", publicKeyJwk, "active"),
     ]);
+    const body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.1",
+      receiptId: "00000000-0000-4000-8000-000000000000",
+      runId: "phase-2-verify-run",
+      issuedAt: "2026-05-24T00:00:00.000Z",
+      kid: "phase-2-verify-key",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+      stepName: "v11-verify-test",
+      stepIndex: 0,
+    };
+    const env = await signBody(body, signer);
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
@@ -383,12 +400,31 @@ describe("verify.ts — v1.1 backward-compatible verification (Phase 2)", () => 
     }
   });
 
-  it("emits version-mismatch when body.version is neither v1 nor v1.1", async () => {
+  it("accepts a signed v1.2 receipt with modelClass", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("phase-38-verify-key");
+    const env = await createReceipt(
+      minimalInput({
+        modelClass: "frontier_rlhf",
+        runId: "phase-38-verify-run",
+      }),
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("phase-38-verify-key", publicKeyJwk, "active"),
+    ]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.modelClass).toBe("frontier_rlhf");
+    }
+  });
+
+  it("emits version-mismatch when body.version is not v1, v1.1, or v1.2", async () => {
     // Construct a synthetic envelope with a payload encoding version
     // "lattice-receipt/v9". The structural check at Step 3 of the decision
-    // tree fires BEFORE keyset lookup (Step 4) and signature verification
-    // (Step 6), so the version-mismatch verdict is returned regardless of
-    // signature validity.
+    // tree fires before keyset lookup and signature verification, so the
+    // version-mismatch verdict is returned regardless of signature validity.
     const fakeBody = {
       version: "lattice-receipt/v9",
       receiptId: "00000000-0000-4000-8000-000000000000",
@@ -433,12 +469,12 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
       entryWith("crypto-01-undef", publicKeyJwk, "active"),
     ]);
 
-    // Build a valid v1.1 body, then construct a sibling object with the
+    // Build a valid v1.2 body, then construct a sibling object with the
     // `version` field stripped. CapabilityReceiptBody.version is a required
     // literal union at compile time; the only way to model "absent version"
     // is to spread an Omit type at the value level.
     const valid: CapabilityReceiptBody = {
-      version: "lattice-receipt/v1.1",
+      version: "lattice-receipt/v1.2",
       receiptId: "00000000-0000-4000-8000-000000000000",
       runId: "downgrade-undef",
       issuedAt: "2026-06-06T00:00:00.000Z",
@@ -457,32 +493,16 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     void _ignored;
     const stripped = rest as unknown as CapabilityReceiptBody;
 
-    const payloadBytes = canonicalizeReceiptBody(stripped);
-    const payload = base64Encode(payloadBytes);
-    const pae = buildPae(PAYLOAD_TYPE, payload);
-    const sig = await signer.sign(pae);
-    const env: ReceiptEnvelope = {
-      payloadType: PAYLOAD_TYPE,
-      payload,
-      signatures: [{ keyid: "crypto-01-undef", sig: base64Encode(sig) }],
-    };
+    const env = await signBody(stripped, signer);
 
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      // Body fails asReceiptBody first (version absent -> structural shape
-      // check returns undefined -> version-mismatch), OR if the structural
-      // gate is bypassed, the downgrade branch fires. Either outcome proves
-      // the codebase rejects version-absent receipts. We assert the strongest
-      // available verdict surface: the runtime never returns ok=true here.
-      expect(
-        result.error.kind === "schema-version-too-low" ||
-          result.error.kind === "version-mismatch",
-      ).toBe(true);
+      expect(result.error.kind).toBe("schema-version-too-low");
     }
   });
 
-  it("rejects a receipt whose body.version equals 'lattice-receipt/v1' (downgrade attack)", async () => {
+  it("rejects a signed v1 receipt with modelClass (downgrade attack)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-v1");
     const keySet = createMemoryKeySet([
       entryWith("crypto-01-v1", publicKeyJwk, "active"),
@@ -508,16 +528,9 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
       outputHash: null,
       redactionPolicyId: "lattice.default.v1",
       redactions: [],
+      modelClass: "local_quantized",
     };
-    const payloadBytes = canonicalizeReceiptBody(v1Body);
-    const payload = base64Encode(payloadBytes);
-    const pae = buildPae(PAYLOAD_TYPE, payload);
-    const sig = await signer.sign(pae);
-    const env: ReceiptEnvelope = {
-      payloadType: PAYLOAD_TYPE,
-      payload,
-      signatures: [{ keyid: "crypto-01-v1", sig: base64Encode(sig) }],
-    };
+    const env = await signBody(v1Body, signer);
 
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(false);
@@ -526,7 +539,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     }
   });
 
-  it("accepts a normally-minted v1.1 receipt (positive control regression guard)", async () => {
+  it("accepts a normally-minted v1.2 receipt (positive control regression guard)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
     const env = await createReceipt(
       {
@@ -543,7 +556,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.version).toBe("lattice-receipt/v1.2");
       expect(result.body.stepName).toBe("crypto-01-positive");
     }
   });
