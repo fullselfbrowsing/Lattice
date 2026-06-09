@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: ready_to_discuss
-stopped_at: Phase 37 complete; ready to discuss Phase 38
-last_updated: "2026-06-09T21:39:24.000Z"
-last_activity: 2026-06-09 -- Phase 37 complete; tool-call validation verified
+stopped_at: Phase 37 UAT complete; ready to discuss Phase 38
+last_updated: "2026-06-09T22:37:23.000Z"
+last_activity: 2026-06-09 -- Phase 37 UAT complete; ready to discuss Phase 38
 progress:
   total_phases: 16
   completed_phases: 10
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 Phase: 38 (Receipt v1.2 Schema + modelClass Tag) — NOT STARTED
 Plan: Not started
 Status: Ready to discuss Phase 38
-Last activity: 2026-06-09 -- Phase 37 complete; tool-call validation verified
+Last activity: 2026-06-09 -- Phase 37 UAT complete; ready to discuss Phase 38
 
 Progress: [██████░░░░] 63% (10/16 v1.3 phases complete; 6 phases remaining)
 
@@ -63,6 +63,7 @@ Recent decisions affecting current work:
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
 - [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36, 37. Remaining: 38, 39, 29, 30, 31, 32.
+- [v1.3 Adapter hardening]: Output sanitizers and returned tool-call validators are opt-in adapter options, preserving default v1.2 behavior while giving consumers model-shape guardrails.
 
 ### Pending Todos
 
@@ -89,9 +90,10 @@ Recent decisions affecting current work:
 | 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
 | 2026-06-09 | Plan Phase 37 tool-call validation layer | Authored VALID requirements, inline research/pattern map, and 3 execution plans after GSD subagent research failed with `Unsupported service_tier: flex`. |
 | 2026-06-09 | Execute Phase 37 tool-call validation layer | Added opt-in returned tool-call validation across all 7 adapters, normalized `ProviderRunResponse.toolCalls`, runtime preference for validated calls, all-seven parity tests, package type tests, and changeset. |
+| 2026-06-09 | Verify Phase 37 UAT | Completed conversational UAT with 4/4 checkpoints passed and 0 issues. |
 
 ## Session Continuity
 
-Last session: 2026-06-09T21:39:24Z
-Stopped at: Phase 37 complete; ready for Phase 38 discussion
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-09T22:37:23Z
+Stopped at: Phase 37 UAT complete; ready to discuss Phase 38
+Resume file: None
