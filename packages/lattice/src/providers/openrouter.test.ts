@@ -3,6 +3,7 @@ import { createOpenRouterProvider } from "./openrouter.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { RunEvent } from "../tracing/tracing.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 
 /**
  * Phase 4 OpenRouter adapter -- vitest cases (D-09 contract: 7 minimum; ships 7).
@@ -400,5 +401,30 @@ describe("Phase 34: OpenRouter quirks + negotiateCapabilities", () => {
     // Falls through to context_length (Pitfall 3 / A1 precedence chain)
     expect(result.contextWindow).toBe(99999);
     expect(result.source).toBe("live");
+  });
+});
+
+describe("Phase 36: OpenRouter output sanitizer", () => {
+  it("session_1780792387779 unwraps gpt-oss-120b internal envelope output", async () => {
+    const rawBody = {
+      choices: [{ message: { content: "{\"summary\":\"Greeted the user.\"}" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    };
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b:free",
+      apiKey: "sk-or-test",
+      fetch,
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user.");
+    expect(response.rawResponse).toEqual(rawBody);
   });
 });

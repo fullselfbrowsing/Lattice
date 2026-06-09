@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createXaiProvider } from "./xai.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
+import type { SanitizerFn } from "../sanitizers/index.js";
 
 /**
  * Phase 4 xAI adapter -- vitest cases.
@@ -437,5 +438,32 @@ describe("Phase 34: xAI quirks + negotiateCapabilities", () => {
     expect(retryCount()).toBe(3);
     expect(retryResult.source).toBe("live"); // grok-4 in registry + in fixture
     vi.useRealTimers();
+  });
+});
+
+describe("Phase 36: xAI output sanitizer", () => {
+  it("applies inherited sanitizer exactly once while preserving rawResponse", async () => {
+    const rawBody = {
+      choices: [{ message: { content: "Greeted the user." } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    };
+    const marker: SanitizerFn = (text) => `${text} [sanitized]`;
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test-key",
+      fetch,
+      sanitizeOutput: marker,
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user. [sanitized]");
+    expect(String(response.rawOutputs.text).match(/\[sanitized\]/gu)).toHaveLength(1);
+    expect(response.rawResponse).toEqual(rawBody);
   });
 });

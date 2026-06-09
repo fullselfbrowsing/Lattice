@@ -8,6 +8,7 @@ import { createFakeProvider } from "./fake.js";
 import type { ModelCapability } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 
 function makeFakeFetch(body: unknown, status = 200): typeof fetch {
   return (async () =>
@@ -533,5 +534,71 @@ describe("Phase 34: OpenAI-compat quirks + negotiateCapabilities (registry-only)
     await adapter.negotiateCapabilities("some-model");
     // No events should be fired — source: "registry" is the happy path, not a fallback
     expect(sinkCalls).toHaveLength(0);
+  });
+});
+
+describe("Phase 36: OpenAI-compatible output sanitizers", () => {
+  it("OpenAI-compatible adapter unwraps internal envelope output", async () => {
+    const rawBody = {
+      choices: [{ message: { content: "{\"summary\":\"Greeted the user.\"}" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    };
+    const adapter = createOpenAICompatibleProvider({
+      model: "openai/gpt-oss-120b",
+      baseUrl: "http://localhost:8080",
+      fetch: makeFakeFetch(rawBody),
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text", "summary"],
+    });
+
+    expect(response.rawOutputs).toEqual({
+      text: "Greeted the user.",
+      summary: "Greeted the user.",
+    });
+    expect(response.rawResponse).toEqual(rawBody);
+  });
+
+  it("OpenAI-compatible adapter preserves raw output when sanitizer is absent", async () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "openai/gpt-oss-120b",
+      baseUrl: "http://localhost:8080",
+      fetch: makeFakeFetch({
+        choices: [{ message: { content: "{\"summary\":\"Greeted the user.\"}" } }],
+        usage: {},
+      }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("{\"summary\":\"Greeted the user.\"}");
+  });
+
+  it("OpenAI adapter inherits sanitizer behavior from the OpenAI-compatible path", async () => {
+    const adapter = createOpenAIProvider({
+      model: "gpt-oss-120b",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({
+        choices: [{ message: { content: "{\"summary\":\"Greeted the user.\"}" } }],
+        usage: {},
+      }),
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user.");
   });
 });
