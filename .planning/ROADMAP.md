@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 68 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 42 / 68 authored REQ-IDs are complete. The 19 remaining planned REQ-IDs are for Phases 36-39 (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
+**Coverage:** 72 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 42 / 72 authored REQ-IDs are complete. The 15 remaining planned REQ-IDs are for Phases 37-39 (`VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -258,7 +258,11 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. Three default sanitizer implementations ship in `packages/lattice/src/sanitizers/`: `stripReasoningTags()` removes `<think>...</think>`, `<reasoning>...</reasoning>`, `<scratchpad>...</scratchpad>` and DeepSeek/Qwen QwQ tag families; `stripChatTemplateArtifacts()` removes leaked Llama/Mistral chat-template tokens; `unwrapInternalEnvelope(schemaOrPath)` accepts either a Zod schema or a dotted path and, when the model's response is a single JSON object matching that shape, extracts the designated user-facing field.
   3. A reproduction test loads the gpt-oss-120b transcript shape from `session_1780792387779` (`{"summary": "Greeted the user."}`), composes the OpenRouter adapter with `sanitizeOutput: unwrapInternalEnvelope({ field: "summary" })`, and asserts the consumer-visible output is the natural-language text only (not the JSON envelope).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 36-01-PLAN.md — Core sanitizer module + built-in factories + public exports + direct tests (SANITIZE-02, SANITIZE-03, SANITIZE-04)
+- [ ] 36-02-PLAN.md — OpenAI-compatible adapter family wiring: OpenAI-compatible, OpenAI, OpenRouter, xAI, LM Studio (SANITIZE-01, SANITIZE-03, SANITIZE-04)
+- [ ] 36-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (SANITIZE-01, SANITIZE-03, SANITIZE-04)
 
 ### Phase 37: Tool-Call Validation Layer (opt-in)
 
@@ -342,7 +346,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-68 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-35 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`) are authored and complete. The 19 remaining planned REQ-IDs (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 36-39. No authored orphans expected.
+72 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-35 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`) are authored and complete. Phase 36 (`SANITIZE`) is authored and planned. The 15 remaining planned REQ-IDs (`VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 37-39. No authored orphans expected.
 
 ## Progress
 
@@ -366,8 +370,8 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
 | 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
 | 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
-| 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
-| 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
+| 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
+| 36. Output Sanitizer Hook (opt-in) | 0/3 | Planned | - |
 | 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |
 | 38. Receipt v1.2 Schema + modelClass Tag | 0/0 | Not started | - |
 | 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |

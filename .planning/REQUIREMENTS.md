@@ -127,11 +127,18 @@
 - [x] **SCAFF-03**: The `open_weight` strategy explicitly distinguishes meta-instruction from literal output instruction. Structured-output and tool-use fragments include example-driven positive/negative framing that tells open-weight instruct models to follow the schema/tool contract without emitting the contract, internal envelope, or tool descriptor verbatim as the user-visible answer.
 - [x] **SCAFF-04**: Regression coverage includes per-strategy byte snapshots or exact-string assertions for both helpers, fake provider stubs modeling strategy behavior, and an anchor test for `session_1780792387779` / `openai/gpt-oss-120b` proving the open-weight scaffold prevents the internal-envelope leak that previously emitted `{"summary": "Greeted the user."}` as the reply.
 
+### Output Sanitizer Hook (`SANITIZE-*`)
+
+- [ ] **SANITIZE-01**: Each of the 7 real first-party provider adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) accepts optional `sanitizeOutput?: SanitizerFn | readonly SanitizerFn[]`. When absent, adapter behavior is unchanged. When present, string-valued `rawOutputs` are piped through the sanitizer(s) in order after provider response text extraction and before the adapter returns `ProviderRunResponse`; non-string outputs are preserved.
+- [ ] **SANITIZE-02**: Built-in sanitizer factories ship in `packages/lattice/src/sanitizers/` and root exports: `stripReasoningTags()`, `stripChatTemplateArtifacts()`, and `unwrapInternalEnvelope(schemaOrPath)`. Minimal public types include `SanitizerFn`, `SanitizerContext`, and `SanitizeOutputOption`; sanitizer context exposes provider id, optional model id, and output name only.
+- [ ] **SANITIZE-03**: `unwrapInternalEnvelope(...)` supports explicit dotted path usage and the anchor object form `unwrapInternalEnvelope({ field: "summary" })`; invalid JSON, missing fields, non-object JSON, and non-string extracted values no-op. The `session_1780792387779` shape `{"summary":"Greeted the user."}` round-trips through OpenRouter with visible output `Greeted the user.`.
+- [ ] **SANITIZE-04**: Regression coverage includes direct built-in tests, no-op tests, custom sanitizer composition-order tests, custom sanitizer exception propagation, all-seven adapter wiring parity, `rawResponse` preservation, root public-surface smoke coverage, package type tests, and a changeset documenting the opt-in sanitizer API.
+
 ---
 
 ## Total Requirements
 
-**68 authored REQ-IDs** across **16 categories** are mapped in this file. **42 / 68** are complete as of the 2026-06-09 Phase 35 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **19 planned REQ-IDs** for Phases 36-39 must be authored before the milestone audit can claim 87/87 coverage.
+**72 authored REQ-IDs** across **17 categories** are mapped in this file. **42 / 72** are complete as of the 2026-06-09 Phase 36 planning pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **15 planned REQ-IDs** for Phases 37-39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -151,12 +158,12 @@
 | CAPS | 5 | Phase 33 |
 | QUIRK / NEG | 5 | Phase 34 |
 | SCAFF | 4 | Phase 35 |
+| SANITIZE | 4 | Phase 36 |
 
 Planned but not yet authored:
 
 | Category | Planned count | Phase target |
 |---|---:|---|
-| SANITIZE | 4 | Phase 36 |
 | VALID | 3 | Phase 37 |
 | RECEIPT12 | 4 | Phase 38 |
 | DELEG | 8 | Phase 39 |
@@ -199,7 +206,7 @@ Carried over from v1.2 close-out. Out of scope for v1.3 unless explicitly pulled
 
 ## Traceability
 
-Each authored REQ-ID maps to exactly one phase. Phases 36-39 still need detailed REQ-ID authoring before execution.
+Each authored REQ-ID maps to exactly one phase. Phases 37-39 still need detailed REQ-ID authoring before execution.
 
 | REQ-ID | Phase | Plan | Status |
 |---|---|---|---|
@@ -271,8 +278,12 @@ Each authored REQ-ID maps to exactly one phase. Phases 36-39 still need detailed
 | SCAFF-02 | Phase 35 | 35-01 / 35-02 | complete |
 | SCAFF-03 | Phase 35 | 35-01 / 35-02 | complete |
 | SCAFF-04 | Phase 35 | 35-02 | complete |
+| SANITIZE-01 | Phase 36 | 36-02 / 36-03 | pending |
+| SANITIZE-02 | Phase 36 | 36-01 | pending |
+| SANITIZE-03 | Phase 36 | 36-01 / 36-02 / 36-03 | pending |
+| SANITIZE-04 | Phase 36 | 36-01 / 36-02 / 36-03 | pending |
 
-**Coverage:** 68 / 87 planned v1.3 REQ-IDs authored. 42 / 68 authored REQ-IDs complete. 19 planned REQ-IDs remain to be authored for Phases 36-39. No authored orphans. No duplicates.
+**Coverage:** 72 / 87 planned v1.3 REQ-IDs authored. 42 / 72 authored REQ-IDs complete. 15 planned REQ-IDs remain to be authored for Phases 37-39. No authored orphans. No duplicates.
 
 ---
 
@@ -282,3 +293,4 @@ Each authored REQ-ID maps to exactly one phase. Phases 36-39 still need detailed
 *Planning state reconciled: 2026-06-09 — code/git/npm audit confirmed 38 authored REQ-IDs complete and stable 1.3.0 not published*
 *Phase 35 REQ-IDs (SCAFF-01..04) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 35 REQ-IDs (SCAFF-01..04) completed: 2026-06-09 — prompt scaffold helpers executed and verified*
+*Phase 36 REQ-IDs (SANITIZE-01..04) added: 2026-06-09 — plan-phase prerequisite*
