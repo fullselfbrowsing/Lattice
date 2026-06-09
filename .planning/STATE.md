@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_discuss
-stopped_at: Phase 36 complete; ready to discuss Phase 37
-last_updated: "2026-06-09T17:56:19.000Z"
-last_activity: 2026-06-09 -- Phase 36 complete; output sanitizer hook verified
+status: ready_to_plan
+stopped_at: Phase 37 context gathered; ready to plan
+last_updated: "2026-06-09T18:04:42.388Z"
+last_activity: 2026-06-09 -- Phase 37 context gathered; ready to plan
 progress:
   total_phases: 16
   completed_phases: 9
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase: 37
 Plan: Not started
-Status: Ready to discuss
-Last activity: 2026-06-09 -- Phase 36 complete; output sanitizer hook verified
+Status: Ready to plan
+Last activity: 2026-06-09 -- Phase 37 context gathered; ready to plan
 
 Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 phases remaining)
 
@@ -66,7 +66,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 37: Discuss and author `VALID` requirements before planning the opt-in tool-call validation layer.
+- Phase 37: Plan and author `VALID` requirements before implementing the opt-in tool-call validation layer.
 - Phase 37-39: Author the remaining planned REQ-ID groups (`VALID`, `RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
@@ -91,6 +91,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T17:56:19.000Z
-Stopped at: Phase 36 complete; ready to discuss Phase 37
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-09T18:04:02.345Z
+Stopped at: Phase 37 context gathered; ready to plan
+Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-CONTEXT.md
