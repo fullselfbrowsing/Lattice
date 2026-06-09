@@ -272,3 +272,14 @@ export type {
   OpenRouterQuirks,
   XaiQuirks,
 } from "./providers/quirks.js";
+
+// Phase 35 — Prompt scaffold helpers (SCAFF-01 / SCAFF-02 / SCAFF-03)
+// Strategy-specific prompt fragments for structured-output and tool-use
+// contracts. These helpers consume the Phase 33 RecommendedPromptStrategy
+// enum and render deterministic canonical JSON payloads for prompt assembly.
+export {
+  PROMPT_SCAFFOLD_VERSION,
+  PROMPT_STRATEGIES,
+  getStructuredOutputContract,
+  getToolUseContract,
+} from "./prompts/index.js";
