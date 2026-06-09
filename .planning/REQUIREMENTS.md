@@ -136,15 +136,15 @@
 
 ### Tool-Call Validation Layer (`VALID-*`)
 
-- [ ] **VALID-01**: Each of the 7 real first-party provider adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) accepts optional `validateToolCalls?: ValidateToolCallsOption` using `ToolDefinition[]`; absent option leaves behavior unchanged, while present option parses returned tool-call envelopes, validates against the registry, and returns normalized `ProviderRunResponse.toolCalls` while preserving `rawOutputs` / `rawResponse`.
-- [ ] **VALID-02**: Public validation surface exports `ToolCallValidationError`, `ToolCallValidationFailureReason`, `ValidateToolCallsOption`, `ValidatedToolCall`, and a shared validation helper. The error distinguishes `unknown_tool`, `invalid_args`, and `extra_fields` and carries `toolName`, `attemptedArgs`, `validationIssues`, and `requestId`.
-- [ ] **VALID-03**: Regression coverage includes shared validator tests for throw/drop/callback, extra-field reject/allow, callback-mode config error, OpenAI-compatible family wiring, Anthropic/Gemini wiring, agent runtime preference for `response.toolCalls`, all-seven adapter parity, public-surface smoke coverage, package type tests, and a changeset documenting the opt-in returned-tool-call validator.
+- [x] **VALID-01**: Each of the 7 real first-party provider adapter factories (`createOpenAIProvider`, `createOpenAICompatibleProvider`, `createAnthropicProvider`, `createGeminiProvider`, `createXaiProvider`, `createOpenRouterProvider`, `createLmStudioProvider`) accepts optional `validateToolCalls?: ValidateToolCallsOption` using `ToolDefinition[]`; absent option leaves behavior unchanged, while present option parses returned tool-call envelopes, validates against the registry, and returns normalized `ProviderRunResponse.toolCalls` while preserving `rawOutputs` / `rawResponse`.
+- [x] **VALID-02**: Public validation surface exports `ToolCallValidationError`, `ToolCallValidationFailureReason`, `ValidateToolCallsOption`, `ValidatedToolCall`, and a shared validation helper. The error distinguishes `unknown_tool`, `invalid_args`, and `extra_fields` and carries `toolName`, `attemptedArgs`, `validationIssues`, and `requestId`.
+- [x] **VALID-03**: Regression coverage includes shared validator tests for throw/drop/callback, extra-field reject/allow, callback-mode config error, OpenAI-compatible family wiring, Anthropic/Gemini wiring, agent runtime preference for `response.toolCalls`, all-seven adapter parity, public-surface smoke coverage, package type tests, and a changeset documenting the opt-in returned-tool-call validator.
 
 ---
 
 ## Total Requirements
 
-**75 authored REQ-IDs** across **18 categories** are mapped in this file. **46 / 75** are complete as of the 2026-06-09 Phase 36 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **12 planned REQ-IDs** for Phases 38-39 must be authored before the milestone audit can claim 87/87 coverage.
+**75 authored REQ-IDs** across **18 categories** are mapped in this file. **49 / 75** are complete as of the 2026-06-09 Phase 37 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **12 planned REQ-IDs** for Phases 38-39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -288,11 +288,11 @@ Each authored REQ-ID maps to exactly one phase. Phases 38-39 still need detailed
 | SANITIZE-02 | Phase 36 | 36-01 | complete |
 | SANITIZE-03 | Phase 36 | 36-01 / 36-02 / 36-03 | complete |
 | SANITIZE-04 | Phase 36 | 36-01 / 36-02 / 36-03 | complete |
-| VALID-01 | Phase 37 | 37-02 / 37-03 | pending |
-| VALID-02 | Phase 37 | 37-01 | pending |
-| VALID-03 | Phase 37 | 37-01 / 37-02 / 37-03 | pending |
+| VALID-01 | Phase 37 | 37-02 / 37-03 | complete |
+| VALID-02 | Phase 37 | 37-01 | complete |
+| VALID-03 | Phase 37 | 37-01 / 37-02 / 37-03 | complete |
 
-**Coverage:** 75 / 87 planned v1.3 REQ-IDs authored. 46 / 75 authored REQ-IDs complete. 12 planned REQ-IDs remain to be authored for Phases 38-39. No authored orphans. No duplicates.
+**Coverage:** 75 / 87 planned v1.3 REQ-IDs authored. 49 / 75 authored REQ-IDs complete. 12 planned REQ-IDs remain to be authored for Phases 38-39. No authored orphans. No duplicates.
 
 ---
 
@@ -305,3 +305,4 @@ Each authored REQ-ID maps to exactly one phase. Phases 38-39 still need detailed
 *Phase 36 REQ-IDs (SANITIZE-01..04) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 36 REQ-IDs (SANITIZE-01..04) completed: 2026-06-09 — output sanitizer hook executed and verified*
 *Phase 37 REQ-IDs (VALID-01..03) added: 2026-06-09 — plan-phase prerequisite*
+*Phase 37 REQ-IDs (VALID-01..03) completed: 2026-06-09 — tool-call validation layer executed and verified*
