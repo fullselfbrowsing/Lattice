@@ -10,6 +10,10 @@ import {
   inv,
   isTerminal,
   materializeReplayEnvelope,
+  PROMPT_SCAFFOLD_VERSION,
+  PROMPT_STRATEGIES,
+  getStructuredOutputContract,
+  getToolUseContract,
   verifyReceipt,
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
@@ -431,5 +435,27 @@ describe("public-surface — Phase 21 agent infrastructure primitives", () => {
       | _PermissionRule
       | _PermissionVerdict);
     expect(true).toBe(true);
+  });
+});
+
+describe("Phase 35 public surface", () => {
+  it("re-exports prompt scaffold helpers and constants", () => {
+    expect(PROMPT_SCAFFOLD_VERSION).toBe("lattice.prompt-scaffold/v1");
+    expect(PROMPT_STRATEGIES).toEqual([
+      "frontier",
+      "mid_tier",
+      "open_weight",
+      "reasoning",
+      "local",
+    ]);
+    expect(typeof getStructuredOutputContract).toBe("function");
+    expect(typeof getToolUseContract).toBe("function");
+  });
+
+  it("renders prompt scaffolds through the package root", () => {
+    expect(getStructuredOutputContract("frontier", { type: "object" })).toContain(
+      "Purpose: structured-output",
+    );
+    expect(getToolUseContract("frontier", [])).toContain("Purpose: tool-use");
   });
 });
