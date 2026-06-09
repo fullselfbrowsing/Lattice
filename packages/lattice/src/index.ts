@@ -283,3 +283,18 @@ export {
   getStructuredOutputContract,
   getToolUseContract,
 } from "./prompts/index.js";
+
+// Phase 36 — Output Sanitizer Hook (SANITIZE-02 / SANITIZE-03)
+// Opt-in output cleanup helpers for provider adapters and consumers handling
+// model-family-specific output-shape leaks.
+export {
+  stripChatTemplateArtifacts,
+  stripReasoningTags,
+  unwrapInternalEnvelope,
+} from "./sanitizers/index.js";
+export type {
+  InternalEnvelopeOptions,
+  SanitizeOutputOption,
+  SanitizerContext,
+  SanitizerFn,
+} from "./sanitizers/index.js";
