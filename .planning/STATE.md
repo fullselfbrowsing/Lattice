@@ -3,22 +3,22 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: ready_to_plan
-stopped_at: Phase 34 complete (5/5) — ready to discuss Phase 35
-last_updated: 2026-06-08T17:09:11.571Z
-last_activity: 2026-06-08 -- Phase 34 execution started
+stopped_at: Phase 34 complete (5/5) — planning source-of-truth cleanup complete; ready to plan Phase 35
+last_updated: 2026-06-09T15:44:00.734Z
+last_activity: 2026-06-09 -- reconciled v1.3 roadmap, requirements, and state against code, git refs, and npm registry
 progress:
   total_phases: 16
-  completed_phases: 4
+  completed_phases: 7
   total_plans: 19
-  completed_plans: 22
-  percent: 25
+  completed_plans: 19
+  percent: 44
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-03)
+See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
 **Current focus:** Phase 35 — prompt scaffolding helpers
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-06-03)
 Phase: 35
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-08
+Last activity: 2026-06-09
 
-Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
+Progress: [████░░░░░░] 44% (7/16 v1.3 phases complete; 9 phases remaining)
 
 ## Performance Metrics
 
@@ -38,12 +38,14 @@ Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
+- v1.3 completed phase plans: 19 across Phases 24, 25, 26, 33, and 34; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03; roadmap created same day (9 phases, 54 REQ-IDs). Trend resets at first v1.3 plan completion.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 7/16 phases complete, 38/64 authored REQ-IDs complete, 23 planned REQ-IDs still need to be authored for Phases 35-39.
+- `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
 
@@ -54,32 +56,39 @@ Progress: [░░░░░░░░░░] 0% (0/9 v1.3 phases complete)
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [v1.3 Scope]: Publish + canary only. Carryforward themes from v1.2 (native tool-use, `lattice eval --agent`, KMS adapters, lineage merkle, receipt diff, OTel exporter, streaming, multimodal) deferred to v1.4. Rationale: first public npm release is its own stress test.
-- [v1.3 Distribution]: Publish under `@fullselfbrowsing` scope (both `lattice` and `lattice-cli`). CLI keeps user-facing `lattice` bin. Scope confirmed unclaimed via npm registry probe.
-- [v1.3 Auth model]: OIDC Trusted Publisher binding `fullselfbrowsing/Lattice` to the npm scope. No long-lived `NPM_TOKEN`. Provenance attestations enabled.
-- [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow). Changesets PR-driven version bumps.
+- [v1.3 Scope]: Public release + canary validation now also includes the model-aware SDK surface from Phases 33-38 and the opt-in multi-agent crew surface in Phase 39. Stable publish remains deferred until that surface is complete.
+- [v1.3 Distribution]: Publish under `@full-self-browsing` scope (both `lattice` and `lattice-cli`). CLI keeps user-facing `lattice` bin. The scope is claimed and rc.0 packages are published.
+- [v1.3 Auth model]: OIDC Trusted Publisher binding `fullselfbrowsing/Lattice` to the npm scope. No long-lived `NPM_TOKEN`. Provenance attestations are present on the rc.0 tarballs.
+- [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow publish job). Changesets PR-driven version bumps.
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
-- [v1.3 Phase plan]: 9 phases (24-32). Phase 24 atomic rename + hygiene; Phase 25 PR-time CI; Phase 26 release docs + CRYPTO-01 receipt downgrade defense; Phase 27 user-driven npm org claim; Phase 28 release.yml + rc.0 OIDC smoke; Phase 29 v1.3.0 stable publish; Phase 30 canary bootstrap + Layer 1; Phase 31 canary Layer 2 real-provider + 3-layer cost ceiling; Phase 32 cross-repo dispatch + milestone audit.
+- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34. Remaining: 35, 36, 37, 38, 39, 29, 30, 31, 32.
 
 ### Pending Todos
 
-- Phase 24: Spawn `/gsd-plan-phase 24` for the atomic scope rename + license hygiene plans (RENAME-01..05 + PKG-01..05).
-- Phase 27 / 28 baton: Plan must hand the user the npm org + Trusted Publisher binding steps explicitly; FSB cannot fully automate the npmjs.com UI.
-- Phase 30: Canary repo bootstrap requires v1.3.0 (or rc.0) to exist on the public registry before integration steps can run.
-- Carryforward to v1.4: native tool-use, `lattice eval --agent`, KMS adapters, lineage merkle, receipt diff, OTel exporter, streaming, multimodal, OpenRouter routing, LM Studio diagnostics.
+- Phase 35: Plan prompt scaffolding helpers and author the SCAFF REQ-IDs before implementation.
+- Phase 36-39: Author the remaining planned REQ-ID groups (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
+- Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 35-39 are complete and verified.
+- Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
+- Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
 
 ### Blockers/Concerns
 
-- Package rename `lattice` → `@fullselfbrowsing/lattice` touches every import site (workspace + examples + tests). Surface is large but mechanical. publint + arethetypeswrong will catch regressions. The 5-surface atomic-rename gate (RENAME-01) is the long pole in Phase 24.
-- `lattice-cli` ships `dependencies: { "lattice": "workspace:*" }`. The `* → ^` flip is the most easily-missed surface and propagates silently into the tarball if not caught — must land in the same commit as the rename.
-- No `.github/workflows/` exists at all in Lattice repo. CI scaffolding starts from zero (not a tweak of existing workflows). All third-party actions must be SHA-pinned (TanStack 2026 mitigation).
-- npm `@fullselfbrowsing` org creation requires user-driven sign-in on npmjs.com (no FSB credential saved). Trusted Publisher binding likewise. Phase 27 must hand the baton explicitly and verify completion via FSB recon before Phase 28 attempts the first publish.
+- Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
+- Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
+- Phases 35-39 have no implementation in any checked branch/tag as of the 2026-06-09 audit.
+- GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
-- First publish (Phase 28) IS the smoke test of `release.yml` — OIDC cannot be dry-run against npm. rc.0 prerelease tag absorbs the failure mode without burning the v1.3.0 stable slot.
+- First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
+
+## Quick Tasks Completed
+
+| Date | Task | Outcome |
+| --- | --- | --- |
+| 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 
 ## Session Continuity
 
-Last session: 2026-06-08T11:26:54.341Z
-Stopped at: Phase 34 context gathered
+Last session: 2026-06-09T15:44:00.734Z
+Stopped at: Phase 34 complete; planning source-of-truth cleanup complete; Phase 35 next
 Resume file: .planning/phases/34-adapter-quirk-flags-capability-negotiation-api/34-CONTEXT.md

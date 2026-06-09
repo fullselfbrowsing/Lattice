@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 54 / 87 REQ-IDs mapped to-date (33 new IDs to be added under .planning/REQUIREMENTS.md for Phases 33-39).
+**Coverage:** 64 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 38 / 64 authored REQ-IDs are complete. The 23 remaining planned REQ-IDs are for Phases 35-39 (`SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -66,14 +66,14 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 24: Atomic Scope Rename + License Hygiene
 
-**Goal**: Both publishable packages publish under the `@fullselfbrowsing` scope with every release-required manifest field present, landed atomically so no stale-name surface survives.
+**Goal**: Both publishable packages publish under the `@full-self-browsing` scope with every release-required manifest field present, landed atomically so no stale-name surface survives.
 **Depends on**: Nothing (first v1.3 phase)
 **Requirements**: RENAME-01, RENAME-02, RENAME-03, RENAME-04, RENAME-05, PKG-01, PKG-02, PKG-03, PKG-04, PKG-05
 **Success Criteria** (what must be TRUE):
 
-  1. `packages/lattice/package.json#name` reads `@fullselfbrowsing/lattice` and `packages/lattice-cli/package.json#name` reads `@fullselfbrowsing/lattice-cli`, with `bin: { lattice }` preserved on the CLI so the user-facing command is unchanged.
-  2. `packages/lattice-cli/package.json#dependencies` reads `"@fullselfbrowsing/lattice": "workspace:^"` (the `*` to `^` flip is in the same commit as the rename).
-  3. `pnpm pack` on both packages produces tarballs whose `package/package.json` references only `@fullselfbrowsing/*` names; a grep for the unscoped string `"lattice"` in dependency keys, exports, types, or tsd paths returns nothing.
+  1. `packages/lattice/package.json#name` reads `@full-self-browsing/lattice` and `packages/lattice-cli/package.json#name` reads `@full-self-browsing/lattice-cli`, with `bin: { lattice }` preserved on the CLI so the user-facing command is unchanged.
+  2. `packages/lattice-cli/package.json#dependencies` reads `"@full-self-browsing/lattice": "workspace:^"` (the `*` to `^` flip is in the same commit as the rename).
+  3. `pnpm pack` on both packages produces tarballs whose `package/package.json` references only `@full-self-browsing/*` names; a grep for the unscoped string `"lattice"` in dependency keys, exports, types, or tsd paths returns nothing.
   4. `pnpm install && pnpm -r test && pnpm -r test:types && pnpm -r lint:packages` (publint + attw) all pass clean on the renamed surface, with `license: "MIT"`, `repository`, `bugs`, `homepage`, and `publishConfig.access: "public"` present on both publishable packages and `private: true` preserved on root.
 
 **Plans**: 3 plans
@@ -106,7 +106,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
   1. `CONTRIBUTING.md`, `SECURITY.md`, and `CHANGELOG.md` (per publishable package, retroactively seeded with v1.0 / v1.1 / v1.2 history under the new scoped names) exist at repo root or in their respective packages; `SECURITY.md` documents the CVE disclosure address, Ed25519 entropy assumptions, signing-key rotation guidance, and the receipt-downgrade defense citing Radicle 2026-03 precedent.
   2. A hand-crafted `CapabilityReceipt` with no `schemaVersion` field, or with `schemaVersion < 1.1`, signed by an otherwise-valid `KeySet`, is rejected by `verifyReceipt` with a new `VerifyResult` error kind `schema-version-too-low`; a passing unit test exercises both branches.
-  3. An initial changeset seeding the v1.3.0 release notes exists under `.changeset/`, and `README.md` shows install instructions using `@fullselfbrowsing/lattice` plus npm version + provenance + license badge placeholders and a copy-pastable provenance verification example.
+  3. An initial changeset seeding the v1.3.0 release notes exists under `.changeset/`, and `README.md` shows install instructions using `@full-self-browsing/lattice` plus npm version + provenance + license badge placeholders and a copy-pastable provenance verification example.
 
 **Plans**: 4 plans
 
@@ -117,12 +117,12 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 27: npm Org + Trusted Publisher Setup
 
-**Goal**: The npm trust tuple `(repo: fullselfbrowsing/Lattice, workflow_filename: release.yml, environment: npm-publish)` exists on npmjs.com for both `@fullselfbrowsing/lattice` and `@fullselfbrowsing/lattice-cli` before any publish is attempted.
+**Goal**: The npm trust tuple `(repo: fullselfbrowsing/Lattice, workflow_filename: release.yml, environment: npm-publish)` exists on npmjs.com for both `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` before any publish is attempted.
 **Depends on**: Phase 24, Phase 26
 **Requirements**: ORG-01, ORG-02, ORG-03
 **Success Criteria** (what must be TRUE):
 
-  1. The `@fullselfbrowsing` npm organization shows as claimed under the user's npmjs.com account (organization tier, free for public packages), and `npm view @fullselfbrowsing/lattice` returns either a 404 (package not yet published) or a record owned by the claimed org.
+  1. The `@full-self-browsing` npm organization shows as claimed under the user's npmjs.com account (organization tier, free for public packages), and `npm view @full-self-browsing/lattice` returns either a 404 (package not yet published) or a record owned by the claimed org.
   2. The `npm-publish` GitHub Environment exists in `fullselfbrowsing/Lattice` with required reviewers configured, and the npmjs.com Trusted Publisher form for each package shows the exact trust tuple `(fullselfbrowsing/Lattice, release.yml, npm-publish)` with "publish" action selected.
   3. A user-driven walkthrough script in the plan hands the baton to the user at the npm UI steps and verifies completion via FSB recon (npmjs.com page snapshot) before the phase closes.
 
@@ -130,13 +130,13 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 28: Release Workflow + rc.0 OIDC Smoke
 
-**Goal**: Land `.github/workflows/release.yml` with split version-PR and publish jobs (each with their own `permissions:` block) and prove the OIDC + provenance + GitHub Release pipeline end-to-end by publishing `@fullselfbrowsing/lattice@1.3.0-rc.0` and `@fullselfbrowsing/lattice-cli@1.3.0-rc.0` — the first publish IS the smoke test.
+**Goal**: Land `.github/workflows/release.yml` with split version-PR and publish jobs (each with their own `permissions:` block) and prove the OIDC + provenance + GitHub Release pipeline end-to-end by publishing `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` — the first publish IS the smoke test.
 **Depends on**: Phase 25, Phase 27
 **Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, PUB-01
 **Success Criteria** (what must be TRUE):
 
   1. A `v1.3.0-rc.0` tag pushed to main triggers `.github/workflows/release.yml`; the version-PR job has no `id-token` permission and the publish job has `id-token: write` only, scoped narrowly with `environment: npm-publish` manual approval gate active.
-  2. `pnpm publish` succeeds end-to-end under OIDC (no `NODE_AUTH_TOKEN` is exported in the workflow), and `npm view @fullselfbrowsing/lattice@1.3.0-rc.0` plus `npm view @fullselfbrowsing/lattice-cli@1.3.0-rc.0` both show a verifiable provenance badge linked to the exact commit SHA via Sigstore.
+  2. `pnpm publish` succeeds end-to-end under OIDC (no `NODE_AUTH_TOKEN` is exported in the workflow), and `npm view @full-self-browsing/lattice@1.3.0-rc.0` plus `npm view @full-self-browsing/lattice-cli@1.3.0-rc.0` both show a verifiable provenance badge linked to the exact commit SHA via Sigstore.
   3. A GitHub Release object `v1.3.0-rc.0` is created automatically on `fullselfbrowsing/Lattice` with notes sourced from `CHANGELOG.md`, and `changesets/action@v1` drove the version bump via the PR-merge pattern (not direct tag push by a human).
 
 **Plans**: TBD
@@ -148,7 +148,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Requirements**: PUB-02, PUB-03, PUB-04
 **Success Criteria** (what must be TRUE):
 
-  1. `npm view @fullselfbrowsing/lattice@1.3.0` and `npm view @fullselfbrowsing/lattice-cli@1.3.0` both resolve, display the provenance badge, and ship the tarballs assembled by `tsdown` with the renamed exports surface.
+  1. `npm view @full-self-browsing/lattice@1.3.0` and `npm view @full-self-browsing/lattice-cli@1.3.0` both resolve, display the provenance badge, and ship the tarballs assembled by `tsdown` with the renamed exports surface.
   2. A GitHub Release object `v1.3.0` exists in `fullselfbrowsing/Lattice` with auto-generated notes sourced from `CHANGELOG.md`, and the release page links the npm pages for both packages.
   3. The `npm-publish` environment approval gate was exercised again for v1.3.0 (counts toward the "first 3 publishes" review window), with no manual fallback to a classic `NPM_TOKEN` at any point.
 
@@ -161,9 +161,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Requirements**: CAN-01, CAN-02, CAN-03, CAN-04, UNIT-01, UNIT-02, UNIT-03, UNIT-04, UNIT-05, UNIT-06
 **Success Criteria** (what must be TRUE):
 
-  1. Running `npm install && npm test` in the freshly-cloned `lattice-canary` repo against `@fullselfbrowsing/lattice@1.3.0` and `@fullselfbrowsing/lattice-cli@1.3.0` from the public registry passes all Layer 1 unit tests, with the resolve-path assertion as the FIRST test step confirming installation under `node_modules/@fullselfbrowsing/` (not a workspace symlink and not a `file:` link).
-  2. The Layer 1 suite covers every public export from `@fullselfbrowsing/lattice` at both `tsd` type level and runtime, exercises `createAI({ providers, capabilities }).run(...)` + `ai.plan(...)` + `ai.runAgent(intent)` against fake providers, runs the hook pipeline through all three priority bands (SAFETY / OBSERVABILITY / EXTENSION) including `budgetMs` race-with-log and irreversible freeze, round-trips `createReceipt` + `verifyReceipt` with an ephemeral Ed25519 KeySet (passing valid + rejecting tampered), and round-trips `SurvivabilityAdapter` serialize → deserialize byte-equal under DSSE + JCS canonicalization.
-  3. A CLI subprocess test spawns the installed `lattice` bin via `npx @fullselfbrowsing/lattice-cli` and asserts `repro` / `verify` / `eval` exit codes against fixtures, and the canary's PR + push CI workflow is green on the canary repo's main branch.
+  1. Running `npm install && npm test` in the freshly-cloned `lattice-canary` repo against `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` from the public registry passes all Layer 1 unit tests, with the resolve-path assertion as the FIRST test step confirming installation under `node_modules/@full-self-browsing/` (not a workspace symlink and not a `file:` link).
+  2. The Layer 1 suite covers every public export from `@full-self-browsing/lattice` at both `tsd` type level and runtime, exercises `createAI({ providers, capabilities }).run(...)` + `ai.plan(...)` + `ai.runAgent(intent)` against fake providers, runs the hook pipeline through all three priority bands (SAFETY / OBSERVABILITY / EXTENSION) including `budgetMs` race-with-log and irreversible freeze, round-trips `createReceipt` + `verifyReceipt` with an ephemeral Ed25519 KeySet (passing valid + rejecting tampered), and round-trips `SurvivabilityAdapter` serialize → deserialize byte-equal under DSSE + JCS canonicalization.
+  3. A CLI subprocess test spawns the installed `lattice` bin via `npx @full-self-browsing/lattice-cli` and asserts `repro` / `verify` / `eval` exit codes against fixtures, and the canary's PR + push CI workflow is green on the canary repo's main branch.
 
 **Plans**: TBD
 
@@ -339,7 +339,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-54 / 87 v1.3 REQ-IDs currently in `.planning/REQUIREMENTS.md`. The 33 new REQ-IDs (CAPS, QUIRK, NEG, SCAFF, SANITIZE, VALID, RECEIPT12, DELEG) will be authored in `.planning/REQUIREMENTS.md` as part of Phase 33's discuss-phase artifact (or earlier, if a single requirements-expansion phase is preferred). No orphans expected.
+64 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33/34 groups (`CAPS`, `QUIRK`, `NEG`) are authored and complete. The 23 remaining planned REQ-IDs (`SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 35-39. No authored orphans expected.
 
 ## Progress
 
