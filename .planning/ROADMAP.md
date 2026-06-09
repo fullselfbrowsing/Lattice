@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 79 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 49 / 79 authored REQ-IDs are complete. The 8 remaining planned REQ-IDs are for Phase 39 (`DELEG`) and must be authored before that phase executes.
+**Coverage:** 79 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 53 / 79 authored REQ-IDs are complete. The 8 remaining planned REQ-IDs are for Phase 39 (`DELEG`) and must be authored before that phase executes.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -58,7 +58,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases. (completed 2026-06-09)
 - [x] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case). (completed 2026-06-09)
 - [x] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests. (completed 2026-06-09)
-- [ ] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Runtime terminal receipts populate `modelClass` when strict registry lookup knows the selected route/model.
+- [x] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Runtime terminal receipts populate `modelClass` when strict registry lookup knows the selected route/model. (completed 2026-06-09)
 - [ ] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks.
 - [ ] **Phase 32: Cross-Repo Wiring + v1.3 Milestone Audit** *(was last in original plan; now depends on Phase 29 + 39)* — `repository_dispatch` from Lattice `release.yml` to canary `refresh-lattice.yml` with `CANARY_DISPATCH_TOKEN`; canary auto-bumps + opens PR; v1.3 milestone audit confirms 87/87 REQ-IDs wired end-to-end including the Phase 33-39 surface.
 
@@ -294,9 +294,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Plans**: 3 plans
 
-- [ ] 38-01-PLAN.md — Core receipt v1.2 schema, createReceipt minting, verifier compatibility, downgrade-defense tests (RECEIPT12-01, RECEIPT12-02, RECEIPT12-04)
-- [ ] 38-02-PLAN.md — Runtime `ai.run` modelClass issuance via strict registry lookup, checkpoint omit behavior, runtime branch tests (RECEIPT12-03, RECEIPT12-04)
-- [ ] 38-03-PLAN.md — Public type surface, changeset, final verification, and completion bookkeeping (RECEIPT12-01, RECEIPT12-04)
+- [x] 38-01-PLAN.md — Core receipt v1.2 schema, createReceipt minting, verifier compatibility, downgrade-defense tests (RECEIPT12-01, RECEIPT12-02, RECEIPT12-04)
+- [x] 38-02-PLAN.md — Runtime `ai.run` modelClass issuance via strict registry lookup, checkpoint omit behavior, runtime branch tests (RECEIPT12-03, RECEIPT12-04)
+- [x] 38-03-PLAN.md — Public type surface, changeset, final verification, and completion bookkeeping (RECEIPT12-01, RECEIPT12-04)
 
 ### Phase 39: Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)
 
@@ -354,7 +354,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-79 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-38 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`) are authored; Phases 33-37 are complete and Phase 38 is planned. The 8 remaining planned REQ-IDs (`DELEG`) still need to be authored during Phase 39. No authored orphans expected.
+79 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-38 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`) are authored and complete. The 8 remaining planned REQ-IDs (`DELEG`) still need to be authored during Phase 39. No authored orphans expected.
 
 ## Progress
 
@@ -381,5 +381,5 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
 | 37. Tool-Call Validation Layer (opt-in) | 3/3 | Complete | 2026-06-09 |
-| 38. Receipt v1.2 Schema + modelClass Tag | 0/4 | Planned | - |
+| 38. Receipt v1.2 Schema + modelClass Tag | 4/4 | Complete | 2026-06-09 |
 | 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |

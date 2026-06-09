@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_execute
-stopped_at: Phase 38 planned; ready to execute
-last_updated: "2026-06-09T23:14:10.000Z"
-last_activity: 2026-06-09 -- Phase 38 planning complete; ready to execute
+status: ready_to_discuss
+stopped_at: Phase 38 complete; Phase 39 ready for discussion
+last_updated: "2026-06-09T23:40:34.000Z"
+last_activity: 2026-06-09 -- Phase 38 receipt v1.2 schema + modelClass tag executed and verified
 progress:
   total_phases: 16
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 30
-  completed_plans: 27
-  percent: 63
+  completed_plans: 30
+  percent: 69
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 38 — Receipt v1.2 Schema + modelClass Tag
+**Current focus:** Phase 39 — Multi-Agent Delegation Surface (full Row 60 close)
 
 ## Current Position
 
-Phase: 38 (Receipt v1.2 Schema + modelClass Tag) — NOT STARTED
+Phase: 39 (Multi-Agent Delegation Surface) — NOT STARTED
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 38 planning complete; ready to execute
+Status: Ready to discuss / author requirements
+Last activity: 2026-06-09 -- Phase 38 receipt v1.2 schema + modelClass tag executed and verified
 
-Progress: [██████░░░░] 63% (10/16 v1.3 phases complete; 6 phases remaining)
+Progress: [███████░░░] 69% (11/16 v1.3 phases complete; 5 phases remaining)
 
 ## Performance Metrics
 
@@ -38,13 +38,13 @@ Progress: [██████░░░░] 63% (10/16 v1.3 phases complete; 6 ph
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 27 across Phases 24, 25, 26, 33, 34, 35, 36, and 37; Phase 38 has 3 planned-but-unexecuted plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 30 across Phases 24, 25, 26, 33, 34, 35, 36, 37, and 38; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 10/16 phases complete, 49/79 authored REQ-IDs complete, 8 planned REQ-IDs still need to be authored for Phase 39.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 11/16 phases complete, 53/79 authored REQ-IDs complete, 8 planned REQ-IDs still need to be authored for Phase 39.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -62,13 +62,12 @@ Recent decisions affecting current work:
 - [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow publish job). Changesets PR-driven version bumps.
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
-- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36, 37. Remaining: 38, 39, 29, 30, 31, 32.
+- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38. Remaining: 39, 29, 30, 31, 32.
 - [v1.3 Adapter hardening]: Output sanitizers and returned tool-call validators are opt-in adapter options, preserving default v1.2 behavior while giving consumers model-shape guardrails.
 
 ### Pending Todos
 
-- Phase 38: Execute the 3 planned receipt v1.2 schema + modelClass plans.
-- Phase 39: Author the remaining planned REQ-ID group (`DELEG`) before treating roadmap coverage as 87/87.
+- Phase 39: Discuss and author the remaining planned REQ-ID group (`DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
 - Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
@@ -77,7 +76,7 @@ Recent decisions affecting current work:
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- Phase 38 is planned but not executed; Phase 39 still needs requirements, context, and plans.
+- Phase 39 still needs requirements, context, and plans.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
 - First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
@@ -93,9 +92,10 @@ Recent decisions affecting current work:
 | 2026-06-09 | Execute Phase 37 tool-call validation layer | Added opt-in returned tool-call validation across all 7 adapters, normalized `ProviderRunResponse.toolCalls`, runtime preference for validated calls, all-seven parity tests, package type tests, and changeset. |
 | 2026-06-09 | Verify Phase 37 UAT | Completed conversational UAT with 4/4 checkpoints passed and 0 issues. |
 | 2026-06-09 | Plan Phase 38 receipt v1.2 schema + modelClass tag | Authored RECEIPT12 requirements, inline research/pattern map, validation strategy, and 3 execution plans. |
+| 2026-06-09 | Execute Phase 38 receipt v1.2 schema + modelClass tag | Added receipt v1.2 `modelClass`, runtime strict registry issuance, public type tests, changeset, and final verification gates. |
 
 ## Session Continuity
 
-Last session: 2026-06-09T23:14:10.000Z
-Stopped at: Phase 38 planned; ready to execute
-Resume file: .planning/phases/38-receipt-v1-2-schema-modelclass-tag/38-01-PLAN.md
+Last session: 2026-06-09T23:40:34.000Z
+Stopped at: Phase 38 complete; Phase 39 ready for discussion
+Resume file: .planning/ROADMAP.md

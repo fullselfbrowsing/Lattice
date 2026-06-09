@@ -142,16 +142,16 @@
 
 ### Receipt v1.2 Schema + modelClass Tag (`RECEIPT12-*`)
 
-- [ ] **RECEIPT12-01**: Capability Receipt types are bumped to schema `lattice-receipt/v1.2`: `CapabilityReceiptBody.version` widens to `"lattice-receipt/v1" | "lattice-receipt/v1.1" | "lattice-receipt/v1.2"`, `CapabilityReceiptBody` gains optional `modelClass?: TrainingClass`, `CreateReceiptInput` accepts optional `modelClass`, and `createReceipt` always mints `"lattice-receipt/v1.2"` without exposing a caller-selectable version.
-- [ ] **RECEIPT12-02**: `verifyReceipt` remains a pure cryptographic/schema verifier that accepts signed v1.1 and v1.2 receipts, rejects unknown future literals such as `"lattice-receipt/v2"` with `version-mismatch`, and preserves the CRYPTO-01 minimum-version defense by rejecting absent-version and v1 bodies before key lookup/signature verification with `schema-version-too-low` where the structural gate allows it. A forged v1 receipt carrying `modelClass` is explicitly rejected.
-- [ ] **RECEIPT12-03**: `ai.run` terminal receipts populate `modelClass` only when strict registry lookup `getCapabilityProfile("${providerId}:${modelId}")?.trainingClass` succeeds for the selected route/model. Success, validation-failed, tripwire-violated, and execution-failed receipts for registry-known models include the field; fake, unknown, synthetic no-route/no-contract-match, and checkpoint/agent iteration receipts omit it. No `modelClass` field is added to `ProviderRunResponse` or provider adapter APIs.
-- [ ] **RECEIPT12-04**: Regression coverage proves v1.2 minting, v1.1 backward-compatible verification, forged downgrade rejection, DSSE/JCS byte stability with `modelClass`, runtime include/omit behavior, checkpoint omit behavior, public `TrainingClass` / `CapabilityReceiptBody["modelClass"]` type coherence, and a changeset documenting the receipt schema bump.
+- [x] **RECEIPT12-01**: Capability Receipt types are bumped to schema `lattice-receipt/v1.2`: `CapabilityReceiptBody.version` widens to `"lattice-receipt/v1" | "lattice-receipt/v1.1" | "lattice-receipt/v1.2"`, `CapabilityReceiptBody` gains optional `modelClass?: TrainingClass`, `CreateReceiptInput` accepts optional `modelClass`, and `createReceipt` always mints `"lattice-receipt/v1.2"` without exposing a caller-selectable version.
+- [x] **RECEIPT12-02**: `verifyReceipt` remains a pure cryptographic/schema verifier that accepts signed v1.1 and v1.2 receipts, rejects unknown future literals such as `"lattice-receipt/v2"` with `version-mismatch`, and preserves the CRYPTO-01 minimum-version defense by rejecting absent-version and v1 bodies before key lookup/signature verification with `schema-version-too-low` where the structural gate allows it. A forged v1 receipt carrying `modelClass` is explicitly rejected.
+- [x] **RECEIPT12-03**: `ai.run` terminal receipts populate `modelClass` only when strict registry lookup `getCapabilityProfile("${providerId}:${modelId}")?.trainingClass` succeeds for the selected route/model. Success, validation-failed, tripwire-violated, and execution-failed receipts for registry-known models include the field; fake, unknown, synthetic no-route/no-contract-match, and checkpoint/agent iteration receipts omit it. No `modelClass` field is added to `ProviderRunResponse` or provider adapter APIs.
+- [x] **RECEIPT12-04**: Regression coverage proves v1.2 minting, v1.1 backward-compatible verification, forged downgrade rejection, DSSE/JCS byte stability with `modelClass`, runtime include/omit behavior, checkpoint omit behavior, public `TrainingClass` / `CapabilityReceiptBody["modelClass"]` type coherence, and a changeset documenting the receipt schema bump.
 
 ---
 
 ## Total Requirements
 
-**79 authored REQ-IDs** across **19 categories** are mapped in this file. **49 / 79** are complete as of the 2026-06-09 Phase 37 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **8 planned REQ-IDs** for Phase 39 must be authored before the milestone audit can claim 87/87 coverage.
+**79 authored REQ-IDs** across **19 categories** are mapped in this file. **53 / 79** are complete as of the 2026-06-09 Phase 38 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **8 planned REQ-IDs** for Phase 39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -298,12 +298,12 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 still needs detailed RE
 | VALID-01 | Phase 37 | 37-02 / 37-03 | complete |
 | VALID-02 | Phase 37 | 37-01 | complete |
 | VALID-03 | Phase 37 | 37-01 / 37-02 / 37-03 | complete |
-| RECEIPT12-01 | Phase 38 | 38-01 / 38-03 | pending |
-| RECEIPT12-02 | Phase 38 | 38-01 | pending |
-| RECEIPT12-03 | Phase 38 | 38-02 | pending |
-| RECEIPT12-04 | Phase 38 | 38-01 / 38-02 / 38-03 | pending |
+| RECEIPT12-01 | Phase 38 | 38-01 / 38-03 | complete |
+| RECEIPT12-02 | Phase 38 | 38-01 | complete |
+| RECEIPT12-03 | Phase 38 | 38-02 | complete |
+| RECEIPT12-04 | Phase 38 | 38-01 / 38-02 / 38-03 | complete |
 
-**Coverage:** 79 / 87 planned v1.3 REQ-IDs authored. 49 / 79 authored REQ-IDs complete. 8 planned REQ-IDs remain to be authored for Phase 39. No authored orphans. No duplicates.
+**Coverage:** 79 / 87 planned v1.3 REQ-IDs authored. 53 / 79 authored REQ-IDs complete. 8 planned REQ-IDs remain to be authored for Phase 39. No authored orphans. No duplicates.
 
 ---
 
@@ -318,3 +318,4 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 still needs detailed RE
 *Phase 37 REQ-IDs (VALID-01..03) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 37 REQ-IDs (VALID-01..03) completed: 2026-06-09 — tool-call validation layer executed and verified*
 *Phase 38 REQ-IDs (RECEIPT12-01..04) added: 2026-06-09 — plan-phase prerequisite*
+*Phase 38 REQ-IDs (RECEIPT12-01..04) completed: 2026-06-09 — receipt v1.2 schema + modelClass tag executed and verified*
