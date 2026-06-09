@@ -8,6 +8,10 @@ import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } fr
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import {
+  applyOutputSanitizers,
+  type SanitizeOutputOption,
+} from "../sanitizers/index.js";
 
 /**
  * Options for {@link createAnthropicProvider}.
@@ -60,6 +64,7 @@ export interface AnthropicProviderOptions {
    * the fallback event -- they throw `NegotiationAuthError` instead.
    */
   readonly runEventSink?: RunEventSink;
+  readonly sanitizeOutput?: SanitizeOutputOption;
 }
 
 /** Internal TTL cache entry shape (D-07 lazy-expiry). */
@@ -410,11 +415,16 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       };
 
       const text = String(body.content?.[0]?.text ?? "");
+      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
+        providerId: id,
+        modelId: options.model,
+      });
       const usage = normalizeAnthropicUsage(body.usage);
       const normalizedUsage = normalizeAnthropicUsageToRunUsage(body.usage, options.pricing);
 
       return {
-        rawOutputs: Object.fromEntries(request.outputs.map((name) => [name, text])),
+        rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
         rawResponse: body,

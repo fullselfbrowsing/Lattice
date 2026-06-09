@@ -11,6 +11,10 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import {
+  applyOutputSanitizers,
+  type SanitizeOutputOption,
+} from "../sanitizers/index.js";
 
 /**
  * Options for {@link createGeminiProvider}.
@@ -65,6 +69,7 @@ export interface GeminiProviderOptions {
    * If absent, no event is emitted (silent fallback).
    */
   readonly runEventSink?: RunEventSink;
+  readonly sanitizeOutput?: SanitizeOutputOption;
 }
 
 const DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com";
@@ -398,11 +403,16 @@ export function createGeminiProvider(
       }
 
       const text = String(body.candidates[0]?.content?.parts?.[0]?.text ?? "");
+      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
+        providerId: id,
+        modelId: options.model,
+      });
       const usage = normalizeGeminiUsage(body.usageMetadata);
       const normalizedUsage = normalizeGeminiUsageToRunUsage(body.usageMetadata, options.pricing);
 
       return {
-        rawOutputs: Object.fromEntries(request.outputs.map((name) => [name, text])),
+        rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
         rawResponse: body,
