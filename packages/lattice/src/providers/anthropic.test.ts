@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RunEvent } from "../tracing/tracing.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import { createAnthropicProvider } from "./anthropic.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 
 /**
  * Phase 4 Anthropic adapter -- vitest cases (D-09 contract: 7 cases minimum).
@@ -310,6 +311,31 @@ describe("Phase 4 Anthropic adapter", () => {
     expect(headers["content-type"]).toBe("application/json");
     // No Bearer prefix on x-api-key (mirrors universal-provider.js PROVIDER_CONFIGS.anthropic at line 22).
     expect(headers["x-api-key"]).not.toMatch(/^Bearer /);
+  });
+});
+
+describe("Phase 36: Anthropic output sanitizer", () => {
+  it("unwraps internal envelope output and preserves rawResponse", async () => {
+    const rawBody = {
+      content: [{ type: "text", text: "{\"summary\":\"Greeted the user.\"}" }],
+      usage: { input_tokens: 1, output_tokens: 2 },
+    };
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      fetch,
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user.");
+    expect(response.rawResponse).toEqual(rawBody);
   });
 });
 

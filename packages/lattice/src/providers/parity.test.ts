@@ -9,6 +9,7 @@ import {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./adapters.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 
 import type { ProviderAdapter } from "./provider.js";
 
@@ -264,5 +265,152 @@ describe("INV-03 provider-parity smoke (Phase 4)", () => {
       ids.add(adapter.id);
     }
     expect(ids.size).toBe(7);
+  });
+});
+
+const SANITIZER_ENVELOPE_TEXT = "{\"summary\":\"Greeted the user.\"}";
+
+const SANITIZER_OPENAI_COMPAT_BODY = {
+  choices: [{ message: { content: SANITIZER_ENVELOPE_TEXT } }],
+  usage: { prompt_tokens: 10, completion_tokens: 5 },
+};
+
+const SANITIZER_ANTHROPIC_BODY = {
+  content: [{ type: "text", text: SANITIZER_ENVELOPE_TEXT }],
+  usage: { input_tokens: 10, output_tokens: 5 },
+};
+
+const SANITIZER_GEMINI_BODY = {
+  candidates: [
+    {
+      content: { parts: [{ text: SANITIZER_ENVELOPE_TEXT }], role: "model" },
+    },
+  ],
+  usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
+};
+
+const SANITIZER_PROVIDERS: readonly ProviderRow[] = [
+  {
+    logicalName: "OpenAI",
+    expectedId: "openai",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenAIProvider({
+        model: "gpt-oss-120b",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "OpenAI-compatible",
+    expectedId: "openai-compatible",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenAICompatibleProvider({
+        model: "any-model",
+        baseUrl: "https://example.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "Anthropic",
+    expectedId: "anthropic",
+    fakeBody: SANITIZER_ANTHROPIC_BODY,
+    errorPattern: /Anthropic provider failed with/,
+    build: ({ fetch }) =>
+      createAnthropicProvider({
+        model: "claude-3-opus",
+        apiKey: "sk-ant-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "Gemini",
+    expectedId: "gemini",
+    fakeBody: SANITIZER_GEMINI_BODY,
+    errorPattern: /Gemini provider failed with/,
+    build: ({ fetch }) =>
+      createGeminiProvider({
+        model: "gemini-1.5-flash",
+        apiKey: "AIza-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "xAI",
+    expectedId: "xai",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createXaiProvider({
+        model: "grok-4",
+        apiKey: "xai-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "OpenRouter",
+    expectedId: "openrouter",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenRouterProvider({
+        model: "openai/gpt-oss-120b:free",
+        apiKey: "sk-or-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "LM Studio",
+    expectedId: "lm-studio",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createLmStudioProvider({
+        model: "qwen2.5-coder-32b-instruct",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+];
+
+describe("Phase 36 output sanitizer parity", () => {
+  it("all seven providers unwrap the session_1780792387779 internal envelope for every requested output", async () => {
+    const seenIds: string[] = [];
+
+    for (const row of SANITIZER_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(row.fakeBody);
+      const adapter = row.build({ fetch });
+      seenIds.push(adapter.id);
+
+      const response = await adapter.execute!({
+        task: `session_1780792387779-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text", "summary"],
+      });
+
+      expect(response.rawOutputs.text, `${row.logicalName}: text`).toBe("Greeted the user.");
+      expect(response.rawOutputs.summary, `${row.logicalName}: summary`).toBe("Greeted the user.");
+    }
+
+    expect(seenIds).toEqual([
+      "openai",
+      "openai-compatible",
+      "anthropic",
+      "gemini",
+      "xai",
+      "openrouter",
+      "lm-studio",
+    ]);
   });
 });
