@@ -36,14 +36,15 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const v = value as Record<string, unknown>;
-  // CRYPTO-01: accept undefined / v1 / v1.1 so they all reach Step 4 (the
-  // schema-version-too-low chokepoint). An unknown non-undefined literal
-  // (e.g. lattice-receipt/v2 or "garbage") is still a structural shape
-  // failure and falls through to the version-mismatch path here.
+  // CRYPTO-01: accept undefined / v1 / v1.1 / v1.2 so too-low versions all
+  // reach Step 4 (the schema-version-too-low chokepoint). An unknown
+  // non-undefined literal (e.g. lattice-receipt/v2 or "garbage") is still a
+  // structural shape failure and falls through to the version-mismatch path.
   if (
     v.version !== undefined &&
     v.version !== "lattice-receipt/v1" &&
-    v.version !== "lattice-receipt/v1.1"
+    v.version !== "lattice-receipt/v1.1" &&
+    v.version !== "lattice-receipt/v1.2"
   ) {
     return undefined;
   }
@@ -110,26 +111,26 @@ export async function verifyReceipt(
   if (body === undefined) {
     return fail(
       "version-mismatch",
-      "receipt body is not a lattice-receipt/v1 shape",
+      "receipt body is not a lattice-receipt/v1.1 or lattice-receipt/v1.2 shape",
     );
   }
 
   // Step 4: receipt-downgrade defense (CRYPTO-01).
   // Reject receipts whose body.version is absent or equals the v1 literal.
-  // v1 receipts predate the step-marker integrity surface added in v1.2;
-  // an attacker holding a valid signing key could mint a v1-shaped body
-  // and submit it to a v1.1 verifier to bypass step-chain commitments.
+  // v1 receipts predate the v1.1 step-marker integrity surface and the v1.2
+  // modelClass audit tag; an attacker holding a valid signing key could mint a
+  // v1-shaped body and submit it to bypass newer schema commitments.
   // Short-circuits before any cryptographic work (keyset lookup, canonical
   // re-check, signature verify) so the downgrade verdict is unambiguous.
   // See SECURITY.md (Phase 26 threat model) and Radicle 2026-03 precedent.
   if (body.version === undefined || body.version === "lattice-receipt/v1") {
     return fail(
       "schema-version-too-low",
-      "Receipt body.version must be 'lattice-receipt/v1.1' — v1 receipts are not accepted (CRYPTO-01).",
+      "Receipt body.version must be 'lattice-receipt/v1.1' or 'lattice-receipt/v1.2' — v1 receipts are not accepted (CRYPTO-01).",
     );
   }
 
-  // Step 5: keyset lookup (use first signature; multi-sig deferred to v1.2).
+  // Step 5: keyset lookup (use first signature; multi-sig deferred to a future schema).
   const firstSig = decoded.signatures[0]!;
   const entry: KeyEntry | undefined = keySet.lookup(firstSig.keyid);
   if (entry === undefined) {
