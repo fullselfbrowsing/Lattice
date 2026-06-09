@@ -5,12 +5,12 @@ milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Age
 status: executing
 stopped_at: Phase 37 planned; ready to execute
 last_updated: "2026-06-09T21:20:39.781Z"
-last_activity: 2026-06-09 -- Phase 37 Plan 01 complete; Wave 2 ready
+last_activity: 2026-06-09 -- Phase 37 Plan 02 complete; final plan ready
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 56
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 ## Current Position
 
 Phase: 37 (tool-call-validation-layer-opt-in) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Executing Phase 37
-Last activity: 2026-06-09 -- Phase 37 Plan 01 complete; Wave 2 ready
+Last activity: 2026-06-09 -- Phase 37 Plan 02 complete; final plan ready
 
 Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 phases remaining)
 
@@ -38,7 +38,7 @@ Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 pha
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 25 across Phases 24, 25, 26, 33, 34, 35, 36, and 37; Phase 37 has 1 completed plan and 2 planned-but-unexecuted plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 26 across Phases 24, 25, 26, 33, 34, 35, 36, and 37; Phase 37 has 2 completed plans and 1 planned-but-unexecuted plan; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
@@ -66,7 +66,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 37: Execute the 2 remaining planned tool-call validation layer plans.
+- Phase 37: Execute the final planned tool-call validation layer plan.
 - Phase 38-39: Author the remaining planned REQ-ID groups (`RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
@@ -92,6 +92,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T21:27:09Z
-Stopped at: Completed 37-01-PLAN.md; Wave 2 ready
-Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-02-PLAN.md
+Last session: 2026-06-09T21:32:15Z
+Stopped at: Completed 37-02-PLAN.md; final plan ready
+Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-03-PLAN.md

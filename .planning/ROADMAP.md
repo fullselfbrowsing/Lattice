@@ -278,7 +278,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Plans**: 3 plans
 
 - [x] 37-01-PLAN.md — Core validator module + normalized response field + parser reuse + public exports + direct tests (VALID-02, VALID-03)
-- [ ] 37-02-PLAN.md — OpenAI-compatible adapter family wiring + agent runtime validated-call preference (VALID-01, VALID-03)
+- [x] 37-02-PLAN.md — OpenAI-compatible adapter family wiring + agent runtime validated-call preference (VALID-01, VALID-03)
 - [ ] 37-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (VALID-01, VALID-03)
 
 ### Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)
@@ -376,6 +376,6 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
 | 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
-| 37. Tool-Call Validation Layer (opt-in) | 1/3 | In Progress | - |
+| 37. Tool-Call Validation Layer (opt-in) | 2/3 | In Progress | - |
 | 38. Receipt v1.2 Schema + modelClass Tag | 0/0 | Not started | - |
 | 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |
