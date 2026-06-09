@@ -2,6 +2,8 @@ import canonicalize from "canonicalize";
 
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
+import { getCapabilityProfile } from "../capabilities/lookup.js";
+import type { TrainingClass } from "../capabilities/profile.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 import {
@@ -967,6 +969,16 @@ interface MaybeIssueReceiptInput {
   readonly tripwireEvidence?: TripwireEvidence;
 }
 
+function resolveReceiptModelClass(
+  route: ReceiptRoute,
+  model: ReceiptModel,
+): TrainingClass | undefined {
+  if (route.providerId === "" || model.requested === "") return undefined;
+  return getCapabilityProfile(
+    `${route.providerId}:${model.requested}`,
+  )?.trainingClass;
+}
+
 /**
  * Phase 9 — issue a signed receipt at a terminal branch when a signer is
  * configured. Signer failures degrade gracefully to `undefined` so a faulty
@@ -984,11 +996,13 @@ async function maybeIssueReceipt(
         ? null
         : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
     const contractHash = await sha256HexOfCanonicalContract(input.contract);
+    const modelClass = resolveReceiptModelClass(input.route, input.model);
     return await createReceipt(
       {
         runId: input.runId,
         model: input.model,
         route: input.route,
+        ...(modelClass !== undefined ? { modelClass } : {}),
         usage: input.usage,
         contractVerdict: input.contractVerdict,
         contractHash,
