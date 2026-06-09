@@ -242,9 +242,15 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
 
     // 4d. Extract response text + parse tool-use envelope.
     const responseText = extractResponseText(response);
-    const toolUseRequests = handle.parseToolUse(responseText);
+    const toolUseRequests = response.toolCalls !== undefined
+      ? response.toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          name: toolCall.name,
+          args: toolCall.args,
+        }))
+      : handle.parseToolUse(responseText);
 
-    if (toolUseRequests === null) {
+    if (toolUseRequests === null || toolUseRequests.length === 0) {
       // 4e. Final answer path.
       const finalRecord: IterationRecord = {
         index: iterationIndex,

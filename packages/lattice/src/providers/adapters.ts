@@ -12,6 +12,11 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import { parseToolUseEnvelope } from "../agent/format-tools.js";
+import {
+  validateToolCallRequests,
+  type ValidateToolCallsOption,
+} from "../tools/tool-call-validation.js";
 import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
@@ -69,6 +74,12 @@ export interface OpenAICompatibleProviderOptions {
    * before the adapter returns.
    */
   readonly sanitizeOutput?: SanitizeOutputOption;
+  /**
+   * Phase 37 — Optional returned tool-call validator. When provided, the
+   * adapter parses prompt-reencoded tool_calls envelopes and returns
+   * normalized validated calls without mutating rawOutputs or rawResponse.
+   */
+  readonly validateToolCalls?: ValidateToolCallsOption;
 }
 
 export interface SdkLikeProviderOptions {
@@ -217,6 +228,10 @@ export function createOpenAICompatibleProvider(
         providerId: id,
         modelId: options.model,
       });
+      const parsedToolCalls = parseToolUseEnvelope(text);
+      const toolCalls = parsedToolCalls === null
+        ? undefined
+        : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
       const usage = normalizeUsage(body.usage);
       const normalizedUsage = normalizeUsageToRunUsage(body.usage, options.pricing);
 
@@ -224,6 +239,7 @@ export function createOpenAICompatibleProvider(
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
+        ...(toolCalls !== undefined ? { toolCalls } : {}),
         rawResponse: body,
       };
     },
