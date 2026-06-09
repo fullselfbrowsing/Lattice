@@ -108,7 +108,7 @@ export interface AI {
    * Phase 19 (v1.2): single-agent execution loop. Drives multiple provider
    * iterations under one call, dispatching tool requests between iterations.
    * Composes with the v1.2 hook pipeline (SAFETY-band veto, OBSERVABILITY-band
-   * checkpoint receipts) and the v1.1 capability receipts (when
+   * checkpoint receipts) and the v1.2 capability receipts (when
    * `intent.signer` is provided + `intent.autoRegisterCheckpoint !== false`).
    *
    * See `packages/lattice/src/agent/runtime.ts` for orchestration details.

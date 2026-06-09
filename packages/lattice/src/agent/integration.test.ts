@@ -8,7 +8,7 @@
  * Asserts:
  *   - Two-iteration agent flow (tool_use envelope -> tool dispatch ->
  *     final answer) completes with AgentSuccess.
- *   - Auto-registered checkpoint hook mints a v1.1 capability receipt for
+ *   - Auto-registered checkpoint hook mints a v1.2 capability receipt for
  *     AFTER_AGENT_ITERATION (the hook reads stepName/stepIndex/timestamp
  *     from the iteration context).
  *   - The minted receipt verifies cleanly against the ephemeral KeySet
@@ -139,6 +139,9 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
         const verifyResult = await verifyReceipt(envelope, keySet);
         expect(verifyResult.ok).toBe(true);
         expect(envelope.signatures[0]?.keyid).toBe(kid);
+        if (verifyResult.ok) {
+          expect(verifyResult.body.modelClass).toBeUndefined();
+        }
       }
     },
     15000,
