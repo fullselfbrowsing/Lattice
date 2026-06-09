@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_execute
+status: executing
 stopped_at: Phase 37 planned; ready to execute
-last_updated: "2026-06-09T19:17:29.000Z"
-last_activity: 2026-06-09 -- Phase 37 planning complete; ready to execute
+last_updated: "2026-06-09T21:20:39.781Z"
+last_activity: 2026-06-09 -- Phase 37 Plan 01 complete; Wave 2 ready
 progress:
   total_phases: 16
   completed_phases: 9
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 56
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 37 — tool-call validation layer (opt-in)
+**Current focus:** Phase 37 — tool-call-validation-layer-opt-in
 
 ## Current Position
 
-Phase: 37
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 37 planning complete; ready to execute
+Phase: 37 (tool-call-validation-layer-opt-in) — EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 37
+Last activity: 2026-06-09 -- Phase 37 Plan 01 complete; Wave 2 ready
 
 Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 phases remaining)
 
@@ -38,7 +38,7 @@ Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 pha
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 24 across Phases 24, 25, 26, 33, 34, 35, and 36; Phase 37 has 3 planned-but-unexecuted plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 25 across Phases 24, 25, 26, 33, 34, 35, 36, and 37; Phase 37 has 1 completed plan and 2 planned-but-unexecuted plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
@@ -66,7 +66,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 37: Execute the 3 planned tool-call validation layer plans.
+- Phase 37: Execute the 2 remaining planned tool-call validation layer plans.
 - Phase 38-39: Author the remaining planned REQ-ID groups (`RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
@@ -92,6 +92,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T19:17:29.000Z
-Stopped at: Phase 37 planned; ready to execute
-Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-01-PLAN.md
+Last session: 2026-06-09T21:27:09Z
+Stopped at: Completed 37-01-PLAN.md; Wave 2 ready
+Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-02-PLAN.md
