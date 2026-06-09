@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_plan
-stopped_at: Phase 37 context gathered; ready to plan
-last_updated: "2026-06-09T18:04:42.388Z"
-last_activity: 2026-06-09 -- Phase 37 context gathered; ready to plan
+status: ready_to_execute
+stopped_at: Phase 37 planned; ready to execute
+last_updated: "2026-06-09T19:17:29.000Z"
+last_activity: 2026-06-09 -- Phase 37 planning complete; ready to execute
 progress:
   total_phases: 16
   completed_phases: 9
-  total_plans: 24
+  total_plans: 27
   completed_plans: 24
   percent: 56
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase: 37
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-09 -- Phase 37 context gathered; ready to plan
+Status: Ready to execute
+Last activity: 2026-06-09 -- Phase 37 planning complete; ready to execute
 
 Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 phases remaining)
 
@@ -38,13 +38,13 @@ Progress: [██████░░░░] 56% (9/16 v1.3 phases complete; 7 pha
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 24 across Phases 24, 25, 26, 33, 34, 35, and 36; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 24 across Phases 24, 25, 26, 33, 34, 35, and 36; Phase 37 has 3 planned-but-unexecuted plans; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 9/16 phases complete, 46/72 authored REQ-IDs complete, 15 planned REQ-IDs still need to be authored for Phases 37-39.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 9/16 phases complete, 46/75 authored REQ-IDs complete, 12 planned REQ-IDs still need to be authored for Phases 38-39.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -66,8 +66,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 37: Plan and author `VALID` requirements before implementing the opt-in tool-call validation layer.
-- Phase 37-39: Author the remaining planned REQ-ID groups (`VALID`, `RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
+- Phase 37: Execute the 3 planned tool-call validation layer plans.
+- Phase 38-39: Author the remaining planned REQ-ID groups (`RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
 - Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
@@ -76,7 +76,7 @@ Recent decisions affecting current work:
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- Phases 37-39 have no implementation in any checked branch/tag as of the 2026-06-09 audit.
+- Phases 37-39 implementation remains outstanding; Phase 37 is now planned, while Phases 38-39 still need requirements, context, and plans.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
 - First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
@@ -88,9 +88,10 @@ Recent decisions affecting current work:
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
 | 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
+| 2026-06-09 | Plan Phase 37 tool-call validation layer | Authored VALID requirements, inline research/pattern map, and 3 execution plans after GSD subagent research failed with `Unsupported service_tier: flex`. |
 
 ## Session Continuity
 
-Last session: 2026-06-09T18:04:02.345Z
-Stopped at: Phase 37 context gathered; ready to plan
-Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-CONTEXT.md
+Last session: 2026-06-09T19:17:29.000Z
+Stopped at: Phase 37 planned; ready to execute
+Resume file: .planning/phases/37-tool-call-validation-layer-opt-in/37-01-PLAN.md

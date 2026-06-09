@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 72 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 46 / 72 authored REQ-IDs are complete. The 15 remaining planned REQ-IDs are for Phases 37-39 (`VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
+**Coverage:** 75 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 46 / 75 authored REQ-IDs are complete. The 12 remaining planned REQ-IDs are for Phases 38-39 (`RECEIPT12`, `DELEG`) and must be authored before those phases execute.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -275,7 +275,11 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. `ToolCallValidationError` carries `toolName`, `attemptedArgs`, `validationIssues` (Zod's typed issue list), and `requestId` (correlation with the receipt). Validation distinguishes three failure modes: `unknown_tool` (name not in registry → hallucination), `invalid_args` (schema mismatch), and `extra_fields` (consumer can choose to allow or reject).
   3. A scenario test exercises a fake provider that returns `{ name: "search_database", arguments: { quer: "..." } }` (typo in `query`); with `validateToolCalls.onFailure: "throw"` the adapter throws `ToolCallValidationError` with `validationIssues[0].path = ["query"]`; with `"drop"` the tool call is omitted from the result; with `"callback"` the callback fires with the typed error and the adapter proceeds.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 37-01-PLAN.md — Core validator module + normalized response field + parser reuse + public exports + direct tests (VALID-02, VALID-03)
+- [ ] 37-02-PLAN.md — OpenAI-compatible adapter family wiring + agent runtime validated-call preference (VALID-01, VALID-03)
+- [ ] 37-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (VALID-01, VALID-03)
 
 ### Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)
 
@@ -346,7 +350,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-72 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-36 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`) are authored and complete. The 15 remaining planned REQ-IDs (`VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 37-39. No authored orphans expected.
+75 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-37 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`) are authored; Phases 33-36 are complete and Phase 37 is planned. The 12 remaining planned REQ-IDs (`RECEIPT12`, `DELEG`) still need to be authored during Phases 38-39. No authored orphans expected.
 
 ## Progress
 
@@ -372,6 +376,6 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
 | 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
-| 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |
+| 37. Tool-Call Validation Layer (opt-in) | 0/3 | Planned | - |
 | 38. Receipt v1.2 Schema + modelClass Tag | 0/0 | Not started | - |
 | 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |
