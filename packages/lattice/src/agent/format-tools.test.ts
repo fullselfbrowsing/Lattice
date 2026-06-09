@@ -5,6 +5,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { defineTool } from "../tools/tools.js";
 import {
   formatToolsForProvider,
+  parseToolUseEnvelope,
   toolSchemaToJsonSchema,
   type ConversationTurn,
 } from "./format-tools.js";
@@ -109,6 +110,12 @@ describe.each(ALL_PROVIDERS)("formatToolsForProvider — %s", (providerName) => 
     expect(parsed?.[0]?.id).toBe("c1");
     expect(parsed?.[0]?.name).toBe("search");
     expect(parsed?.[0]?.args).toEqual({ q: "pet store" });
+  });
+
+  it("parseToolUseEnvelope() preserves the same parser behavior as parseToolUse()", () => {
+    const handle = formatToolsForProvider(providerName, [makeTool("search")]);
+    const envelope = `{"tool_calls":[{"id":"c1","name":"search","args":{"q":"pet store"}}]}`;
+    expect(parseToolUseEnvelope(envelope)).toEqual(handle.parseToolUse(envelope));
   });
 
   it("parseToolUse() extracts an envelope embedded in a markdown code fence", () => {

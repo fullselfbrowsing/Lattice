@@ -16,8 +16,10 @@ export interface ValidatedToolCall {
   readonly args: unknown;
 }
 
+type ToolCallValidationTool = Pick<ToolDefinition, "name" | "inputSchema">;
+
 export interface ValidateToolCallsOption {
-  readonly tools: readonly ToolDefinition[];
+  readonly tools: readonly ToolCallValidationTool[];
   readonly onFailure?: "throw" | "drop" | "callback";
   readonly onValidationFailure?: (error: ToolCallValidationError) => void | Promise<void>;
   readonly allowExtraFields?: boolean;

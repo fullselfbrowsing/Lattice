@@ -16,6 +16,7 @@ import {
   getToolUseContract,
   stripChatTemplateArtifacts,
   stripReasoningTags,
+  ToolCallValidationError,
   unwrapInternalEnvelope,
   verifyReceipt,
 } from "../src/index.js";
@@ -492,6 +493,33 @@ describe("Phase 36 public surface", () => {
       | _SanitizerContext
       | _SanitizeOutputOption
       | _InternalEnvelopeOptions);
+    expect(true).toBe(true);
+  });
+});
+
+describe("Phase 37 public surface", () => {
+  it("re-exports ToolCallValidationError from the package root", () => {
+    const error = new ToolCallValidationError({
+      reason: "unknown_tool",
+      toolName: "search_database",
+      attemptedArgs: { query: "lattice" },
+      requestId: "call-1",
+    });
+
+    expect(typeof ToolCallValidationError).toBe("function");
+    expect(error.kind).toBe("tool-call-validation");
+    expect(error.reason).toBe("unknown_tool");
+  });
+
+  it("type-only: Phase 37 tool-call validation types are exported", async () => {
+    type _ToolCallValidationFailureReason =
+      import("../src/index.js").ToolCallValidationFailureReason;
+    type _ValidateToolCallsOption = import("../src/index.js").ValidateToolCallsOption;
+    type _ValidatedToolCall = import("../src/index.js").ValidatedToolCall;
+    void (null as unknown as
+      | _ToolCallValidationFailureReason
+      | _ValidateToolCallsOption
+      | _ValidatedToolCall);
     expect(true).toBe(true);
   });
 });
