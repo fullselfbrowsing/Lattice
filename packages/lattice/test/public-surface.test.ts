@@ -14,6 +14,9 @@ import {
   PROMPT_STRATEGIES,
   getStructuredOutputContract,
   getToolUseContract,
+  stripChatTemplateArtifacts,
+  stripReasoningTags,
+  unwrapInternalEnvelope,
   verifyReceipt,
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
@@ -457,5 +460,38 @@ describe("Phase 35 public surface", () => {
       "Purpose: structured-output",
     );
     expect(getToolUseContract("frontier", [])).toContain("Purpose: tool-use");
+  });
+});
+
+describe("Phase 36 public surface", () => {
+  it("re-exports built-in output sanitizer factories", () => {
+    expect(typeof stripReasoningTags).toBe("function");
+    expect(typeof stripChatTemplateArtifacts).toBe("function");
+    expect(typeof unwrapInternalEnvelope).toBe("function");
+  });
+
+  it("unwraps the anchor internal envelope through the package root", async () => {
+    const sanitize = unwrapInternalEnvelope({ field: "summary" });
+
+    await expect(
+      sanitize("{\"summary\":\"Greeted the user.\"}", {
+        providerId: "openrouter",
+        modelId: "openai/gpt-oss-120b:free",
+        outputName: "text",
+      }),
+    ).resolves.toBe("Greeted the user.");
+  });
+
+  it("type-only: Phase 36 sanitizer types are exported", async () => {
+    type _SanitizerFn = import("../src/index.js").SanitizerFn;
+    type _SanitizerContext = import("../src/index.js").SanitizerContext;
+    type _SanitizeOutputOption = import("../src/index.js").SanitizeOutputOption;
+    type _InternalEnvelopeOptions = import("../src/index.js").InternalEnvelopeOptions;
+    void (null as unknown as
+      | _SanitizerFn
+      | _SanitizerContext
+      | _SanitizeOutputOption
+      | _InternalEnvelopeOptions);
+    expect(true).toBe(true);
   });
 });
