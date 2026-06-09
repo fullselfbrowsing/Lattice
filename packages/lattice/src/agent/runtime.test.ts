@@ -95,6 +95,88 @@ describe("runAgent — tool-use multi-iteration", () => {
       expect(result.usage.costUsd).toBeCloseTo(0.004);
     }
   });
+
+  it("prefers response.toolCalls over parser fallback text", async () => {
+    let iteration = 0;
+    let validatedCalls = 0;
+    let fallbackCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        iteration += 1;
+        if (iteration === 1) {
+          return {
+            rawOutputs: {
+              answer: `{"tool_calls":[{"id":"fallback","name":"fallback","args":{"value":"wrong"}}]}`,
+            },
+            toolCalls: [{ id: "validated", name: "validated", args: { value: "right" } }],
+            normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+          };
+        }
+        return {
+          rawOutputs: { answer: "Done." },
+          normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Use the validated call.",
+        tools: [
+          makeTool("validated", () => {
+            validatedCalls += 1;
+            return "validated-result";
+          }),
+          makeTool("fallback", () => {
+            fallbackCalls += 1;
+            return "fallback-result";
+          }),
+        ],
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(validatedCalls).toBe(1);
+    expect(fallbackCalls).toBe(0);
+    if (result.kind === "success") {
+      expect(result.iterations[0]?.toolCalls[0]?.id).toBe("validated");
+      expect(result.iterations[0]?.toolCalls[0]?.name).toBe("validated");
+    }
+  });
+
+  it("does not execute invalid calls dropped by adapter validation", async () => {
+    let dangerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: {
+          answer: `{"tool_calls":[{"id":"danger","name":"danger","args":{"value":"run"}}]}`,
+        },
+        toolCalls: [],
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+
+    const result = await runAgent(
+      {
+        task: "Do not execute dropped calls.",
+        tools: [
+          makeTool("danger", () => {
+            dangerCalls += 1;
+            return "danger-result";
+          }),
+        ],
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(dangerCalls).toBe(0);
+    if (result.kind === "success") {
+      expect(result.iterations).toHaveLength(1);
+      expect(result.iterations[0]?.toolCalls).toEqual([]);
+    }
+  });
 });
 
 describe("runAgent — sticky provider", () => {

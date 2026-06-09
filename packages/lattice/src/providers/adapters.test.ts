@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
   createAISdkProvider,
   createOpenAICompatibleProvider,
@@ -9,6 +10,7 @@ import type { ModelCapability } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
 
 function makeFakeFetch(body: unknown, status = 200): typeof fetch {
   return (async () =>
@@ -76,6 +78,12 @@ const openaiModels503 = {
     type: "server_error",
   },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 describe("Phase 7 adapter usage normalization", () => {
   it("openai adapter with pricing computes costUsd from prompt/completion tokens", async () => {
@@ -213,6 +221,118 @@ describe("Phase 7 adapter usage normalization", () => {
     };
     const adapter = createFakeProvider({ capabilities: [customCapability] });
     expect(adapter.capabilities).toEqual([customCapability]);
+  });
+});
+
+describe("Phase 37: OpenAI-compatible tool-call validation", () => {
+  it("returns normalized toolCalls when validateToolCalls is enabled", async () => {
+    const rawBody = {
+      choices: [
+        {
+          message: {
+            content: `{"tool_calls":[{"id":"c1","name":"search","args":{"query":"ok"}}]}`,
+          },
+        },
+      ],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    };
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch(rawBody),
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe(rawBody.choices[0]?.message.content);
+    expect(response.rawResponse).toEqual(rawBody);
+    expect(response.toolCalls).toEqual([
+      { id: "c1", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("omits toolCalls when validateToolCalls is absent", async () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({
+        choices: [
+          {
+            message: {
+              content: `{"tool_calls":[{"id":"c1","name":"search","args":{"query":"ok"}}]}`,
+            },
+          },
+        ],
+        usage: {},
+      }),
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect("toolCalls" in response).toBe(false);
+  });
+
+  it("throws for hallucinated tool names before returning invalid calls", async () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({
+        choices: [
+          {
+            message: {
+              content: `{"tool_calls":[{"id":"c2","name":"search_database","args":{"quer":"..."}}]}`,
+            },
+          },
+        ],
+        usage: {},
+      }),
+      validateToolCalls: { tools: [searchTool], onFailure: "throw" },
+    });
+
+    await expect(
+      adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] }),
+    ).rejects.toMatchObject({
+      reason: "unknown_tool",
+      toolName: "search_database",
+      requestId: "c2",
+    });
+  });
+
+  it("OpenAI provider inherits validation through the shared compatible path", async () => {
+    const adapter = createOpenAIProvider({
+      model: "gpt-test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({
+        choices: [
+          {
+            message: {
+              content: `{"tool_calls":[{"id":"c3","name":"search","args":{"query":"ok"}}]}`,
+            },
+          },
+        ],
+        usage: {},
+      }),
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.toolCalls).toEqual([
+      { id: "c3", name: "search", args: { query: "ok" } },
+    ]);
   });
 });
 

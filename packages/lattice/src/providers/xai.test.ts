@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { createXaiProvider } from "./xai.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { SanitizerFn } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
 
 /**
  * Phase 4 xAI adapter -- vitest cases.
@@ -72,6 +74,12 @@ const HAPPY_BODY = {
   choices: [{ message: { content: "hello xai" } }],
   usage: { prompt_tokens: 100, completion_tokens: 50 },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 // xAI /v1/models fixtures
 const xaiModelsOk = {
@@ -465,5 +473,40 @@ describe("Phase 36: xAI output sanitizer", () => {
     expect(response.rawOutputs.text).toBe("Greeted the user. [sanitized]");
     expect(String(response.rawOutputs.text).match(/\[sanitized\]/gu)).toHaveLength(1);
     expect(response.rawResponse).toEqual(rawBody);
+  });
+});
+
+describe("Phase 37: xAI tool-call validation", () => {
+  it("accepts validateToolCalls once through wrapper options", async () => {
+    const callback = vi.fn();
+    const { fetch } = makeFakeFetch({
+      choices: [
+        {
+          message: {
+            content: `{"tool_calls":[{"id":"xai-1","name":"search","args":{"quer":"..."}}]}`,
+          },
+        },
+      ],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    });
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test-key",
+      fetch,
+      validateToolCalls: {
+        tools: [searchTool],
+        onFailure: "callback",
+        onValidationFailure: callback,
+      },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(response.toolCalls).toEqual([]);
   });
 });
