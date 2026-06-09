@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { createAnthropicProvider } from "./anthropic.js";
 import { createGeminiProvider } from "./gemini.js";
@@ -10,6 +11,8 @@ import {
   createOpenAIProvider,
 } from "./adapters.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
+import type { ValidateToolCallsOption } from "../tools/tool-call-validation.js";
 
 import type { ProviderAdapter } from "./provider.js";
 
@@ -73,6 +76,12 @@ const GEMINI_BODY = {
   ],
   usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 interface ProviderRow {
   readonly logicalName: string;
@@ -412,5 +421,202 @@ describe("Phase 36 output sanitizer parity", () => {
       "openrouter",
       "lm-studio",
     ]);
+  });
+});
+
+const VALID_TOOL_ENVELOPE =
+  `{"tool_calls":[{"id":"tool-1","name":"search","args":{"query":"ok"}}]}`;
+const INVALID_TOOL_ENVELOPE =
+  `{"tool_calls":[{"id":"tool-bad","name":"search_database","args":{"quer":"..."}}]}`;
+
+interface ValidationProviderRow {
+  readonly logicalName: string;
+  readonly expectedId: string;
+  readonly build: (options: {
+    readonly fetch: typeof fetch;
+    readonly validateToolCalls: ValidateToolCallsOption;
+  }) => ProviderAdapter;
+}
+
+const VALIDATION_PROVIDERS: readonly ValidationProviderRow[] = [
+  {
+    logicalName: "OpenAI",
+    expectedId: "openai",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenAIProvider({
+        model: "gpt-4o",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "OpenAI-compatible",
+    expectedId: "openai-compatible",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenAICompatibleProvider({
+        model: "any-model",
+        baseUrl: "https://example.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "Anthropic",
+    expectedId: "anthropic",
+    build: ({ fetch, validateToolCalls }) =>
+      createAnthropicProvider({
+        model: "claude-3-opus",
+        apiKey: "sk-ant-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "Gemini",
+    expectedId: "gemini",
+    build: ({ fetch, validateToolCalls }) =>
+      createGeminiProvider({
+        model: "gemini-1.5-flash",
+        apiKey: "AIza-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "xAI",
+    expectedId: "xai",
+    build: ({ fetch, validateToolCalls }) =>
+      createXaiProvider({
+        model: "grok-4",
+        apiKey: "xai-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "OpenRouter",
+    expectedId: "openrouter",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenRouterProvider({
+        model: "openai/gpt-4o",
+        apiKey: "sk-or-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "LM Studio",
+    expectedId: "lm-studio",
+    build: ({ fetch, validateToolCalls }) =>
+      createLmStudioProvider({
+        model: "qwen2.5-coder-32b-instruct",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+];
+
+function validationBodyForProvider(providerId: string, text: string): unknown {
+  if (providerId === "anthropic") {
+    return {
+      content: [{ type: "text", text }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    };
+  }
+
+  if (providerId === "gemini") {
+    return {
+      candidates: [
+        {
+          content: { parts: [{ text }], role: "model" },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
+    };
+  }
+
+  return {
+    choices: [{ message: { content: text } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  };
+}
+
+describe("Phase 37 tool-call validation parity", () => {
+  it("all seven providers return validated toolCalls for valid prompt-encoded envelopes", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, VALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: { tools: [searchTool] },
+      });
+
+      const response = await adapter.execute!({
+        task: `validate-tool-call-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text"],
+      });
+
+      expect(adapter.id, `${row.logicalName}: id`).toBe(row.expectedId);
+      expect(response.rawOutputs.text, `${row.logicalName}: raw text`).toBe(VALID_TOOL_ENVELOPE);
+      expect(response.toolCalls, `${row.logicalName}: validated calls`).toEqual([
+        { id: "tool-1", name: "search", args: { query: "ok" } },
+      ]);
+    }
+  });
+
+  it("all seven providers drop invalid returned tool calls when configured", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: {
+          tools: [searchTool],
+          onFailure: "drop",
+        },
+      });
+
+      const response = await adapter.execute!({
+        task: `drop-invalid-tool-call-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text"],
+      });
+
+      expect(response.toolCalls, `${row.logicalName}: dropped invalid calls`).toEqual([]);
+    }
+  });
+
+  it("all seven providers throw for hallucinated tool names when configured", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: {
+          tools: [searchTool],
+          onFailure: "throw",
+        },
+      });
+
+      await expect(
+        adapter.execute!({
+          task: `throw-invalid-tool-call-${row.logicalName}`,
+          artifacts: [],
+          outputs: ["text"],
+        }),
+        `${row.logicalName}: throws invalid tool call`,
+      ).rejects.toMatchObject({
+        reason: "unknown_tool",
+        toolName: "search_database",
+        requestId: "tool-bad",
+      });
+    }
   });
 });
