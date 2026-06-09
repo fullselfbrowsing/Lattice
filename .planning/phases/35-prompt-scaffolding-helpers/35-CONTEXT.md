@@ -100,9 +100,8 @@ Downstream agents MUST read these before planning or implementing.
 ### Phase Definition
 
 - `.planning/ROADMAP.md` — Phase 35 goal, dependency, and success criteria.
-- `.planning/REQUIREMENTS.md` — Current milestone requirement ledger; note that
-  `SCAFF-01` through `SCAFF-04` are planned in the roadmap but not yet authored as
-  detailed requirement rows.
+- `.planning/REQUIREMENTS.md` — Current milestone requirement ledger, including
+  `SCAFF-01` through `SCAFF-04` for Phase 35.
 - `.planning/STATE.md` — Current milestone progress and Phase 35 next-action state.
 
 ### Upstream Decisions
@@ -172,10 +171,8 @@ Downstream agents MUST read these before planning or implementing.
 
 ### Tooling Note
 
-`gsd-tools init phase-op 35` currently returns `phase_found: false`, while
-`gsd-tools roadmap get-phase 35` resolves Phase 35 correctly. Downstream GSD steps
-may need to rely on the explicit phase path above or repair roadmap parsing before
-automation can initialize this phase normally.
+`gsd-tools init phase-op 35` resolves after the phase directory exists:
+`.planning/phases/35-prompt-scaffolding-helpers`.
 
 </code_context>
 

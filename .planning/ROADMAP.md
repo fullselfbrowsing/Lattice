@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 64 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 38 / 64 authored REQ-IDs are complete. The 23 remaining planned REQ-IDs are for Phases 35-39 (`SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
+**Coverage:** 68 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 38 / 68 authored REQ-IDs are complete. The 19 remaining planned REQ-IDs are for Phases 36-39 (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) and must be authored before those phases execute.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -242,7 +242,10 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. The `open_weight` strategy explicitly distinguishes meta-instruction from literal-instruction (the gpt-oss-120b root cause), providing example-driven prose framing that an open-weight model can follow without emitting the envelope schema verbatim.
   3. Each scaffold ships with a per-strategy regression test that pipes the returned fragment through a fake provider stub modeling the corresponding model class (frontier-stub passes meta-instruction through; open-weight-stub historically emits envelope-as-output) and asserts the fake stub no longer emits the envelope leak when the open-weight scaffold is used.
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+- [ ] 35-01-PLAN.md — Core prompt scaffold helpers + deterministic canonical rendering + public exports (SCAFF-01, SCAFF-02, SCAFF-03)
+- [ ] 35-02-PLAN.md — Strategy snapshots + fake provider regressions + type/public-surface tests + changeset (SCAFF-01, SCAFF-02, SCAFF-03, SCAFF-04)
 
 ### Phase 36: Output Sanitizer Hook (opt-in)
 
@@ -339,7 +342,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-64 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33/34 groups (`CAPS`, `QUIRK`, `NEG`) are authored and complete. The 23 remaining planned REQ-IDs (`SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 35-39. No authored orphans expected.
+68 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33/34 groups (`CAPS`, `QUIRK`, `NEG`) are authored and complete; the Phase 35 `SCAFF` group is authored and pending execution. The 19 remaining planned REQ-IDs (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) still need to be authored during Phases 36-39. No authored orphans expected.
 
 ## Progress
 

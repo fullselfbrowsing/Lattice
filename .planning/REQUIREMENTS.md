@@ -120,11 +120,18 @@
 - [x] **NEG-01**: `negotiateCapabilities?(modelId: string): Promise<NegotiatedCapabilities>` OPTIONAL method on `ProviderAdapter` (D-02). Top-level helper `negotiateCapabilities(adapter, modelId)` in `packages/lattice/src/capabilities/negotiate.ts` delegates to `adapter.negotiateCapabilities` when present; otherwise synthesizes from Phase 33 registry via `getCapabilityProfile("${adapter.id}:${modelId}")` with `source: "registry"` (D-04). All 7 first-party adapters with `/models` endpoints (Anthropic, OpenAI, Gemini, OpenRouter) implement; 3 without (xAI sparse, OpenAI-compat, LM Studio) fall back per D-04. Per-instance TTL cache (`modelsCacheTtlMs` factory option, default 300000ms, 0 disables, Infinity = process-lifetime per D-08); single-flight inflight-coalescing via `Map<modelId, Promise<T>>` with `.finally` cleanup (Pitfall 4 mandatory). `NegotiatedCapabilities` interface: `modelId`, `contextWindow`, `supports: { nativeToolCalling, structuredOutputs, parallelToolCalls, extendedThinking, streaming }`, `knownFailureModes`, `recommendedSanitizers`, `source: "live" | "registry-fallback" | "registry"`. `NegotiationAuthError extends Error` with `adapter: CapabilityAdapter`, `modelId: string`, `httpStatus: 401 | 403`, `kind = "negotiation-auth-failed" as const`. All public types and helpers re-exported from `packages/lattice/src/index.ts`.
 - [x] **NEG-02**: Fetch-failure policy: transient errors (5xx, network, timeout) fall back to Phase 33 registry with `source: "registry-fallback"` (D-09); auth errors (401/403) throw `NegotiationAuthError extends Error` carrying `adapter: CapabilityAdapter`, `modelId: string`, `httpStatus: 401 | 403` (D-10). Retry policy: 2 retries with exponential backoff [0ms, 200ms, 1000ms] = 3 total attempts before fallback (D-11); `modelsRetryCount` factory option (default 2, 0 disables). New `RunEventKind` literal `"capabilities.negotiation.fallback"` (D-12) added to `packages/lattice/src/tracing/tracing.ts` as the last union member with JSDoc comment. Anchor case study (`session_1780792387779`): `negotiateCapabilities(openrouterAdapter, "openai/gpt-oss-120b:free")` resolves with `recommendedSanitizers.includes("unwrapInternalEnvelope")` AND `knownFailureModes.includes("internal_envelope_leak")`.
 
+### Prompt Scaffolding Helpers (`SCAFF-*`)
+
+- [ ] **SCAFF-01**: `packages/lattice/src/prompts/scaffolds.ts` exports `getStructuredOutputContract(strategy, schema): string` and `getToolUseContract(strategy, tools): string`, using Phase 33's `RecommendedPromptStrategy` union (`"frontier" | "mid_tier" | "open_weight" | "reasoning" | "local"`) as the strategy parameter rather than defining a parallel prompt-strategy type.
+- [ ] **SCAFF-02**: Both scaffold helpers return deterministic, version-pinned prompt fragments. Returned strings include a stable scaffold version marker and canonical serialization of schema/tool inputs so semantically identical object-key ordering produces byte-identical fragments suitable for prompt-cache keys and snapshot tests.
+- [ ] **SCAFF-03**: The `open_weight` strategy explicitly distinguishes meta-instruction from literal output instruction. Structured-output and tool-use fragments include example-driven positive/negative framing that tells open-weight instruct models to follow the schema/tool contract without emitting the contract, internal envelope, or tool descriptor verbatim as the user-visible answer.
+- [ ] **SCAFF-04**: Regression coverage includes per-strategy byte snapshots or exact-string assertions for both helpers, fake provider stubs modeling strategy behavior, and an anchor test for `session_1780792387779` / `openai/gpt-oss-120b` proving the open-weight scaffold prevents the internal-envelope leak that previously emitted `{"summary": "Greeted the user."}` as the reply.
+
 ---
 
 ## Total Requirements
 
-**64 authored REQ-IDs** across **15 categories** are mapped in this file. **38 / 64** are complete as of the 2026-06-09 code/registry audit. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **23 planned REQ-IDs** for Phases 35-39 must be authored before the milestone audit can claim 87/87 coverage.
+**68 authored REQ-IDs** across **16 categories** are mapped in this file. **38 / 68** are complete as of the 2026-06-09 Phase 35 planning pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **19 planned REQ-IDs** for Phases 36-39 must be authored before the milestone audit can claim 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -143,12 +150,12 @@
 | DISPATCH | 3 | Phase 32 |
 | CAPS | 5 | Phase 33 |
 | QUIRK / NEG | 5 | Phase 34 |
+| SCAFF | 4 | Phase 35 |
 
 Planned but not yet authored:
 
 | Category | Planned count | Phase target |
 |---|---:|---|
-| SCAFF | 4 | Phase 35 |
 | SANITIZE | 4 | Phase 36 |
 | VALID | 3 | Phase 37 |
 | RECEIPT12 | 4 | Phase 38 |
@@ -260,8 +267,12 @@ Each authored REQ-ID maps to exactly one phase. Phases 35-39 still need detailed
 | QUIRK-03 | Phase 34 | 34-01 | complete |
 | NEG-01 | Phase 34 | 34-01 | complete |
 | NEG-02 | Phase 34 | 34-02 / 34-03 / 34-04 | complete |
+| SCAFF-01 | Phase 35 | 35-01 / 35-02 | pending |
+| SCAFF-02 | Phase 35 | 35-01 / 35-02 | pending |
+| SCAFF-03 | Phase 35 | 35-01 / 35-02 | pending |
+| SCAFF-04 | Phase 35 | 35-02 | pending |
 
-**Coverage:** 64 / 87 planned v1.3 REQ-IDs authored. 38 / 64 authored REQ-IDs complete. 23 planned REQ-IDs remain to be authored for Phases 35-39. No authored orphans. No duplicates.
+**Coverage:** 68 / 87 planned v1.3 REQ-IDs authored. 38 / 68 authored REQ-IDs complete. 19 planned REQ-IDs remain to be authored for Phases 36-39. No authored orphans. No duplicates.
 
 ---
 
@@ -269,3 +280,4 @@ Each authored REQ-ID maps to exactly one phase. Phases 35-39 still need detailed
 *Traceability filled: 2026-06-03 — by gsd-roadmapper during v1.3 roadmap creation*
 *Phase 34 REQ-IDs (QUIRK-01..03 + NEG-01..02) added: 2026-06-08 — Plan 34-01*
 *Planning state reconciled: 2026-06-09 — code/git/npm audit confirmed 38 authored REQ-IDs complete and stable 1.3.0 not published*
+*Phase 35 REQ-IDs (SCAFF-01..04) added: 2026-06-09 — plan-phase prerequisite*

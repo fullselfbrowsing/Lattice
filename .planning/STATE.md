@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: ready_to_plan
-stopped_at: Phase 34 complete (5/5) — planning source-of-truth cleanup complete; ready to plan Phase 35
-last_updated: 2026-06-09T15:44:00.734Z
-last_activity: 2026-06-09 -- reconciled v1.3 roadmap, requirements, and state against code, git refs, and npm registry
+status: ready_to_execute
+stopped_at: Phase 35 planned (2 plans); ready to execute
+last_updated: "2026-06-09T16:34:07.169Z"
+last_activity: 2026-06-09 -- Phase 35 planning complete
 progress:
   total_phases: 16
   completed_phases: 7
-  total_plans: 19
+  total_plans: 21
   completed_plans: 19
   percent: 44
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 Phase: 35
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-09
+Status: Ready to execute
+Last activity: 2026-06-09 -- Phase 35 planning complete
 
 Progress: [████░░░░░░] 44% (7/16 v1.3 phases complete; 9 phases remaining)
 
@@ -44,7 +44,7 @@ Progress: [████░░░░░░] 44% (7/16 v1.3 phases complete; 9 pha
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 7/16 phases complete, 38/64 authored REQ-IDs complete, 23 planned REQ-IDs still need to be authored for Phases 35-39.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 7/16 phases complete, 38/68 authored REQ-IDs complete, 19 planned REQ-IDs still need to be authored for Phases 36-39.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -66,7 +66,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 35: Plan prompt scaffolding helpers and author the SCAFF REQ-IDs before implementation.
+- Phase 35: Execute prompt scaffolding helper plans once planning artifacts are approved.
 - Phase 36-39: Author the remaining planned REQ-ID groups (`SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) before treating roadmap coverage as 87/87.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 35-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
@@ -89,6 +89,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T15:44:00.734Z
-Stopped at: Phase 34 complete; planning source-of-truth cleanup complete; Phase 35 next
-Resume file: .planning/phases/34-adapter-quirk-flags-capability-negotiation-api/34-CONTEXT.md
+Last session: 2026-06-09T16:34:07.169Z
+Stopped at: Phase 35 planned (2 plans); ready to execute
+Resume file: .planning/phases/35-prompt-scaffolding-helpers/35-01-PLAN.md
