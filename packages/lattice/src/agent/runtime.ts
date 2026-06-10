@@ -52,9 +52,44 @@ import {
   type AgentIntent,
   type AgentResult,
   type IterationRecord,
+  type ToolUseRequest,
 } from "./types.js";
 
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
+
+/**
+ * Context handed to an injected `dispatchToolUse` seam (Phase 39, internal).
+ * Carries the loop position plus read-only views of the live conversation
+ * and the hook pipeline so a crew dispatcher can run its own pipeline
+ * events around child execution.
+ */
+export interface DispatchToolUseContext {
+  readonly iterationIndex: number;
+  readonly conversation: readonly ConversationTurn[];
+  readonly pipeline: HookPipeline;
+}
+
+/**
+ * Internal (in-package only — NOT re-exported from src/index.ts) options
+ * for `runAgentInternal`. Phase 39 (v1.3) adds the injectable tool-use
+ * dispatch seam the CrewDispatcher (39-05) routes child-agent calls
+ * through.
+ *
+ * Semantics: for each `ToolUseRequest` in step 4g, when `dispatchToolUse`
+ * is present it is consulted FIRST. If it resolves `{ content }`, that
+ * content is pushed as the `role: "tool"` turn (same toolCallId/toolName
+ * as the default path) and recorded in `toolCallRecords`; the default
+ * lookup/`runTool` path — including its BEFORE_TOOL/AFTER_TOOL hook band
+ * semantics — is bypassed for that request (the dispatcher owns its own
+ * pipeline events). If it resolves `undefined`, the existing
+ * lookup/`runTool` path executes verbatim (fall-through).
+ */
+export interface RunAgentInternalOptions {
+  readonly dispatchToolUse?: (
+    req: ToolUseRequest,
+    ctx: DispatchToolUseContext,
+  ) => Promise<{ readonly content: string } | undefined>;
+}
 
 /**
  * Resolves the runtime's behaviour for a single `ai.runAgent(intent)` call.
@@ -63,10 +98,27 @@ const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null 
  * calling Promise), direct transport (provider.execute()), and in-memory
  * transcript (the `conversation` array). Phase 20 promotes scheduler /
  * transport / storage to the pluggable `AgentHost` adapter.
+ *
+ * Phase 39: `runAgent` is a thin public wrapper over `runAgentInternal`
+ * with no internal options — the public signature and behavior are
+ * unchanged.
  */
 export async function runAgent<TOutputs extends OutputContractMap = OutputContractMap>(
   intent: AgentIntent<TOutputs>,
   config: LatticeConfig = {},
+): Promise<AgentResult<TOutputs>> {
+  return runAgentInternal(intent, config);
+}
+
+/**
+ * The agent-loop implementation with the internal dispatch seam (Phase 39).
+ * In-package consumers (agent/crew/, 39-05) call this directly; it is NOT
+ * part of the public package surface.
+ */
+export async function runAgentInternal<TOutputs extends OutputContractMap = OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+  config: LatticeConfig = {},
+  internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
   const startedAt = Date.now();
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
@@ -301,34 +353,52 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
       readonly resultHash: string;
     }> = [];
     for (const req of toolUseRequests) {
-      const tool = intent.tools.find((t) => t.name === req.name);
-      let toolResult: ToolCallResult | null = null;
-      let resultContent: string;
+      let resultContent: string | null = null;
       let resultHash = "tool-not-found";
-      if (tool === undefined) {
-        resultContent = JSON.stringify({
-          error: `Unknown tool: ${req.name}`,
+
+      // Phase 39 internal dispatch seam: consult the injected dispatcher
+      // first. `{ content }` short-circuits the default path; `undefined`
+      // falls through to the existing lookup/runTool path verbatim.
+      if (internalOptions.dispatchToolUse !== undefined) {
+        const dispatched = await internalOptions.dispatchToolUse(req, {
+          iterationIndex,
+          conversation,
+          pipeline,
         });
-      } else {
-        try {
-          await pipeline.run("BEFORE_TOOL", {
-            iterationIndex,
-            toolName: req.name,
-            args: req.args,
-          });
-          toolResult = await runTool(tool, req.args);
-          resultContent = stringifyArtifactValue(toolResult.artifact.value);
-          resultHash = toolResult.callId;
-          await pipeline.run("AFTER_TOOL", {
-            iterationIndex,
-            toolName: req.name,
-            args: req.args,
-            result: toolResult.artifact.value,
-          });
-        } catch (error) {
+        if (dispatched !== undefined) {
+          resultContent = dispatched.content;
+          resultHash = stableHash(dispatched.content);
+        }
+      }
+
+      if (resultContent === null) {
+        const tool = intent.tools.find((t) => t.name === req.name);
+        let toolResult: ToolCallResult | null = null;
+        if (tool === undefined) {
           resultContent = JSON.stringify({
-            error: error instanceof Error ? error.message : "Tool execution failed",
+            error: `Unknown tool: ${req.name}`,
           });
+        } else {
+          try {
+            await pipeline.run("BEFORE_TOOL", {
+              iterationIndex,
+              toolName: req.name,
+              args: req.args,
+            });
+            toolResult = await runTool(tool, req.args);
+            resultContent = stringifyArtifactValue(toolResult.artifact.value);
+            resultHash = toolResult.callId;
+            await pipeline.run("AFTER_TOOL", {
+              iterationIndex,
+              toolName: req.name,
+              args: req.args,
+              result: toolResult.artifact.value,
+            });
+          } catch (error) {
+            resultContent = JSON.stringify({
+              error: error instanceof Error ? error.message : "Tool execution failed",
+            });
+          }
         }
       }
       conversation.push({
