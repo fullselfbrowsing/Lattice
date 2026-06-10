@@ -27,8 +27,15 @@
  *
  * Failure policy (caller contract): on provider failure, release with the
  * original estimate (no refund) — quota may have been consumed despite the
- * error.
+ * error. `withRateLimit` implements this policy for the AgentTransport seam.
  */
+
+import type { AgentTransport } from "../host.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+} from "../../providers/provider.js";
 
 /** Anthropic Tier 1 requests/minute (fetched 2026-06-10). */
 const DEFAULT_REQUESTS_PER_MINUTE = 50;
@@ -226,6 +233,77 @@ export function createRateLimitGroup(
         waiters.push({ inputTokens: estimate.inputTokens, resolve });
         scheduleNext();
       });
+    },
+  };
+}
+
+/**
+ * chars/4 heuristic for lease reservation (matches the transcript-store
+ * default `TokenEstimator`). Persistent estimation error is benign: `release`
+ * reconciles every lease against the actual `Usage.promptTokens` (A2).
+ */
+function estimateInputTokens(task: string): number {
+  return Math.ceil(task.length / 4);
+}
+
+/**
+ * Wrap an `AgentTransport` so every provider call is gated through `group`.
+ *
+ * Every transport wrapped with the SAME group instance shares one bucket —
+ * `runAgentCrew` (39-06) wraps parent + child hosts with one shared group per
+ * adapter instance, structurally guaranteeing crew-wide coordination (D-13).
+ * `ProviderAdapter` is never modified (INV-03 parity invariant intact).
+ *
+ * - `inner` provided → dispatch nests through `inner.call(provider, request)`,
+ *   composing with consumer transports (e.g. cross-process bridges).
+ * - `inner` undefined → falls through to `provider.execute(request)`, guarded
+ *   the same way as `createNoopAgentHost` (error names the provider id only).
+ *
+ * Release policy:
+ * - Success → release with `normalizedUsage.promptTokens`; when usage is
+ *   missing or non-finite, fall back to the estimate (no NaN arithmetic —
+ *   the `costUsd: null` "unmeasured" discipline analog).
+ * - Throw → release with the ORIGINAL estimate (burn — no refund; the
+ *   provider may have consumed quota despite the error) and rethrow the
+ *   same error unchanged. Request objects and headers are never serialized
+ *   into error paths.
+ */
+export function withRateLimit(
+  group: RateLimitGroup,
+  inner?: AgentTransport,
+): AgentTransport {
+  return {
+    async call(
+      provider: ProviderAdapter,
+      request: ProviderRunRequest,
+    ): Promise<ProviderRunResponse> {
+      const estimate = estimateInputTokens(request.task);
+      const lease = await group.acquire({ inputTokens: estimate });
+      try {
+        let response: ProviderRunResponse;
+        if (inner !== undefined) {
+          response = await inner.call(provider, request);
+        } else {
+          if (provider.execute === undefined) {
+            throw new Error(
+              `AgentTransport: provider ${provider.id} has no execute() method.`,
+            );
+          }
+          response = await provider.execute(request);
+        }
+        const actual = response.normalizedUsage?.promptTokens;
+        lease.release({
+          promptTokens:
+            typeof actual === "number" && Number.isFinite(actual)
+              ? actual
+              : estimate,
+        });
+        return response;
+      } catch (error) {
+        // Burn the reservation: quota may have been consumed despite the error.
+        lease.release({ promptTokens: estimate });
+        throw error;
+      }
     },
   };
 }
