@@ -309,7 +309,17 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. Parent-child loops execute under the policy: a parent agent dispatches a child by name; child runs its own bounded loop; child returns `{ summary: string, artifacts: ArtifactRef[], receipts: ReceiptCid[] }` matching `summaryReturnSchema`; parent receives the summary as a tool result and continues. Cache-prefix sharing across crew members is verifiable on Anthropic + OpenAI providers (shared system prompt across child invocations hits the prompt-cache).
   3. Rate-limit-group coordination shares a typed token bucket per provider-key across the crew (so a Claude-using parent and Claude-using children share quota rather than racing); receipts chain via a new `parentReceiptCid?: string` field on `CapabilityReceiptBody` (Receipt v1.2's `modelClass` ships alongside in Phase 38); `examples/agent-crew/` showcases a parent-summarizer + 3 child-researchers crew with real Ed25519 signing of every per-agent receipt; `evalAgentRun`-style regression test asserts crew completes within iteration + cost budget against a fake provider.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+- [ ] 39-01-PLAN.md — Author DELEG-01..08 REQ-IDs + receiptCid helper + parentReceiptCid on v1.2 body + CRYPTO-01 non-regression matrix (DELEG-06)
+- [ ] 39-02-PLAN.md — createRateLimitGroup dual-dimension lease bucket + withRateLimit AgentTransport wrapper (DELEG-05)
+- [ ] 39-03-PLAN.md — defineAgent/AgentSpec + CrewPolicy/validateCrewPolicy + crew-budget-exceeded + AgentSnapshot.ancestry + runtime dispatch seam + format-tools body variant (DELEG-01, DELEG-02, DELEG-03)
+- [ ] 39-04-PLAN.md — ProviderRunRequest.cacheSystemPrefix + Anthropic cache_control emission + mocked-fetch shape/counter tests (DELEG-04)
+- [ ] 39-05-PLAN.md — CrewDispatcher chokepoint: dispatch branch, cycle/depth, failure routing, receipt chaining, cache-prefix composition (DELEG-03, DELEG-04, DELEG-06)
+- [ ] 39-06-PLAN.md — runAgentCrew orchestrator + CrewResult + rate-limit wiring + ai.runAgentCrew facade + public exports + integration suite (DELEG-02, DELEG-03, DELEG-05)
+- [ ] 39-07-PLAN.md — examples/agent-crew showcase (parent + 3 researchers, Ed25519-signed chained receipts) + evalAgentRun crew regression gate (DELEG-07)
+- [ ] 39-08-PLAN.md — AGENTS.md 3-surface policy flip + gaps-doc Row 60/83 flips + tsd coverage + changeset + full phase gate (DELEG-08)
+
 
 ## Risks
 
@@ -382,4 +392,4 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
 | 37. Tool-Call Validation Layer (opt-in) | 3/3 | Complete | 2026-06-09 |
 | 38. Receipt v1.2 Schema + modelClass Tag | 4/4 | Complete | 2026-06-09 |
-| 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |
+| 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/8 | Planned | - |
