@@ -500,18 +500,25 @@ await third;                                          // resolves after continuo
 
 All other factual claims in this document are [VERIFIED] by direct codebase reads at the cited file:line locations or [CITED] from official provider docs fetched this session.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five questions were resolved at plan time; the locking plan/task is cited inline per item.
 
 1. **Where does the parent's `AgentIntent` come from in `runAgentCrew`?**
    - What we know: `AgentSpec` carries `{ id, intent, tools, childAgents, summaryReturnSchema }`; the existing loop consumes `AgentIntent { task, tools, host?, contract?, signer?, ... }`.
    - What's unclear: mapping of `spec.intent` (string) + crew-level signer/tracer/pipeline onto each member's `AgentIntent`; whether `RunAgentCrewOptions` carries `signer`/`tracer`/`pipeline` at crew level (recommended: yes, crew-level, threaded to every member).
    - Recommendation: planner defines `RunAgentCrewOptions = { root, hosts: { childHost }, policy, signer?, tracer?, providers? via createAI config }` and documents the mapping table in the plan.
+   - RESOLVED (39-06 Task 1): `RunAgentCrewOptions = { root, hosts: { childHost }, policy, signer?, tracer? }` with signer/tracer threaded crew-level into every member's `AgentIntent`; parent task from `root.intent`, tools = `root.tools` + synthesized childToolDeclarations; providers come via `createAI` config as recommended.
 2. **Does the root agent's own summary need `summaryReturnSchema` validation?**
    - What we know: criterion 2 validates child returns; root returns a normal `AgentResult` to the caller.
    - Recommendation: validate only children; the crew returns the parent's `AgentSuccess.output` untouched plus crew metadata (`CrewResult`).
+   - RESOLVED (39-05 Task 1; confirmed in 39-06 Task 1): children only — `validateSchemaOutput` runs on child summary envelopes; the parent's `AgentSuccess.output` is returned untouched in `CrewResult` (not schema-validated).
 3. **Reject vs clamp for `maxConcurrentChildren > 1`** — D-11 permits either. Recommendation: reject (typed error) for explicitness; cheap to flip later.
+   - RESOLVED (39-03 Task 2): reject — `validateCrewPolicy({ maxConcurrentChildren: 2 })` throws a `TypeError` naming the field and stating the serial-only v1.3 limit (D-11).
 4. **`AgentSnapshot` ancestry-chain versioning** (Pitfall 8) — optional field vs v2 literal. Recommendation: optional field, absent = root.
+   - RESOLVED (39-03 Task 2): optional field — `ancestry?: readonly string[]` on `AgentSnapshot`, absent = root; the `agent-snapshot/v1` version literal is unchanged (backward compat asserted in tests).
 5. **Rate-limit refund policy on provider failure** — refund the full token estimate on throw, or burn it? Provider may have consumed quota despite the error. Recommendation: refund request-count? No — keep both reserved (conservative, matches a real 429-adjacent failure) and document; planner may choose either with a test.
+   - RESOLVED (39-02 Task 2): burn — on provider throw, `lease.release({ promptTokens: estimate })` keeps the reservation consumed (no refund; the provider may have consumed quota), locked with a dedicated failure-path test asserting a subsequent acquire reflects the burned estimate.
 
 ## Environment Availability
 
