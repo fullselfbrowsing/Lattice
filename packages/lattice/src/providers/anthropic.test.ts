@@ -823,3 +823,153 @@ describe("Phase 34: Anthropic negotiateCapabilities", () => {
     expect(result.supports.structuredOutputs).toBe(true);
   });
 });
+
+describe("cacheSystemPrefix (Phase 39)", () => {
+  // NOTE: Live cache-hit verification (real Anthropic API, observing
+  // cache_read_input_tokens > 0 on a 2nd same-prefix call) is nightly/manual-only
+  // per repo policy (A4) -- real-provider tests never run at PR time. These
+  // mocked-fetch shape tests are the PR-time proof (Pitfall 1): the request
+  // body shape is what makes cache hits structurally possible.
+
+  it("Test 1: presence -- system is an array with one cache_control ephemeral block; prefix NOT duplicated into messages", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+    await adapter.execute!({
+      task: "child task body",
+      artifacts: [],
+      outputs: ["text"],
+      cacheSystemPrefix: "CREW PREFIX",
+    });
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    // system must be an ARRAY (block-granular caching), not a string
+    expect(Array.isArray(body.system)).toBe(true);
+    const system = body.system as readonly {
+      type: string;
+      text: string;
+      cache_control: { type: string };
+    }[];
+    expect(system).toHaveLength(1);
+    expect(system[0]).toEqual({
+      type: "text",
+      text: "CREW PREFIX",
+      cache_control: { type: "ephemeral" },
+    });
+    // Exact literal assertion required by acceptance criteria
+    expect(system[0]?.cache_control.type).toBe("ephemeral");
+    // messages unchanged: content equals request.task -- prefix NOT duplicated
+    const messages = body.messages as readonly { role: string; content: string }[];
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.role).toBe("user");
+    expect(messages[0]?.content).toBe("child task body");
+  });
+
+  it("Test 2: absence -- request body byte-identical to the pre-change golden body (system stays a string)", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+    await adapter.execute!({
+      task: "task-text-here",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    // Pre-change golden body for these exact inputs (T-39-11: no silent body
+    // drift for existing consumers). Key order matches the adapter's object
+    // literal: model, system, messages, max_tokens.
+    const golden = JSON.stringify({
+      model: "claude-3-haiku",
+      system: "",
+      messages: [{ role: "user", content: "task-text-here" }],
+      max_tokens: 2000,
+    });
+    // Byte-identical serialized body
+    expect(String(capture.init.body)).toBe(golden);
+    // And deep-equal as a parsed object (system is the empty STRING, not an array)
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body).toEqual(JSON.parse(golden));
+    expect(body.system).toBe("");
+  });
+
+  it("Test 3: cache counters readable from rawResponse; normalizedUsage shape NOT widened", async () => {
+    // Fixture 1: cache WRITE -- built from the existing success fixture plus
+    // the two Anthropic cache counter fields (RESEARCH Pattern 3 field names).
+    const creationBody = {
+      ...HAPPY_BODY,
+      usage: {
+        input_tokens: 100,
+        output_tokens: 50,
+        cache_creation_input_tokens: 1200,
+        cache_read_input_tokens: 0,
+      },
+    };
+    const { fetch: f1 } = makeFakeFetch(creationBody);
+    const adapter1 = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch: f1,
+    });
+    const response1 = await adapter1.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    // Counters readable from rawResponse (anthropic.ts preserves the full body);
+    // cast as the test file already does for raw bodies.
+    const raw1 = response1.rawResponse as {
+      usage: { cache_creation_input_tokens: number; cache_read_input_tokens: number };
+    };
+    expect(raw1.usage.cache_creation_input_tokens).toBe(1200);
+    expect(raw1.usage.cache_read_input_tokens).toBe(0);
+
+    // Fixture 2: cache READ -- second call hits the cache
+    const readBody = {
+      ...HAPPY_BODY,
+      usage: {
+        input_tokens: 100,
+        output_tokens: 50,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 1200,
+      },
+    };
+    const { fetch: f2 } = makeFakeFetch(readBody);
+    const adapter2 = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch: f2,
+    });
+    const response2 = await adapter2.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    const raw2 = response2.rawResponse as {
+      usage: { cache_creation_input_tokens: number; cache_read_input_tokens: number };
+    };
+    expect(raw2.usage.cache_read_input_tokens).toBe(1200);
+    expect(raw2.usage.cache_creation_input_tokens).toBe(0);
+
+    // normalizedUsage shape unchanged: EXACTLY the existing 3 fields -- no
+    // cache counters leaked into the normalized Usage shape.
+    expect(response1.normalizedUsage).toEqual({
+      promptTokens: 100,
+      completionTokens: 50,
+      costUsd: null,
+    });
+    expect(Object.keys(response1.normalizedUsage!).sort()).toEqual([
+      "completionTokens",
+      "costUsd",
+      "promptTokens",
+    ]);
+    expect(response2.normalizedUsage).toEqual({
+      promptTokens: 100,
+      completionTokens: 50,
+      costUsd: null,
+    });
+  });
+});

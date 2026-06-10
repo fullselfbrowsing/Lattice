@@ -98,6 +98,17 @@ export interface ProviderRunRequest {
   readonly contextPack?: ContextPack;
   readonly providerPackaging?: ProviderPackagingPlan;
   readonly packagedArtifacts?: readonly ArtifactRef[];
+  /**
+   * Phase 39 — opt-in prompt-cache prefix (DELEG-04). Adapters that support
+   * block-granular caching (Anthropic) hoist this to a `cache_control`-marked
+   * system content block; adapters that ignore it MUST receive the prefix
+   * folded into `task` by the caller instead (the crew dispatcher gates on
+   * `quirks.promptCachingSupported`). The field is advisory, additive, and
+   * absent for all existing callers — follows the Phase 37 `toolCalls`
+   * additive-field precedent (request/response additive fields accepted;
+   * `ProviderAdapter` METHODS frozen per INV-03).
+   */
+  readonly cacheSystemPrefix?: string;
 }
 
 export interface ProviderRunResponse {

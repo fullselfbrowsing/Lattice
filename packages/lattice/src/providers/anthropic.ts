@@ -30,7 +30,8 @@ import {
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
  * DEFERRED (Phase 4 carryforward notes):
- *   - prompt caching   (deferred to a follow-on phase)
+ *   - prompt caching   (Phase 39: opt-in via `ProviderRunRequest.cacheSystemPrefix` —
+ *                       emitted as a cache_control-marked system block when present)
  *   - streaming        (deferred; this adapter is single-shot Promise -- per CONTEXT.md D-06)
  *   - tool use         (Anthropic tool_use blocks are deferred)
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
@@ -386,6 +387,23 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     } satisfies AnthropicQuirks,
     negotiateCapabilities,
     async execute(request) {
+      // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
+      // it to a `cache_control`-marked system content block — Anthropic prompt
+      // caching is content-block-granular, so this is the shape that makes
+      // cache hits structurally possible (Pitfall 1). When absent, keep
+      // `system: ""` exactly so the request body stays byte-identical for all
+      // existing callers (T-39-11). Conditional VALUE, not conditional spread:
+      // the `system` key is always present per the Messages API contract (D-07).
+      const system =
+        request.cacheSystemPrefix !== undefined
+          ? [
+              {
+                type: "text",
+                text: request.cacheSystemPrefix,
+                cache_control: { type: "ephemeral" },
+              },
+            ]
+          : "";
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -397,7 +415,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
           model: options.model,
           // D-07: top-level `system` field PRESERVED (Anthropic Messages API
           // contract; NOT folded into the `messages` array).
-          system: "",
+          system,
           messages: [
             {
               role: "user",
