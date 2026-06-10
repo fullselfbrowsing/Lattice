@@ -174,6 +174,46 @@ describe.each(ALL_PROVIDERS)("formatToolsForProvider — %s", (providerName) => 
   });
 });
 
+describe("formatToolsForProvider — buildTaskBody body-only variant (Phase 39)", () => {
+  const conversationFixture: ConversationTurn[] = [
+    { role: "user", content: "find me a pet store" },
+    { role: "assistant", content: '{"tool_calls":[{"id":"c1","name":"search","args":{}}]}' },
+    {
+      role: "tool",
+      content: '{"results":["pet world"]}',
+      toolCallId: "c1",
+      toolName: "search",
+    },
+  ];
+
+  it("reconstructs buildTask byte-for-byte when prefixed with describeForSystem()", () => {
+    const handle = formatToolsForProvider("anthropic", [
+      makeTool("search", "Run a web search"),
+      makeTool("calc"),
+    ]);
+    const reconstructed =
+      handle.describeForSystem() + "\n" + handle.buildTaskBody(conversationFixture);
+    expect(reconstructed).toBe(handle.buildTask(conversationFixture));
+  });
+
+  it("emits the same turn rendering as buildTask minus the leading system block", () => {
+    const handle = formatToolsForProvider("openai", [makeTool("search")]);
+    const body = handle.buildTaskBody(conversationFixture);
+    expect(body).not.toContain("Available tools:");
+    expect(body).toContain("USER:\nfind me a pet store");
+    expect(body).toContain("TOOL_RESULT (name=search id=c1)");
+    expect(body.trim().endsWith("ASSISTANT:")).toBe(true);
+  });
+
+  it("reconstruction holds with a system prompt option and an empty conversation", () => {
+    const handle = formatToolsForProvider("openai", [makeTool("search")], {
+      system: "You are a helpful research assistant.",
+    });
+    const reconstructed = handle.describeForSystem() + "\n" + handle.buildTaskBody([]);
+    expect(reconstructed).toBe(handle.buildTask([]));
+  });
+});
+
 describe("formatToolsForProvider — system prompt option", () => {
   it("prepends the system option to the system block", () => {
     const handle = formatToolsForProvider("openai", [makeTool("search")], {
