@@ -539,6 +539,189 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     }
   });
 
+  it("rejects a forged v1 body carrying parentReceiptCid (downgrade attack, Phase 39)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-v1-cid");
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-v1-cid", publicKeyJwk, "active"),
+    ]);
+
+    // Hand-craft a v1 body smuggling the Phase 39 chain field. The body is
+    // otherwise valid and signed with a real key matching the keyset, so
+    // signature verification WOULD pass if the downgrade gate were absent.
+    const v1Body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1",
+      receiptId: "00000000-0000-4000-8000-000000000002",
+      runId: "downgrade-v1-parent-cid",
+      issuedAt: "2026-06-10T00:00:00.000Z",
+      kid: "crypto-01-v1-cid",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+      parentReceiptCid: `sha256:${"cd".repeat(32)}`,
+    };
+    const env = await signBody(v1Body, signer);
+
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("schema-version-too-low");
+    }
+  });
+
+  it("rejects an absent-version body carrying parentReceiptCid (Phase 39)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-undef-cid");
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-undef-cid", publicKeyJwk, "active"),
+    ]);
+
+    const valid: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.2",
+      receiptId: "00000000-0000-4000-8000-000000000003",
+      runId: "downgrade-undef-parent-cid",
+      issuedAt: "2026-06-10T00:00:00.000Z",
+      kid: "crypto-01-undef-cid",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+      parentReceiptCid: `sha256:${"ef".repeat(32)}`,
+    };
+    const { version: _ignored, ...rest } = valid;
+    void _ignored;
+    const stripped = rest as unknown as CapabilityReceiptBody;
+
+    const env = await signBody(stripped, signer);
+
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("schema-version-too-low");
+    }
+  });
+
+  it("rejects a forged 'lattice-receipt/v2' literal carrying parentReceiptCid with version-mismatch", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("crypto-01-v2-cid");
+    const keySet = createMemoryKeySet([
+      entryWith("crypto-01-v2-cid", publicKeyJwk, "active"),
+    ]);
+
+    const v2Body = {
+      version: "lattice-receipt/v2",
+      receiptId: "00000000-0000-4000-8000-000000000004",
+      runId: "forged-v2-parent-cid",
+      issuedAt: "2026-06-10T00:00:00.000Z",
+      kid: "crypto-01-v2-cid",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+      parentReceiptCid: `sha256:${"01".repeat(32)}`,
+    };
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(v2Body));
+    const payload = base64Encode(payloadBytes);
+    const pae = buildPae(PAYLOAD_TYPE, payload);
+    const sig = await signer.sign(pae);
+    const env: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload,
+      signatures: [{ keyid: "crypto-01-v2-cid", sig: base64Encode(sig) }],
+    };
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("version-mismatch");
+    }
+  });
+
+  it("still verifies a previously-signed v1.1 receipt without parentReceiptCid (compatibility)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("v11-compat-cid");
+    const keySet = createMemoryKeySet([
+      entryWith("v11-compat-cid", publicKeyJwk, "active"),
+    ]);
+    const body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.1",
+      receiptId: "00000000-0000-4000-8000-000000000005",
+      runId: "v11-compat-run",
+      issuedAt: "2026-06-10T00:00:00.000Z",
+      kid: "v11-compat-cid",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+    };
+    const env = await signBody(body, signer);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.parentReceiptCid).toBeUndefined();
+    }
+  });
+
+  it("rejects post-signing tamper of parentReceiptCid (canonicalization-mismatch or signature-invalid)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("tamper-cid");
+    const keySet = createMemoryKeySet([
+      entryWith("tamper-cid", publicKeyJwk, "active"),
+    ]);
+
+    const env = await createReceipt(
+      minimalInput({
+        runId: "tamper-parent-cid",
+        parentReceiptCid: `sha256:${"aa".repeat(32)}`,
+      }),
+      signer,
+    );
+
+    // Positive control: untampered envelope verifies.
+    const ok = await verifyReceipt(env, keySet);
+    expect(ok.ok).toBe(true);
+
+    // Tamper: swap the chain link to point at a DIFFERENT parent.
+    const originalBytes = base64Decode(env.payload);
+    const body = JSON.parse(
+      new TextDecoder().decode(originalBytes),
+    ) as CapabilityReceiptBody;
+    const tamperedBody: CapabilityReceiptBody = {
+      ...body,
+      parentReceiptCid: `sha256:${"bb".repeat(32)}`,
+    };
+    const tamperedBytes = canonicalizeReceiptBody(tamperedBody);
+    const tamperedEnv: ReceiptEnvelope = {
+      ...env,
+      payload: base64Encode(tamperedBytes),
+    };
+
+    const result = await verifyReceipt(tamperedEnv, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.error.kind === "canonicalization-mismatch" ||
+          result.error.kind === "signature-invalid",
+      ).toBe(true);
+    }
+  });
+
   it("accepts a normally-minted v1.2 receipt (positive control regression guard)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
     const env = await createReceipt(

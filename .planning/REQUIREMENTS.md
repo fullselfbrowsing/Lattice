@@ -147,11 +147,22 @@
 - [x] **RECEIPT12-03**: `ai.run` terminal receipts populate `modelClass` only when strict registry lookup `getCapabilityProfile("${providerId}:${modelId}")?.trainingClass` succeeds for the selected route/model. Success, validation-failed, tripwire-violated, and execution-failed receipts for registry-known models include the field; fake, unknown, synthetic no-route/no-contract-match, and checkpoint/agent iteration receipts omit it. No `modelClass` field is added to `ProviderRunResponse` or provider adapter APIs.
 - [x] **RECEIPT12-04**: Regression coverage proves v1.2 minting, v1.1 backward-compatible verification, forged downgrade rejection, DSSE/JCS byte stability with `modelClass`, runtime include/omit behavior, checkpoint omit behavior, public `TrainingClass` / `CapabilityReceiptBody["modelClass"]` type coherence, and a changeset documenting the receipt schema bump.
 
+### Multi-Agent Delegation Surface (`DELEG-*`)
+
+- [ ] **DELEG-01**: `defineAgent(spec): AgentSpec` ships in `packages/lattice/src/agent/` as a literal sibling of `defineTool`, returning `{ kind: "agent", id, intent, tools, childAgents?, summaryReturnSchema }` with `childAgents: ReadonlyArray<AgentSpec>` composing by value; exported from the package root with tsd type coverage.
+- [ ] **DELEG-02**: `runAgentCrew({ root, hosts: { childHost }, policy })` is exposed on the runtime returned by `createAI` via the same lazy-`import()` pattern as `runAgent`; `CrewPolicy` carries a crew-level `BudgetInvariant` (reused verbatim) plus `maxTotalIterations`, `maxIterationsPerAgent`, `maxConcurrentChildren` (rejected/clamped to 1), and `maxDepth` (default 1); per-child effective budget = `min(spec budget, remaining crew pool)`; crew cost accounting uses one `createCostTracker` per agent plus one crew aggregator with double-counting guarded by tests.
+- [ ] **DELEG-03**: Parent-child delegation executes through a CrewDispatcher chokepoint: the parent's model sees each child as a named tool (prompt-reencoded protocol + Phase 37 validation unchanged), the runtime branches on `kind: "agent"`, the child runs its own bounded loop, and the validated `{ summary, artifacts, receipts }` summary (per `summaryReturnSchema`) re-enters the parent conversation as a `role: "tool"` turn. Recoverable child failures return as structured tool-result errors `{ kind, reason, terminal }`; tripwire violations and crew-ceiling breach propagate `terminal: true`; `AgentFailureKind` gains `crew-budget-exceeded`; cycle prevention rejects any dispatch whose target id appears in the ancestry chain (persisted in `AgentSnapshot` for resume).
+- [ ] **DELEG-04**: Crew members share a byte-stable prompt-cache prefix: the shared system/tool prefix is composed deterministically (Phase 35 scaffold discipline), the Anthropic adapter gains an opt-in path that emits the prefix as a `cache_control`-marked system block, OpenAI relies on automatic prefix caching, and tests verify (a) the Anthropic request shape carries `cache_control` and (b) cache-hit counters (`cache_read_input_tokens` / `prompt_tokens_details.cached_tokens`) are surfaced from `rawResponse` for assertion.
+- [ ] **DELEG-05**: A standalone rate-limit-group primitive (`createRateLimitGroup`) ships under `agent/infra/` and the package root: dual-dimension (RPM + input-TPM) continuously-drained token bucket with a lease interface (`acquire(estimate)` / `release(actualUsage)`), conservative default approximating Anthropic Tier 1 (50 RPM / 30k input TPM), per-key `limits` override in `CrewPolicy`, `coordination: "unmanaged"` escape hatch, injected by wrapping the `AgentTransport` seam (no `ProviderAdapter` change), one shared group per provider key across the crew.
+- [ ] **DELEG-06**: `CapabilityReceiptBody` gains additive optional `parentReceiptCid?: string` on schema v1.2 (no version bump); a public CID helper derives `sha256:<hex>` from an envelope's canonical payload bytes; per-agent crew receipts chain via the field (root receipt omits it); CRYPTO-01 regression suite extended: forged v1/v1.1 downgrades carrying `parentReceiptCid` rejected, v1.1 verification compatibility preserved, DSSE/JCS byte stability with the field proven.
+- [ ] **DELEG-07**: `examples/agent-crew/` showcases a parent-summarizer + 3 child-researchers crew (serial children) with real Ed25519 signing of every per-agent receipt, written to a receipts dir and verified via `verifyReceipt`; an `evalAgentRun`-style regression test gates crew iterations-to-goal + cost against a committed baseline using a scripted fake provider.
+- [ ] **DELEG-08**: Policy + audit-trail surfaces flip: `AGENTS.md` Multi-Agent Crews section (and the "What Not To Use" OpenAI Agents SDK row + Rationale paragraph) updated to "First-class via opt-in `AgentHost` capability"; `docs/fsb-integration-gaps.md` Row 60 → "Covered" with Phase 39 backlink, Row 83 → "Covered" with v1.2 Phase 20 backlink (commit `3794896`); all new public symbols exported from `src/index.ts` and pass publint/attw/tsd gates; changeset documents the crew surface.
+
 ---
 
 ## Total Requirements
 
-**79 authored REQ-IDs** across **19 categories** are mapped in this file. **53 / 79** are complete as of the 2026-06-09 Phase 38 execution pass. The roadmap still plans **87 total v1.3 REQ-IDs**; the remaining **8 planned REQ-IDs** for Phase 39 must be authored before the milestone audit can claim 87/87 coverage.
+**87 authored REQ-IDs** across **20 categories** are mapped in this file. **53 / 87** are complete as of the 2026-06-09 Phase 38 execution pass. All 87 planned v1.3 REQ-IDs are now authored; the milestone audit can count 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -174,11 +185,6 @@
 | SANITIZE | 4 | Phase 36 |
 | VALID | 3 | Phase 37 |
 | RECEIPT12 | 4 | Phase 38 |
-
-Planned but not yet authored:
-
-| Category | Planned count | Phase target |
-|---|---:|---|
 | DELEG | 8 | Phase 39 |
 
 ---
@@ -219,7 +225,7 @@ Carried over from v1.2 close-out. Out of scope for v1.3 unless explicitly pulled
 
 ## Traceability
 
-Each authored REQ-ID maps to exactly one phase. Phase 39 still needs detailed REQ-ID authoring before execution.
+Each authored REQ-ID maps to exactly one phase. Phase 39 DELEG REQ-IDs were authored 2026-06-10 by the Phase 39 planner.
 
 | REQ-ID | Phase | Plan | Status |
 |---|---|---|---|
@@ -302,8 +308,16 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 still needs detailed RE
 | RECEIPT12-02 | Phase 38 | 38-01 | complete |
 | RECEIPT12-03 | Phase 38 | 38-02 | complete |
 | RECEIPT12-04 | Phase 38 | 38-01 / 38-02 / 38-03 | complete |
+| DELEG-01 | Phase 39 | 39-03 | pending |
+| DELEG-02 | Phase 39 | 39-03 / 39-06 | pending |
+| DELEG-03 | Phase 39 | 39-03 / 39-05 / 39-06 | pending |
+| DELEG-04 | Phase 39 | 39-04 / 39-05 | pending |
+| DELEG-05 | Phase 39 | 39-02 / 39-06 | pending |
+| DELEG-06 | Phase 39 | 39-01 / 39-05 | pending |
+| DELEG-07 | Phase 39 | 39-07 | pending |
+| DELEG-08 | Phase 39 | 39-08 | pending |
 
-**Coverage:** 79 / 87 planned v1.3 REQ-IDs authored. 53 / 79 authored REQ-IDs complete. 8 planned REQ-IDs remain to be authored for Phase 39. No authored orphans. No duplicates.
+**Coverage:** 87 / 87 planned v1.3 REQ-IDs authored. 53 / 87 authored REQ-IDs complete. No authored orphans. No duplicates.
 
 ---
 
@@ -319,3 +333,4 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 still needs detailed RE
 *Phase 37 REQ-IDs (VALID-01..03) completed: 2026-06-09 — tool-call validation layer executed and verified*
 *Phase 38 REQ-IDs (RECEIPT12-01..04) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 38 REQ-IDs (RECEIPT12-01..04) completed: 2026-06-09 — receipt v1.2 schema + modelClass tag executed and verified*
+*Phase 39 REQ-IDs (DELEG-01..08) added: 2026-06-10 — plan-phase prerequisite*

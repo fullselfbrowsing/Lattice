@@ -55,6 +55,13 @@ export interface CapabilityReceiptBody {
   // synthetic/unknown routes; populated from the strict Phase 33 registry when
   // runtime issuance has a known selected provider/model.
   readonly modelClass?: TrainingClass;
+  // Phase 39 (v1.3) receipt-chain link — additive optional on v1.2, no schema
+  // bump. Holds the crew-root receipt's CID: `sha256:<hex>` of the parent
+  // envelope's canonical DSSE payload bytes (see receipts/cid.ts). A stable
+  // identifier, not user content — redaction-exempt per the step-marker-field
+  // rationale above; never put free-form crew names in receipt identifier
+  // fields. Absent on root/non-crew receipts.
+  readonly parentReceiptCid?: string;
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
