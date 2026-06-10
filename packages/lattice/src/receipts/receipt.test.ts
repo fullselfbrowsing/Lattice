@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 
+import { receiptCid } from "./cid.js";
 import { PAYLOAD_TYPE, base64Decode } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
 import { DEFAULT_REDACTION_POLICY_ID, redactReceiptBody } from "./redact.js";
@@ -286,6 +287,71 @@ describe("receipt.ts — modelClass", () => {
     const body = decodeBody(env.payload);
     expect(body.version).toBe("lattice-receipt/v1.2");
     expect(body.modelClass).toBe("local_quantized");
+  });
+});
+
+describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
+  it("mints a v1.2 body containing parentReceiptCid when supplied", async () => {
+    const { signer } = await makeSigner();
+    const parentCid = `sha256:${"ab".repeat(32)}`;
+    const env = await createReceipt(
+      minimalInput({ parentReceiptCid: parentCid }),
+      signer,
+    );
+    const body = decodeBody(env.payload);
+    expect(body.version).toBe("lattice-receipt/v1.2");
+    expect(body.parentReceiptCid).toBe(parentCid);
+  });
+
+  it("omits parentReceiptCid entirely from the canonical JSON when not supplied", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(minimalInput(), signer);
+    const body = decodeBody(env.payload);
+    // Absent — NOT present-with-undefined. JCS canonicalization would throw
+    // on a literal undefined; the conditional-spread keeps the key out.
+    expect("parentReceiptCid" in body).toBe(false);
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain("parentReceiptCid");
+  });
+
+  it("chains: child receipt carries the real CID of its parent envelope and round-trips DSSE/JCS byte-stably", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, {
+      kid: "chain-key",
+      publicKeyJwk,
+    });
+
+    // Mint the crew-root receipt (no parentReceiptCid).
+    const rootEnv = await createReceipt(
+      minimalInput({ runId: "crew-root" }),
+      signer,
+    );
+    const rootCid = await receiptCid(rootEnv);
+    expect(rootCid).toMatch(/^sha256:[0-9a-f]{64}$/);
+
+    // Mint a child receipt chained to the root.
+    const childEnv = await createReceipt(
+      minimalInput({ runId: "crew-child", parentReceiptCid: rootCid }),
+      signer,
+    );
+
+    // Serialize -> deserialize -> verify (byte stability across the wire).
+    const wire = JSON.stringify(childEnv);
+    const revived = JSON.parse(wire) as typeof childEnv;
+    expect(revived.payload).toBe(childEnv.payload);
+
+    const keySet = createMemoryKeySet([
+      { kid: "chain-key", publicKeyJwk, state: "active" },
+    ]);
+    const result = await verifyReceipt(revived, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.parentReceiptCid).toBe(rootCid);
+    }
+
+    // CID of the revived envelope equals CID of the original (byte-stable).
+    expect(await receiptCid(revived)).toBe(await receiptCid(childEnv));
   });
 });
 
