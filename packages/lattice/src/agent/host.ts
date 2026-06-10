@@ -51,6 +51,16 @@ export interface AgentSnapshot {
   readonly cumulativeUsage: Usage;
   readonly providerName: string;
   readonly capturedAt: string;
+  /**
+   * Phase 39 (v1.3): dispatch ancestry chain of crew `AgentSpec` ids
+   * (root-first). Absent = root agent (single-agent runs never set it).
+   * Optional so existing serialized `agent-snapshot/v1` snapshots
+   * deserialize unchanged — the version literal stays `"agent-snapshot/v1"`
+   * (D-05; Pitfall 8). The crew dispatcher threads the chain through
+   * dispatch context in 39-05; cycle prevention rejects any dispatch whose
+   * target id already appears in the chain.
+   */
+  readonly ancestry?: readonly string[];
 }
 
 /**

@@ -129,13 +129,16 @@ export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContrac
  * Failure kinds specific to the agent loop. v1.1 `LatticeRunError.kind`
  * values remain valid (provider errors, no-contract-match, validation-failed,
  * tripwire-violated) and are reused verbatim. Phase 19 adds three
- * agent-specific kinds.
+ * agent-specific kinds. Phase 39 (v1.3) adds `crew-budget-exceeded` —
+ * crew-level shared-pool exhaustion, terminal across the parent/child
+ * boundary (D-10).
  */
 export type AgentFailureKind =
   | LatticeRunError["kind"]
   | "agent-iteration-denied"
   | "agent-max-iterations"
-  | "agent-wall-time-exceeded";
+  | "agent-wall-time-exceeded"
+  | "crew-budget-exceeded";
 
 /**
  * Failure result returned by `ai.runAgent`. Discriminates via `kind`.
