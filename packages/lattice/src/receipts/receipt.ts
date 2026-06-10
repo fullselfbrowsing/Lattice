@@ -37,6 +37,10 @@ export interface CreateReceiptInput {
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
   readonly modelClass?: TrainingClass;
+  // Phase 39 (DELEG-06): chain-link to the parent receipt's CID
+  // (`sha256:<hex>` of the parent envelope's canonical payload bytes,
+  // derived via receipts/cid.ts receiptCid). Omit for root/non-crew receipts.
+  readonly parentReceiptCid?: string;
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -101,6 +105,7 @@ export async function createReceipt(
     model: input.model,
     route: input.route,
     ...(input.modelClass !== undefined ? { modelClass: input.modelClass } : {}),
+    ...(input.parentReceiptCid !== undefined ? { parentReceiptCid: input.parentReceiptCid } : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,
