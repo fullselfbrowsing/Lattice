@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`crew cache prefix — byte stability across dispatches (DELEG-04) > carries a strictly identical (===) cacheSystemPrefix across 3 consecutive child dispatches 1`] = `
+"Available tools:
+- name: lookup
+  description: Look up a fact in the crew knowledge base.
+  args_schema: {
+  "$comment": "standard-schema vendor: test-stub; toJSONSchema not available",
+  "type": "object"
+}
+
+You are a single-agent loop. You can either:
+  (a) answer the user directly with a final response, OR
+  (b) request one or more tool calls.
+
+To request tool calls, respond with ONE JSON object on a line by itself:
+  {"tool_calls": [{"id": "...", "name": "tool_name", "args": {...}}]}
+Each tool_call needs a unique id (any string). The args MUST match the tool's args_schema.
+
+To answer directly, respond with a final answer in natural language with NO JSON envelope.
+Do not mix a final answer and a tool_calls envelope in the same response."
+`;
