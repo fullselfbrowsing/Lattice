@@ -43,7 +43,11 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { validateSchemaOutput } from "../../outputs/validate.js";
-import type { Usage } from "../../providers/provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  Usage,
+} from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
@@ -54,8 +58,9 @@ import {
 } from "../../runtime/survivability.js";
 import type { ToolDefinition } from "../../tools/tools.js";
 
+import { formatToolsForProvider } from "../format-tools.js";
 import { STUCK_REASONS } from "../infra/action-history.js";
-import type { AgentHost, AgentSnapshot } from "../host.js";
+import type { AgentHost, AgentSnapshot, AgentTransport } from "../host.js";
 import {
   runAgentInternal,
   type DispatchToolUseContext,
@@ -158,6 +163,18 @@ function createDispatcherNode(
   const children = spec.childAgents ?? [];
   // D-10 terminal-block set: childId -> cached terminal error content.
   const terminalBlock = new Map<string, string>();
+  // Cache-prefix hoist (DELEG-04): every child loop's transport is wrapped
+  // so requests whose task starts with the byte-stable crew prefix are
+  // hoisted to ProviderRunRequest.cacheSystemPrefix when (and ONLY when)
+  // the executing adapter discloses quirks.promptCachingSupported. All
+  // gating lives here in crew code — adapters stay dumb.
+  const childHost: AgentHost =
+    ctx.sharedPrefix.length > 0
+      ? {
+          ...ctx.childHost,
+          transport: withCachePrefixHoist(ctx.sharedPrefix, ctx.childHost.transport),
+        }
+      : ctx.childHost;
 
   async function dispatchToolUse(
     req: ToolUseRequest,
@@ -259,7 +276,7 @@ function createDispatcherNode(
     const childIntent: AgentIntent = {
       task,
       tools: childTools,
-      host: ctx.childHost,
+      host: childHost,
       // Persist the full root-first chain (including the child itself) on
       // the child's AgentSnapshot when the childHost captures snapshots.
       survivabilityAdapter: withAncestrySnapshot(
@@ -414,6 +431,86 @@ function isPoolExhausted(pool: BudgetInvariant | undefined): boolean {
     (typeof pool.maxWallTimeMs === "number" && pool.maxWallTimeMs <= 0) ||
     (typeof pool.maxCostUsd === "number" && pool.maxCostUsd <= 0)
   );
+}
+
+// ---------------------------------------------------------------------------
+// Cache-prefix sharing (DELEG-04, research Pattern 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compose the byte-stable crew cache prefix for one tool surface: the
+ * `describeForSystem()` block (tool descriptions + envelope instructions),
+ * derived from deterministic, version-pinned inputs ONLY — no timestamps,
+ * random ids, or unsorted keys (Phase 35 scaffold discipline; any
+ * non-byte-stable fragment silently zeroes the cache-hit rate).
+ *
+ * The 39-06 orchestrator composes this ONCE per crew at crew start and
+ * threads it as `CrewDispatchContext.sharedPrefix`. All members sharing a
+ * tool surface share byte-identical prefix bytes across dispatches.
+ */
+export function composeCrewCachePrefix(
+  tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>,
+): string {
+  // The providerName argument does not branch the v1.2+ prompt-reencoded
+  // implementation; a fixed literal keeps the bytes provider-independent.
+  return formatToolsForProvider("lattice-crew", tools).describeForSystem();
+}
+
+/**
+ * Transport wrapper implementing the quirks-gated prefix hoist:
+ *
+ * - Adapter discloses `quirks.promptCachingSupported === true` (Anthropic
+ *   block-granular caching) AND the outgoing task starts with the shared
+ *   prefix → the prefix is hoisted to `cacheSystemPrefix` and `task`
+ *   carries ONLY the conversation body. The 39-03 byte-equality invariant
+ *   (`describeForSystem() + "\n" + buildTaskBody(conv) === buildTask(conv)`)
+ *   guarantees the stripped remainder IS the body-only rendering — the
+ *   prefix is never duplicated.
+ * - Any other adapter → the request passes through UNTOUCHED: no
+ *   `cacheSystemPrefix` own-property is ever created (Pitfall 6) and the
+ *   prefix stays at the head of `task` (OpenAI automatic token-prefix path).
+ *
+ * Composes over an existing `AgentTransport` (FSB offscreen bridge etc.);
+ * when `inner` is absent it dispatches `provider.execute()` directly,
+ * matching the runtime's default transport behavior.
+ */
+export function withCachePrefixHoist(
+  sharedPrefix: string,
+  inner?: AgentTransport,
+): AgentTransport {
+  const marker = `${sharedPrefix}\n`;
+  return {
+    async call(provider, request) {
+      const hoist =
+        sharedPrefix.length > 0 &&
+        supportsPromptCaching(provider) &&
+        request.task.startsWith(marker);
+      const outbound: ProviderRunRequest = hoist
+        ? {
+            ...request,
+            task: request.task.slice(marker.length),
+            cacheSystemPrefix: sharedPrefix,
+          }
+        : request;
+      if (inner !== undefined) {
+        return inner.call(provider, outbound);
+      }
+      if (provider.execute === undefined) {
+        throw new Error(
+          `CrewDispatcher: provider "${provider.id}" has no execute() method.`,
+        );
+      }
+      return provider.execute(outbound);
+    },
+  };
+}
+
+/** Quirks gate: only adapters that disclose block-granular prompt caching. */
+function supportsPromptCaching(provider: ProviderAdapter): boolean {
+  const quirks = provider.quirks as
+    | { readonly promptCachingSupported?: boolean }
+    | undefined;
+  return quirks?.promptCachingSupported === true;
 }
 
 // ---------------------------------------------------------------------------
