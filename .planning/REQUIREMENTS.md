@@ -62,9 +62,9 @@
 ### Publishing (`PUB-*`)
 
 - [x] **PUB-01**: `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` published end-to-end via OIDC + provenance — first publish IS the smoke test (rc.0 surface so v1.3.0 slot is preserved)
-- [ ] **PUB-02**: `@full-self-browsing/lattice@1.3.0` stable published with verifiable provenance attestation
-- [ ] **PUB-03**: `@full-self-browsing/lattice-cli@1.3.0` stable published with verifiable provenance attestation
-- [ ] **PUB-04**: GitHub Release object `v1.3.0` created in `fullselfbrowsing/Lattice` with auto-generated notes
+- [x] **PUB-02**: `@full-self-browsing/lattice@1.3.0` stable published with verifiable provenance attestation
+- [x] **PUB-03**: `@full-self-browsing/lattice-cli@1.3.0` stable published with verifiable provenance attestation
+- [x] **PUB-04**: GitHub Release object `v1.3.0` created in `fullselfbrowsing/Lattice` with auto-generated notes
 
 ### Canary Repo Bootstrap (`CAN-*`)
 
@@ -162,7 +162,7 @@
 
 ## Total Requirements
 
-**87 authored REQ-IDs** across **20 categories** are mapped in this file. **61 / 87** are complete as of the 2026-06-11 Phase 39 execution pass. All 87 planned v1.3 REQ-IDs are authored; the milestone audit can count 87/87 coverage.
+**87 authored REQ-IDs** across **20 categories** are mapped in this file. **64 / 87** are complete as of the 2026-06-11 Phase 29 stable publish closure. All 87 planned v1.3 REQ-IDs are authored; the milestone audit can count 87/87 coverage.
 
 | Category | Count | Phase target |
 |---|---:|---|
@@ -257,9 +257,9 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 DELEG REQ-IDs were auth
 | REL-05 | Phase 28 | GitHub release v1.3.0-rc.0 | complete |
 | REL-06 | Phase 28 | npm-publish environment | complete |
 | PUB-01 | Phase 28 | npm rc.0 | complete |
-| PUB-02 | Phase 29 | 29-02 / 29-03 / 29-04 | pending |
-| PUB-03 | Phase 29 | 29-02 / 29-03 / 29-04 | pending |
-| PUB-04 | Phase 29 | 29-01 / 29-02 / 29-03 / 29-04 | pending |
+| PUB-02 | Phase 29 | 29-02 / 29-03 / 29-04 | complete |
+| PUB-03 | Phase 29 | 29-02 / 29-03 / 29-04 | complete |
+| PUB-04 | Phase 29 | 29-01 / 29-02 / 29-03 / 29-04 | complete |
 | CAN-01 | Phase 30 | TBD | pending |
 | CAN-02 | Phase 30 | TBD | pending |
 | CAN-03 | Phase 30 | TBD | pending |
@@ -317,7 +317,7 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 DELEG REQ-IDs were auth
 | DELEG-07 | Phase 39 | 39-07 | complete |
 | DELEG-08 | Phase 39 | 39-08 | complete |
 
-**Coverage:** 87 / 87 planned v1.3 REQ-IDs authored. 61 / 87 authored REQ-IDs complete. No authored orphans. No duplicates.
+**Coverage:** 87 / 87 planned v1.3 REQ-IDs authored. 64 / 87 authored REQ-IDs complete. No authored orphans. No duplicates.
 
 ---
 
@@ -334,3 +334,4 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 DELEG REQ-IDs were auth
 *Phase 38 REQ-IDs (RECEIPT12-01..04) added: 2026-06-09 — plan-phase prerequisite*
 *Phase 38 REQ-IDs (RECEIPT12-01..04) completed: 2026-06-09 — receipt v1.2 schema + modelClass tag executed and verified*
 *Phase 39 REQ-IDs (DELEG-01..08) added: 2026-06-10 — plan-phase prerequisite*
+*Phase 29 REQ-IDs (PUB-02..04) completed: 2026-06-11 — stable v1.3.0 published with npm provenance and GitHub Release proof*

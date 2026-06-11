@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 87 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 61 / 87 authored REQ-IDs are complete. The remaining planned work is Phases 29-32.
+**Coverage:** 87 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 64 / 87 authored REQ-IDs are complete. The remaining planned work is Phases 30-32.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -50,8 +50,8 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] **Phase 26: Release Hygiene Docs + Receipt Downgrade Defense** — Author `CONTRIBUTING.md`, `SECURITY.md`, README provenance section, seed changeset; harden `verifyReceipt` with minimum `schemaVersion >= 1.1` enforcement. (completed 2026-06-06)
 - [x] **Phase 27: npm Org + Trusted Publisher Setup** — User-driven via FSB on npmjs.com: claim `@full-self-browsing` scope, create `npm-publish` GitHub Environment, bind Trusted Publisher trust tuple `(repo, workflow_filename, environment)` for both packages. (completed 2026-06-07)
 - [x] **Phase 28: Release Workflow + rc.0 OIDC Smoke** — Land split-job `release.yml` (version-PR job + publish job with separate `permissions:`); publish `@full-self-browsing/lattice@1.3.0-rc.0` + `@full-self-browsing/lattice-cli@1.3.0-rc.0` end-to-end via OIDC with verifiable provenance. (completed 2026-06-08)
-- [ ] **Phase 29: First v1.3.0 Stable Publish** *(runs after Phase 39; unlocks Phases 30-31 canary validation)* — Promote the full Phase 33-39 surface to stable; `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` live on npmjs.com with provenance badge + auto-generated GitHub Release object.
-- [ ] **Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite** *(runs against rc.x while 33-39 land)* — Public repo `fullselfbrowsing/lattice-canary` scaffolded; `npm install` (not pnpm) with exact-version pin; resolve-path assertion + Layer 1 unit suite exercises every public export against the registry tarball with fake providers.
+- [x] **Phase 29: First v1.3.0 Stable Publish** *(runs after Phase 39; unlocks Phases 30-31 canary validation)* — Promote the full Phase 33-39 surface to stable; `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` live on npmjs.com with provenance badge + auto-generated GitHub Release object. (completed 2026-06-11)
+- [ ] **Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite** *(runs against stable v1.3.0)* — Public repo `fullselfbrowsing/lattice-canary` scaffolded; `npm install` (not pnpm) with exact-version pin; resolve-path assertion + Layer 1 unit suite exercises every public export against the registry tarball with fake providers.
 - [ ] **Phase 31: Canary Layer 2 Real-Provider Integration + Cost Ceiling** — Nightly cron + manual dispatch integration suite against OpenAI / Anthropic / Gemini cheapest competent models; three-layer cost ceiling (Lattice CostTracker per-run, workflow-level per-month, provider portal alerts).
 - [x] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy. (completed 2026-06-08)
 - [x] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry. (completed 2026-06-08)
@@ -155,9 +155,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Plans**: 4 plans
 
 - [x] 29-01-PLAN.md — README stable status + changelog-derived GitHub Release notes (PUB-04)
-- [ ] 29-02-PLAN.md — local release preflight + Version Packages PR readiness (PUB-02, PUB-03, PUB-04)
-- [ ] 29-03-PLAN.md — Version Packages PR merge + OIDC stable publish gate (PUB-02, PUB-03, PUB-04)
-- [ ] 29-04-PLAN.md — postpublish proof + requirements/state closure (PUB-02, PUB-03, PUB-04)
+- [x] 29-02-PLAN.md — local release preflight + Version Packages PR readiness (PUB-02, PUB-03, PUB-04)
+- [x] 29-03-PLAN.md — Version Packages PR merge + OIDC stable publish gate (PUB-02, PUB-03, PUB-04)
+- [x] 29-04-PLAN.md — postpublish proof + requirements/state closure (PUB-02, PUB-03, PUB-04)
 
 ### Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite
 
@@ -387,7 +387,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 26. Release Hygiene Docs + Receipt Downgrade Defense | 4/4 | Complete    | 2026-06-06 |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Complete    | 2026-06-07 |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Complete    | 2026-06-08 |
-| 29. First v1.3.0 Stable Publish | 1/4 | In Progress | - |
+| 29. First v1.3.0 Stable Publish | 4/4 | Complete | 2026-06-11 |
 | 30. Canary Bootstrap + Layer 1 Fake-Provider Suite | 0/0 | Not started | - |
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
