@@ -201,7 +201,12 @@ export async function runAgentCrew(
 
   await populateReceiptCidIndex(receipts, receiptCidsByAgent);
 
-  const result = dispatcher.crewBudgetExhausted()
+  const result = dispatcher.crewBudgetExhausted() || crewBudgetViolated({
+    policy,
+    usage: totalUsage(accounting),
+    iterations: totalIterations(accounting),
+    startedAt,
+  })
     ? buildCrewBudgetFailure(parentResult)
     : parentResult;
 
@@ -292,6 +297,31 @@ function deriveRemainingBudget(input: {
     remaining.p95LatencyMs = budget.p95LatencyMs;
   }
   return Object.keys(remaining).length > 0 ? remaining : undefined;
+}
+
+function crewBudgetViolated(input: {
+  readonly policy: ValidatedCrewPolicy;
+  readonly usage: Usage;
+  readonly iterations: number;
+  readonly startedAt: number;
+}): boolean {
+  const iterationCeiling = minDefined(
+    input.policy.budget?.maxIterations,
+    input.policy.maxTotalIterations,
+  );
+  if (iterationCeiling !== undefined && input.iterations > iterationCeiling) {
+    return true;
+  }
+  const maxWallTimeMs = input.policy.budget?.maxWallTimeMs;
+  if (maxWallTimeMs !== undefined && Date.now() - input.startedAt > maxWallTimeMs) {
+    return true;
+  }
+  const maxCostUsd = input.policy.budget?.maxCostUsd;
+  return (
+    maxCostUsd !== undefined &&
+    input.usage.costUsd !== null &&
+    input.usage.costUsd > maxCostUsd
+  );
 }
 
 function minDefined(

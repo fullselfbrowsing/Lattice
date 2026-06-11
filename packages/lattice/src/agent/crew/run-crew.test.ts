@@ -183,6 +183,38 @@ describe("runAgentCrew — orchestration and accounting", () => {
     expect(result.perAgent.map((entry) => entry.id)).not.toContain("beta");
   });
 
+  it("fails the crew when the final parent iteration pushes total iterations over maxTotalIterations", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"find facts"}}]}',
+        "child facts",
+        "final synthesis",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+      ],
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { maxTotalIterations: 2 },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.totalIterations).toBe(3);
+    expect(result.result.kind).toBe("crew-budget-exceeded");
+    if (result.result.kind === "crew-budget-exceeded") {
+      expect(result.result.reason).toContain("Crew budget pool exhausted");
+    }
+  });
+
   it("does not trip the cost dimension when provider cost is unmeasured", async () => {
     const child = makeChild("researcher");
     const root = makeRoot([child]);
