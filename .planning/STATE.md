@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: executing
-stopped_at: Phase 29 plan 01 complete
-last_updated: "2026-06-11T17:02:23.109Z"
-last_activity: 2026-06-11 -- Phase 29 plan 01 complete
+stopped_at: Phase 29 plan 02 checkpoint - GitHub Actions workflow permission
+last_updated: "2026-06-11T17:11:16Z"
+last_activity: 2026-06-11 -- Phase 29 plan 02 local preflight green; blocked on GitHub Actions PR permission
 progress:
   total_phases: 16
   completed_phases: 12
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 ## Current Position
 
 Phase: 29 (First v1.3.0 Stable Publish) — EXECUTING
-Plan: 2 of 4 (next: 29-02 local release preflight + Version Packages PR readiness)
-Status: Wave 1 complete; awaiting Wave 2 release-preflight checkpoint
-Last activity: 2026-06-11 -- Phase 29 plan 01 complete
+Plan: 2 of 4 (29-02 local release preflight + Version Packages PR readiness)
+Status: CHECKPOINT - GitHub Actions repository setting must allow workflow-created PRs before Version Packages PR readiness can complete
+Last activity: 2026-06-11 -- Phase 29 plan 02 local preflight green; blocked on GitHub Actions PR permission
 
 Progress: [████████░░] 75% (12/16 v1.3 phases complete; 4 phases remaining)
 
@@ -74,6 +74,7 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
+- Phase 29 Plan 02 checkpoint: `gh api repos/fullselfbrowsing/Lattice/actions/permissions/workflow` returned `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}` on 2026-06-11. No open `chore(release): Version Packages` PR exists. Enable GitHub repository Settings -> Actions -> General -> Workflow permissions -> "Allow GitHub Actions to create and approve pull requests", then rerun/resume Phase 29.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
@@ -94,9 +95,10 @@ Recent decisions affecting current work:
 | 2026-06-11 | Execute Phase 39 plan 06 runAgentCrew orchestrator | Added `runAgentCrew`, `createAI().runAgentCrew`, public crew/rate-limit/CID exports, and public integration tests. |
 | 2026-06-11 | Execute Phase 39 plan 07 agent crew showcase | Added `examples/agent-crew/` with built-dist receipt verification plus `evalAgentRun` crew regression coverage. |
 | 2026-06-11 | Execute Phase 39 plan 08 public-contract closure | Flipped AGENTS/gap-row docs, added crew `tsd` coverage, staged changeset, and passed full phase gates. |
+| 2026-06-11 | Execute Phase 29 wave 1 and plan 02 local preflight | Added stable README/release-note extraction, refreshed stale model registry snapshot, passed full local release preflight, and stopped at GitHub Actions workflow permission checkpoint. |
 
 ## Session Continuity
 
-Last session: 2026-06-11T17:07:14Z
-Stopped at: Phase 29 plan 01 complete
+Last session: 2026-06-11T17:11:16Z
+Stopped at: Phase 29 plan 02 checkpoint - GitHub Actions workflow permission
 Resume file: .planning/phases/29-first-v1-3-0-stable-publish/29-02-PLAN.md
