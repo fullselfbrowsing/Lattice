@@ -154,7 +154,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Plans**: 4 plans
 
-- [ ] 29-01-PLAN.md — README stable status + changelog-derived GitHub Release notes (PUB-04)
+- [x] 29-01-PLAN.md — README stable status + changelog-derived GitHub Release notes (PUB-04)
 - [ ] 29-02-PLAN.md — local release preflight + Version Packages PR readiness (PUB-02, PUB-03, PUB-04)
 - [ ] 29-03-PLAN.md — Version Packages PR merge + OIDC stable publish gate (PUB-02, PUB-03, PUB-04)
 - [ ] 29-04-PLAN.md — postpublish proof + requirements/state closure (PUB-02, PUB-03, PUB-04)
@@ -387,7 +387,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 26. Release Hygiene Docs + Receipt Downgrade Defense | 4/4 | Complete    | 2026-06-06 |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Complete    | 2026-06-07 |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Complete    | 2026-06-08 |
-| 29. First v1.3.0 Stable Publish | 0/4 | Planned | - |
+| 29. First v1.3.0 Stable Publish | 1/4 | In Progress | - |
 | 30. Canary Bootstrap + Layer 1 Fake-Provider Suite | 0/0 | Not started | - |
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |

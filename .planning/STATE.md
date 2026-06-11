@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: executing
-stopped_at: Phase 29 planned
+stopped_at: Phase 29 plan 01 complete
 last_updated: "2026-06-11T17:02:23.109Z"
-last_activity: 2026-06-11 -- Phase 29 execution started
+last_activity: 2026-06-11 -- Phase 29 plan 01 complete
 progress:
   total_phases: 16
   completed_phases: 12
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 29 — first-v1-3-0-stable-publish
+**Current focus:** Phase 29 — First v1.3.0 Stable Publish
 
 ## Current Position
 
-Phase: 29 (first-v1-3-0-stable-publish) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 29
-Last activity: 2026-06-11 -- Phase 29 execution started
+Phase: 29 (First v1.3.0 Stable Publish) — EXECUTING
+Plan: 2 of 4 (next: 29-02 local release preflight + Version Packages PR readiness)
+Status: Wave 1 complete; awaiting Wave 2 release-preflight checkpoint
+Last activity: 2026-06-11 -- Phase 29 plan 01 complete
 
 Progress: [████████░░] 75% (12/16 v1.3 phases complete; 4 phases remaining)
 
@@ -97,6 +97,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-11T16:58:45.247Z
-Stopped at: Phase 29 planned
-Resume file: .planning/phases/29-first-v1-3-0-stable-publish/29-01-PLAN.md
+Last session: 2026-06-11T17:07:14Z
+Stopped at: Phase 29 plan 01 complete
+Resume file: .planning/phases/29-first-v1-3-0-stable-publish/29-02-PLAN.md
