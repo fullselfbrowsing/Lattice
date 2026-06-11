@@ -49,9 +49,7 @@ export {
   replayOffline,
   rerunLive,
 } from "./replay/replay.js";
-// Agent runtime (v1.2 Phase 19) — opens the previously out-of-scope
-// Delegation surface as single-agent execution. Multi-agent crews remain
-// Out of Scope.
+// Agent runtime (v1.2 Phase 19) — single-agent execution loop.
 export { runAgent } from "./agent/runtime.js";
 export {
   formatToolsForProvider,
@@ -76,6 +74,18 @@ export type {
   FormattedToolsHandle,
 } from "./agent/format-tools.js";
 export type { HookControls, HookDenyDirective } from "./contract/bands.js";
+// Agent crew surface (v1.3 Phase 39) — opt-in parent/child delegation
+// composed over AgentSpec values. The internal dispatch seam and
+// CrewDispatcher stay private.
+export { defineAgent } from "./agent/crew/agent-spec.js";
+export type { AgentSpec } from "./agent/crew/agent-spec.js";
+export type { CrewPolicy, CrewRateLimitOverride } from "./agent/crew/crew-policy.js";
+export { runAgentCrew } from "./agent/crew/run-crew.js";
+export type {
+  CrewAgentResult,
+  CrewResult,
+  RunAgentCrewOptions,
+} from "./agent/crew/run-crew.js";
 // AgentHost adapter (v1.2 Phase 20) — pluggable scheduler / transport /
 // storage seams + recovery markers. Composes with the SurvivabilityAdapter
 // shipped in Phase 18 for cross-process resumption.
@@ -120,6 +130,16 @@ export type {
   PermissionRule,
   PermissionVerdict,
 } from "./agent/infra/permission-context.js";
+export {
+  createRateLimitGroup,
+  withRateLimit,
+} from "./agent/infra/rate-limit-group.js";
+export type {
+  RateLimitGroup,
+  RateLimitGroupOptions,
+  RateLimitLease,
+} from "./agent/infra/rate-limit-group.js";
+export { receiptCid } from "./receipts/cid.js";
 // Agent eval helper (v1.2 Phase 22).
 export { evalAgentRun } from "./agent/eval.js";
 export type {

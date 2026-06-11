@@ -116,6 +116,17 @@ export interface AI {
   runAgent<const TOutputs extends OutputContractMap>(
     intent: import("../agent/types.js").AgentIntent<TOutputs>,
   ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
+  /**
+   * Phase 39 (v1.3): opt-in multi-agent crew execution. Runs a literal
+   * `AgentSpec` tree through the existing single-agent loop plus the crew
+   * dispatcher, with shared budget/rate-limit coordination and chained
+   * completion receipts.
+   *
+   * See `packages/lattice/src/agent/crew/run-crew.ts` for orchestration details.
+   */
+  runAgentCrew(
+    options: import("../agent/crew/run-crew.js").RunAgentCrewOptions,
+  ): Promise<import("../agent/crew/run-crew.js").CrewResult>;
 }
 
 interface BuiltPlan {
@@ -155,6 +166,15 @@ export function createAI(config: LatticeConfig = {}): AI {
       // Lazy import avoids a hard cycle (agent/runtime.ts imports from
       // ../runtime/config.js for its `LatticeConfig` parameter type only).
       return import("../agent/runtime.js").then((mod) => mod.runAgent(intent, config));
+    },
+    runAgentCrew(
+      options: import("../agent/crew/run-crew.js").RunAgentCrewOptions,
+    ): Promise<import("../agent/crew/run-crew.js").CrewResult> {
+      // Lazy import mirrors runAgent and avoids pulling the crew surface
+      // into the beginner `run()` path unless explicitly used.
+      return import("../agent/crew/run-crew.js").then((mod) =>
+        mod.runAgentCrew(options, config),
+      );
     },
   };
 }
