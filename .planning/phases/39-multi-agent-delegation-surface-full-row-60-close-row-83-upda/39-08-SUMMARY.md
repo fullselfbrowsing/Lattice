@@ -71,6 +71,7 @@ completed: 2026-06-11
 
 1. **Task 1: policy and gap-row docs** - `5034db2` (docs)
 2. **Task 2: public type tests and changeset** - `29474a1` (test)
+3. **Post-closeout review fix: aggregate crew budget guard** - `434b2a5` (fix)
 
 ## Files Created/Modified
 
@@ -102,13 +103,17 @@ None.
 
 - Doc grep gate - passed: no remaining multi-agent/crew `Out of Scope` line, `First-class via opt-in` present, and `3794896` present in the gaps doc.
 - `pnpm --filter @full-self-browsing/lattice build && pnpm --filter @full-self-browsing/lattice test:types` - passed.
-- `pnpm test` - passed: `packages/lattice` 69 files / 907 tests; `packages/lattice-cli` 13 files / 144 tests.
+- `pnpm test` - passed before review fix: `packages/lattice` 69 files / 907 tests; `packages/lattice-cli` 13 files / 144 tests.
 - `pnpm typecheck` - passed for both workspace packages.
-- `pnpm test:types` - passed: `packages/lattice` 87 files / 1088 tests, no type errors, `tsd` green.
+- `pnpm test:types` - passed before review fix: `packages/lattice` 87 files / 1088 tests, no type errors, `tsd` green.
 - `pnpm -r lint:packages` - passed: build + publint + attw + CLI dependency check. `attw` reported only the existing ignored CJS-to-ESM profile warning.
 - `pnpm --filter @full-self-browsing/lattice build && node examples/agent-crew/index.mjs` - passed; example verified 5 receipts and printed `eval ok=true regressions=0`.
 - `git grep -l "parentReceiptCid" packages/lattice/src` - source/test coverage present in receipts and crew paths.
 - `git diff ca24e8b.. -- '*.test.ts' | grep -c "\.skip\|\.todo"` - `0`.
+- Post-review fix verification: `pnpm exec vitest run src/agent/crew/run-crew.test.ts` - passed, 1 file / 9 tests.
+- Post-review fix verification: `pnpm --filter @full-self-browsing/lattice test` - passed, 69 files / 908 tests.
+- Post-review fix verification: `pnpm --filter @full-self-browsing/lattice typecheck` - passed.
+- Post-review fix verification: `pnpm --filter @full-self-browsing/lattice test:types` - passed, 87 files / 1089 tests.
 
 ## Next Phase Readiness
 
