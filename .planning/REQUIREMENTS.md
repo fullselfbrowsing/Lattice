@@ -257,9 +257,9 @@ Each authored REQ-ID maps to exactly one phase. Phase 39 DELEG REQ-IDs were auth
 | REL-05 | Phase 28 | GitHub release v1.3.0-rc.0 | complete |
 | REL-06 | Phase 28 | npm-publish environment | complete |
 | PUB-01 | Phase 28 | npm rc.0 | complete |
-| PUB-02 | Phase 29 | TBD | pending |
-| PUB-03 | Phase 29 | TBD | pending |
-| PUB-04 | Phase 29 | TBD | pending |
+| PUB-02 | Phase 29 | 29-02 / 29-03 / 29-04 | pending |
+| PUB-03 | Phase 29 | 29-02 / 29-03 / 29-04 | pending |
+| PUB-04 | Phase 29 | 29-01 / 29-02 / 29-03 / 29-04 | pending |
 | CAN-01 | Phase 30 | TBD | pending |
 | CAN-02 | Phase 30 | TBD | pending |
 | CAN-03 | Phase 30 | TBD | pending |
