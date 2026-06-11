@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+### Patch Changes
+
+- Updated dependencies [ca2bcb5]
+- Updated dependencies [29474a1]
+- Updated dependencies [a1e5f04]
+- Updated dependencies [6ce8af3]
+- Updated dependencies [5e38c31]
+- Updated dependencies [cfc0372]
+- Updated dependencies [f0be51f]
+  - @full-self-browsing/lattice@1.3.0
+
 All notable changes to `@full-self-browsing/lattice-cli` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
