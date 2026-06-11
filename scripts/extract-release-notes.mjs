@@ -14,7 +14,8 @@ const version = versionArg.replace(/^v/, "");
 const changelogPath = new URL("../packages/lattice/CHANGELOG.md", import.meta.url);
 const changelog = await readFile(changelogPath, "utf8");
 
-const headingPattern = new RegExp(`^## \\[${escapeRegExp(version)}\\](?:\\s+-\\s+.*)?$`, "m");
+const escapedVersion = escapeRegExp(version);
+const headingPattern = new RegExp(`^## (?:\\[${escapedVersion}\\]|${escapedVersion})(?:\\s+-\\s+.*)?$`, "m");
 const headingMatch = changelog.match(headingPattern);
 
 if (!headingMatch || headingMatch.index === undefined) {
@@ -24,7 +25,7 @@ if (!headingMatch || headingMatch.index === undefined) {
 
 const sectionStart = headingMatch.index + headingMatch[0].length;
 const rest = changelog.slice(sectionStart);
-const nextHeadingMatch = rest.match(/^## \[/m);
+const nextHeadingMatch = rest.match(/^## /m);
 const sectionBody = (nextHeadingMatch ? rest.slice(0, nextHeadingMatch.index) : rest).trim();
 
 if (!sectionBody) {
