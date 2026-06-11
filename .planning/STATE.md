@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: executing
 stopped_at: Phase 29 planned
-last_updated: "2026-06-11T16:58:45.247Z"
-last_activity: 2026-06-11 -- Phase 29 planning complete
+last_updated: "2026-06-11T17:02:23.109Z"
+last_activity: 2026-06-11 -- Phase 29 execution started
 progress:
   total_phases: 16
   completed_phases: 12
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 29 — First v1.3.0 Stable Publish (after Phase 39 completion)
+**Current focus:** Phase 29 — first-v1-3-0-stable-publish
 
 ## Current Position
 
-Phase: 29 (First v1.3.0 Stable Publish) — PLANNED
-Plan: 4 plans ready (29-01 through 29-04)
-Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 29 planning complete
+Phase: 29 (first-v1-3-0-stable-publish) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 29
+Last activity: 2026-06-11 -- Phase 29 execution started
 
 Progress: [████████░░] 75% (12/16 v1.3 phases complete; 4 phases remaining)
 
