@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: executing
-stopped_at: Phase 39 context gathered
-last_updated: "2026-06-11T15:28:18.864Z"
-last_activity: 2026-06-11 -- Phase 39 execution started
+stopped_at: Phase 39 complete; ready for Phase 29 stable publish planning
+last_updated: "2026-06-11T15:53:45.000Z"
+last_activity: 2026-06-11 -- Phase 39 completed
 progress:
   total_phases: 16
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 38
-  completed_plans: 37
-  percent: 97
+  completed_plans: 38
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-09)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 39 — Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)
+**Current focus:** Phase 29 — First v1.3.0 Stable Publish (after Phase 39 completion)
 
 ## Current Position
 
-Phase: 39 (Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)) — EXECUTING
-Plan: 8 of 8
-Status: Executing Phase 39
-Last activity: 2026-06-11 -- Phase 39 execution started
+Phase: 29 (First v1.3.0 Stable Publish) — NOT STARTED
+Plan: n/a
+Status: Phase 39 complete; ready to plan/execute Phase 29
+Last activity: 2026-06-11 -- Phase 39 completed
 
-Progress: [███████░░░] 69% (11/16 v1.3 phases complete; 5 phases remaining)
+Progress: [████████░░] 75% (12/16 v1.3 phases complete; 4 phases remaining)
 
 ## Performance Metrics
 
@@ -38,13 +38,13 @@ Progress: [███████░░░] 69% (11/16 v1.3 phases complete; 5 ph
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 37 across Phases 24, 25, 26, 33, 34, 35, 36, 37, 38, and Phase 39 plans 1-7; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 38 across Phases 24, 25, 26, 33, 34, 35, 36, 37, 38, and Phase 39 plans 1-8; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 11/16 phases complete, Phase 39 is 7/8 plans complete, and the remaining active Phase 39 work is public-policy/docs/type-surface closure.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 12/16 phases complete; Phase 39 is fully complete and the remaining work is Phases 29-32.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -67,7 +67,6 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 39: Complete plan 39-08 before treating the multi-agent crew surface as release-ready.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
 - Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
@@ -76,7 +75,6 @@ Recent decisions affecting current work:
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- Phase 39 still needs the example/eval gate and final public-contract/docs/type-surface closure.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
 - First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
@@ -95,9 +93,10 @@ Recent decisions affecting current work:
 | 2026-06-09 | Execute Phase 38 receipt v1.2 schema + modelClass tag | Added receipt v1.2 `modelClass`, runtime strict registry issuance, public type tests, changeset, and final verification gates. |
 | 2026-06-11 | Execute Phase 39 plan 06 runAgentCrew orchestrator | Added `runAgentCrew`, `createAI().runAgentCrew`, public crew/rate-limit/CID exports, and public integration tests. |
 | 2026-06-11 | Execute Phase 39 plan 07 agent crew showcase | Added `examples/agent-crew/` with built-dist receipt verification plus `evalAgentRun` crew regression coverage. |
+| 2026-06-11 | Execute Phase 39 plan 08 public-contract closure | Flipped AGENTS/gap-row docs, added crew `tsd` coverage, staged changeset, and passed full phase gates. |
 
 ## Session Continuity
 
-Last session: 2026-06-10T08:49:32.274Z
-Stopped at: Phase 39 context gathered
+Last session: 2026-06-11T15:53:45.000Z
+Stopped at: Phase 39 complete; ready for Phase 29 stable publish planning
 Resume file: .planning/phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-CONTEXT.md

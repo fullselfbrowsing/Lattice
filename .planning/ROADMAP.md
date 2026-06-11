@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 79 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 53 / 79 authored REQ-IDs are complete. The 8 remaining planned REQ-IDs are for Phase 39 (`DELEG`) and must be authored before that phase executes.
+**Coverage:** 87 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 61 / 87 authored REQ-IDs are complete. The remaining planned work is Phases 29-32.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -59,7 +59,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case). (completed 2026-06-09)
 - [x] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests. (completed 2026-06-09)
 - [x] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Runtime terminal receipts populate `modelClass` when strict registry lookup knows the selected route/model. (completed 2026-06-09)
-- [ ] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks.
+- [x] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks. (completed 2026-06-11)
 - [ ] **Phase 32: Cross-Repo Wiring + v1.3 Milestone Audit** *(was last in original plan; now depends on Phase 29 + 39)* — `repository_dispatch` from Lattice `release.yml` to canary `refresh-lattice.yml` with `CANARY_DISPATCH_TOKEN`; canary auto-bumps + opens PR; v1.3 milestone audit confirms 87/87 REQ-IDs wired end-to-end including the Phase 33-39 surface.
 
 ## Phase Details
@@ -300,7 +300,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 39: Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)
 
-**Goal**: Open Lattice's multi-agent surface as a first-class opt-in capability — parent-child delegation loops with structured summary-return, prompt-cache-prefix sharing across crew members, and rate-limit-group coordination — so consumers can compose crews against Lattice primitives rather than rolling them in the consumer layer. AGENTS.md policy flips from "multi-agent: Out of Scope" to "multi-agent: First-class via opt-in `AgentHost` capability." `docs/fsb-integration-gaps.md` Row 60 status flips to "Covered"; Row 83 status flips to "Covered" with v1.2 Phase 20 backlink that was missed at the time.
+**Goal**: Open Lattice's multi-agent surface as a first-class opt-in capability — parent-child delegation loops with structured summary-return, prompt-cache-prefix sharing across crew members, and rate-limit-group coordination — so consumers can compose crews against Lattice primitives rather than rolling them in the consumer layer. AGENTS.md policy now states "multi-agent: First-class via opt-in `AgentHost` capability" instead of the pre-Phase-39 exclusion. `docs/fsb-integration-gaps.md` Row 60 status flips to "Covered"; Row 83 status flips to "Covered" with v1.2 Phase 20 backlink that was missed at the time.
 **Depends on**: none (orthogonal to 33-38; can land in parallel)
 **Requirements**: DELEG-01, DELEG-02, DELEG-03, DELEG-04, DELEG-05, DELEG-06, DELEG-07, DELEG-08
 **Success Criteria** (what must be TRUE):
@@ -318,7 +318,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] 39-05-PLAN.md — CrewDispatcher chokepoint: dispatch branch, cycle/depth, failure routing, receipt chaining, cache-prefix composition (DELEG-03, DELEG-04, DELEG-06)
 - [x] 39-06-PLAN.md — runAgentCrew orchestrator + CrewResult + rate-limit wiring + ai.runAgentCrew facade + public exports + integration suite (DELEG-02, DELEG-03, DELEG-05)
 - [x] 39-07-PLAN.md — examples/agent-crew showcase (parent + 3 researchers, Ed25519-signed chained receipts) + evalAgentRun crew regression gate (DELEG-07)
-- [ ] 39-08-PLAN.md — AGENTS.md 3-surface policy flip + gaps-doc Row 60/83 flips + tsd coverage + changeset + full phase gate (DELEG-08)
+- [x] 39-08-PLAN.md — AGENTS.md 3-surface policy flip + gaps-doc Row 60/83 flips + tsd coverage + changeset + full phase gate (DELEG-08)
 
 
 ## Risks
@@ -364,7 +364,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-79 / 87 planned v1.3 REQ-IDs are currently authored in `.planning/REQUIREMENTS.md`. The Phase 33-38 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`) are authored and complete. The 8 remaining planned REQ-IDs (`DELEG`) still need to be authored during Phase 39. No authored orphans expected.
+87 / 87 planned v1.3 REQ-IDs are authored in `.planning/REQUIREMENTS.md`. The Phase 33-39 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) are authored and complete. No authored orphans expected.
 
 ## Progress
 
@@ -392,4 +392,4 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
 | 37. Tool-Call Validation Layer (opt-in) | 3/3 | Complete | 2026-06-09 |
 | 38. Receipt v1.2 Schema + modelClass Tag | 4/4 | Complete | 2026-06-09 |
-| 39. Multi-Agent Delegation Surface (full Row 60 close) | 7/8 | In Progress|  |
+| 39. Multi-Agent Delegation Surface (full Row 60 close) | 8/8 | Complete | 2026-06-11 |
