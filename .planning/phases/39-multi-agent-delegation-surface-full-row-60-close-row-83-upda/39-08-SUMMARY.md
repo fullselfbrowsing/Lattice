@@ -114,6 +114,11 @@ None.
 - Post-review fix verification: `pnpm --filter @full-self-browsing/lattice test` - passed, 69 files / 908 tests.
 - Post-review fix verification: `pnpm --filter @full-self-browsing/lattice typecheck` - passed.
 - Post-review fix verification: `pnpm --filter @full-self-browsing/lattice test:types` - passed, 87 files / 1089 tests.
+- Final root gate after review fix: `pnpm test` - passed, lattice 908 tests and CLI 144 tests.
+- Final root gate after review fix: `pnpm typecheck` - passed.
+- Final root gate after review fix: `pnpm test:types` - passed, lattice 1089 tests and no type errors.
+- Final package gate after review fix: `pnpm -r lint:packages` - passed.
+- Final showcase after review fix: `pnpm --filter @full-self-browsing/lattice build && node examples/agent-crew/index.mjs` - passed; 5 receipts verified and `eval ok=true regressions=0`.
 
 ## Next Phase Readiness
 
