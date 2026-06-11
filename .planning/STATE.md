@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: planning
-stopped_at: Phase 29 context gathered
-last_updated: "2026-06-11T16:21:51.296Z"
-last_activity: 2026-06-11 -- Phase 39 completed
+status: executing
+stopped_at: Phase 29 planned
+last_updated: "2026-06-11T16:58:45.247Z"
+last_activity: 2026-06-11 -- Phase 29 planning complete
 progress:
   total_phases: 16
   completed_phases: 12
-  total_plans: 38
+  total_plans: 42
   completed_plans: 38
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase: 29 (First v1.3.0 Stable Publish) — NOT STARTED
-Plan: n/a
-Status: Phase 39 complete; ready to plan/execute Phase 29
-Last activity: 2026-06-11 -- Phase 39 completed
+Phase: 29 (First v1.3.0 Stable Publish) — PLANNED
+Plan: 4 plans ready (29-01 through 29-04)
+Status: Ready to execute
+Last activity: 2026-06-11 -- Phase 29 planning complete
 
 Progress: [████████░░] 75% (12/16 v1.3 phases complete; 4 phases remaining)
 
@@ -62,12 +62,12 @@ Recent decisions affecting current work:
 - [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow publish job). Changesets PR-driven version bumps.
 - [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
 - [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
-- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38. Remaining: 39, 29, 30, 31, 32.
+- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39. Remaining: 29, 30, 31, 32.
 - [v1.3 Adapter hardening]: Output sanitizers and returned tool-call validators are opt-in adapter options, preserving default v1.2 behavior while giving consumers model-shape guardrails.
 
 ### Pending Todos
 
-- Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
+- Phase 29: Execute stable `1.3.0` publish only after release preflight passes and GitHub Actions can create the Version Packages PR.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
 - Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
 
@@ -97,6 +97,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-11T16:20:56.396Z
-Stopped at: Phase 29 context gathered
-Resume file: .planning/phases/29-first-v1-3-0-stable-publish/29-CONTEXT.md
+Last session: 2026-06-11T16:58:45.247Z
+Stopped at: Phase 29 planned
+Resume file: .planning/phases/29-first-v1-3-0-stable-publish/29-01-PLAN.md
