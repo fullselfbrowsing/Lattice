@@ -1,0 +1,9 @@
+{
+  "name": "lattice-example-agent-crew",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@full-self-browsing/lattice": "workspace:^"
+  }
+}
