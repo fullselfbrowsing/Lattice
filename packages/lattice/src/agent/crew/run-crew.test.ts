@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
@@ -11,6 +11,7 @@ import {
 } from "../../receipts/sign.js";
 import type { CapabilityReceiptBody } from "../../receipts/types.js";
 import { verifyReceipt } from "../../receipts/verify.js";
+import { createAI } from "../../runtime/create-ai.js";
 import { createNoopAgentHost } from "../host.js";
 
 import { defineAgent, type AgentSpec } from "./agent-spec.js";
@@ -72,6 +73,10 @@ function makeScriptedProvider(
 function decodeReceiptBody(payload: string): CapabilityReceiptBody {
   return JSON.parse(atob(payload)) as CapabilityReceiptBody;
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("runAgentCrew — orchestration and accounting", () => {
   it("completes a minimal parent + child crew and returns aggregate usage", async () => {
@@ -205,6 +210,116 @@ describe("runAgentCrew — orchestration and accounting", () => {
 
     expect(result.result.kind).toBe("success");
     expect(result.usage.costUsd).toBeNull();
+  });
+});
+
+describe("runAgentCrew — rate-limit wiring and facade", () => {
+  it("shares one managed RateLimitGroup across parent and child calls for the same adapter instance", async () => {
+    vi.useFakeTimers();
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"limited"}}]}',
+        "limited child",
+        "limited parent",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+      ],
+    );
+
+    let resolved = false;
+    const pending = runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: {
+          limits: {
+            "crew-fake": { requestsPerMinute: 1, tokensPerMinute: 100_000 },
+          },
+        },
+      },
+      { providers: [provider] },
+    ).then((result) => {
+      resolved = true;
+      return result;
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(resolved).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(resolved).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const result = await pending;
+    expect(resolved).toBe(true);
+    expect(result.result.kind).toBe("success");
+  });
+
+  it("skips rate-limit wrapping when coordination is unmanaged", async () => {
+    vi.useFakeTimers();
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"direct"}}]}',
+        "direct child",
+        "direct parent",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+      ],
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: {
+          coordination: "unmanaged",
+          limits: {
+            "crew-fake": { requestsPerMinute: 1, tokensPerMinute: 1 },
+          },
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+  });
+
+  it("resolves through createAI().runAgentCrew", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"facade"}}]}',
+        "facade child",
+        "facade parent",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+        { promptTokens: 1, completionTokens: 1, costUsd: null },
+      ],
+    );
+
+    const ai = createAI({ providers: [provider] });
+    const result = await ai.runAgentCrew({
+      root,
+      hosts: { childHost: createNoopAgentHost() },
+    });
+
+    expect(result.result.kind).toBe("success");
+    if (result.result.kind === "success") {
+      expect(result.result.output).toEqual({ answer: "facade parent" });
+    }
   });
 });
 
