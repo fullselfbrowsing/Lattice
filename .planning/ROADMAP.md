@@ -39,7 +39,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 **Phase span:** 24 to 39 (16 phases, ~87 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 54 / 87 REQ-IDs mapped to-date (33 new IDs to be added under .planning/REQUIREMENTS.md for Phases 33-39).
+**Coverage:** 87 / 87 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 61 / 87 authored REQ-IDs are complete. The remaining planned work is Phases 29-32.
 
 **Reference docs driving the v1.3 extension:**
 - `docs/fsb-integration-gaps.md` Row 60 (Delegation Blocker, drives Phase 39) and Row 83 (recovery markers, retroactively Covered in v1.2 — backlink update is Phase 39 scope).
@@ -50,30 +50,30 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] **Phase 26: Release Hygiene Docs + Receipt Downgrade Defense** — Author `CONTRIBUTING.md`, `SECURITY.md`, README provenance section, seed changeset; harden `verifyReceipt` with minimum `schemaVersion >= 1.1` enforcement. (completed 2026-06-06)
 - [x] **Phase 27: npm Org + Trusted Publisher Setup** — User-driven via FSB on npmjs.com: claim `@full-self-browsing` scope, create `npm-publish` GitHub Environment, bind Trusted Publisher trust tuple `(repo, workflow_filename, environment)` for both packages. (completed 2026-06-07)
 - [x] **Phase 28: Release Workflow + rc.0 OIDC Smoke** — Land split-job `release.yml` (version-PR job + publish job with separate `permissions:`); publish `@full-self-browsing/lattice@1.3.0-rc.0` + `@full-self-browsing/lattice-cli@1.3.0-rc.0` end-to-end via OIDC with verifiable provenance. (completed 2026-06-08)
-- [ ] **Phase 29: First v1.3.0 Stable Publish** *(deferred to end of milestone; depends on 30, 31, 33-39)* — Promote the full Phase 33-39 surface to stable; `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` live on npmjs.com with provenance badge + auto-generated GitHub Release object.
+- [ ] **Phase 29: First v1.3.0 Stable Publish** *(runs after Phase 39; unlocks Phases 30-31 canary validation)* — Promote the full Phase 33-39 surface to stable; `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` live on npmjs.com with provenance badge + auto-generated GitHub Release object.
 - [ ] **Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite** *(runs against rc.x while 33-39 land)* — Public repo `fullselfbrowsing/lattice-canary` scaffolded; `npm install` (not pnpm) with exact-version pin; resolve-path assertion + Layer 1 unit suite exercises every public export against the registry tarball with fake providers.
 - [ ] **Phase 31: Canary Layer 2 Real-Provider Integration + Cost Ceiling** — Nightly cron + manual dispatch integration suite against OpenAI / Anthropic / Gemini cheapest competent models; three-layer cost ceiling (Lattice CostTracker per-run, workflow-level per-month, provider portal alerts).
 - [x] **Phase 33: Model Capability Registry (~200+ via OpenRouter feed)** — New `packages/lattice/src/capabilities/` module. Typed `ModelCapabilityProfile` (trainingClass / reasoningSurface / toolCallSurface / contextWindow / knownFailureModes / recommendedPromptStrategy) + alias mechanism. Build-time fetch + bake-in `openrouter.ai/api/v1/models` snapshot covering 200+ models across the 7 providers; supplemental static profiles for direct Anthropic / Gemini / xAI / LM Studio models not surfaced by OpenRouter. `getCapabilityProfile(id)` lookup. Refresh script + commit policy. (completed 2026-06-08)
 - [x] **Phase 34: Adapter Quirk Flags + Capability Negotiation API** — Per-adapter `quirks` field exposing `{ supportsToolChoice, parallelToolCalls, structuredOutputs, responseFormat, streamingDiverges }` for each of the 7 real adapters. Each adapter ships a `negotiateCapabilities(): Promise<NegotiatedCapabilities>` method that hits the provider's `/models` endpoint where available and intersects with Phase 33's static registry. (completed 2026-06-08)
-- [ ] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases.
-- [ ] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case).
-- [ ] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests.
-- [ ] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Adapters populate `modelClass` when the registry knows the model.
-- [ ] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks.
+- [x] **Phase 35: Prompt Scaffolding Helpers** — New `packages/lattice/src/prompts/scaffolds.ts`. `getStructuredOutputContract(strategy, schema)` + `getToolUseContract(strategy, tools)` for 5 strategies: `frontier` / `mid_tier` / `open_weight` / `reasoning` / `local`. Snapshot tests per strategy; fragments version-pinned so prompt-caching keys stay byte-stable across patch releases. (completed 2026-06-09)
+- [x] **Phase 36: Output Sanitizer Hook (opt-in)** — `sanitizeOutput` option on each of the 7 adapters; consumer composes one or more sanitizers per adapter. Built-ins ship: `stripReasoningTags()` (`<think>`, `<reasoning>`, `<scratchpad>`), `stripChatTemplateArtifacts()` (`<|im_start|>`, `[INST]`, `<<SYS>>`), `unwrapInternalEnvelope(schema)` (extract user-facing field when model emits internal envelope verbatim — closes the gpt-oss-120b case). (completed 2026-06-09)
+- [x] **Phase 37: Tool-Call Validation Layer (opt-in)** — `validateToolCalls` adapter option backed by Zod; consumer passes tool registry; adapter runs schema validation per tool call returned by model. Typed `ToolCallValidationError` for hallucinated names / malformed arguments / extra fields. All 7 adapters wired with parity tests. (completed 2026-06-09)
+- [x] **Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)** — Bump receipt schema literal-union to `"lattice-receipt/v1" \| "v1.1" \| "v1.2"`; add optional `modelClass` field on body sourced from Phase 33's registry. `verifyReceipt` extends CRYPTO-01 downgrade defense: explicit minimum `schemaVersion >= 1.1` continues to reject v1; v1.1 and v1.2 both verify cleanly. Runtime terminal receipts populate `modelClass` when strict registry lookup knows the selected route/model. (completed 2026-06-09)
+- [x] **Phase 39: Multi-Agent Delegation Surface (full Row 60 close)** — Flip `AGENTS.md` policy: multi-agent is first-class **via opt-in `AgentHost` capability** (single-agent remains the zero-config default). New primitives: `defineAgent(spec)`, `runAgentCrew({ root, hosts, policy })`. Parent-child loops with structured summary-return (child completes → returns `{ summary, artifacts, receipts }` to parent). Cache-prefix sharing across crew members for Anthropic + OpenAI prompt caching. Rate-limit-group coordination (shared token bucket per provider key across the crew). Per-agent receipt minting with `parentReceiptCid` chain-link field. `examples/agent-crew/` showcase + tests. Also retroactively flips `docs/fsb-integration-gaps.md` Row 60 status from "Out of scope" to "Covered" and Row 83 from "Needs addition" to "Covered" with v1.2 commit backlinks. (completed 2026-06-11)
 - [ ] **Phase 32: Cross-Repo Wiring + v1.3 Milestone Audit** *(was last in original plan; now depends on Phase 29 + 39)* — `repository_dispatch` from Lattice `release.yml` to canary `refresh-lattice.yml` with `CANARY_DISPATCH_TOKEN`; canary auto-bumps + opens PR; v1.3 milestone audit confirms 87/87 REQ-IDs wired end-to-end including the Phase 33-39 surface.
 
 ## Phase Details
 
 ### Phase 24: Atomic Scope Rename + License Hygiene
 
-**Goal**: Both publishable packages publish under the `@fullselfbrowsing` scope with every release-required manifest field present, landed atomically so no stale-name surface survives.
+**Goal**: Both publishable packages publish under the `@full-self-browsing` scope with every release-required manifest field present, landed atomically so no stale-name surface survives.
 **Depends on**: Nothing (first v1.3 phase)
 **Requirements**: RENAME-01, RENAME-02, RENAME-03, RENAME-04, RENAME-05, PKG-01, PKG-02, PKG-03, PKG-04, PKG-05
 **Success Criteria** (what must be TRUE):
 
-  1. `packages/lattice/package.json#name` reads `@fullselfbrowsing/lattice` and `packages/lattice-cli/package.json#name` reads `@fullselfbrowsing/lattice-cli`, with `bin: { lattice }` preserved on the CLI so the user-facing command is unchanged.
-  2. `packages/lattice-cli/package.json#dependencies` reads `"@fullselfbrowsing/lattice": "workspace:^"` (the `*` to `^` flip is in the same commit as the rename).
-  3. `pnpm pack` on both packages produces tarballs whose `package/package.json` references only `@fullselfbrowsing/*` names; a grep for the unscoped string `"lattice"` in dependency keys, exports, types, or tsd paths returns nothing.
+  1. `packages/lattice/package.json#name` reads `@full-self-browsing/lattice` and `packages/lattice-cli/package.json#name` reads `@full-self-browsing/lattice-cli`, with `bin: { lattice }` preserved on the CLI so the user-facing command is unchanged.
+  2. `packages/lattice-cli/package.json#dependencies` reads `"@full-self-browsing/lattice": "workspace:^"` (the `*` to `^` flip is in the same commit as the rename).
+  3. `pnpm pack` on both packages produces tarballs whose `package/package.json` references only `@full-self-browsing/*` names; a grep for the unscoped string `"lattice"` in dependency keys, exports, types, or tsd paths returns nothing.
   4. `pnpm install && pnpm -r test && pnpm -r test:types && pnpm -r lint:packages` (publint + attw) all pass clean on the renamed surface, with `license: "MIT"`, `repository`, `bugs`, `homepage`, and `publishConfig.access: "public"` present on both publishable packages and `private: true` preserved on root.
 
 **Plans**: 3 plans
@@ -106,7 +106,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
   1. `CONTRIBUTING.md`, `SECURITY.md`, and `CHANGELOG.md` (per publishable package, retroactively seeded with v1.0 / v1.1 / v1.2 history under the new scoped names) exist at repo root or in their respective packages; `SECURITY.md` documents the CVE disclosure address, Ed25519 entropy assumptions, signing-key rotation guidance, and the receipt-downgrade defense citing Radicle 2026-03 precedent.
   2. A hand-crafted `CapabilityReceipt` with no `schemaVersion` field, or with `schemaVersion < 1.1`, signed by an otherwise-valid `KeySet`, is rejected by `verifyReceipt` with a new `VerifyResult` error kind `schema-version-too-low`; a passing unit test exercises both branches.
-  3. An initial changeset seeding the v1.3.0 release notes exists under `.changeset/`, and `README.md` shows install instructions using `@fullselfbrowsing/lattice` plus npm version + provenance + license badge placeholders and a copy-pastable provenance verification example.
+  3. An initial changeset seeding the v1.3.0 release notes exists under `.changeset/`, and `README.md` shows install instructions using `@full-self-browsing/lattice` plus npm version + provenance + license badge placeholders and a copy-pastable provenance verification example.
 
 **Plans**: 4 plans
 
@@ -117,12 +117,12 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 27: npm Org + Trusted Publisher Setup
 
-**Goal**: The npm trust tuple `(repo: fullselfbrowsing/Lattice, workflow_filename: release.yml, environment: npm-publish)` exists on npmjs.com for both `@fullselfbrowsing/lattice` and `@fullselfbrowsing/lattice-cli` before any publish is attempted.
+**Goal**: The npm trust tuple `(repo: fullselfbrowsing/Lattice, workflow_filename: release.yml, environment: npm-publish)` exists on npmjs.com for both `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` before any publish is attempted.
 **Depends on**: Phase 24, Phase 26
 **Requirements**: ORG-01, ORG-02, ORG-03
 **Success Criteria** (what must be TRUE):
 
-  1. The `@fullselfbrowsing` npm organization shows as claimed under the user's npmjs.com account (organization tier, free for public packages), and `npm view @fullselfbrowsing/lattice` returns either a 404 (package not yet published) or a record owned by the claimed org.
+  1. The `@full-self-browsing` npm organization shows as claimed under the user's npmjs.com account (organization tier, free for public packages), and `npm view @full-self-browsing/lattice` returns either a 404 (package not yet published) or a record owned by the claimed org.
   2. The `npm-publish` GitHub Environment exists in `fullselfbrowsing/Lattice` with required reviewers configured, and the npmjs.com Trusted Publisher form for each package shows the exact trust tuple `(fullselfbrowsing/Lattice, release.yml, npm-publish)` with "publish" action selected.
   3. A user-driven walkthrough script in the plan hands the baton to the user at the npm UI steps and verifies completion via FSB recon (npmjs.com page snapshot) before the phase closes.
 
@@ -130,13 +130,13 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
 ### Phase 28: Release Workflow + rc.0 OIDC Smoke
 
-**Goal**: Land `.github/workflows/release.yml` with split version-PR and publish jobs (each with their own `permissions:` block) and prove the OIDC + provenance + GitHub Release pipeline end-to-end by publishing `@fullselfbrowsing/lattice@1.3.0-rc.0` and `@fullselfbrowsing/lattice-cli@1.3.0-rc.0` — the first publish IS the smoke test.
+**Goal**: Land `.github/workflows/release.yml` with split version-PR and publish jobs (each with their own `permissions:` block) and prove the OIDC + provenance + GitHub Release pipeline end-to-end by publishing `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` — the first publish IS the smoke test.
 **Depends on**: Phase 25, Phase 27
 **Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, PUB-01
 **Success Criteria** (what must be TRUE):
 
   1. A `v1.3.0-rc.0` tag pushed to main triggers `.github/workflows/release.yml`; the version-PR job has no `id-token` permission and the publish job has `id-token: write` only, scoped narrowly with `environment: npm-publish` manual approval gate active.
-  2. `pnpm publish` succeeds end-to-end under OIDC (no `NODE_AUTH_TOKEN` is exported in the workflow), and `npm view @fullselfbrowsing/lattice@1.3.0-rc.0` plus `npm view @fullselfbrowsing/lattice-cli@1.3.0-rc.0` both show a verifiable provenance badge linked to the exact commit SHA via Sigstore.
+  2. `pnpm publish` succeeds end-to-end under OIDC (no `NODE_AUTH_TOKEN` is exported in the workflow), and `npm view @full-self-browsing/lattice@1.3.0-rc.0` plus `npm view @full-self-browsing/lattice-cli@1.3.0-rc.0` both show a verifiable provenance badge linked to the exact commit SHA via Sigstore.
   3. A GitHub Release object `v1.3.0-rc.0` is created automatically on `fullselfbrowsing/Lattice` with notes sourced from `CHANGELOG.md`, and `changesets/action@v1` drove the version bump via the PR-merge pattern (not direct tag push by a human).
 
 **Plans**: TBD
@@ -148,11 +148,16 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Requirements**: PUB-02, PUB-03, PUB-04
 **Success Criteria** (what must be TRUE):
 
-  1. `npm view @fullselfbrowsing/lattice@1.3.0` and `npm view @fullselfbrowsing/lattice-cli@1.3.0` both resolve, display the provenance badge, and ship the tarballs assembled by `tsdown` with the renamed exports surface.
+  1. `npm view @full-self-browsing/lattice@1.3.0` and `npm view @full-self-browsing/lattice-cli@1.3.0` both resolve, display the provenance badge, and ship the tarballs assembled by `tsdown` with the renamed exports surface.
   2. A GitHub Release object `v1.3.0` exists in `fullselfbrowsing/Lattice` with auto-generated notes sourced from `CHANGELOG.md`, and the release page links the npm pages for both packages.
   3. The `npm-publish` environment approval gate was exercised again for v1.3.0 (counts toward the "first 3 publishes" review window), with no manual fallback to a classic `NPM_TOKEN` at any point.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [x] 29-01-PLAN.md — README stable status + changelog-derived GitHub Release notes (PUB-04)
+- [ ] 29-02-PLAN.md — local release preflight + Version Packages PR readiness (PUB-02, PUB-03, PUB-04)
+- [ ] 29-03-PLAN.md — Version Packages PR merge + OIDC stable publish gate (PUB-02, PUB-03, PUB-04)
+- [ ] 29-04-PLAN.md — postpublish proof + requirements/state closure (PUB-02, PUB-03, PUB-04)
 
 ### Phase 30: Canary Bootstrap + Layer 1 Fake-Provider Suite
 
@@ -161,9 +166,9 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 **Requirements**: CAN-01, CAN-02, CAN-03, CAN-04, UNIT-01, UNIT-02, UNIT-03, UNIT-04, UNIT-05, UNIT-06
 **Success Criteria** (what must be TRUE):
 
-  1. Running `npm install && npm test` in the freshly-cloned `lattice-canary` repo against `@fullselfbrowsing/lattice@1.3.0` and `@fullselfbrowsing/lattice-cli@1.3.0` from the public registry passes all Layer 1 unit tests, with the resolve-path assertion as the FIRST test step confirming installation under `node_modules/@fullselfbrowsing/` (not a workspace symlink and not a `file:` link).
-  2. The Layer 1 suite covers every public export from `@fullselfbrowsing/lattice` at both `tsd` type level and runtime, exercises `createAI({ providers, capabilities }).run(...)` + `ai.plan(...)` + `ai.runAgent(intent)` against fake providers, runs the hook pipeline through all three priority bands (SAFETY / OBSERVABILITY / EXTENSION) including `budgetMs` race-with-log and irreversible freeze, round-trips `createReceipt` + `verifyReceipt` with an ephemeral Ed25519 KeySet (passing valid + rejecting tampered), and round-trips `SurvivabilityAdapter` serialize → deserialize byte-equal under DSSE + JCS canonicalization.
-  3. A CLI subprocess test spawns the installed `lattice` bin via `npx @fullselfbrowsing/lattice-cli` and asserts `repro` / `verify` / `eval` exit codes against fixtures, and the canary's PR + push CI workflow is green on the canary repo's main branch.
+  1. Running `npm install && npm test` in the freshly-cloned `lattice-canary` repo against `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` from the public registry passes all Layer 1 unit tests, with the resolve-path assertion as the FIRST test step confirming installation under `node_modules/@full-self-browsing/` (not a workspace symlink and not a `file:` link).
+  2. The Layer 1 suite covers every public export from `@full-self-browsing/lattice` at both `tsd` type level and runtime, exercises `createAI({ providers, capabilities }).run(...)` + `ai.plan(...)` + `ai.runAgent(intent)` against fake providers, runs the hook pipeline through all three priority bands (SAFETY / OBSERVABILITY / EXTENSION) including `budgetMs` race-with-log and irreversible freeze, round-trips `createReceipt` + `verifyReceipt` with an ephemeral Ed25519 KeySet (passing valid + rejecting tampered), and round-trips `SurvivabilityAdapter` serialize → deserialize byte-equal under DSSE + JCS canonicalization.
+  3. A CLI subprocess test spawns the installed `lattice` bin via `npx @full-self-browsing/lattice-cli` and asserts `repro` / `verify` / `eval` exit codes against fixtures, and the canary's PR + push CI workflow is green on the canary repo's main branch.
 
 **Plans**: TBD
 
@@ -242,7 +247,10 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. The `open_weight` strategy explicitly distinguishes meta-instruction from literal-instruction (the gpt-oss-120b root cause), providing example-driven prose framing that an open-weight model can follow without emitting the envelope schema verbatim.
   3. Each scaffold ships with a per-strategy regression test that pipes the returned fragment through a fake provider stub modeling the corresponding model class (frontier-stub passes meta-instruction through; open-weight-stub historically emits envelope-as-output) and asserts the fake stub no longer emits the envelope leak when the open-weight scaffold is used.
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+- [x] 35-01-PLAN.md — Core prompt scaffold helpers + deterministic canonical rendering + public exports (SCAFF-01, SCAFF-02, SCAFF-03)
+- [x] 35-02-PLAN.md — Strategy snapshots + fake provider regressions + type/public-surface tests + changeset (SCAFF-01, SCAFF-02, SCAFF-03, SCAFF-04)
 
 ### Phase 36: Output Sanitizer Hook (opt-in)
 
@@ -255,7 +263,11 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. Three default sanitizer implementations ship in `packages/lattice/src/sanitizers/`: `stripReasoningTags()` removes `<think>...</think>`, `<reasoning>...</reasoning>`, `<scratchpad>...</scratchpad>` and DeepSeek/Qwen QwQ tag families; `stripChatTemplateArtifacts()` removes leaked Llama/Mistral chat-template tokens; `unwrapInternalEnvelope(schemaOrPath)` accepts either a Zod schema or a dotted path and, when the model's response is a single JSON object matching that shape, extracts the designated user-facing field.
   3. A reproduction test loads the gpt-oss-120b transcript shape from `session_1780792387779` (`{"summary": "Greeted the user."}`), composes the OpenRouter adapter with `sanitizeOutput: unwrapInternalEnvelope({ field: "summary" })`, and asserts the consumer-visible output is the natural-language text only (not the JSON envelope).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 36-01-PLAN.md — Core sanitizer module + built-in factories + public exports + direct tests (SANITIZE-02, SANITIZE-03, SANITIZE-04)
+- [x] 36-02-PLAN.md — OpenAI-compatible adapter family wiring: OpenAI-compatible, OpenAI, OpenRouter, xAI, LM Studio (SANITIZE-01, SANITIZE-03, SANITIZE-04)
+- [x] 36-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (SANITIZE-01, SANITIZE-03, SANITIZE-04)
 
 ### Phase 37: Tool-Call Validation Layer (opt-in)
 
@@ -268,7 +280,11 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. `ToolCallValidationError` carries `toolName`, `attemptedArgs`, `validationIssues` (Zod's typed issue list), and `requestId` (correlation with the receipt). Validation distinguishes three failure modes: `unknown_tool` (name not in registry → hallucination), `invalid_args` (schema mismatch), and `extra_fields` (consumer can choose to allow or reject).
   3. A scenario test exercises a fake provider that returns `{ name: "search_database", arguments: { quer: "..." } }` (typo in `query`); with `validateToolCalls.onFailure: "throw"` the adapter throws `ToolCallValidationError` with `validationIssues[0].path = ["query"]`; with `"drop"` the tool call is omitted from the result; with `"callback"` the callback fires with the typed error and the adapter proceeds.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 37-01-PLAN.md — Core validator module + normalized response field + parser reuse + public exports + direct tests (VALID-02, VALID-03)
+- [x] 37-02-PLAN.md — OpenAI-compatible adapter family wiring + agent runtime validated-call preference (VALID-01, VALID-03)
+- [x] 37-03-PLAN.md — Anthropic + Gemini wiring, all-seven adapter parity, changeset, final verification (VALID-01, VALID-03)
 
 ### Phase 38: Receipt v1.2 Schema + modelClass Tag (gated breaking)
 
@@ -279,13 +295,17 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 
   1. `packages/lattice/src/receipts/types.ts` widens the version literal-union to `"lattice-receipt/v1" | "lattice-receipt/v1.1" | "lattice-receipt/v1.2"`; the `CapabilityReceiptBody` gains an optional `modelClass?: ModelCapabilityProfile["trainingClass"]` field that, when present on a v1.2 receipt, must match the registry's classification for the receipt's model id.
   2. `verifyReceipt` continues to reject v1 receipts via the CRYPTO-01 minimum-schema-version gate, accepts both v1.1 and v1.2 cleanly under their respective JCS-canonical signature checks, and round-trips byte-equal through DSSE serialization for both versions.
-  3. Every adapter that has a registry-known model populates `modelClass` on the receipt body before signing; adapters with unknown models or `createFakeProvider` leave the field undefined; per-adapter receipt-shape tests assert the field is populated correctly when the registry has the model and absent otherwise.
+  3. Runtime terminal receipt issuance populates `modelClass` on the receipt body before signing when strict lookup `getCapabilityProfile("${providerId}:${modelId}")` knows the selected route/model; fake, unknown, and synthetic no-route receipts leave the field undefined; provider adapter APIs and `ProviderRunResponse` remain unchanged; receipt-shape tests assert include/omit behavior.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 38-01-PLAN.md — Core receipt v1.2 schema, createReceipt minting, verifier compatibility, downgrade-defense tests (RECEIPT12-01, RECEIPT12-02, RECEIPT12-04)
+- [x] 38-02-PLAN.md — Runtime `ai.run` modelClass issuance via strict registry lookup, checkpoint omit behavior, runtime branch tests (RECEIPT12-03, RECEIPT12-04)
+- [x] 38-03-PLAN.md — Public type surface, changeset, final verification, and completion bookkeeping (RECEIPT12-01, RECEIPT12-04)
 
 ### Phase 39: Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)
 
-**Goal**: Open Lattice's multi-agent surface as a first-class opt-in capability — parent-child delegation loops with structured summary-return, prompt-cache-prefix sharing across crew members, and rate-limit-group coordination — so consumers can compose crews against Lattice primitives rather than rolling them in the consumer layer. AGENTS.md policy flips from "multi-agent: Out of Scope" to "multi-agent: First-class via opt-in `AgentHost` capability." `docs/fsb-integration-gaps.md` Row 60 status flips to "Covered"; Row 83 status flips to "Covered" with v1.2 Phase 20 backlink that was missed at the time.
+**Goal**: Open Lattice's multi-agent surface as a first-class opt-in capability — parent-child delegation loops with structured summary-return, prompt-cache-prefix sharing across crew members, and rate-limit-group coordination — so consumers can compose crews against Lattice primitives rather than rolling them in the consumer layer. AGENTS.md policy now states "multi-agent: First-class via opt-in `AgentHost` capability" instead of the pre-Phase-39 exclusion. `docs/fsb-integration-gaps.md` Row 60 status flips to "Covered"; Row 83 status flips to "Covered" with v1.2 Phase 20 backlink that was missed at the time.
 **Depends on**: none (orthogonal to 33-38; can land in parallel)
 **Requirements**: DELEG-01, DELEG-02, DELEG-03, DELEG-04, DELEG-05, DELEG-06, DELEG-07, DELEG-08
 **Success Criteria** (what must be TRUE):
@@ -294,7 +314,17 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
   2. Parent-child loops execute under the policy: a parent agent dispatches a child by name; child runs its own bounded loop; child returns `{ summary: string, artifacts: ArtifactRef[], receipts: ReceiptCid[] }` matching `summaryReturnSchema`; parent receives the summary as a tool result and continues. Cache-prefix sharing across crew members is verifiable on Anthropic + OpenAI providers (shared system prompt across child invocations hits the prompt-cache).
   3. Rate-limit-group coordination shares a typed token bucket per provider-key across the crew (so a Claude-using parent and Claude-using children share quota rather than racing); receipts chain via a new `parentReceiptCid?: string` field on `CapabilityReceiptBody` (Receipt v1.2's `modelClass` ships alongside in Phase 38); `examples/agent-crew/` showcases a parent-summarizer + 3 child-researchers crew with real Ed25519 signing of every per-agent receipt; `evalAgentRun`-style regression test asserts crew completes within iteration + cost budget against a fake provider.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+- [x] 39-01-PLAN.md — Author DELEG-01..08 REQ-IDs + receiptCid helper + parentReceiptCid on v1.2 body + CRYPTO-01 non-regression matrix (DELEG-06)
+- [x] 39-02-PLAN.md — createRateLimitGroup dual-dimension lease bucket + withRateLimit AgentTransport wrapper (DELEG-05)
+- [x] 39-03-PLAN.md — defineAgent/AgentSpec + CrewPolicy/validateCrewPolicy + crew-budget-exceeded + AgentSnapshot.ancestry + runtime dispatch seam + format-tools body variant (DELEG-01, DELEG-02, DELEG-03)
+- [x] 39-04-PLAN.md — ProviderRunRequest.cacheSystemPrefix + Anthropic cache_control emission + mocked-fetch shape/counter tests (DELEG-04)
+- [x] 39-05-PLAN.md — CrewDispatcher chokepoint: dispatch branch, cycle/depth, failure routing, receipt chaining, cache-prefix composition (DELEG-03, DELEG-04, DELEG-06)
+- [x] 39-06-PLAN.md — runAgentCrew orchestrator + CrewResult + rate-limit wiring + ai.runAgentCrew facade + public exports + integration suite (DELEG-02, DELEG-03, DELEG-05)
+- [x] 39-07-PLAN.md — examples/agent-crew showcase (parent + 3 researchers, Ed25519-signed chained receipts) + evalAgentRun crew regression gate (DELEG-07)
+- [x] 39-08-PLAN.md — AGENTS.md 3-surface policy flip + gaps-doc Row 60/83 flips + tsd coverage + changeset + full phase gate (DELEG-08)
+
 
 ## Risks
 
@@ -339,7 +369,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | DELEG | 8 | Phase 39 |
 | **Total** | **87** | **16 phases** |
 
-54 / 87 v1.3 REQ-IDs currently in `.planning/REQUIREMENTS.md`. The 33 new REQ-IDs (CAPS, QUIRK, NEG, SCAFF, SANITIZE, VALID, RECEIPT12, DELEG) will be authored in `.planning/REQUIREMENTS.md` as part of Phase 33's discuss-phase artifact (or earlier, if a single requirements-expansion phase is preferred). No orphans expected.
+87 / 87 planned v1.3 REQ-IDs are authored in `.planning/REQUIREMENTS.md`. The Phase 33-39 groups (`CAPS`, `QUIRK`, `NEG`, `SCAFF`, `SANITIZE`, `VALID`, `RECEIPT12`, `DELEG`) are authored and complete. No authored orphans expected.
 
 ## Progress
 
@@ -357,14 +387,14 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 26. Release Hygiene Docs + Receipt Downgrade Defense | 4/4 | Complete    | 2026-06-06 |
 | 27. npm Org + Trusted Publisher Setup | 0/0 | Complete    | 2026-06-07 |
 | 28. Release Workflow + rc.0 OIDC Smoke | 0/0 | Complete    | 2026-06-08 |
-| 29. First v1.3.0 Stable Publish | 0/0 | Not started | - |
+| 29. First v1.3.0 Stable Publish | 1/4 | In Progress | - |
 | 30. Canary Bootstrap + Layer 1 Fake-Provider Suite | 0/0 | Not started | - |
 | 31. Canary Layer 2 Real-Provider Integration + Cost Ceiling | 0/0 | Not started | - |
 | 32. Cross-Repo Wiring + v1.3 Milestone Audit | 0/0 | Not started | - |
 | 33. Model Capability Registry (~200+ via OpenRouter feed) | 5/5 | Complete   | 2026-06-08 |
 | 34. Adapter Quirk Flags + Capability Negotiation API | 5/5 | Complete    | 2026-06-08 |
-| 35. Prompt Scaffolding Helpers | 0/0 | Not started | - |
-| 36. Output Sanitizer Hook (opt-in) | 0/0 | Not started | - |
-| 37. Tool-Call Validation Layer (opt-in) | 0/0 | Not started | - |
-| 38. Receipt v1.2 Schema + modelClass Tag | 0/0 | Not started | - |
-| 39. Multi-Agent Delegation Surface (full Row 60 close) | 0/0 | Not started | - |
+| 35. Prompt Scaffolding Helpers | 2/2 | Complete | 2026-06-09 |
+| 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
+| 37. Tool-Call Validation Layer (opt-in) | 3/3 | Complete | 2026-06-09 |
+| 38. Receipt v1.2 Schema + modelClass Tag | 4/4 | Complete | 2026-06-09 |
+| 39. Multi-Agent Delegation Surface (full Row 60 close) | 8/8 | Complete | 2026-06-11 |

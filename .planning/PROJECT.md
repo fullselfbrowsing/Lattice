@@ -14,30 +14,32 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.2 FSB Integration + Agent Capability shipped 2026-05-31.** All 46 v1.2 requirements wired end-to-end (zero blockers, one documented non-blocking limitation V1.2-LIMITATION-1: native tool-use deferred to v1.3). 733 / 733 workspace tests passing (589 lattice core + 144 lattice-cli). v1.2 branch merged to `main` via PR #1; tag `v1.2.0` cut and pushed.
 
-**v1.3 in progress.** Phase 34 (Adapter Quirk Flags + Capability Negotiation API) complete 2026-06-08 — all 7 first-party adapters expose typed `quirks` blocks and a runtime `negotiateCapabilities()` method intersecting upstream `/models` truth with the Phase 33 static registry. Phases 24-26 (release hygiene), 33 (capability registry), and 34 verified; 875 workspace tests passing (731 lattice + 144 lattice-cli).
+**v1.3 in progress.** Phases 24, 25, 26, 27, 28, and 33-37 are complete. Phase 36 added opt-in output sanitizers across all 7 adapters, and Phase 37 added opt-in returned tool-call validation across all 7 adapters with normalized `ProviderRunResponse.toolCalls`, runtime preference for validated calls, all-seven parity tests, package type tests, security review, Nyquist validation, and UAT. `1.3.0-rc.0` is published with provenance for both packages; stable `1.3.0` is not published.
 
-## Current Milestone: v1.3 Public Release + Canary Validation
+## Current Milestone: v1.3 Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 
-**Goal:** Cut Lattice's first public npm release under `@fullselfbrowsing/*` with OIDC Trusted Publisher + provenance attestations, then prove correctness end-to-end via a separately-repo'd canary consumer that exercises the public API against real providers.
+**Goal:** Cut Lattice's first public npm release under `@full-self-browsing/*` with OIDC Trusted Publisher + provenance attestations; prove correctness end-to-end via a separately-repo'd canary consumer; add model-aware contract negotiation; and ship the first opt-in multi-agent crew surface.
 
 **Target features:**
-- Rename publishable packages to the `@fullselfbrowsing` scope (`lattice` → `@fullselfbrowsing/lattice`, `lattice-cli` → `@fullselfbrowsing/lattice-cli`; CLI keeps user-facing `lattice` bin).
+- Rename publishable packages to the `@full-self-browsing` scope (`lattice` → `@full-self-browsing/lattice`, `lattice-cli` → `@full-self-browsing/lattice-cli`; CLI keeps user-facing `lattice` bin).
 - Release-quality hygiene: license fields, `repository` / `bugs` / `homepage` metadata, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` via changesets, publint + arethetypeswrong clean across both packages.
 - Full CI scaffolding from scratch: PR-time `ci.yml` (build + test + typecheck) and tag-driven `release.yml` (changesets → OIDC publish with provenance).
-- npm org + Trusted Publisher setup for `@fullselfbrowsing` (user-driven via FSB during execution; scope is currently unclaimed).
-- First publish: `@fullselfbrowsing/lattice@1.3.0` and `@fullselfbrowsing/lattice-cli@1.3.0` with GitHub Release object.
+- npm org + Trusted Publisher setup for `@full-self-browsing` completed via user-driven FSB steps; rc.0 OIDC publish verifies the path.
+- First stable publish: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` with GitHub Release object after Phases 30, 31, and 36-39 complete.
 - Separate public canary consumer repo `fullselfbrowsing/lattice-canary` installing from the registry, not the workspace.
 - Canary coverage layer 1: type-level + runtime assertions on every public export against the published tarball using fake providers (no API keys).
 - Canary coverage layer 2: real-provider integration (OpenAI + Anthropic + Gemini) covering receipts, hook bands, agent loop, survivability round-trip, CLI subprocess.
 - Canary CI: nightly + manual dispatch, per-run cost ceiling enforced via Lattice's own `CostTracker`, failure paging.
 
 **Key context:**
-- License: MIT (LICENSE file present; `license` field missing from all package.json files; needs adding before publish).
+- License: MIT (`LICENSE` and package `license` fields present).
 - Auth model: **OIDC Trusted Publisher**, not long-lived `NPM_TOKEN`. Provenance attestations enabled.
 - Release trigger: tag push (`v*.*.*` → workflow); changesets PR-driven version bumps.
 - Real-provider tests gated to manual dispatch + nightly cron, never PR-time.
-- npm scope `@fullselfbrowsing` is currently unclaimed (recon confirmed via registry).
-- No `.github/workflows/` exists in Lattice repo; CI scaffolding starts from zero.
+- npm scope `@full-self-browsing` is claimed; `1.3.0-rc.0` is published with SLSA provenance attestations for both packages.
+- `.github/workflows/ci.yml`, `.github/workflows/release.yml`, and `.github/workflows/registry-drift.yml` exist with SHA-pinned third-party actions.
+- Stable `1.3.0` is not published. npm currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
+- Phases 36-37 are implemented and verified. Phases 38-39 have no implementation yet in the checked git refs; their detailed REQ-IDs still need to be authored.
 - Tooling foundation already in place: changesets, publint, arethetypeswrong/cli, tsd.
 
 ## Shipped Milestones
@@ -69,9 +71,9 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-v1.3 requirements are being scoped via `/gsd-new-milestone v1.3`. See "Current Milestone: v1.3" above for goal + target features. Final REQ-IDs land in `.planning/REQUIREMENTS.md` after roadmapping.
+v1.3 is active. Phases 24, 25, 26, 27, 28, and 33-37 are complete. Next step is Phase 38: receipt v1.2 schema plus `modelClass` tag, including authoring the `RECEIPT12` REQ-IDs before implementation. Stable `1.3.0` publish remains deferred until canary validation and Phases 38-39 complete.
 
-**Deferred to v1.4** (carryforward themes from v1.2; intentionally out of v1.3 scope to keep the first public release narrow):
+**Deferred to v1.4** (carryforward themes still outside the expanded v1.3 scope):
 
 - Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
 - `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel.
@@ -94,7 +96,7 @@ v1.3 requirements are being scoped via `/gsd-new-milestone v1.3`. See "Current M
 
 - Hosted control plane — the first version should prove the runtime SDK before adding hosted infrastructure.
 - Graph DSL — the v0.1 product should feel smaller than orchestration frameworks and avoid making users design graphs first.
-- Multi-agent handoff framework (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination) — multi-agent orchestration is not the initial differentiator. **Updated 2026-05-31 for v1.2:** single-agent execution is now in scope (Track B / DELEG-01); multi-agent stays out of scope.
+- Hosted or platform-managed crew orchestration beyond Phase 39's embeddable opt-in API — Phase 39 is in scope for parent-child loops, summary-return, cache-prefix sharing, and rate-limit-group coordination inside the SDK; hosted control planes, queueing services, billing, and fleet management remain out of scope.
 - Building 100 custom provider adapters from scratch — broad provider coverage should initially lean on an existing provider/routing surface where practical.
 - Frontend hook library as the center of the product — UI bindings can exist, but the core bet is the runtime.
 - Opaque AI-selected routing in v1 — routing should be deterministic and inspectable first.
@@ -145,11 +147,12 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | Treat context management as built-in runtime behavior | Manual trimming, summarizer middleware, and developer-managed file stuffing are core pain points this product should remove. | Validated in Phase 4: context packs record included, summarized, archived, omitted, reasons, estimates, and trust labels. |
 | Focus the first showcase on the multimodal work inbox | It exercises text, image, audio, files, structured outputs, policy routing, artifact packaging, and optional speech in one understandable workflow. | Validated in Phase 6: executable work-inbox example and fixtures are included. |
 | Keep Phase 1 sessions as references only | Full persistence, context packs, summaries, branching, and replay belong in later phases; Phase 1 only needs a stable public placeholder. | `ai.session(id)` returns a `SessionRef` and can be passed into `ai.run`. |
-| v1.3 scoped to publish + canary only (carryforward themes deferred to v1.4) | First public npm release is its own stress test; bundling novel work onto it amplifies shipping risk. Real users hitting v1.3 will inform what carryforward themes actually matter. | — Pending |
-| v1.3 publishes under `@fullselfbrowsing` scope, not unscoped `lattice` | Unscoped `lattice` on npm is contested; the FSB scope ties Lattice's identity to its origin org and unlocks `@fullselfbrowsing/lattice-cli` as a sibling. | — Pending |
-| v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | — Pending |
-| v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | — Pending |
-| Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | — Pending |
+| v1.3 expanded from publish + canary into model-aware SDK + multi-agent surface | Phase 33/34 registry and negotiation work landed, and Phases 35-39 are now part of the stable `1.3.0` gate. | Active; 75/87 planned REQ-IDs authored, 49 authored REQ-IDs complete. |
+| Keep model-aware adapter hardening opt-in in v1.3 | Output sanitizers and tool-call validators reduce model-shape failure without changing default v1.2 consumer behavior. | Validated in Phases 36-37 across all 7 adapters with parity tests, public-surface/type tests, security review, validation audit, and UAT. |
+| v1.3 publishes under `@full-self-browsing` scope, not unscoped `lattice` | Unscoped `lattice` on npm is contested; the FSB scope ties Lattice's identity to its origin org and unlocks `@full-self-browsing/lattice-cli` as a sibling. | Validated by `1.3.0-rc.0` publish for both packages. |
+| v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | Validated by npm rc.0 provenance attestations for both packages. |
+| v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | Pending: Phases 30-32. |
+| Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | Pending: Phase 31. |
 
 ## Evolution
 
@@ -169,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-08 — Phase 34 (Adapter Quirk Flags + Capability Negotiation API) complete*
+*Last updated: 2026-06-09 — Phase 37 (Tool-Call Validation Layer) UAT complete*

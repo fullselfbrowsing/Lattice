@@ -124,7 +124,7 @@ The product is for developers building multimodal AI features who do not want to
 | Avoid | Why | Use Instead | Confidence |
 |-------|-----|-------------|------------|
 | LangChain/LangGraph as the core runtime | They solve orchestration/agent graph problems, but Lattice's differentiator is a tiny capability runtime with artifact/context/routing plans. Depending on them would pull the public model toward chains/graphs. | Own core runtime; optional adapters later. | HIGH |
-| OpenAI Agents SDK as the core runtime | It is strong for OpenAI agent loops, sessions, tracing, MCP, and voice, but Lattice is provider-agnostic and ships its own single-agent loop (`ai.runAgent`) on top of the capability runtime + hook pipeline + step-transition tracing. Lattice does not embed a multi-agent crew framework (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination remain Out of Scope; see Agent Execution Policy below). | Use `openai` JS SDK for OpenAI adapter; ship native `ai.runAgent` for the single-agent loop; study Agents SDK patterns for sessions/tracing/voice. | HIGH |
+| OpenAI Agents SDK as the core runtime | It is strong for OpenAI agent loops, sessions, tracing, MCP, and voice, but Lattice is provider-agnostic and ships its own single-agent loop (`ai.runAgent`) on top of the capability runtime + hook pipeline + step-transition tracing. Lattice ships its own opt-in multi-agent crew surface (`defineAgent` + `runAgentCrew`) on top of the same primitives; see Agent Execution Policy below. | Use `openai` JS SDK for OpenAI adapter; ship native `ai.runAgent` for the single-agent loop; study Agents SDK patterns for sessions/tracing/voice. | HIGH |
 | LiteLLM Python SDK embedded in Lattice | Lattice is TypeScript-first. Embedding Python adds process/deployment complexity and hides provider envelopes. | Treat LiteLLM as an optional OpenAI-compatible gateway target. | HIGH |
 | Provider SDK sprawl in core | Direct dependencies on every provider make install size, auth, errors, and upgrades unmanageable. | Provider adapter packages plus AI SDK/OpenAI-compatible reuse. | HIGH |
 | Proprietary plugin protocol | MCP is now the standard integration protocol for tools/context. A custom plugin surface would isolate the ecosystem. | MCP client/server bridge plus internal capability metadata. | HIGH |
@@ -134,7 +134,9 @@ The product is for developers building multimodal AI features who do not want to
 | Opaque AI-selected routing in v0.1 | It conflicts with the project requirement for deterministic, inspectable routing. | Capability matrix + policy scoring + explicit fallbacks. | HIGH |
 | Global mutable provider configuration as the main API | Hard to replay, branch, test, or explain. | Explicit `createAI({ providers, policy, storage, tracing })`. | HIGH |
 ## Agent Execution Policy
-**Policy flip in v1.2 (2026-05-31, Phase 19).** Lattice's prior v1.x stance — "multi-agent: Out of Scope" — has been narrowed. Single-agent execution is now first-class; multi-agent crews remain Out of Scope.
+**Policy flip in v1.2 (2026-05-31, Phase 19).** Lattice's prior v1.x stance against built-in multi-agent crews was narrowed. Single-agent execution is now first-class.
+
+**Policy flip in v1.3 (Phase 39).** Multi-agent crews are now first-class via the opt-in `AgentHost` capability: `runAgentCrew({ root, hosts: { childHost }, policy })` with `defineAgent` specs. Single-agent `ai.runAgent` remains the zero-config default.
 
 ### Agent Execution — In Scope (v1.2+)
 
@@ -148,13 +150,15 @@ The product is for developers building multimodal AI features who do not want to
 
 The runtime is host-agnostic. Node, MV3 SW, edge worker, Lambda, and equivalent runtimes consume the same `ai.runAgent` API; per-runtime concerns (scheduler, transport, storage) live behind the pluggable `AgentHost` adapter shipping in Phase 20.
 
-### Multi-Agent Crews — Out of Scope
+### Multi-Agent Crews — First-class via opt-in `AgentHost` capability (v1.3+)
 
-Parent-child loops, summary-return, cache-prefix sharing across agents, rate-limit-group coordination, and crew-level orchestration remain Out of Scope. Callers who need multi-agent patterns build them by composing multiple `ai.runAgent` invocations at the application layer; Lattice does not ship a crew primitive.
+Parent-child loops now ship through `defineAgent` specs and `runAgentCrew({ root, hosts: { childHost }, policy })`. Child agents return structured summary envelopes `{ summary, artifacts, receipts }` validated by `summaryReturnSchema`, then the parent receives the summary as a normal tool result. Children execute serially in v1.3. Crew-level `BudgetInvariant` and structural caps bound total work; rate-limit coordination shares one provider-key bucket through the `AgentTransport` seam; per-agent receipts chain through `parentReceiptCid`; cache-prefix sharing uses Anthropic `cache_control` and OpenAI automatic prefix caching where adapters support it.
+
+The surface is opt-in only. Existing `ai.runAgent` consumers see no behavior change, and single-agent execution remains the default path.
 
 ### Rationale
 
-The original audit trail (`automation/.planning/LATTICE-PIN.md` from FSB v0.10.0-attempt-2 → Lattice v1.2 retro Phases 14-18) demonstrated that the underlying primitives — capability receipts, hook bands, step-transition tracing, provider adapter parity, survivability — compose cleanly into a single-agent loop without requiring a separate framework dependency (LangGraph, OpenAI Agents SDK, etc.). The agent loop is small and runtime-agnostic by design. Multi-agent orchestration introduces parent-child state-management complexity that would dominate the public API and pull the design toward a "crew framework" surface, which is explicitly not the product.
+The original audit trail (`automation/.planning/LATTICE-PIN.md` from FSB v0.10.0-attempt-2 → Lattice v1.2 retro Phases 14-18) demonstrated that the underlying primitives — capability receipts, hook bands, step-transition tracing, provider adapter parity, survivability — compose cleanly into a single-agent loop without requiring a separate framework dependency (LangGraph, OpenAI Agents SDK, etc.). The agent loop is small and runtime-agnostic by design. The v1.3 crew surface ships as a thin composition over the same primitives (`CrewDispatcher` + existing loop), kept opt-in so the public model stays capability-first rather than graph/crew-first.
 
 ## Initial Install Sets
 ### Core Workspace

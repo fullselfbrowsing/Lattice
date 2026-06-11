@@ -2,6 +2,7 @@ import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import type { ContextPack } from "../context/context-pack.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { ExecutionPlan, ProviderPackagingPlan, UsageRecord } from "../plan/plan.js";
+import type { ValidatedToolCall } from "../tools/tool-call-validation.js";
 // Phase 34 — D-01 / D-02 optional fields on ProviderAdapter (non-breaking for
 // v1.2 consumer adapters; existing 4-field literals still satisfy the interface)
 import type { AdapterQuirks } from "./quirks.js";
@@ -97,6 +98,17 @@ export interface ProviderRunRequest {
   readonly contextPack?: ContextPack;
   readonly providerPackaging?: ProviderPackagingPlan;
   readonly packagedArtifacts?: readonly ArtifactRef[];
+  /**
+   * Phase 39 — opt-in prompt-cache prefix (DELEG-04). Adapters that support
+   * block-granular caching (Anthropic) hoist this to a `cache_control`-marked
+   * system content block; adapters that ignore it MUST receive the prefix
+   * folded into `task` by the caller instead (the crew dispatcher gates on
+   * `quirks.promptCachingSupported`). The field is advisory, additive, and
+   * absent for all existing callers — follows the Phase 37 `toolCalls`
+   * additive-field precedent (request/response additive fields accepted;
+   * `ProviderAdapter` METHODS frozen per INV-03).
+   */
+  readonly cacheSystemPrefix?: string;
 }
 
 export interface ProviderRunResponse {
@@ -116,6 +128,7 @@ export interface ProviderRunResponse {
    * 07-CONTEXT.md — distinguishes "free" from "unmeasured").
    */
   readonly normalizedUsage?: Usage;
+  readonly toolCalls?: readonly ValidatedToolCall[];
   readonly rawResponse?: unknown;
 }
 

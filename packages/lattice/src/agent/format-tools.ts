@@ -78,6 +78,16 @@ export interface FormattedToolsHandle {
    */
   readonly buildTask: (conversation: readonly ConversationTurn[]) => string;
   /**
+   * Phase 39 (v1.3): body-only sibling of `buildTask` — identical turn
+   * rendering minus the leading system block, so the byte-stable
+   * `describeForSystem()` prefix can be hoisted once per crew for
+   * prompt-cache sharing without duplication (39-05).
+   *
+   * Invariant: `describeForSystem() + "\n" + buildTaskBody(conversation)`
+   * reconstructs `buildTask(conversation)` byte-for-byte.
+   */
+  readonly buildTaskBody: (conversation: readonly ConversationTurn[]) => string;
+  /**
    * Parses the assistant's response text. Returns:
    *   - `ToolUseRequest[]` when the response contains one or more tool-call
    *     envelopes (parsed in declaration order).
@@ -189,9 +199,14 @@ export function formatToolsForProvider(
     .replace(/^\n+/, "")
     .trimEnd();
 
-  function buildTask(conversation: readonly ConversationTurn[]): string {
+  function assembleTask(
+    conversation: readonly ConversationTurn[],
+    includeSystemBlock: boolean,
+  ): string {
     const lines: string[] = [];
-    lines.push(systemBlock);
+    if (includeSystemBlock) {
+      lines.push(systemBlock);
+    }
     lines.push("");
     lines.push("---");
     lines.push("");
@@ -211,18 +226,12 @@ export function formatToolsForProvider(
     return lines.join("\n");
   }
 
-  function parseToolUse(responseText: string): ReadonlyArray<ToolUseRequest> | null {
-    if (typeof responseText !== "string" || responseText.length === 0) {
-      return null;
-    }
-    const candidates = extractJsonCandidates(responseText);
-    for (const candidate of candidates) {
-      const parsed = tryParseEnvelope(candidate);
-      if (parsed !== null) {
-        return parsed;
-      }
-    }
-    return null;
+  function buildTask(conversation: readonly ConversationTurn[]): string {
+    return assembleTask(conversation, true);
+  }
+
+  function buildTaskBody(conversation: readonly ConversationTurn[]): string {
+    return assembleTask(conversation, false);
   }
 
   function describeForSystem(): string {
@@ -231,10 +240,25 @@ export function formatToolsForProvider(
 
   return {
     buildTask,
-    parseToolUse,
+    buildTaskBody,
+    parseToolUse: parseToolUseEnvelope,
     describeForSystem,
     mode: "prompt-reencoded",
   };
+}
+
+export function parseToolUseEnvelope(responseText: string): ReadonlyArray<ToolUseRequest> | null {
+  if (typeof responseText !== "string" || responseText.length === 0) {
+    return null;
+  }
+  const candidates = extractJsonCandidates(responseText);
+  for (const candidate of candidates) {
+    const parsed = tryParseEnvelope(candidate);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
 }
 
 /**

@@ -14,7 +14,7 @@ Describe the job. Attach any mix of artifacts. Declare the outputs you want. Set
 ![Node](https://img.shields.io/badge/Node-%3E%3D24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![ESM](https://img.shields.io/badge/ESM-native-000000?style=for-the-badge)
 ![Standard Schema](https://img.shields.io/badge/Standard_Schema-compatible-8B5CF6?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.3.0--rc.0-0078D4?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.3.0-0078D4?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-F5C518?style=for-the-badge)
 
 ![Stars](https://img.shields.io/github/stars/fullselfbrowsing/Lattice?style=flat-square&logo=github&label=Stars)
@@ -22,7 +22,7 @@ Describe the job. Attach any mix of artifacts. Declare the outputs you want. Set
 ![Issues](https://img.shields.io/github/issues/fullselfbrowsing/Lattice?style=flat-square&logo=github&label=Issues)
 ![Last Commit](https://img.shields.io/github/last-commit/fullselfbrowsing/Lattice?style=flat-square&logo=github&label=Last%20Commit)
 
-[Overview](#overview) · [Quick Start](#quick-start) · [What's New in v1.3](#whats-new-in-v13-in-progress) · [v1.2](#whats-new-in-v12-shipped) · [Receipts](#capability-receipts) · [Agents](#agent-capability) · [Providers](#provider-adapters) · [CLI](#cli) · [Architecture](#architecture) · [Roadmap](#roadmap)
+[Overview](#overview) · [Quick Start](#quick-start) · [What's New in v1.3](#whats-new-in-v13) · [v1.2](#whats-new-in-v12-shipped) · [Receipts](#capability-receipts) · [Agents](#agent-capability) · [Providers](#provider-adapters) · [CLI](#cli) · [Architecture](#architecture) · [Roadmap](#roadmap)
 
 </div>
 
@@ -57,7 +57,7 @@ The v1.2 surface adds two things on top of the same call. A **capability contrac
 
 </div>
 
-> **Status:** v1.3.0-rc.0 is live on npm with OIDC-signed provenance attestations (both packages, Phase 28). Branch protection on `main` requires a green CI run before merge. The release plumbing track (Phases 24 to 28) is complete. The model-aware SDK track is two phases in: Phase 33 ships a typed Capability Profile registry sourced from a live ~200-entry OpenRouter snapshot plus four supplemental statics; Phase 34 ships per-adapter `quirks` blocks and a runtime `negotiateCapabilities()` method across all seven first-party adapters. Workspace test posture: 875 of 875 runtime tests passing across `packages/lattice` and `packages/lattice-cli`, 880 of 880 type-level tests passing.
+> **Status:** v1.3.0 is the first stable public release under @full-self-browsing. The release pipeline track (Phases 24-28), model-aware SDK track (Phases 33-38), and opt-in multi-agent crew surface (Phase 39) are complete. Stable publish is handled by npm OIDC Trusted Publisher with provenance; canary validation and cross-repo dispatch continue in Phases 30-32.
 
 ---
 
@@ -85,9 +85,9 @@ The result is a typed `RunResult` (or `AgentResult` for the agent loop) with eit
 
 ---
 
-## What's New in v1.3 (In Progress)
+## What's New in v1.3
 
-v1.3 ships in two tracks. The release pipeline track is complete. The model-aware SDK track is two phases in.
+v1.3 ships the public release pipeline, the model-aware SDK surface, and the opt-in multi-agent crew API. Phases 30-32 continue the canary validation and cross-repo release proof after stable publish.
 
 ### Release pipeline (Phases 24 to 28, shipped)
 
@@ -101,14 +101,19 @@ Five infrastructure phases that turn Lattice from a private workspace into a pub
 | 27 | npm org + trusted publisher setup | The npm trust tuple (repository, workflow_filename, environment) registered on npmjs.com for both packages. Zero long-lived `NPM_TOKEN` in the release path. |
 | 28 | Release workflow + rc.0 OIDC smoke | `.github/workflows/release.yml` ships with split version-PR and publish jobs. The first publish is the smoke test. `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` live on npm with provenance attestations. |
 
-### Model-aware SDK (Phases 33 to 34, shipped)
+### Model-aware SDK + multi-agent surface (Phases 33 to 39, shipped)
 
-Two foundation phases that teach Lattice what each provider can actually do, sourced from upstream provider truth instead of runtime guesses.
+Seven phases that teach Lattice what each provider can actually do, harden model-shape handling, and expose explicit crew composition without changing the default single-agent path.
 
 | Phase | Surface | What it adds |
 |---|---|---|
 | 33 | Model capability registry (~200+ entries) | Typed `CapabilityProfile` shape with seven fields per model. `registry.generated.ts` holds ~200 entries auto-built from the OpenRouter live feed. `registry.static.ts` holds four supplemental profiles for adapters OpenRouter does not cover. A weekly drift workflow (`registry-drift.yml`) auto-opens a refresh PR every Monday at 06:00 UTC. PR-time CI stays offline; drift refresh runs on its own cadence. |
 | 34 | Adapter quirk flags + capability negotiation API | `AdapterQuirks` base interface plus seven narrowed sub-interfaces (`AnthropicQuirks`, `OpenAIQuirks`, `OpenAICompatQuirks`, `GeminiQuirks`, `XaiQuirks`, `OpenRouterQuirks`, `LmStudioQuirks`). Each adapter factory return type narrows so `quirks` is required and discriminated on `adapter.id`. `NegotiatedCapabilities` ships per-model `supports.{nativeToolCalling, structuredOutputs, parallelToolCalls, extendedThinking, streaming}` plus `knownFailureModes` and `recommendedSanitizers`. Anthropic is the thick reference (live `/v1/models` populates `supports.*` directly). Gemini and OpenRouter are medium-thick. OpenAI, OpenAI-compat, xAI, and LM Studio fall back to the Phase 33 registry. A top-level `negotiateCapabilities(adapter, modelId)` helper synthesizes from registry when an adapter has no `negotiateCapabilities` method. `RunEventKind` gains `"capabilities.negotiation.fallback"` for observable transient fallback events. |
+| 35 | Prompt scaffolding helpers | `getStructuredOutputContract`, `getToolUseContract`, `PROMPT_SCAFFOLD_VERSION`, and `PROMPT_STRATEGIES` render deterministic `lattice.prompt-scaffold/v1` fragments from a model's recommended prompt strategy. |
+| 36 | Output sanitizer hook | All seven adapters accept opt-in `sanitizeOutput`; built-ins include `stripReasoningTags()`, `stripChatTemplateArtifacts()`, and `unwrapInternalEnvelope(schemaOrPath)` for open-weight/internal-envelope failures. |
+| 37 | Tool-call validation layer | All seven adapters accept opt-in `validateToolCalls`; returned prompt-reencoded tool-call envelopes validate against the caller's registry before normalized `ProviderRunResponse.toolCalls` is exposed. |
+| 38 | Receipt v1.2 schema + `modelClass` | Capability receipts mint as `lattice-receipt/v1.2` and can include `modelClass` from the capability registry while `verifyReceipt` continues to accept v1.1 and reject downgraded v1 bodies. |
+| 39 | Opt-in multi-agent crew surface | `defineAgent`, `runAgentCrew`, `createAI(...).runAgentCrew(...)`, `createRateLimitGroup`, and `withRateLimit` ship parent-child loops with structured summary return, shared crew budget caps, rate-limit coordination, receipt CID chaining, and `parentReceiptCid` backlinks. |
 
 ### Capability negotiation example
 
@@ -137,10 +142,10 @@ The same `negotiateCapabilities` helper works for every adapter. Auth failures t
 
 | Workspace | Tests |
 |---|---:|
-| `packages/lattice` | 731 / 731 |
+| `packages/lattice` | 908 / 908 |
 | `packages/lattice-cli` | 144 / 144 |
-| Type-level (vitest typecheck + tsd) | 880 / 880 |
-| **Workspace runtime total** | **875 / 875** |
+| Type-level (vitest typecheck + tsd) | 1089 / 1089 |
+| **Workspace runtime total** | **1052 / 1052** |
 
 Strict `tsc --noEmit` clean across both workspaces. `publint` and `@arethetypeswrong/cli` clean. ESM-only.
 
@@ -150,11 +155,6 @@ Strict `tsc --noEmit` clean across both workspaces. `publint` and `@arethetypesw
 |---|---|
 | 29 | First v1.3.0 stable publish (graduate from rc.0). |
 | 30 to 32 | Canary consumer integration. Layer 1 fake-provider suite. Layer 2 real-provider with cost ceiling. Cross-repo wiring and milestone audit. |
-| 35 | Prompt scaffolding helpers (`getStructuredOutputContract`, `getToolUseContract` per capability strategy with version-pinned fragments so prompt-caching keys stay byte-stable across patch releases). |
-| 36 | Output sanitizer hook (opt-in). Built-ins for stripping reasoning tags, chat-template artifacts, and internal-envelope leaks (the anchor case study `openai/gpt-oss-120b:free` already routes through `recommendedSanitizers: ["unwrapInternalEnvelope"]` end-to-end). |
-| 37 | Tool-call validation layer (opt-in). |
-| 38 | Receipt v1.2 schema with `modelClass` tag (gated breaking change). |
-| 39 | Multi-agent delegation surface (currently Out of Scope; reopened by Phase 39). |
 
 ---
 
@@ -176,7 +176,7 @@ Five extensions landed as canonical Lattice surface.
 
 ### Track B: Agent Capability (Phases 19 to 22)
 
-The previously out-of-scope Delegation surface opens as a runtime-agnostic single-agent capability. Multi-agent crews remain Out of Scope.
+The previously out-of-scope Delegation surface opened as a runtime-agnostic single-agent capability. v1.3 keeps `ai.runAgent(intent)` as the zero-config default and adds first-class crews through the explicit `AgentHost` / `runAgentCrew` surface.
 
 | Phase | Surface | What it adds |
 |---|---|---|
@@ -199,7 +199,7 @@ Strict `tsc --noEmit` clean across both workspaces.
 
 Native tool-use (Anthropic Messages-API `tools[]`, OpenAI Chat-Completions `tools[]`, Gemini `function_declarations`) was deferred to v1.3 at v1.2 ship time. Uniform prompt-reencoded mode satisfied the Phase 19 AGENT-02 contract across all seven providers (proved by 84 `describe.each(ALL_PROVIDERS)` cases). Admitting native tool-use cleanly required an additive extension to the `ProviderAdapter` interface that preserved the Phase 17 INV-03 7-provider parity contract.
 
-Phase 34 ships the typed surface that closes this. Each adapter now exposes `quirks.supportsToolChoice` and `quirks.parallelToolCalls` plus a runtime `NegotiatedCapabilities.supports.nativeToolCalling` field sourced from upstream `/models` responses where available. Wiring the agent loop to call native tool-use when capabilities allow is a planned Phase 37 follow-up.
+Phase 34 ships the typed surface that closes this. Each adapter now exposes `quirks.supportsToolChoice` and `quirks.parallelToolCalls` plus a runtime `NegotiatedCapabilities.supports.nativeToolCalling` field sourced from upstream `/models` responses where available. Phase 37 adds opt-in validation for returned prompt-reencoded tool-call envelopes.
 
 ---
 
@@ -360,14 +360,14 @@ The receipt body commits to:
 
 ## Provenance Verification
 
-Every `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. The first OIDC publish landed in Phase 28: both packages are live on npm at `1.3.0-rc.0` with provenance attached. You can verify the attestation with stock tooling.
+Every `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. The first OIDC publish landed in Phase 28: both packages are live on npm at `1.3.0-rc.0` with provenance attached. Stable `1.3.0` will be verified after Phase 29 with stock tooling.
 
 ```bash
-npm view @full-self-browsing/lattice --json | jq .dist
+npm view @full-self-browsing/lattice@1.3.0 --json | jq .dist
 # then inspect .dist.attestations.provenance
 ```
 
-The npm version badge at the top of this README pulls live from npmjs.com; the live attestation badge will surface once `@full-self-browsing/lattice@1.3.0` graduates from rc.0 (Phase 29). See `SECURITY.md` for the full supply-chain posture: no long-lived `NPM_TOKEN`, SHA-pinned GitHub Actions, `npm-publish` manual reviewer gate for the first three publishes.
+See `SECURITY.md` for the full supply-chain posture: no long-lived `NPM_TOKEN`, SHA-pinned GitHub Actions, `npm-publish` manual reviewer gate for the first three publishes.
 
 ---
 
@@ -646,9 +646,9 @@ Lattice/
 | v1.0 | Runtime API, output contracts, artifacts, deterministic routing, sessions, provider packaging, tools, replay, work-inbox showcase | Shipped (2026-04-22) |
 | v1.1 Capability Receipts | Capability contract, tripwires, JCS canonicalization, Ed25519 signing, receipt verification, replay envelope, `lattice` CLI, eval CI gate, sidecar support | Shipped (2026-05-12) |
 | v1.2 FSB Integration + Agent Capability | Receipt v1.1 schema extension, hook bands, checkpoint hook, 5 new providers + INV-03 parity, survivability adapter, agent runtime, agent host, agent infrastructure primitives, agent-loop showcase, eval helper | Shipped (2026-05-31) |
-| **v1.3 Public Release + Model-Aware SDK** | **Release pipeline (24 to 28): atomic scope rename, PR-time CI, release hygiene + receipt downgrade defense, npm Trusted Publisher, OIDC release workflow with rc.0 smoke. Model-aware SDK (33 to 39): typed capability registry, adapter quirks + capability negotiation, prompt scaffolding helpers, opt-in sanitizer hook, tool-call validation, receipt v1.2 with modelClass, multi-agent delegation surface.** | **In progress. 7 of 16 phases complete. `1.3.0-rc.0` live on npm with provenance.** |
+| **v1.3 Public Release + Model-Aware SDK** | **Release pipeline (24 to 28): atomic scope rename, PR-time CI, release hygiene + receipt downgrade defense, npm Trusted Publisher, OIDC release workflow with rc.0 smoke. Model-aware SDK (33 to 39): typed capability registry, adapter quirks + capability negotiation, prompt scaffolding helpers, opt-in sanitizer hook, tool-call validation, receipt v1.2 with modelClass, multi-agent delegation surface.** | **Stable surface complete; Phase 29 promotes `1.3.0`, Phases 30 to 32 continue canary validation and cross-repo audit.** |
 
-Multi-agent crews (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination) stay Out of Scope until Phase 39 reopens the surface.
+Multi-agent crews (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination) are first-class through the opt-in `AgentHost` / `runAgentCrew` surface.
 
 ---
 

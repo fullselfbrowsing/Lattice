@@ -1,0 +1,124 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Phase 35 prompt scaffolds > renders structured-output scaffold for frontier 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: frontier
+Purpose: structured-output
+
+Return only content that satisfies the contract.
+Do not include prose before or after the structured output.
+
+Contract:
+{"additionalProperties":false,"properties":{"confidence":{"type":"number"},"summary":{"type":"string"}},"required":["summary"],"type":"object"}"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders structured-output scaffold for local 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: local
+Purpose: structured-output
+
+Do not copy the contract, chat template, or wrapper text into the answer.
+Return the requested answer directly in the required shape.
+
+Contract:
+{"additionalProperties":false,"properties":{"confidence":{"type":"number"},"summary":{"type":"string"}},"required":["summary"],"type":"object"}"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders structured-output scaffold for mid_tier 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: mid_tier
+Purpose: structured-output
+
+Treat the contract as instructions, not as prose to repeat.
+Return the requested answer in the shape required by the contract.
+
+Contract:
+{"additionalProperties":false,"properties":{"confidence":{"type":"number"},"summary":{"type":"string"}},"required":["summary"],"type":"object"}"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders structured-output scaffold for open_weight 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: open_weight
+Purpose: structured-output
+
+The contract below is an instruction, not text to output.
+Do not answer with the schema, envelope, or any field name unless that field belongs in the final user-visible JSON.
+Bad: {"summary":"Greeted the user."} when the user asked for a natural-language reply.
+Good: Greeted the user.
+
+Contract:
+{"additionalProperties":false,"properties":{"confidence":{"type":"number"},"summary":{"type":"string"}},"required":["summary"],"type":"object"}"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders structured-output scaffold for reasoning 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: reasoning
+Purpose: structured-output
+
+Do not expose hidden reasoning, scratchpad text, or analysis in the final answer.
+Return only the final content that satisfies the contract.
+
+Contract:
+{"additionalProperties":false,"properties":{"confidence":{"type":"number"},"summary":{"type":"string"}},"required":["summary"],"type":"object"}"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders tool-use scaffold for frontier 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: frontier
+Purpose: tool-use
+
+Use a tool only when the task requires an external action or lookup.
+Return a normal answer when the user request can be completed without a tool.
+
+Tools:
+[{"description":"Look up weather for a city.","name":"lookupWeather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}]"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders tool-use scaffold for local 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: local
+Purpose: tool-use
+
+Do not invent tool names or arguments.
+If the task does not require a listed tool, answer directly.
+
+Tools:
+[{"description":"Look up weather for a city.","name":"lookupWeather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}]"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders tool-use scaffold for mid_tier 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: mid_tier
+Purpose: tool-use
+
+The tool definitions are available actions, not answer text.
+Call only a listed tool, and only with arguments that match its definition.
+
+Tools:
+[{"description":"Look up weather for a city.","name":"lookupWeather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}]"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders tool-use scaffold for open_weight 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: open_weight
+Purpose: tool-use
+
+The tool list below is action metadata, not text to output.
+Do not copy the tool descriptor into the final answer.
+If no listed tool is needed, answer normally without fabricating a tool call.
+
+Tools:
+[{"description":"Look up weather for a city.","name":"lookupWeather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}]"
+`;
+
+exports[`Phase 35 prompt scaffolds > renders tool-use scaffold for reasoning 1`] = `
+"Lattice Prompt Scaffold: lattice.prompt-scaffold/v1
+Strategy: reasoning
+Purpose: tool-use
+
+Keep tool selection separate from hidden reasoning.
+Do not include scratchpad text when explaining whether a tool was used.
+
+Tools:
+[{"description":"Look up weather for a city.","name":"lookupWeather","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}]"
+`;

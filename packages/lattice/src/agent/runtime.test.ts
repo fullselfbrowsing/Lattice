@@ -7,7 +7,7 @@ import { contract } from "../contract/contract.js";
 import { createFakeProvider } from "../providers/fake.js";
 import { defineTool } from "../tools/tools.js";
 
-import { runAgent } from "./runtime.js";
+import { runAgent, runAgentInternal } from "./runtime.js";
 import type { AgentIntent } from "./types.js";
 
 function makeSchema(): StandardSchemaV1 {
@@ -93,6 +93,88 @@ describe("runAgent — tool-use multi-iteration", () => {
       expect(result.usage.promptTokens).toBe(20);
       expect(result.usage.completionTokens).toBe(10);
       expect(result.usage.costUsd).toBeCloseTo(0.004);
+    }
+  });
+
+  it("prefers response.toolCalls over parser fallback text", async () => {
+    let iteration = 0;
+    let validatedCalls = 0;
+    let fallbackCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        iteration += 1;
+        if (iteration === 1) {
+          return {
+            rawOutputs: {
+              answer: `{"tool_calls":[{"id":"fallback","name":"fallback","args":{"value":"wrong"}}]}`,
+            },
+            toolCalls: [{ id: "validated", name: "validated", args: { value: "right" } }],
+            normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+          };
+        }
+        return {
+          rawOutputs: { answer: "Done." },
+          normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Use the validated call.",
+        tools: [
+          makeTool("validated", () => {
+            validatedCalls += 1;
+            return "validated-result";
+          }),
+          makeTool("fallback", () => {
+            fallbackCalls += 1;
+            return "fallback-result";
+          }),
+        ],
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(validatedCalls).toBe(1);
+    expect(fallbackCalls).toBe(0);
+    if (result.kind === "success") {
+      expect(result.iterations[0]?.toolCalls[0]?.id).toBe("validated");
+      expect(result.iterations[0]?.toolCalls[0]?.name).toBe("validated");
+    }
+  });
+
+  it("does not execute invalid calls dropped by adapter validation", async () => {
+    let dangerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: {
+          answer: `{"tool_calls":[{"id":"danger","name":"danger","args":{"value":"run"}}]}`,
+        },
+        toolCalls: [],
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+
+    const result = await runAgent(
+      {
+        task: "Do not execute dropped calls.",
+        tools: [
+          makeTool("danger", () => {
+            dangerCalls += 1;
+            return "danger-result";
+          }),
+        ],
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(dangerCalls).toBe(0);
+    if (result.kind === "success") {
+      expect(result.iterations).toHaveLength(1);
+      expect(result.iterations[0]?.toolCalls).toEqual([]);
     }
   });
 });
@@ -295,6 +377,99 @@ describe("runAgent — execution_unavailable when no provider has execute()", ()
       { providers: [] },
     );
     expect(result.kind).toBe("execution_unavailable");
+  });
+});
+
+describe("runAgentInternal — injectable dispatchToolUse seam (Phase 39)", () => {
+  it("routes an intercepted request's { content } into the role:\"tool\" turn with original id/name", async () => {
+    const tasks: string[] = [];
+    const responses = [
+      `{"tool_calls":[{"id":"c1","name":"child-agent","args":{"task":"go"}}]}`,
+      "Final.",
+    ];
+    const fake = createFakeProvider({
+      response: (request) => {
+        tasks.push(request.task);
+        return {
+          rawOutputs: { answer: responses.shift() ?? "" },
+          normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+        };
+      },
+    });
+    const seenContexts: Array<{ iterationIndex: number }> = [];
+    const result = await runAgentInternal(
+      { task: "Delegate.", tools: [] },
+      { providers: [fake] },
+      {
+        dispatchToolUse: async (req, ctx) => {
+          seenContexts.push({ iterationIndex: ctx.iterationIndex });
+          if (req.name === "child-agent") {
+            return { content: '{"summary":"child done"}' };
+          }
+          return undefined;
+        },
+      },
+    );
+    expect(result.kind).toBe("success");
+    // The dispatched content lands verbatim in the role:"tool" turn — the
+    // 2nd provider call renders it as a TOOL_RESULT with the original
+    // toolCallId and toolName.
+    const secondTask = tasks[1] ?? "";
+    expect(secondTask).toContain("TOOL_RESULT (name=child-agent id=c1):");
+    expect(secondTask).toContain('{"summary":"child done"}');
+    expect(seenContexts).toEqual([{ iterationIndex: 0 }]);
+    if (result.kind === "success") {
+      expect(result.iterations[0]?.toolCalls[0]?.id).toBe("c1");
+      expect(result.iterations[0]?.toolCalls[0]?.name).toBe("child-agent");
+    }
+  });
+
+  it("falls through to the default runTool path when the dispatcher declines", async () => {
+    const responses = [
+      `{"tool_calls":[{"id":"c1","name":"echo","args":{"value":"hi"}}]}`,
+      "Done.",
+    ];
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: responses.shift() ?? "" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+    let echoCalls = 0;
+    const echo = makeTool("echo", (input) => {
+      echoCalls += 1;
+      return input;
+    });
+    const result = await runAgentInternal(
+      { task: "Echo hi.", tools: [echo] },
+      { providers: [fake] },
+      {
+        // Declines everything that is not a child name — proving fall-through.
+        dispatchToolUse: async (req) =>
+          req.name === "some-child" ? { content: "never" } : undefined,
+      },
+    );
+    expect(result.kind).toBe("success");
+    expect(echoCalls).toBe(1);
+    if (result.kind === "success") {
+      expect(result.iterations[0]?.toolCalls[0]?.name).toBe("echo");
+    }
+  });
+
+  it("behaves identically to runAgent when no internal options are passed", async () => {
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: "Hello." },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+    const viaPublic = await runAgent({ task: "Hi.", tools: [] }, { providers: [fake] });
+    const viaInternal = await runAgentInternal({ task: "Hi.", tools: [] }, { providers: [fake] });
+    expect(viaPublic.kind).toBe("success");
+    expect(viaInternal.kind).toBe("success");
+    if (viaPublic.kind === "success" && viaInternal.kind === "success") {
+      expect(viaInternal.output).toEqual(viaPublic.output);
+    }
   });
 });
 

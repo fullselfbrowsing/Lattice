@@ -10,6 +10,14 @@ import {
   inv,
   isTerminal,
   materializeReplayEnvelope,
+  PROMPT_SCAFFOLD_VERSION,
+  PROMPT_STRATEGIES,
+  getStructuredOutputContract,
+  getToolUseContract,
+  stripChatTemplateArtifacts,
+  stripReasoningTags,
+  ToolCallValidationError,
+  unwrapInternalEnvelope,
   verifyReceipt,
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
@@ -32,6 +40,7 @@ import type {
   ReceiptEnvelope,
   ReceiptSigner,
   ReplayEnvelope,
+  TrainingClass,
   TripwireEvidence,
   TripwireResult,
   TripwireViolationError,
@@ -257,6 +266,9 @@ describe("Phase 9 public surface", () => {
 
   it("type-only: Phase 9 types compile and are reachable from the consumer-visible path", () => {
     const _body: CapabilityReceiptBody | undefined = undefined;
+    const _class: TrainingClass | undefined = undefined;
+    const _bodyModelClass: CapabilityReceiptBody["modelClass"] | undefined =
+      _class;
     const _envelope: ReceiptEnvelope | undefined = undefined;
     const _signer: ReceiptSigner | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
@@ -265,6 +277,7 @@ describe("Phase 9 public surface", () => {
     const _verdict: ContractVerdict | undefined = undefined;
     // touch to silence unused-var lint
     void _body;
+    void _bodyModelClass;
     void _envelope;
     void _signer;
     void _keyState;
@@ -430,6 +443,88 @@ describe("public-surface — Phase 21 agent infrastructure primitives", () => {
       | _PermissionContext
       | _PermissionRule
       | _PermissionVerdict);
+    expect(true).toBe(true);
+  });
+});
+
+describe("Phase 35 public surface", () => {
+  it("re-exports prompt scaffold helpers and constants", () => {
+    expect(PROMPT_SCAFFOLD_VERSION).toBe("lattice.prompt-scaffold/v1");
+    expect(PROMPT_STRATEGIES).toEqual([
+      "frontier",
+      "mid_tier",
+      "open_weight",
+      "reasoning",
+      "local",
+    ]);
+    expect(typeof getStructuredOutputContract).toBe("function");
+    expect(typeof getToolUseContract).toBe("function");
+  });
+
+  it("renders prompt scaffolds through the package root", () => {
+    expect(getStructuredOutputContract("frontier", { type: "object" })).toContain(
+      "Purpose: structured-output",
+    );
+    expect(getToolUseContract("frontier", [])).toContain("Purpose: tool-use");
+  });
+});
+
+describe("Phase 36 public surface", () => {
+  it("re-exports built-in output sanitizer factories", () => {
+    expect(typeof stripReasoningTags).toBe("function");
+    expect(typeof stripChatTemplateArtifacts).toBe("function");
+    expect(typeof unwrapInternalEnvelope).toBe("function");
+  });
+
+  it("unwraps the anchor internal envelope through the package root", async () => {
+    const sanitize = unwrapInternalEnvelope({ field: "summary" });
+
+    await expect(
+      sanitize("{\"summary\":\"Greeted the user.\"}", {
+        providerId: "openrouter",
+        modelId: "openai/gpt-oss-120b:free",
+        outputName: "text",
+      }),
+    ).resolves.toBe("Greeted the user.");
+  });
+
+  it("type-only: Phase 36 sanitizer types are exported", async () => {
+    type _SanitizerFn = import("../src/index.js").SanitizerFn;
+    type _SanitizerContext = import("../src/index.js").SanitizerContext;
+    type _SanitizeOutputOption = import("../src/index.js").SanitizeOutputOption;
+    type _InternalEnvelopeOptions = import("../src/index.js").InternalEnvelopeOptions;
+    void (null as unknown as
+      | _SanitizerFn
+      | _SanitizerContext
+      | _SanitizeOutputOption
+      | _InternalEnvelopeOptions);
+    expect(true).toBe(true);
+  });
+});
+
+describe("Phase 37 public surface", () => {
+  it("re-exports ToolCallValidationError from the package root", () => {
+    const error = new ToolCallValidationError({
+      reason: "unknown_tool",
+      toolName: "search_database",
+      attemptedArgs: { query: "lattice" },
+      requestId: "call-1",
+    });
+
+    expect(typeof ToolCallValidationError).toBe("function");
+    expect(error.kind).toBe("tool-call-validation");
+    expect(error.reason).toBe("unknown_tool");
+  });
+
+  it("type-only: Phase 37 tool-call validation types are exported", async () => {
+    type _ToolCallValidationFailureReason =
+      import("../src/index.js").ToolCallValidationFailureReason;
+    type _ValidateToolCallsOption = import("../src/index.js").ValidateToolCallsOption;
+    type _ValidatedToolCall = import("../src/index.js").ValidatedToolCall;
+    void (null as unknown as
+      | _ToolCallValidationFailureReason
+      | _ValidateToolCallsOption
+      | _ValidatedToolCall);
     expect(true).toBe(true);
   });
 });

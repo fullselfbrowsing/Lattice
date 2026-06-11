@@ -16,7 +16,7 @@
 #    workflow_filename: release.yml,
 #    environment: npm-publish)
 # Both packages have this tuple, so pnpm publish exchanges the GitHub OIDC
-# token for an npm short-lived publish credential. Zero NODE_AUTH_TOKEN.
+# token for an npm short-lived publish credential with no static npm secret.
 # All third-party actions SHA-pinned per CI-02 / Phase 25 D-12.
 name: release
 
@@ -114,19 +114,20 @@ jobs:
         run: pnpm -r lint:packages
 
       - name: Publish to npm with provenance
-        # No NODE_AUTH_TOKEN here. pnpm publish picks up the OIDC token from
+        # pnpm publish picks up the OIDC token from
         # ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN that
         # the runner injects when id-token:write is set, exchanges it with
         # npm using the trust tuple registered in Phase 27, and signs the
         # tarball with Sigstore for provenance.
         run: pnpm -r publish --access public --provenance --no-git-checks
 
+      - name: Extract changelog release notes
+        run: node scripts/extract-release-notes.mjs "${GITHUB_REF_NAME}" .release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
-          # Release notes default to the auto-generated diff; we'll move to
-          # changesets-extracted notes after rc.0 ships and we see the shape.
-          generate_release_notes: true
+          body_path: .release-notes.md
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
         env:

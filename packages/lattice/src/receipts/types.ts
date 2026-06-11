@@ -8,6 +8,7 @@
 //     compliance per 09-CONTEXT.md "I-JSON only" decision.
 
 import type { TripwireEvidence } from "../contract/tripwire.js";
+import type { TrainingClass } from "../capabilities/profile.js";
 import type { RouteRejectReason } from "../plan/plan.js";
 
 export type ContractVerdict =
@@ -40,13 +41,27 @@ export interface ReceiptRedaction {
 }
 
 export interface CapabilityReceiptBody {
-  readonly version: "lattice-receipt/v1" | "lattice-receipt/v1.1";
+  readonly version:
+    | "lattice-receipt/v1"
+    | "lattice-receipt/v1.1"
+    | "lattice-receipt/v1.2";
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
   readonly kid: string;
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
+  // Phase 38 v1.2 model-class tag. Optional for legacy v1.1 receipts and
+  // synthetic/unknown routes; populated from the strict Phase 33 registry when
+  // runtime issuance has a known selected provider/model.
+  readonly modelClass?: TrainingClass;
+  // Phase 39 (v1.3) receipt-chain link — additive optional on v1.2, no schema
+  // bump. Holds the crew-root receipt's CID: `sha256:<hex>` of the parent
+  // envelope's canonical DSSE payload bytes (see receipts/cid.ts). A stable
+  // identifier, not user content — redaction-exempt per the step-marker-field
+  // rationale above; never put free-form crew names in receipt identifier
+  // fields. Absent on root/non-crew receipts.
+  readonly parentReceiptCid?: string;
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;

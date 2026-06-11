@@ -2,6 +2,8 @@ import canonicalize from "canonicalize";
 
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
+import { getCapabilityProfile } from "../capabilities/lookup.js";
+import type { TrainingClass } from "../capabilities/profile.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 import {
@@ -106,7 +108,7 @@ export interface AI {
    * Phase 19 (v1.2): single-agent execution loop. Drives multiple provider
    * iterations under one call, dispatching tool requests between iterations.
    * Composes with the v1.2 hook pipeline (SAFETY-band veto, OBSERVABILITY-band
-   * checkpoint receipts) and the v1.1 capability receipts (when
+   * checkpoint receipts) and the v1.2 capability receipts (when
    * `intent.signer` is provided + `intent.autoRegisterCheckpoint !== false`).
    *
    * See `packages/lattice/src/agent/runtime.ts` for orchestration details.
@@ -114,6 +116,17 @@ export interface AI {
   runAgent<const TOutputs extends OutputContractMap>(
     intent: import("../agent/types.js").AgentIntent<TOutputs>,
   ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
+  /**
+   * Phase 39 (v1.3): opt-in multi-agent crew execution. Runs a literal
+   * `AgentSpec` tree through the existing single-agent loop plus the crew
+   * dispatcher, with shared budget/rate-limit coordination and chained
+   * completion receipts.
+   *
+   * See `packages/lattice/src/agent/crew/run-crew.ts` for orchestration details.
+   */
+  runAgentCrew(
+    options: import("../agent/crew/run-crew.js").RunAgentCrewOptions,
+  ): Promise<import("../agent/crew/run-crew.js").CrewResult>;
 }
 
 interface BuiltPlan {
@@ -153,6 +166,15 @@ export function createAI(config: LatticeConfig = {}): AI {
       // Lazy import avoids a hard cycle (agent/runtime.ts imports from
       // ../runtime/config.js for its `LatticeConfig` parameter type only).
       return import("../agent/runtime.js").then((mod) => mod.runAgent(intent, config));
+    },
+    runAgentCrew(
+      options: import("../agent/crew/run-crew.js").RunAgentCrewOptions,
+    ): Promise<import("../agent/crew/run-crew.js").CrewResult> {
+      // Lazy import mirrors runAgent and avoids pulling the crew surface
+      // into the beginner `run()` path unless explicitly used.
+      return import("../agent/crew/run-crew.js").then((mod) =>
+        mod.runAgentCrew(options, config),
+      );
     },
   };
 }
@@ -967,6 +989,16 @@ interface MaybeIssueReceiptInput {
   readonly tripwireEvidence?: TripwireEvidence;
 }
 
+function resolveReceiptModelClass(
+  route: ReceiptRoute,
+  model: ReceiptModel,
+): TrainingClass | undefined {
+  if (route.providerId === "" || model.requested === "") return undefined;
+  return getCapabilityProfile(
+    `${route.providerId}:${model.requested}`,
+  )?.trainingClass;
+}
+
 /**
  * Phase 9 — issue a signed receipt at a terminal branch when a signer is
  * configured. Signer failures degrade gracefully to `undefined` so a faulty
@@ -984,11 +1016,13 @@ async function maybeIssueReceipt(
         ? null
         : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
     const contractHash = await sha256HexOfCanonicalContract(input.contract);
+    const modelClass = resolveReceiptModelClass(input.route, input.model);
     return await createReceipt(
       {
         runId: input.runId,
         model: input.model,
         route: input.route,
+        ...(modelClass !== undefined ? { modelClass } : {}),
         usage: input.usage,
         contractVerdict: input.contractVerdict,
         contractHash,

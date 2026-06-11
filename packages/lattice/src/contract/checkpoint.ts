@@ -7,7 +7,7 @@
  *
  * Phase 3 (FSB v0.10.0-attempt-2) -- ships:
  *   - createCheckpointHook(options) factory returning a HookHandler
- *   - One signed v1.1 Capability Receipt minted per handler invocation
+ *   - One signed v1.2 Capability Receipt minted per handler invocation
  *     (when a signer is configured); body carries step-marker fields
  *   - Exactly one "step.transition" tracer event emitted per invocation
  *     (when a tracer is configured); metadata carries the same step

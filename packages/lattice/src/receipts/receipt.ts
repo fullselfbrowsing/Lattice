@@ -1,3 +1,4 @@
+import type { TrainingClass } from "../capabilities/profile.js";
 import type { TripwireEvidence } from "../contract/tripwire.js";
 import type { RouteRejectReason } from "../plan/plan.js";
 import type { Usage } from "../providers/provider.js";
@@ -21,7 +22,7 @@ import type {
 
 /**
  * Public input to createReceipt. Mirrors CapabilityReceiptBody minus:
- *   - `version` (forced to "lattice-receipt/v1.1" per CRYPTO-01)
+ *   - `version` (forced to "lattice-receipt/v1.2" per Phase 38)
  *   - `kid` (forced from signer.kid — caller cannot mismatch)
  *   - `redactions[]` (populated by redactReceiptBody)
  *   - `usage.costUsd` (converted to canonical string by usageToCanonical)
@@ -35,6 +36,11 @@ export interface CreateReceiptInput {
   readonly receiptId?: string;
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
+  readonly modelClass?: TrainingClass;
+  // Phase 39 (DELEG-06): chain-link to the parent receipt's CID
+  // (`sha256:<hex>` of the parent envelope's canonical payload bytes,
+  // derived via receipts/cid.ts receiptCid). Omit for root/non-crew receipts.
+  readonly parentReceiptCid?: string;
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -83,12 +89,10 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
-  // Phase 26 (CRYPTO-01): always emit v1.1. The previous version-bump
-  // heuristic produced v1 when no step-marker fields were set, but v1
-  // receipts are now rejected by verifyReceipt (schema-version-too-low),
-  // so minting them would produce instantly-unverifiable receipts.
-  const version: "lattice-receipt/v1" | "lattice-receipt/v1.1" =
-    "lattice-receipt/v1.1";
+  // Phase 38: always emit v1.2. Phase 26 already retired newly minted v1
+  // receipts; v1.1 remains verifier-compatible, but new receipts carry the
+  // optional modelClass audit field introduced by the v1.2 schema.
+  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.2";
 
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).
@@ -100,6 +104,8 @@ export async function createReceipt(
     kid: signer.kid,
     model: input.model,
     route: input.route,
+    ...(input.modelClass !== undefined ? { modelClass: input.modelClass } : {}),
+    ...(input.parentReceiptCid !== undefined ? { parentReceiptCid: input.parentReceiptCid } : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,

@@ -12,6 +12,15 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import { parseToolUseEnvelope } from "../agent/format-tools.js";
+import {
+  validateToolCallRequests,
+  type ValidateToolCallsOption,
+} from "../tools/tool-call-validation.js";
+import {
+  applyOutputSanitizers,
+  type SanitizeOutputOption,
+} from "../sanitizers/index.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
@@ -59,6 +68,18 @@ export interface OpenAICompatibleProviderOptions {
    * intentional no-endpoint path would produce noisy false-positives.
    */
   readonly runEventSink?: RunEventSink;
+  /**
+   * Phase 36 — Optional output sanitizer pipeline. When provided, string
+   * rawOutputs are transformed in order after provider text extraction and
+   * before the adapter returns.
+   */
+  readonly sanitizeOutput?: SanitizeOutputOption;
+  /**
+   * Phase 37 — Optional returned tool-call validator. When provided, the
+   * adapter parses prompt-reencoded tool_calls envelopes and returns
+   * normalized validated calls without mutating rawOutputs or rawResponse.
+   */
+  readonly validateToolCalls?: ValidateToolCallsOption;
 }
 
 export interface SdkLikeProviderOptions {
@@ -202,13 +223,23 @@ export function createOpenAICompatibleProvider(
         usage?: unknown;
       };
       const text = String(body.choices?.[0]?.message?.content ?? "");
+      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
+        providerId: id,
+        modelId: options.model,
+      });
+      const parsedToolCalls = parseToolUseEnvelope(text);
+      const toolCalls = parsedToolCalls === null
+        ? undefined
+        : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
       const usage = normalizeUsage(body.usage);
       const normalizedUsage = normalizeUsageToRunUsage(body.usage, options.pricing);
 
       return {
-        rawOutputs: Object.fromEntries(request.outputs.map((name) => [name, text])),
+        rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
+        ...(toolCalls !== undefined ? { toolCalls } : {}),
         rawResponse: body,
       };
     },

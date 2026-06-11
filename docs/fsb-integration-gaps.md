@@ -52,12 +52,12 @@ Surface inventory: `lattice/packages/lattice/src/providers/{provider,adapters,fa
 
 ## Delegation
 
-Surface inventory: `lattice/packages/lattice/src/tools/tools.ts` (single-tool execution via `defineTool` / `runTool`). Lattice's `AGENTS.md` declares multi-agent crews as "Out of Scope" for v1.x. No concept of subagent / parent-child loops / delegation / summary-return / cache-prefix sharing / rate-limit-group coordination anywhere in v1.1.
+Surface inventory: `lattice/packages/lattice/src/tools/tools.ts` (single-tool execution via `defineTool` / `runTool`) plus the v1.3 Phase 39 crew surface: `defineAgent`, `runAgentCrew`, `CrewDispatcher`, shared `createRateLimitGroup`, cache-prefix sharing, and `parentReceiptCid` receipt chaining.
 
 | Domain | Gap | Status | Severity | Notes |
 |--------|-----|--------|----------|-------|
 | Delegation | Single-tool execution (defineTool, runTool) | Covered | n/a | v1.1 ships this. |
-| Delegation | Task-delegation primitive (parent-child loops + summary-return + cache-prefix sharing + rate-limit-group coordination) | Out of scope | Blocker | Lattice currently excludes multi-agent. Requires Lattice-policy negotiation per FSB STATE.md R3 mitigation. If Lattice opens multi-agent, becomes a Phase candidate; otherwise FSB designs as a Lattice-adjacent FSB-side primitive consuming Lattice's receipt + tripwire surface. |
+| Delegation | Task-delegation primitive (parent-child loops + summary-return + cache-prefix sharing + rate-limit-group coordination) | Covered | n/a | v1.3 Phase 39 opens the multi-agent surface: `defineAgent` + `runAgentCrew` (parent-child loops, schema-validated summary-return), `createRateLimitGroup` (shared per-provider-key RPM+TPM bucket via the AgentTransport seam), cache-prefix sharing (Anthropic cache_control system block; OpenAI automatic prefix caching), per-agent receipts chained via `parentReceiptCid` on the v1.2 body. Lattice commits `22e2386`, `425aa60`, `6d64261`, `aaa94b5`, `8da1d6b`. |
 | Delegation | importMcpTools / MCP tool ingestion | Covered | n/a | v1.1 ships this. |
 
 ## MV3-survivability
@@ -80,7 +80,7 @@ Surface inventory: `lattice/packages/lattice/src/tracing/tracing.ts`. `RunEventK
 | Observability | TracerLike interface + createRunEvent factory | Covered | n/a | v1.1 ships this. |
 | Observability | step.transition event kind + step.* sub-events (start/complete) | Covered | n/a | Phase 3 (FSB v0.10.0-attempt-2) added `"step.transition"` as the final literal in the `RunEventKind` union at `packages/lattice/src/tracing/tracing.ts`. Dotted-namespace sibling of run.*/stage.*/provider.*/tool.*/replay.*. step.start / step.complete sub-events deferred -- Phase 3 ships the transition marker only (the inspector envelope IS the receipt; no separate start/complete needed). Lattice commit `fd254c4`. |
 | Observability | Inspector envelope shape that Lattice can sign as a Capability Receipt directly | Covered | n/a | Phase 3 (FSB v0.10.0-attempt-2) added `createCheckpointHook` factory at `packages/lattice/src/contract/checkpoint.ts` (sibling of `bands.ts`). The factory returns a `HookHandler<CheckpointHookContext>` the caller registers on Phase 2's `HookPipeline` (typically `band: BAND.OBSERVABILITY`). Per invocation the handler emits exactly one `step.transition` tracer event AND (when a signer is provided) mints exactly one v1.1 Capability Receipt with step-marker fields populated -- the envelope IS the inspector record. Best-effort mint (D-07): signer failures degrade to `metadata.mintError` without throwing upstream. Lattice commits `a67f476` (factory + tests) + `acdbb8a` (public surface re-export). |
-| Observability | recovery / eviction-resume markers in the tracing union | Needs addition | Important | Paired with the MV3-survivability adapter. |
+| Observability | recovery / eviction-resume markers in the tracing union | Covered | n/a | Retroactively covered in v1.2 Phase 20 — `recovery.start` / `recovery.complete` / `recovery.failed` added to `RunEventKind` (tracing.ts) alongside the AgentHost storage seam, closing TRACE-EXT-01. Lattice commit `3794896` (backlink missed at the time; recorded by v1.3 Phase 39). Paired survivability surface: commits `a4609bc` / `109d6ae` (rows 70/72). |
 | Observability | OpenTelemetry exporter | Nice-to-have | n/a | Not on FSB's autopilot critical path; defer to a later phase. |
 
 ***

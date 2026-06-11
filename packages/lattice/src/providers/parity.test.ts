@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { createAnthropicProvider } from "./anthropic.js";
 import { createGeminiProvider } from "./gemini.js";
@@ -9,6 +10,9 @@ import {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./adapters.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
+import type { ValidateToolCallsOption } from "../tools/tool-call-validation.js";
 
 import type { ProviderAdapter } from "./provider.js";
 
@@ -72,6 +76,12 @@ const GEMINI_BODY = {
   ],
   usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 interface ProviderRow {
   readonly logicalName: string;
@@ -264,5 +274,349 @@ describe("INV-03 provider-parity smoke (Phase 4)", () => {
       ids.add(adapter.id);
     }
     expect(ids.size).toBe(7);
+  });
+});
+
+const SANITIZER_ENVELOPE_TEXT = "{\"summary\":\"Greeted the user.\"}";
+
+const SANITIZER_OPENAI_COMPAT_BODY = {
+  choices: [{ message: { content: SANITIZER_ENVELOPE_TEXT } }],
+  usage: { prompt_tokens: 10, completion_tokens: 5 },
+};
+
+const SANITIZER_ANTHROPIC_BODY = {
+  content: [{ type: "text", text: SANITIZER_ENVELOPE_TEXT }],
+  usage: { input_tokens: 10, output_tokens: 5 },
+};
+
+const SANITIZER_GEMINI_BODY = {
+  candidates: [
+    {
+      content: { parts: [{ text: SANITIZER_ENVELOPE_TEXT }], role: "model" },
+    },
+  ],
+  usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
+};
+
+const SANITIZER_PROVIDERS: readonly ProviderRow[] = [
+  {
+    logicalName: "OpenAI",
+    expectedId: "openai",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenAIProvider({
+        model: "gpt-oss-120b",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "OpenAI-compatible",
+    expectedId: "openai-compatible",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenAICompatibleProvider({
+        model: "any-model",
+        baseUrl: "https://example.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "Anthropic",
+    expectedId: "anthropic",
+    fakeBody: SANITIZER_ANTHROPIC_BODY,
+    errorPattern: /Anthropic provider failed with/,
+    build: ({ fetch }) =>
+      createAnthropicProvider({
+        model: "claude-3-opus",
+        apiKey: "sk-ant-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "Gemini",
+    expectedId: "gemini",
+    fakeBody: SANITIZER_GEMINI_BODY,
+    errorPattern: /Gemini provider failed with/,
+    build: ({ fetch }) =>
+      createGeminiProvider({
+        model: "gemini-1.5-flash",
+        apiKey: "AIza-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "xAI",
+    expectedId: "xai",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createXaiProvider({
+        model: "grok-4",
+        apiKey: "xai-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "OpenRouter",
+    expectedId: "openrouter",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createOpenRouterProvider({
+        model: "openai/gpt-oss-120b:free",
+        apiKey: "sk-or-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+  {
+    logicalName: "LM Studio",
+    expectedId: "lm-studio",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createLmStudioProvider({
+        model: "qwen2.5-coder-32b-instruct",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
+];
+
+describe("Phase 36 output sanitizer parity", () => {
+  it("all seven providers unwrap the session_1780792387779 internal envelope for every requested output", async () => {
+    const seenIds: string[] = [];
+
+    for (const row of SANITIZER_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(row.fakeBody);
+      const adapter = row.build({ fetch });
+      seenIds.push(adapter.id);
+
+      const response = await adapter.execute!({
+        task: `session_1780792387779-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text", "summary"],
+      });
+
+      expect(response.rawOutputs.text, `${row.logicalName}: text`).toBe("Greeted the user.");
+      expect(response.rawOutputs.summary, `${row.logicalName}: summary`).toBe("Greeted the user.");
+    }
+
+    expect(seenIds).toEqual([
+      "openai",
+      "openai-compatible",
+      "anthropic",
+      "gemini",
+      "xai",
+      "openrouter",
+      "lm-studio",
+    ]);
+  });
+});
+
+const VALID_TOOL_ENVELOPE =
+  `{"tool_calls":[{"id":"tool-1","name":"search","args":{"query":"ok"}}]}`;
+const INVALID_TOOL_ENVELOPE =
+  `{"tool_calls":[{"id":"tool-bad","name":"search_database","args":{"quer":"..."}}]}`;
+
+interface ValidationProviderRow {
+  readonly logicalName: string;
+  readonly expectedId: string;
+  readonly build: (options: {
+    readonly fetch: typeof fetch;
+    readonly validateToolCalls: ValidateToolCallsOption;
+  }) => ProviderAdapter;
+}
+
+const VALIDATION_PROVIDERS: readonly ValidationProviderRow[] = [
+  {
+    logicalName: "OpenAI",
+    expectedId: "openai",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenAIProvider({
+        model: "gpt-4o",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "OpenAI-compatible",
+    expectedId: "openai-compatible",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenAICompatibleProvider({
+        model: "any-model",
+        baseUrl: "https://example.com/v1",
+        apiKey: "sk-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "Anthropic",
+    expectedId: "anthropic",
+    build: ({ fetch, validateToolCalls }) =>
+      createAnthropicProvider({
+        model: "claude-3-opus",
+        apiKey: "sk-ant-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "Gemini",
+    expectedId: "gemini",
+    build: ({ fetch, validateToolCalls }) =>
+      createGeminiProvider({
+        model: "gemini-1.5-flash",
+        apiKey: "AIza-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "xAI",
+    expectedId: "xai",
+    build: ({ fetch, validateToolCalls }) =>
+      createXaiProvider({
+        model: "grok-4",
+        apiKey: "xai-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "OpenRouter",
+    expectedId: "openrouter",
+    build: ({ fetch, validateToolCalls }) =>
+      createOpenRouterProvider({
+        model: "openai/gpt-4o",
+        apiKey: "sk-or-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+  {
+    logicalName: "LM Studio",
+    expectedId: "lm-studio",
+    build: ({ fetch, validateToolCalls }) =>
+      createLmStudioProvider({
+        model: "qwen2.5-coder-32b-instruct",
+        fetch,
+        validateToolCalls,
+      }),
+  },
+];
+
+function validationBodyForProvider(providerId: string, text: string): unknown {
+  if (providerId === "anthropic") {
+    return {
+      content: [{ type: "text", text }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    };
+  }
+
+  if (providerId === "gemini") {
+    return {
+      candidates: [
+        {
+          content: { parts: [{ text }], role: "model" },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
+    };
+  }
+
+  return {
+    choices: [{ message: { content: text } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  };
+}
+
+describe("Phase 37 tool-call validation parity", () => {
+  it("all seven providers return validated toolCalls for valid prompt-encoded envelopes", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, VALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: { tools: [searchTool] },
+      });
+
+      const response = await adapter.execute!({
+        task: `validate-tool-call-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text"],
+      });
+
+      expect(adapter.id, `${row.logicalName}: id`).toBe(row.expectedId);
+      expect(response.rawOutputs.text, `${row.logicalName}: raw text`).toBe(VALID_TOOL_ENVELOPE);
+      expect(response.toolCalls, `${row.logicalName}: validated calls`).toEqual([
+        { id: "tool-1", name: "search", args: { query: "ok" } },
+      ]);
+    }
+  });
+
+  it("all seven providers drop invalid returned tool calls when configured", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: {
+          tools: [searchTool],
+          onFailure: "drop",
+        },
+      });
+
+      const response = await adapter.execute!({
+        task: `drop-invalid-tool-call-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text"],
+      });
+
+      expect(response.toolCalls, `${row.logicalName}: dropped invalid calls`).toEqual([]);
+    }
+  });
+
+  it("all seven providers throw for hallucinated tool names when configured", async () => {
+    for (const row of VALIDATION_PROVIDERS) {
+      const { fetch } = makeFakeFetchCapturing(
+        validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
+      );
+      const adapter = row.build({
+        fetch,
+        validateToolCalls: {
+          tools: [searchTool],
+          onFailure: "throw",
+        },
+      });
+
+      await expect(
+        adapter.execute!({
+          task: `throw-invalid-tool-call-${row.logicalName}`,
+          artifacts: [],
+          outputs: ["text"],
+        }),
+        `${row.logicalName}: throws invalid tool call`,
+      ).rejects.toMatchObject({
+        reason: "unknown_tool",
+        toolName: "search_database",
+        requestId: "tool-bad",
+      });
+    }
   });
 });

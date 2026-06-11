@@ -12,7 +12,7 @@ function makeBody(
   overrides: Partial<CapabilityReceiptBody> = {},
 ): CapabilityReceiptBody {
   return {
-    version: "lattice-receipt/v1",
+    version: "lattice-receipt/v1.2",
     receiptId: "00000000-0000-4000-8000-000000000000",
     runId: "run-1",
     issuedAt: "2026-05-11T00:00:00.000Z",
@@ -105,9 +105,10 @@ describe("canonicalizeReceiptBody", () => {
     // Build an object literal whose keys are in "wrong" order on purpose
     const scrambled: CapabilityReceiptBody = {
       receiptId: "00000000-0000-4000-8000-000000000000",
-      version: "lattice-receipt/v1",
+      version: "lattice-receipt/v1.2",
       runId: "run-1",
       kid: "k1",
+      modelClass: "frontier_rlhf",
       issuedAt: "2026-05-11T00:00:00.000Z",
       model: { requested: "gpt-x", observed: null },
       route: {
@@ -137,7 +138,7 @@ describe("canonicalizeReceiptBody", () => {
   });
 
   it("roundtrips: canonical bytes parse back to a structurally equal body", () => {
-    const body = makeBody();
+    const body = makeBody({ modelClass: "local_quantized" });
     const bytes = canonicalizeReceiptBody(body);
     const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Record<
       string,

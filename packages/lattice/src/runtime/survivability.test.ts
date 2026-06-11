@@ -158,7 +158,7 @@ describe("SurvivabilityAdapter -- resume + ResumePolicy", () => {
 // ---------- Composition with checkpoint envelope (D-10) ----------
 
 describe("SurvivabilityAdapter -- composes with Phase 3 checkpoint receipts (D-10)", () => {
-  it("Test 11: SerializedSnapshot.payload can carry a v1.1 ReceiptEnvelope + session state", async () => {
+  it("Test 11: SerializedSnapshot.payload can carry a v1.2 ReceiptEnvelope + session state", async () => {
     interface HostState {
       readonly sessionId: string;
       readonly stepIndex: number;

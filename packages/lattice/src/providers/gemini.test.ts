@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createGeminiProvider } from "./gemini.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { RunEvent } from "../tracing/tracing.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
 
 /**
  * Phase 4 Gemini adapter -- vitest cases (D-09 contract: 7 cases minimum; ships 10).
@@ -75,6 +78,12 @@ const HAPPY_BODY = {
     totalTokenCount: 150,
   },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 // Load the fixture (used in negotiate tests)
 import geminiModelsOk from "../../test/__fixtures__/quirks/gemini-models-ok.json";
@@ -282,6 +291,104 @@ describe("Phase 4 Gemini adapter", () => {
       expect(c.role).not.toBe("assistant");
       expect(c.role).not.toBe("system");
     }
+  });
+});
+
+describe("Phase 36: Gemini output sanitizer", () => {
+  it("unwraps internal envelope output and preserves rawResponse", async () => {
+    const rawBody = {
+      candidates: [
+        {
+          content: { parts: [{ text: "{\"summary\":\"Greeted the user.\"}" }] },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 2 },
+    };
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user.");
+    expect(response.rawResponse).toEqual(rawBody);
+  });
+});
+
+describe("Phase 37: Gemini tool-call validation", () => {
+  it("returns validated toolCalls and preserves raw Gemini response data", async () => {
+    const rawBody = {
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: `{"tool_calls":[{"id":"c1","name":"search","args":{"query":"ok"}}]}`,
+              },
+            ],
+          },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 2 },
+    };
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe(rawBody.candidates[0]?.content.parts[0]?.text);
+    expect(response.rawResponse).toEqual(rawBody);
+    expect(response.toolCalls).toEqual([
+      { id: "c1", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("throws for hallucinated tool names before returning invalid calls", async () => {
+    const { fetch } = makeFakeFetch({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: `{"tool_calls":[{"id":"bad-1","name":"search_database","args":{"quer":"..."}}]}`,
+              },
+            ],
+          },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 2 },
+    });
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool], onFailure: "throw" },
+    });
+
+    await expect(
+      adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] }),
+    ).rejects.toMatchObject({
+      reason: "unknown_tool",
+      toolName: "search_database",
+      requestId: "bad-1",
+    });
   });
 });
 

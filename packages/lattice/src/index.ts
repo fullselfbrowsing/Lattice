@@ -49,12 +49,11 @@ export {
   replayOffline,
   rerunLive,
 } from "./replay/replay.js";
-// Agent runtime (v1.2 Phase 19) — opens the previously out-of-scope
-// Delegation surface as single-agent execution. Multi-agent crews remain
-// Out of Scope.
+// Agent runtime (v1.2 Phase 19) — single-agent execution loop.
 export { runAgent } from "./agent/runtime.js";
 export {
   formatToolsForProvider,
+  parseToolUseEnvelope,
   toolSchemaToJsonSchema,
 } from "./agent/format-tools.js";
 export { AgentDeniedError } from "./agent/types.js";
@@ -75,6 +74,18 @@ export type {
   FormattedToolsHandle,
 } from "./agent/format-tools.js";
 export type { HookControls, HookDenyDirective } from "./contract/bands.js";
+// Agent crew surface (v1.3 Phase 39) — opt-in parent/child delegation
+// composed over AgentSpec values. The internal dispatch seam and
+// CrewDispatcher stay private.
+export { defineAgent } from "./agent/crew/agent-spec.js";
+export type { AgentSpec } from "./agent/crew/agent-spec.js";
+export type { CrewPolicy, CrewRateLimitOverride } from "./agent/crew/crew-policy.js";
+export { runAgentCrew } from "./agent/crew/run-crew.js";
+export type {
+  CrewAgentResult,
+  CrewResult,
+  RunAgentCrewOptions,
+} from "./agent/crew/run-crew.js";
 // AgentHost adapter (v1.2 Phase 20) — pluggable scheduler / transport /
 // storage seams + recovery markers. Composes with the SurvivabilityAdapter
 // shipped in Phase 18 for cross-process resumption.
@@ -119,6 +130,16 @@ export type {
   PermissionRule,
   PermissionVerdict,
 } from "./agent/infra/permission-context.js";
+export {
+  createRateLimitGroup,
+  withRateLimit,
+} from "./agent/infra/rate-limit-group.js";
+export type {
+  RateLimitGroup,
+  RateLimitGroupOptions,
+  RateLimitLease,
+} from "./agent/infra/rate-limit-group.js";
+export { receiptCid } from "./receipts/cid.js";
 // Agent eval helper (v1.2 Phase 22).
 export { evalAgentRun } from "./agent/eval.js";
 export type {
@@ -134,6 +155,12 @@ export { createMemorySessionStore } from "./sessions/session.js";
 export { createLocalArtifactStore } from "./storage/local.js";
 export { createMemoryArtifactStore } from "./storage/memory.js";
 export { defineTool, importMcpTools, runTool, toolArtifactRef } from "./tools/tools.js";
+export { ToolCallValidationError } from "./tools/tool-call-validation.js";
+export type {
+  ToolCallValidationFailureReason,
+  ValidateToolCallsOption,
+  ValidatedToolCall,
+} from "./tools/tool-call-validation.js";
 export { latticeVersion } from "./version.js";
 
 export type { AI, RunIntent } from "./runtime/create-ai.js";
@@ -272,3 +299,29 @@ export type {
   OpenRouterQuirks,
   XaiQuirks,
 } from "./providers/quirks.js";
+
+// Phase 35 — Prompt scaffold helpers (SCAFF-01 / SCAFF-02 / SCAFF-03)
+// Strategy-specific prompt fragments for structured-output and tool-use
+// contracts. These helpers consume the Phase 33 RecommendedPromptStrategy
+// enum and render deterministic canonical JSON payloads for prompt assembly.
+export {
+  PROMPT_SCAFFOLD_VERSION,
+  PROMPT_STRATEGIES,
+  getStructuredOutputContract,
+  getToolUseContract,
+} from "./prompts/index.js";
+
+// Phase 36 — Output Sanitizer Hook (SANITIZE-02 / SANITIZE-03)
+// Opt-in output cleanup helpers for provider adapters and consumers handling
+// model-family-specific output-shape leaks.
+export {
+  stripChatTemplateArtifacts,
+  stripReasoningTags,
+  unwrapInternalEnvelope,
+} from "./sanitizers/index.js";
+export type {
+  InternalEnvelopeOptions,
+  SanitizeOutputOption,
+  SanitizerContext,
+  SanitizerFn,
+} from "./sanitizers/index.js";

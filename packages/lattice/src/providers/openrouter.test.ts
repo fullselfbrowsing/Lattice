@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createOpenRouterProvider } from "./openrouter.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { RunEvent } from "../tracing/tracing.js";
+import { unwrapInternalEnvelope } from "../sanitizers/index.js";
+import { defineTool } from "../tools/tools.js";
 
 /**
  * Phase 4 OpenRouter adapter -- vitest cases (D-09 contract: 7 minimum; ships 7).
@@ -63,6 +66,12 @@ const HAPPY_BODY = {
   choices: [{ message: { content: "hello openrouter" } }],
   usage: { prompt_tokens: 100, completion_tokens: 50 },
 };
+
+const searchTool = defineTool({
+  name: "search",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
 
 // Load fixtures
 import openrouterModelsOk from "../../test/__fixtures__/quirks/openrouter-models-ok.json";
@@ -400,5 +409,61 @@ describe("Phase 34: OpenRouter quirks + negotiateCapabilities", () => {
     // Falls through to context_length (Pitfall 3 / A1 precedence chain)
     expect(result.contextWindow).toBe(99999);
     expect(result.source).toBe("live");
+  });
+});
+
+describe("Phase 36: OpenRouter output sanitizer", () => {
+  it("session_1780792387779 unwraps gpt-oss-120b internal envelope output", async () => {
+    const rawBody = {
+      choices: [{ message: { content: "{\"summary\":\"Greeted the user.\"}" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    };
+    const { fetch } = makeFakeFetch(rawBody);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b:free",
+      apiKey: "sk-or-test",
+      fetch,
+      sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+    });
+
+    const response = await adapter.execute!({
+      task: "hi",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.rawOutputs.text).toBe("Greeted the user.");
+    expect(response.rawResponse).toEqual(rawBody);
+  });
+});
+
+describe("Phase 37: OpenRouter tool-call validation", () => {
+  it("accepts validateToolCalls through wrapper options", async () => {
+    const { fetch } = makeFakeFetch({
+      choices: [
+        {
+          message: {
+            content: `{"tool_calls":[{"id":"or-1","name":"search","args":{"query":"ok"}}]}`,
+          },
+        },
+      ],
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    });
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-4o-mini",
+      apiKey: "sk-or-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.toolCalls).toEqual([
+      { id: "or-1", name: "search", args: { query: "ok" } },
+    ]);
   });
 });

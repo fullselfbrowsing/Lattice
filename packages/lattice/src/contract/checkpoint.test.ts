@@ -121,7 +121,7 @@ describe("createCheckpointHook -- tracer-only mode (no signer)", () => {
 });
 
 describe("createCheckpointHook -- signer mode (mint + verify round-trip)", () => {
-  it("mints exactly one v1.1 receipt when signer present", async () => {
+  it("mints exactly one v1.2 receipt when signer present", async () => {
     const { tracer, events } = recordingTracer();
     const { signer, publicKeyJwk } = await makeSigner("cp-key-1");
     const handler = createCheckpointHook({ runId: "r-mint-1", tracer, signer });
@@ -137,7 +137,8 @@ describe("createCheckpointHook -- signer mode (mint + verify round-trip)", () =>
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.1");
+      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.modelClass).toBeUndefined();
       expect(result.body.stepName).toBe("do-thing");
       expect(result.body.stepIndex).toBe(7);
       expect(result.body.runId).toBe("r-mint-1");

@@ -5,7 +5,10 @@ import canonicalize from "canonicalize";
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
 import { inv } from "../contract/invariants.js";
-import { createFakeProvider } from "../providers/fake.js";
+import {
+  createFakeProvider,
+  type FakeProviderOptions,
+} from "../providers/fake.js";
 import type { ModelCapability } from "../providers/provider.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
 import {
@@ -504,6 +507,16 @@ describe("Phase 9 receipts integration", () => {
     return { signer, keySet, publicKeyJwk };
   }
 
+  function localTemplateProvider(
+    response?: FakeProviderOptions["response"],
+  ): ReturnType<typeof createFakeProvider> {
+    return createFakeProvider({
+      id: "lm-studio",
+      modelId: "local-template",
+      ...(response !== undefined ? { response } : {}),
+    });
+  }
+
   it("T1: receipt is undefined when signer is not configured", async () => {
     const ai = createAI({ providers: [createFakeProvider()] });
     const result = await ai.run({
@@ -514,9 +527,9 @@ describe("Phase 9 receipts integration", () => {
     expect(result.receipt).toBeUndefined();
   });
 
-  it("T2: success receipt is emitted when signer is configured", async () => {
+  it("T2: success receipt includes modelClass for a registry-known route", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
-    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const ai = createAI({ providers: [localTemplateProvider()], signer });
     const result = await ai.run({
       task: "x",
       outputs: { text: "text" as const },
@@ -529,7 +542,9 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
+      expect(verifyResult.body.version).toBe("lattice-receipt/v1.2");
       expect(verifyResult.body.contractVerdict).toBe("success");
+      expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
   });
 
@@ -567,11 +582,9 @@ describe("Phase 9 receipts integration", () => {
   it("T4: tripwire-violated emits a receipt with verdict 'tripwire-violated' and tripwireEvidence", async () => {
     inv.__resetCounterForTests();
     const { signer, keySet } = await makeSignerAndKeySet();
-    const provider = createFakeProvider({
-      response: {
-        rawOutputs: { text: "Contact alice@example.com please" },
-        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
-      },
+    const provider = localTemplateProvider({
+      rawOutputs: { text: "Contact alice@example.com please" },
+      normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
     });
     const ai = createAI({ providers: [provider], signer });
     const result = await ai.run({
@@ -592,6 +605,7 @@ describe("Phase 9 receipts integration", () => {
       result.error.kind === "tripwire-violated"
     ) {
       expect(verifyResult.body.contractVerdict).toBe("tripwire-violated");
+      expect(verifyResult.body.modelClass).toBe("local_quantized");
       expect(verifyResult.body.tripwireEvidence).toBeDefined();
       expect(verifyResult.body.tripwireEvidence?.kind).toBe(
         result.error.evidence.kind,
@@ -601,11 +615,9 @@ describe("Phase 9 receipts integration", () => {
 
   it("T5: validation-failed emits a receipt with verdict 'validation-failed'", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
-    const provider = createFakeProvider({
-      response: {
-        rawOutputs: { text: 42 as unknown as string },
-        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
-      },
+    const provider = localTemplateProvider({
+      rawOutputs: { text: 42 as unknown as string },
+      normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
     });
     const ai = createAI({ providers: [provider], signer });
     const result = await ai.run({
@@ -621,6 +633,7 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
       expect(verifyResult.body.contractVerdict).toBe("validation-failed");
+      expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
   });
 
@@ -645,15 +658,50 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
       expect(verifyResult.body.contractVerdict).toBe("execution-failed");
+      expect(verifyResult.body.modelClass).toBeUndefined();
     }
   });
 
-  it("T7: execution-failed (provider_execution) emits a receipt", async () => {
+  it("T7: synthetic no-route receipt omits modelClass", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
-    const provider = createFakeProvider({
-      response: () => {
-        throw new Error("simulated provider boom");
+    const restrictedCapability: ModelCapability = {
+      ...defaultCapabilityForProvider("fake"),
+      modelId: "fake:text-only-unstructured",
+      inputModalities: ["text"],
+      outputModalities: ["text"],
+      structuredOutput: false,
+    };
+    const provider = createFakeProvider({ capabilities: [restrictedCapability] });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: {
+        text: "text" as const,
+        action: {
+          "~standard": {
+            version: 1,
+            vendor: "test",
+            validate: (_v: unknown) => ({ value: _v }),
+          },
+        } as never,
       },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("no_route");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.modelClass).toBeUndefined();
+    }
+  });
+
+  it("T8: execution-failed (provider_execution) includes modelClass for a registry-known route", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = localTemplateProvider(() => {
+      throw new Error("simulated provider boom");
     });
     const ai = createAI({ providers: [provider], signer });
     const result = await ai.run({
@@ -669,10 +717,11 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
       expect(verifyResult.body.contractVerdict).toBe("execution-failed");
+      expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
   });
 
-  it("T8: receipt body carries model.requested matching the route", async () => {
+  it("T9: receipt body carries model.requested matching the route and omits unknown fake modelClass", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
     const ai = createAI({ providers: [createFakeProvider()], signer });
     const result = await ai.run({
@@ -684,6 +733,7 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok && result.ok) {
       expect(verifyResult.body.model.observed).toBeNull();
+      expect(verifyResult.body.modelClass).toBeUndefined();
       const selected = result.plan.kind === "execution-plan"
         ? result.plan.route.selected?.modelId ?? ""
         : "";
@@ -691,7 +741,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T9: receipt body carries inputHashes for each artifact", async () => {
+  it("T10: receipt body carries inputHashes for each artifact", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
     const ai = createAI({ providers: [createFakeProvider()], signer });
     const a1 = artifact.text("first artifact");
@@ -712,7 +762,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T10: receipt body carries outputHash on success but null on tripwire-violated", async () => {
+  it("T11: receipt body carries outputHash on success but null on tripwire-violated", async () => {
     inv.__resetCounterForTests();
     const { signer, keySet } = await makeSignerAndKeySet();
     const aiSuccess = createAI({
@@ -750,7 +800,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T11: receipt body carries contractHash matching canonicalize(contract)", async () => {
+  it("T12: receipt body carries contractHash matching canonicalize(contract)", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
     const ai = createAI({ providers: [createFakeProvider()], signer });
     const c = contract({ budget: { maxCostUsd: 1 } });
@@ -779,7 +829,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T12: signer failure does not crash ai.run (receipt is undefined)", async () => {
+  it("T13: signer failure does not crash ai.run (receipt is undefined)", async () => {
     const failingSigner: ReceiptSigner = {
       kid: "boom",
       publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
@@ -802,7 +852,7 @@ describe("Phase 9 receipts integration", () => {
     expect(result.receipt).toBeUndefined();
   });
 
-  it("T13: 100 receipts issue in under 5 seconds total (property test)", async () => {
+  it("T14: 100 receipts issue in under 5 seconds total (property test)", async () => {
     const { signer } = await makeSignerAndKeySet();
     const ai = createAI({ providers: [createFakeProvider()], signer });
     const start = Date.now();
