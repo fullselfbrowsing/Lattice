@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
 status: executing
 stopped_at: Phase 39 context gathered
-last_updated: "2026-06-10T16:11:31.259Z"
-last_activity: 2026-06-10 -- Phase 39 execution started
+last_updated: "2026-06-11T15:28:18.864Z"
+last_activity: 2026-06-11 -- Phase 39 execution started
 progress:
   total_phases: 16
-  completed_phases: 9
+  completed_phases: 11
   total_plans: 38
-  completed_plans: 33
-  percent: 87
+  completed_plans: 36
+  percent: 95
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 ## Current Position
 
 Phase: 39 (Multi-Agent Delegation Surface (full Row 60 close + Row 83 update)) — EXECUTING
-Plan: 1 of 8
+Plan: 7 of 8
 Status: Executing Phase 39
-Last activity: 2026-06-10 -- Phase 39 execution started
+Last activity: 2026-06-11 -- Phase 39 execution started
 
 Progress: [███████░░░] 69% (11/16 v1.3 phases complete; 5 phases remaining)
 
@@ -38,13 +38,13 @@ Progress: [███████░░░] 69% (11/16 v1.3 phases complete; 5 ph
 
 - Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
 - v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 30 across Phases 24, 25, 26, 33, 34, 35, 36, 37, and 38; Phases 27 and 28 were externally/configuration driven with no per-plan files.
+- v1.3 completed phase plans: 36 across Phases 24, 25, 26, 33, 34, 35, 36, 37, 38, and Phase 39 plans 1-6; Phases 27 and 28 were externally/configuration driven with no per-plan files.
 - Resets per milestone
 
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 11/16 phases complete, 53/79 authored REQ-IDs complete, 8 planned REQ-IDs still need to be authored for Phase 39.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 11/16 phases complete, Phase 39 is 6/8 plans complete, and the remaining active Phase 39 work is the crew example/eval gate plus public-policy/docs/type-surface closure.
 - `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` are live on npm with SLSA provenance attestations. Stable `1.3.0` is not published.
 
 *Updated after each plan completion*
@@ -67,7 +67,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 39: Discuss and author the remaining planned REQ-ID group (`DELEG`) before treating roadmap coverage as 87/87.
+- Phase 39: Complete plans 39-07 and 39-08 before treating the multi-agent crew surface as release-ready.
 - Phase 29: Do not cut stable `1.3.0` until Phases 30, 31, and 36-39 are complete and verified.
 - Phase 30: Canary repo bootstrap can run against `1.3.0-rc.0` while the remaining v1.3 implementation phases land.
 - Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
@@ -76,7 +76,7 @@ Recent decisions affecting current work:
 
 - Stable `1.3.0` is not published; registry currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
 - Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- Phase 39 still needs requirements, context, and plans.
+- Phase 39 still needs the example/eval gate and final public-contract/docs/type-surface closure.
 - GitHub Environment required-reviewer configuration and npm Trusted Publisher UI state are external to git. The rc.0 OIDC publish with provenance proves the path works, but the UI settings should still be rechecked before stable publish.
 - Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
 - First publish (Phase 28) succeeded as the smoke test of `release.yml`. Future publish risk moves to stable promotion and cross-repo dispatch.
@@ -93,6 +93,7 @@ Recent decisions affecting current work:
 | 2026-06-09 | Verify Phase 37 UAT | Completed conversational UAT with 4/4 checkpoints passed and 0 issues. |
 | 2026-06-09 | Plan Phase 38 receipt v1.2 schema + modelClass tag | Authored RECEIPT12 requirements, inline research/pattern map, validation strategy, and 3 execution plans. |
 | 2026-06-09 | Execute Phase 38 receipt v1.2 schema + modelClass tag | Added receipt v1.2 `modelClass`, runtime strict registry issuance, public type tests, changeset, and final verification gates. |
+| 2026-06-11 | Execute Phase 39 plan 06 runAgentCrew orchestrator | Added `runAgentCrew`, `createAI().runAgentCrew`, public crew/rate-limit/CID exports, and public integration tests. |
 
 ## Session Continuity
 

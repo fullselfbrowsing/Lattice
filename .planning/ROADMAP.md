@@ -316,7 +316,7 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 - [x] 39-03-PLAN.md — defineAgent/AgentSpec + CrewPolicy/validateCrewPolicy + crew-budget-exceeded + AgentSnapshot.ancestry + runtime dispatch seam + format-tools body variant (DELEG-01, DELEG-02, DELEG-03)
 - [x] 39-04-PLAN.md — ProviderRunRequest.cacheSystemPrefix + Anthropic cache_control emission + mocked-fetch shape/counter tests (DELEG-04)
 - [x] 39-05-PLAN.md — CrewDispatcher chokepoint: dispatch branch, cycle/depth, failure routing, receipt chaining, cache-prefix composition (DELEG-03, DELEG-04, DELEG-06)
-- [ ] 39-06-PLAN.md — runAgentCrew orchestrator + CrewResult + rate-limit wiring + ai.runAgentCrew facade + public exports + integration suite (DELEG-02, DELEG-03, DELEG-05)
+- [x] 39-06-PLAN.md — runAgentCrew orchestrator + CrewResult + rate-limit wiring + ai.runAgentCrew facade + public exports + integration suite (DELEG-02, DELEG-03, DELEG-05)
 - [ ] 39-07-PLAN.md — examples/agent-crew showcase (parent + 3 researchers, Ed25519-signed chained receipts) + evalAgentRun crew regression gate (DELEG-07)
 - [ ] 39-08-PLAN.md — AGENTS.md 3-surface policy flip + gaps-doc Row 60/83 flips + tsd coverage + changeset + full phase gate (DELEG-08)
 
@@ -392,4 +392,4 @@ Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one
 | 36. Output Sanitizer Hook (opt-in) | 3/3 | Complete   | 2026-06-09 |
 | 37. Tool-Call Validation Layer (opt-in) | 3/3 | Complete | 2026-06-09 |
 | 38. Receipt v1.2 Schema + modelClass Tag | 4/4 | Complete | 2026-06-09 |
-| 39. Multi-Agent Delegation Surface (full Row 60 close) | 5/8 | In Progress|  |
+| 39. Multi-Agent Delegation Surface (full Row 60 close) | 6/8 | In Progress|  |
