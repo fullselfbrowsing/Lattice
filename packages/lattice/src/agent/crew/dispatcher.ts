@@ -66,7 +66,12 @@ import {
   type DispatchToolUseContext,
   type RunAgentInternalOptions,
 } from "../runtime.js";
-import type { AgentFailure, AgentIntent, ToolUseRequest } from "../types.js";
+import type {
+  AgentFailure,
+  AgentIntent,
+  AgentResult,
+  ToolUseRequest,
+} from "../types.js";
 
 import type { AgentSpec } from "./agent-spec.js";
 import type { ValidatedCrewPolicy } from "./crew-policy.js";
@@ -94,6 +99,15 @@ export interface CrewDispatchContext {
    * child dispatch with the child run's cumulative usage (Pitfall 3).
    */
   readonly recordUsage: (agentId: string, usage: Usage) => void;
+  /**
+   * Optional richer telemetry hook for the 39-06 orchestrator. Kept
+   * additive so dispatcher-only tests and direct consumers do not need to
+   * know about CrewResult assembly.
+   */
+  readonly recordAgentResult?: (
+    agentId: string,
+    result: AgentResult,
+  ) => void;
   /** Remaining crew pool (D-07). `undefined` = unbounded. */
   readonly remainingBudget: () => BudgetInvariant | undefined;
   /** Byte-stable crew cache prefix ("" = no prefix sharing). */
@@ -102,6 +116,10 @@ export interface CrewDispatchContext {
   readonly mintedReceipts: (envelope: ReceiptEnvelope) => void;
   /** Provider config the child loops execute against (createAI config). */
   readonly config: LatticeConfig;
+  /** Optional crew-level tracer threaded into child loops. */
+  readonly tracer?: AgentIntent["tracer"];
+  /** Optional crew-level hook pipeline threaded into child loops. */
+  readonly pipeline?: AgentIntent["pipeline"];
 }
 
 /** Seam-compatible dispatch function (39-03 `runAgentInternal` options). */
@@ -287,6 +305,8 @@ function createDispatcherNode(
         ? { contract: { kind: "capability-contract", budget: effectiveBudget } }
         : {}),
       ...(ctx.signer !== undefined ? { signer: ctx.signer } : {}),
+      ...(ctx.tracer !== undefined ? { tracer: ctx.tracer } : {}),
+      ...(ctx.pipeline !== undefined ? { pipeline: ctx.pipeline } : {}),
     };
     const childResult = await runAgentInternal(
       childIntent,
@@ -298,6 +318,7 @@ function createDispatcherNode(
     // consumed provider budget (Pitfall 3: no double-counting; the crew
     // aggregator never sees this run again).
     ctx.recordUsage(childSpec.id, childResult.usage);
+    ctx.recordAgentResult?.(childSpec.id, childResult);
 
     if (childResult.kind !== "success") {
       // (b) Classified failure routing (D-09/D-10).
