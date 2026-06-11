@@ -57,7 +57,7 @@ The v1.2 surface adds two things on top of the same call. A **capability contrac
 
 </div>
 
-> **Status:** v1.3.0 is the first stable public release under @full-self-browsing. The release pipeline track (Phases 24-28), model-aware SDK track (Phases 33-38), and opt-in multi-agent crew surface (Phase 39) are complete. Stable publish is handled by npm OIDC Trusted Publisher with provenance; canary validation and cross-repo dispatch continue in Phases 30-32.
+> **Status:** v1.3.0 is live on npm as the first stable public release under @full-self-browsing. Both packages publish through npm OIDC Trusted Publisher with provenance attestations. The release includes model aware routing metadata, provider capability negotiation, prompt scaffolds, output sanitizers, tool call validation, receipt v1.2 metadata, and opt in multi agent crews. Canary validation is next.
 
 ---
 
@@ -87,33 +87,45 @@ The result is a typed `RunResult` (or `AgentResult` for the agent loop) with eit
 
 ## What's New in v1.3
 
-v1.3 ships the public release pipeline, the model-aware SDK surface, and the opt-in multi-agent crew API. Phases 30-32 continue the canary validation and cross-repo release proof after stable publish.
+v1.3.0 is the first stable public release of Lattice under the `@full-self-browsing` npm scope. It turns the runtime into a published SDK with provenance, model aware routing metadata, safer provider adapters, and opt in multi agent crews.
 
-### Release pipeline (Phases 24 to 28, shipped)
+### Stable packages
 
-Five infrastructure phases that turn Lattice from a private workspace into a publishable, externally verifiable open source SDK.
+Both packages are live on npm with `latest` pointing at `1.3.0`.
 
-| Phase | Surface | What it adds |
-|---|---|---|
-| 24 | Atomic scope rename + license hygiene | Both packages publish under `@full-self-browsing`. License headers, `repository`, `author`, `keywords` fields uniform across the workspace. |
-| 25 | PR-time CI workflow | `.github/workflows/ci.yml` runs install + build + typecheck + test + tsd + publint + attw + three audit scripts on every PR. SHA-pinned actions, `contents: read` root permissions, PR-only cancel concurrency, no secrets. |
-| 26 | Release hygiene docs + receipt downgrade defense | SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md. `verifyReceipt` hardened against the receipt-downgrade attack via explicit version pinning. Coupled docs and code in one phase. |
-| 27 | npm org + trusted publisher setup | The npm trust tuple (repository, workflow_filename, environment) registered on npmjs.com for both packages. Zero long-lived `NPM_TOKEN` in the release path. |
-| 28 | Release workflow + rc.0 OIDC smoke | `.github/workflows/release.yml` ships with split version-PR and publish jobs. The first publish is the smoke test. `@full-self-browsing/lattice@1.3.0-rc.0` and `@full-self-browsing/lattice-cli@1.3.0-rc.0` live on npm with provenance attestations. |
+| Package | Version | Proof |
+|---|---:|---|
+| `@full-self-browsing/lattice` | `1.3.0` | npm provenance attestation |
+| `@full-self-browsing/lattice-cli` | `1.3.0` | npm provenance attestation |
 
-### Model-aware SDK + multi-agent surface (Phases 33 to 39, shipped)
+Release proof:
 
-Seven phases that teach Lattice what each provider can actually do, harden model-shape handling, and expose explicit crew composition without changing the default single-agent path.
+* GitHub Release: https://github.com/fullselfbrowsing/Lattice/releases/tag/v1.3.0
+* Runtime package: https://www.npmjs.com/package/@full-self-browsing/lattice/v/1.3.0
+* CLI package: https://www.npmjs.com/package/@full-self-browsing/lattice-cli/v/1.3.0
+* `npm audit signatures` verifies registry signatures and attestations in a clean consumer install.
 
-| Phase | Surface | What it adds |
-|---|---|---|
-| 33 | Model capability registry (~200+ entries) | Typed `CapabilityProfile` shape with seven fields per model. `registry.generated.ts` holds ~200 entries auto-built from the OpenRouter live feed. `registry.static.ts` holds four supplemental profiles for adapters OpenRouter does not cover. A weekly drift workflow (`registry-drift.yml`) auto-opens a refresh PR every Monday at 06:00 UTC. PR-time CI stays offline; drift refresh runs on its own cadence. |
-| 34 | Adapter quirk flags + capability negotiation API | `AdapterQuirks` base interface plus seven narrowed sub-interfaces (`AnthropicQuirks`, `OpenAIQuirks`, `OpenAICompatQuirks`, `GeminiQuirks`, `XaiQuirks`, `OpenRouterQuirks`, `LmStudioQuirks`). Each adapter factory return type narrows so `quirks` is required and discriminated on `adapter.id`. `NegotiatedCapabilities` ships per-model `supports.{nativeToolCalling, structuredOutputs, parallelToolCalls, extendedThinking, streaming}` plus `knownFailureModes` and `recommendedSanitizers`. Anthropic is the thick reference (live `/v1/models` populates `supports.*` directly). Gemini and OpenRouter are medium-thick. OpenAI, OpenAI-compat, xAI, and LM Studio fall back to the Phase 33 registry. A top-level `negotiateCapabilities(adapter, modelId)` helper synthesizes from registry when an adapter has no `negotiateCapabilities` method. `RunEventKind` gains `"capabilities.negotiation.fallback"` for observable transient fallback events. |
-| 35 | Prompt scaffolding helpers | `getStructuredOutputContract`, `getToolUseContract`, `PROMPT_SCAFFOLD_VERSION`, and `PROMPT_STRATEGIES` render deterministic `lattice.prompt-scaffold/v1` fragments from a model's recommended prompt strategy. |
-| 36 | Output sanitizer hook | All seven adapters accept opt-in `sanitizeOutput`; built-ins include `stripReasoningTags()`, `stripChatTemplateArtifacts()`, and `unwrapInternalEnvelope(schemaOrPath)` for open-weight/internal-envelope failures. |
-| 37 | Tool-call validation layer | All seven adapters accept opt-in `validateToolCalls`; returned prompt-reencoded tool-call envelopes validate against the caller's registry before normalized `ProviderRunResponse.toolCalls` is exposed. |
-| 38 | Receipt v1.2 schema + `modelClass` | Capability receipts mint as `lattice-receipt/v1.2` and can include `modelClass` from the capability registry while `verifyReceipt` continues to accept v1.1 and reject downgraded v1 bodies. |
-| 39 | Opt-in multi-agent crew surface | `defineAgent`, `runAgentCrew`, `createAI(...).runAgentCrew(...)`, `createRateLimitGroup`, and `withRateLimit` ship parent-child loops with structured summary return, shared crew budget caps, rate-limit coordination, receipt CID chaining, and `parentReceiptCid` backlinks. |
+### Model aware runtime
+
+The runtime now has a clearer view of provider and model behavior before it sends a request.
+
+* Model capability registry with 337 profiles.
+* Adapter quirk metadata for OpenAI, OpenAI compatible gateways, Anthropic, Gemini, xAI, OpenRouter, and LM Studio.
+* Capability negotiation through `negotiateCapabilities(adapter, modelId)`.
+* Prompt scaffold helpers through `getStructuredOutputContract`, `getToolUseContract`, `PROMPT_SCAFFOLD_VERSION`, and `PROMPT_STRATEGIES`.
+* Optional output sanitizers for reasoning tags, chat template artifacts, and internal envelope leaks.
+* Optional returned tool call validation against the caller supplied tool registry.
+* Receipt v1.2 metadata with optional `modelClass`.
+
+### Agent crews
+
+Single agent execution remains the default path through `ai.runAgent(intent)`. v1.3 adds explicit crew composition for callers that want parent and child agent loops.
+
+* `defineAgent`, `runAgentCrew`, and `createAI(...).runAgentCrew(...)` for structured crew runs.
+* Structured child summaries with artifacts and receipt links.
+* Shared crew budget caps.
+* Rate limit coordination through `createRateLimitGroup` and `withRateLimit`.
+* Parent receipt CID links through `parentReceiptCid`.
 
 ### Capability negotiation example
 
@@ -122,12 +134,12 @@ import { createAnthropicProvider, negotiateCapabilities } from "lattice";
 
 const anthropic = createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// `quirks` is typed as AnthropicQuirks. Compile-time narrowing on adapter.id.
+// `quirks` is typed as AnthropicQuirks. Type narrowing follows adapter.id.
 anthropic.quirks.supportsToolChoice;     // boolean
 anthropic.quirks.parallelToolCalls;      // boolean
 anthropic.quirks.structuredOutputs;      // boolean
 
-// Live capability negotiation. Calls /v1/models and intersects with Phase 33 registry.
+// Live capability negotiation. Calls /v1/models and intersects with the local registry.
 const caps = await negotiateCapabilities(anthropic, "claude-opus-4-7");
 caps.supports.nativeToolCalling;         // boolean
 caps.supports.extendedThinking;          // boolean
@@ -138,7 +150,7 @@ caps.source;                             // "live" | "registry" | "registry-fall
 
 The same `negotiateCapabilities` helper works for every adapter. Auth failures throw a typed `NegotiationAuthError` (kind `"negotiation-auth-failed"`, with `adapter`, `modelId`, and `httpStatus: 401 | 403`). Transient `/models` failures fall back to registry data and emit a `capabilities.negotiation.fallback` event through the tracer so consumers can observe degraded mode without crashing.
 
-### Test posture (current)
+### Test posture
 
 | Workspace | Tests |
 |---|---:|
@@ -149,12 +161,9 @@ The same `negotiateCapabilities` helper works for every adapter. Auth failures t
 
 Strict `tsc --noEmit` clean across both workspaces. `publint` and `@arethetypeswrong/cli` clean. ESM-only.
 
-### What is still coming in v1.3
+### Next
 
-| Phase | Goal |
-|---|---|
-| 29 | First v1.3.0 stable publish (graduate from rc.0). |
-| 30 to 32 | Canary consumer integration. Layer 1 fake-provider suite. Layer 2 real-provider with cost ceiling. Cross-repo wiring and milestone audit. |
+Canary validation now moves to a separate public consumer repository. It will install `@full-self-browsing/lattice@1.3.0` from npm, run fake provider coverage first, then add real provider checks behind explicit cost ceilings.
 
 ---
 
@@ -162,28 +171,28 @@ Strict `tsc --noEmit` clean across both workspaces. `publint` and `@arethetypesw
 
 v1.2 shipped two complete tracks on top of the v1.1 Capability Receipts foundation.
 
-### Track A: FSB Integration (Phases 14 to 18)
+### Track A: FSB Integration
 
 Five extensions landed as canonical Lattice surface.
 
-| Phase | Surface | What it adds |
-|---|---|---|
-| 14 | Public surface index + packaging | `createReceipt` reachable via the bare `lattice` specifier. `pnpm-workspace` `catalog:` specifiers resolved to concrete versions so npm 11 can install via `file:`. |
-| 15 | Receipt v1.1 schema + tripwire band pipeline + lifecycle events | `CapabilityReceiptBody.version` widens to `v1` or `v1.1` literal union with six optional step-marker fields. `createHookPipeline` ships SAFETY, OBSERVABILITY, EXTENSION bands with per-handler budget, frozen contexts, irreversible freeze. `HookLifecycleEvent` vocabulary. |
-| 16 | Step-transition tracing + checkpoint hook | `step.transition` joins `RunEventKind`. `createCheckpointHook` emits exactly one event and (when a signer is configured) mints exactly one v1.1 receipt per invocation, threading step-markers as a linked list. |
-| 17 | Provider adapters + INV-03 parity | Five new adapters: Anthropic Messages API, Gemini `generateContent`, xAI, OpenRouter, LM Studio. INV-03 parity smoke iterates all seven logical providers under a fake fetch and asserts the same `ProviderAdapter` contract. |
-| 18 | Survivability adapter | `SurvivabilityAdapter<TState>` defines what "execution context can be evicted mid-flow" means for any runtime. `SerializedSnapshot` JSON round-trips byte-equal and survives DSSE + JCS round-trip when the payload embeds a v1.1 `ReceiptEnvelope` minted with real Ed25519. `createNoopSurvivabilityAdapter()` ships as the reference impl. |
+| Surface | What it adds |
+|---|---|
+| Public surface index + packaging | `createReceipt` reachable via the bare `lattice` specifier. `pnpm-workspace` `catalog:` specifiers resolved to concrete versions so npm 11 can install via `file:`. |
+| Receipt v1.1 schema + tripwire band pipeline + lifecycle events | `CapabilityReceiptBody.version` widens to `v1` or `v1.1` literal union with six optional step-marker fields. `createHookPipeline` ships SAFETY, OBSERVABILITY, EXTENSION bands with per-handler budget, frozen contexts, irreversible freeze. `HookLifecycleEvent` vocabulary. |
+| Step-transition tracing + checkpoint hook | `step.transition` joins `RunEventKind`. `createCheckpointHook` emits exactly one event and, when a signer is configured, mints exactly one v1.1 receipt per invocation, threading step-markers as a linked list. |
+| Provider adapters + INV-03 parity | Five new adapters: Anthropic Messages API, Gemini `generateContent`, xAI, OpenRouter, LM Studio. INV-03 parity smoke iterates all seven logical providers under a fake fetch and asserts the same `ProviderAdapter` contract. |
+| Survivability adapter | `SurvivabilityAdapter<TState>` defines what "execution context can be evicted mid-flow" means for any runtime. `SerializedSnapshot` JSON round-trips byte-equal and survives DSSE + JCS round-trip when the payload embeds a v1.1 `ReceiptEnvelope` minted with real Ed25519. `createNoopSurvivabilityAdapter()` ships as the reference impl. |
 
-### Track B: Agent Capability (Phases 19 to 22)
+### Track B: Agent Capability
 
 The previously out-of-scope Delegation surface opened as a runtime-agnostic single-agent capability. v1.3 keeps `ai.runAgent(intent)` as the zero-config default and adds first-class crews through the explicit `AgentHost` / `runAgentCrew` surface.
 
-| Phase | Surface | What it adds |
-|---|---|---|
-| 19 | Delegation policy flip + agent runtime entrypoint | `AGENTS.md` flips from "multi-agent: Out of Scope" to "agent execution: First-class, runtime-agnostic." `ai.runAgent(intent)` ships on the `createAI` runtime. `formatToolsForProvider` drives a uniform prompt-reencoded tool-use protocol across all seven provider adapters. SAFETY-band hooks can veto an iteration before provider invoke. |
-| 20 | Pluggable `AgentHost` + recovery markers | `AgentHost` interface with three optional seams: scheduler, transport, storage. `createNoopAgentHost()` is the Node-test reference impl. Storage composes with `SurvivabilityAdapter` so the loop re-enters at the recorded step on resume. `RunEventKind` gains `recovery.start`, `recovery.complete`, `recovery.failed` markers, closing the one Important row left open by the v1.1 audit. |
-| 21 | Agent infrastructure primitives | Five small standalone modules. `createCostTracker` (budget-aware). `createTranscriptStore` (filtered tail reads). `createGoalProgressTracker` (stuck detection). `createActionHistory` (consecutive-identical + ping-pong dedup with `STUCK_REASONS` vocabulary). `createPermissionContext` (per-tool, per-iteration, per-resource gating with a SAFETY-band hook helper). |
-| 22 | Showcase + eval helper | `examples/agent-loop` exercises every surface end-to-end against a fake provider and a fake tool registry. Real Ed25519 signing. Three per-iteration receipts verified. `evalAgentRun(baseline, current, options?)` ships as a pure regression-gate kernel for iterations-to-goal and cost. |
+| Surface | What it adds |
+|---|---|
+| Delegation policy flip + agent runtime entrypoint | `AGENTS.md` flips from "multi-agent: Out of Scope" to "agent execution: First-class, runtime-agnostic." `ai.runAgent(intent)` ships on the `createAI` runtime. `formatToolsForProvider` drives a uniform prompt-reencoded tool-use protocol across all seven provider adapters. SAFETY-band hooks can veto an iteration before provider invoke. |
+| Pluggable `AgentHost` + recovery markers | `AgentHost` interface with three optional seams: scheduler, transport, storage. `createNoopAgentHost()` is the Node-test reference impl. Storage composes with `SurvivabilityAdapter` so the loop re-enters at the recorded step on resume. `RunEventKind` gains `recovery.start`, `recovery.complete`, `recovery.failed` markers, closing the one Important row left open by the v1.1 audit. |
+| Agent infrastructure primitives | Five small standalone modules. `createCostTracker` handles budget-aware usage. `createTranscriptStore` handles filtered tail reads. `createGoalProgressTracker` detects stalled or regressed work. `createActionHistory` detects repeated actions and ping-pong tool-call patterns through `STUCK_REASONS`. `createPermissionContext` gates by tool, iteration, and resource pattern with a SAFETY-band hook helper. |
+| Showcase + eval helper | `examples/agent-loop` exercises every surface end-to-end against a fake provider and a fake tool registry. Real Ed25519 signing. Three per-iteration receipts verified. `evalAgentRun(baseline, current, options?)` ships as a pure regression-gate kernel for iterations-to-goal and cost. |
 
 ### Test posture
 
@@ -195,11 +204,11 @@ The previously out-of-scope Delegation surface opened as a runtime-agnostic sing
 
 Strict `tsc --noEmit` clean across both workspaces.
 
-### Documented v1.2 limitation (now de-risked by v1.3 Phase 34)
+### Documented v1.2 limitation
 
-Native tool-use (Anthropic Messages-API `tools[]`, OpenAI Chat-Completions `tools[]`, Gemini `function_declarations`) was deferred to v1.3 at v1.2 ship time. Uniform prompt-reencoded mode satisfied the Phase 19 AGENT-02 contract across all seven providers (proved by 84 `describe.each(ALL_PROVIDERS)` cases). Admitting native tool-use cleanly required an additive extension to the `ProviderAdapter` interface that preserved the Phase 17 INV-03 7-provider parity contract.
+Native tool-use (Anthropic Messages-API `tools[]`, OpenAI Chat-Completions `tools[]`, Gemini `function_declarations`) was deferred to v1.3 at v1.2 ship time. Uniform prompt-reencoded mode satisfied the AGENT-02 contract across all seven providers, proved by 84 `describe.each(ALL_PROVIDERS)` cases. Admitting native tool-use cleanly required an additive extension to the `ProviderAdapter` interface that preserved the INV-03 7-provider parity contract.
 
-Phase 34 ships the typed surface that closes this. Each adapter now exposes `quirks.supportsToolChoice` and `quirks.parallelToolCalls` plus a runtime `NegotiatedCapabilities.supports.nativeToolCalling` field sourced from upstream `/models` responses where available. Phase 37 adds opt-in validation for returned prompt-reencoded tool-call envelopes.
+v1.3 ships the typed surface that closes this. Each adapter now exposes `quirks.supportsToolChoice` and `quirks.parallelToolCalls` plus a runtime `NegotiatedCapabilities.supports.nativeToolCalling` field sourced from upstream `/models` responses where available. Returned prompt-reencoded tool-call envelopes can now be validated before the normalized response is exposed.
 
 ---
 
@@ -360,11 +369,12 @@ The receipt body commits to:
 
 ## Provenance Verification
 
-Every `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. The first OIDC publish landed in Phase 28: both packages are live on npm at `1.3.0-rc.0` with provenance attached. Stable `1.3.0` will be verified after Phase 29 with stock tooling.
+Every `@full-self-browsing/lattice` and `@full-self-browsing/lattice-cli` release is published via npm OIDC Trusted Publisher with provenance attestations attached automatically. The stable v1.3.0 publish is live for both packages, and `latest` points at `1.3.0`.
 
 ```bash
 npm view @full-self-browsing/lattice@1.3.0 --json | jq .dist
-# then inspect .dist.attestations.provenance
+npm view @full-self-browsing/lattice-cli@1.3.0 --json | jq .dist
+# then inspect each .dist.attestations.provenance entry
 ```
 
 See `SECURITY.md` for the full supply-chain posture: no long-lived `NPM_TOKEN`, SHA-pinned GitHub Actions, `npm-publish` manual reviewer gate for the first three publishes.
@@ -377,13 +387,13 @@ See `SECURITY.md` for the full supply-chain posture: no long-lived `NPM_TOKEN`, 
 
 ### Composition surfaces
 
-* `pipeline?` is the Phase 15 `HookPipeline`. The runtime creates one if absent.
-* `signer?` is the Phase 9 `ReceiptSigner`. When present, the runtime auto-registers `createCheckpointHook` on `BAND.OBSERVABILITY` for per-iteration receipts.
-* `tracer?` is the Phase 5 `TracerLike`. Flows through the pipeline.
+* `pipeline?` is the `HookPipeline`. The runtime creates one if absent.
+* `signer?` is the `ReceiptSigner`. When present, the runtime auto-registers `createCheckpointHook` on `BAND.OBSERVABILITY` for per-iteration receipts.
+* `tracer?` is the `TracerLike`. Flows through the pipeline.
 * `outputs?` is a final-answer schema map. Validated only on the final assistant message.
-* `contract?` is the Phase 7 `CapabilityContract`. Budget invariants enforced pre-iteration.
-* `host?` is the Phase 20 `AgentHost`. Scheduler, transport, storage seams plug in additively.
-* `survivabilityAdapter?` is the Phase 18 `SurvivabilityAdapter<TState>`. Composes with `host.storage` for cross-process resume.
+* `contract?` is the `CapabilityContract`. Budget invariants enforced pre-iteration.
+* `host?` is the `AgentHost`. Scheduler, transport, storage seams plug in additively.
+* `survivabilityAdapter?` is the `SurvivabilityAdapter<TState>`. Composes with `host.storage` for cross-process resume.
 
 ### Agent infrastructure primitives
 
@@ -435,20 +445,20 @@ if (!eval_.ok) {
 
 ## Provider Adapters
 
-| Provider | Factory | Negotiate mode (v1.3 Phase 34) | Notes |
+| Provider | Factory | Negotiate mode (v1.3) | Notes |
 |---|---|---|---|
 | OpenAI | `createOpenAIProvider` | Registry-only with `/v1/models` existence check | v1.0 baseline. `quirks: OpenAIQuirks` (5 base + `strictModeSupported` + `structuredOutputsTier2`). 401/403 throws `NegotiationAuthError`. |
 | OpenAI-compatible gateways | `createOpenAICompatibleProvider` | Registry-only (no `/models` call) | v1.0 baseline. `quirks: OpenAICompatQuirks` (5 conservative defaults). Source: `"registry"`. |
 | AI SDK | `createAISdkProvider` | n/a (host SDK owns lifecycle) | v1.0 baseline. Quirks surface inherits from underlying adapter. |
-| Anthropic | `createAnthropicProvider` | Thick reference (live `/v1/models`) | v1.2 Phase 17 + v1.3 Phase 34. `quirks: AnthropicQuirks`. `supports.*` populated directly from upstream capabilities block (`extendedThinking`, `nativeToolCalling`, `structuredOutputs`). |
-| Gemini | `createGeminiProvider` | Medium-thick (live `/v1beta/models`) | v1.2 Phase 17 + v1.3 Phase 34. `quirks: GeminiQuirks` (8 booleans). `inputTokenLimit -> contextWindow`, `thinking -> extendedThinking`, `supportedGenerationMethods -> streaming + nativeToolCalling`. `x-goog-api-key` header. |
-| xAI | `createXaiProvider` | Lenient-parse (`/models`) | v1.2 Phase 17 + v1.3 Phase 34. `quirks: XaiQuirks`. Undocumented `/models` shape falls back to registry if `Array.isArray(body.data)` fails. Preserves the `reasoning_tokens` quirk. |
-| OpenRouter | `createOpenRouterProvider` | Medium-thick (live `/api/v1/models`) | v1.2 Phase 17 + v1.3 Phase 34. `quirks: OpenRouterQuirks`. Rich `top_provider.context_length` and `supported_parameters` intersection. Sends NO Authorization header to `/models` (anti-pattern guard). `stripOpenRouterVariant` normalizes `:free`/`:thinking` suffixes. |
-| LM Studio | `createLmStudioProvider` | Registry-only | v1.2 Phase 17 + v1.3 Phase 34. `quirks: LmStudioQuirks` (5 base + `customChatTemplateRiskFlag` + `noAuthRequired`). `apiKey` optional. |
+| Anthropic | `createAnthropicProvider` | Thick reference (live `/v1/models`) | v1.2 adapter with v1.3 negotiation. `quirks: AnthropicQuirks`. `supports.*` populated directly from upstream capabilities block (`extendedThinking`, `nativeToolCalling`, `structuredOutputs`). |
+| Gemini | `createGeminiProvider` | Medium-thick (live `/v1beta/models`) | v1.2 adapter with v1.3 negotiation. `quirks: GeminiQuirks` (8 booleans). `inputTokenLimit -> contextWindow`, `thinking -> extendedThinking`, `supportedGenerationMethods -> streaming + nativeToolCalling`. `x-goog-api-key` header. |
+| xAI | `createXaiProvider` | Lenient-parse (`/models`) | v1.2 adapter with v1.3 negotiation. `quirks: XaiQuirks`. Undocumented `/models` shape falls back to registry if `Array.isArray(body.data)` fails. Preserves the `reasoning_tokens` quirk. |
+| OpenRouter | `createOpenRouterProvider` | Medium-thick (live `/api/v1/models`) | v1.2 adapter with v1.3 negotiation. `quirks: OpenRouterQuirks`. Rich `top_provider.context_length` and `supported_parameters` intersection. Sends NO Authorization header to `/models`. `stripOpenRouterVariant` normalizes `:free`/`:thinking` suffixes. |
+| LM Studio | `createLmStudioProvider` | Registry-only | v1.2 adapter with v1.3 negotiation. `quirks: LmStudioQuirks` (5 base + `customChatTemplateRiskFlag` + `noAuthRequired`). `apiKey` optional. |
 
 The INV-03 parity smoke (`providers/parity.test.ts`) iterates all seven logical providers under a fake fetch and asserts the same `ProviderAdapter` contract: shape, `rawOutputs` population, normalized `Usage`, provider-name in error on non-OK, `AbortSignal` propagation, `rawResponse` preservation, distinct request ids.
 
-The Phase 34 capability negotiation surface adds three uniform behaviors across all seven adapters. Each `negotiateCapabilities(modelId)` call: caches per-adapter with a TTL, coalesces concurrent inflight requests on the same `modelId` (cleared in `.finally`), retries transient failures with `[0, 200, 1000]ms` backoff, and times out at 30 seconds via `AbortSignal.timeout`. A 7-adapter quirks smoke (`capabilities-negotiate-integration.test.ts`) plus the D-04 consumer-adapter fallback test confirm the contract holds end-to-end through the top-level `negotiateCapabilities` helper.
+The v1.3 capability negotiation surface adds three uniform behaviors across all seven adapters. Each `negotiateCapabilities(modelId)` call: caches per-adapter with a TTL, coalesces concurrent inflight requests on the same `modelId` (cleared in `.finally`), retries transient failures with `[0, 200, 1000]ms` backoff, and times out at 30 seconds via `AbortSignal.timeout`. A 7-adapter quirks smoke (`capabilities-negotiate-integration.test.ts`) plus the D-04 consumer-adapter fallback test confirm the contract holds end-to-end through the top-level `negotiateCapabilities` helper.
 
 ---
 
@@ -490,7 +500,7 @@ pnpm example:work-inbox
 
 ### `examples/agent-loop` (v1.2)
 
-The Phase 22 showcase. A fake provider, two fake tools (`query_sales`, `send_email`), a hook pipeline with PermissionContext at SAFETY and the auto-registered checkpoint hook at OBSERVABILITY, all five infrastructure primitives wired through hooks, real Ed25519 signing, and `evalAgentRun` as the final gate.
+The agent loop showcase. A fake provider, two fake tools (`query_sales`, `send_email`), a hook pipeline with PermissionContext at SAFETY and the auto-registered checkpoint hook at OBSERVABILITY, all five infrastructure primitives wired through hooks, real Ed25519 signing, and `evalAgentRun` as the final gate.
 
 ```bash
 node examples/agent-loop/index.mjs
@@ -535,7 +545,7 @@ graph TB
         EVENTS["RunEvent + tracer"]
     end
 
-    subgraph Hooks["Hook Pipeline (v1.2 Phase 15)"]
+    subgraph Hooks["Hook Pipeline (v1.2)"]
         SAFETY["BAND.SAFETY"]
         OBS["BAND.OBSERVABILITY"]
         EXT["BAND.EXTENSION"]
@@ -548,13 +558,13 @@ graph TB
         CHECKPOINT["createCheckpointHook"]
     end
 
-    subgraph Host["Agent Host (v1.2 Phase 20)"]
+    subgraph Host["Agent Host (v1.2)"]
         SCHED["scheduler"]
         TRANS["transport"]
         STORAGE["storage"]
     end
 
-    subgraph Survive["Survivability (v1.2 Phase 18)"]
+    subgraph Survive["Survivability (v1.2)"]
         SURV["SurvivabilityAdapter"]
         SNAP["SerializedSnapshot"]
     end
@@ -646,7 +656,7 @@ Lattice/
 | v1.0 | Runtime API, output contracts, artifacts, deterministic routing, sessions, provider packaging, tools, replay, work-inbox showcase | Shipped (2026-04-22) |
 | v1.1 Capability Receipts | Capability contract, tripwires, JCS canonicalization, Ed25519 signing, receipt verification, replay envelope, `lattice` CLI, eval CI gate, sidecar support | Shipped (2026-05-12) |
 | v1.2 FSB Integration + Agent Capability | Receipt v1.1 schema extension, hook bands, checkpoint hook, 5 new providers + INV-03 parity, survivability adapter, agent runtime, agent host, agent infrastructure primitives, agent-loop showcase, eval helper | Shipped (2026-05-31) |
-| **v1.3 Public Release + Model-Aware SDK** | **Release pipeline (24 to 28): atomic scope rename, PR-time CI, release hygiene + receipt downgrade defense, npm Trusted Publisher, OIDC release workflow with rc.0 smoke. Model-aware SDK (33 to 39): typed capability registry, adapter quirks + capability negotiation, prompt scaffolding helpers, opt-in sanitizer hook, tool-call validation, receipt v1.2 with modelClass, multi-agent delegation surface.** | **Stable surface complete; Phase 29 promotes `1.3.0`, Phases 30 to 32 continue canary validation and cross-repo audit.** |
+| **v1.3 Public Release + Model Aware SDK** | **Stable npm packages, provenance backed release, capability registry, provider negotiation, prompt scaffolds, sanitizers, tool call validation, receipt v1.2 model metadata, and opt in crew orchestration.** | **Shipped stable v1.3.0 on 2026-06-11. Canary validation continues in a separate public consumer repo.** |
 
 Multi-agent crews (parent-child loops, summary-return, cache-prefix sharing, rate-limit-group coordination) are first-class through the opt-in `AgentHost` / `runAgentCrew` surface.
 
@@ -664,7 +674,7 @@ pnpm build
 # Typecheck all packages
 pnpm typecheck
 
-# Run unit tests (875 across the workspace)
+# Run unit tests (1052 across the workspace)
 pnpm test
 
 # Run declaration / type API tests
