@@ -18,7 +18,13 @@ import type {
   ReceiptEnvelope,
 } from "..";
 
+// Phase 40 public-surface guard:
+// - Value exports are inventory-checked by test/public-surface.test.ts.
+// - Type-only exports must still be asserted through package-root tsd files.
+// - Any future v1.4 export added to src/index.ts must update either this
+//   package-index smoke or a focused sibling test-d file.
 expectAssignable<string>(latticeVersion);
+expectAssignable<Function>(createAI);
 
 declare const summarySchema: StandardSchemaV1;
 declare const envelope: ReceiptEnvelope;
