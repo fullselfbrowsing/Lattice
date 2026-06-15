@@ -9,7 +9,7 @@
 ### Package Hygiene and Public Surface (`PKG-*`)
 
 - [x] **PKG-01**: `latticeVersion` and the `lattice` CLI banner report the package version from the built package metadata instead of the hardcoded `"0.0.0"` placeholder.
-- [ ] **PKG-02**: Every new v1.4 public export is covered by runtime public-surface smoke tests, package type tests, `publint`, and `@arethetypeswrong/cli` before release.
+- [x] **PKG-02**: Every new v1.4 public export is covered by runtime public-surface smoke tests, package type tests, `publint`, and `@arethetypeswrong/cli` before release.
 - [ ] **PKG-03**: The package build keeps optional v1.4 integrations out of the core runtime dependency tree unless the integration is part of the always-on core surface.
 
 ### Gateway Delegation and Provider Breadth (`GATE-*`)
@@ -103,7 +103,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PKG-01 | Phase 40 | Complete |
-| PKG-02 | Phase 40 | Pending |
+| PKG-02 | Phase 40 | Complete |
 | PKG-03 | Phase 40 | Pending |
 | GATE-01 | Phase 41 | Pending |
 | GATE-02 | Phase 41 | Pending |
