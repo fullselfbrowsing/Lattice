@@ -5,7 +5,7 @@ Lattice: a capability-first TypeScript runtime whose every multimodal model run
 emits a signed, canonical, replayable capability receipt.
 
 - Title: Lattice: Signed, Replayable Capability Receipts for Model Runs
-- Author: Venkat Luksshman Turlapati, Full Self Browsing
+- Author: Lakshman turlapati, Full Self Browsing
 - Email: lakshmanturlapati@gmail.com
 - Code: https://github.com/fullselfbrowsing/Lattice
 - Document class: `\documentclass[conference]{IEEEtran}`
