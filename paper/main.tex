@@ -23,6 +23,12 @@
 \tolerance=9999
 \emergencystretch=3em
 
+% IEEEtran prints "Abstract" and "Index Terms" followed by an em dash. Replace that
+% separator with a colon so no dash appears in the running text.
+\usepackage{etoolbox}
+\patchcmd{\abstract}{\textit{\abstractname}---\relax}{\textit{\abstractname}:\ }{}{}
+\patchcmd{\IEEEkeywords}{\textit{\IEEEkeywordsname}---\relax}{\textit{\IEEEkeywordsname}:\ }{}{}
+
 % TikZ styles shared by the figures.
 \tikzset{
   lbox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
