@@ -55,9 +55,29 @@ export interface OpenRouterProviderOptions
    * If absent, no event is emitted (silent fallback).
    */
   readonly runEventSink?: RunEventSink;
+  /**
+   * Ordered OpenRouter model fallback candidates. The primary `model` remains
+   * the Lattice-selected route; these candidates serialize as OpenRouter's
+   * top-level `models` request field when non-empty.
+   */
+  readonly fallbackModels?: readonly string[];
 }
 
 const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+function normalizeFallbackModels(models: readonly string[] | undefined): readonly string[] | undefined {
+  if (models === undefined) return undefined;
+  const normalized = models.map((model) => model.trim()).filter((model) => model.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function observedModelFromRawResponse(rawResponse: unknown): string | undefined {
+  if (typeof rawResponse !== "object" || rawResponse === null || Array.isArray(rawResponse)) {
+    return undefined;
+  }
+  const model = (rawResponse as Record<string, unknown>).model;
+  return typeof model === "string" ? model : undefined;
+}
 
 /**
  * Phase 34 — D-03 — OpenRouter quirks block. Values verified against
@@ -112,6 +132,7 @@ export function createOpenRouterProvider(
 } {
   const baseUrl = (options.baseUrl ?? DEFAULT_OPENROUTER_BASE_URL).replace(/\/$/u, "");
   const fetchImpl = options.fetch ?? fetch;
+  const fallbackModels = normalizeFallbackModels(options.fallbackModels);
 
   // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
   // each createOpenRouterProvider({}) call gets its own Map (no cross-contamination).

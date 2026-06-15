@@ -115,6 +115,7 @@ export interface ProviderGatewayMetadata {
   readonly used: boolean;
   readonly requestedModel?: string;
   readonly observedModel?: string;
+  readonly fallbackModels?: readonly string[];
   readonly policy?: Record<string, unknown>;
 }
 
