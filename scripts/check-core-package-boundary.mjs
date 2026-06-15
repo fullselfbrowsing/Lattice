@@ -41,8 +41,9 @@ function escapeRegExp(value) {
 
 function importPattern(packageName) {
   const escaped = escapeRegExp(packageName);
+  const specifier = `${escaped}(?:\\/[^"']*)?`;
   return new RegExp(
-    `(?:from\\s+["']${escaped}["']|import\\s+["']${escaped}["']|import\\s*\\(\\s*["']${escaped}["']|require\\s*\\(\\s*["']${escaped}["'])`,
+    `(?:from\\s+["']${specifier}["']|import\\s+["']${specifier}["']|import\\s*\\(\\s*["']${specifier}["']|require\\s*\\(\\s*["']${specifier}["'])`,
   );
 }
 
