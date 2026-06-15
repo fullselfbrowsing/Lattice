@@ -34,6 +34,8 @@ export type { AnthropicProviderOptions } from "./providers/anthropic.js";
 export { createFakeProvider } from "./providers/fake.js";
 export { createGeminiProvider } from "./providers/gemini.js";
 export type { GeminiProviderOptions } from "./providers/gemini.js";
+export { createLiteLLMProvider } from "./providers/litellm.js";
+export type { LiteLLMProviderOptions } from "./providers/litellm.js";
 export { createLmStudioProvider } from "./providers/lm-studio.js";
 export type { LmStudioProviderOptions } from "./providers/lm-studio.js";
 export { createOpenRouterProvider } from "./providers/openrouter.js";
@@ -164,6 +166,7 @@ export type {
 export { latticeVersion } from "./version.js";
 
 export type { AI, RunIntent } from "./runtime/create-ai.js";
+export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
   ArtifactInput,
@@ -293,6 +296,7 @@ export type {
   AdapterQuirks,
   AnthropicQuirks,
   GeminiQuirks,
+  LiteLLMQuirks,
   LmStudioQuirks,
   OpenAICompatQuirks,
   OpenAIQuirks,

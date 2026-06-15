@@ -45,6 +45,7 @@ const sample: ModelCapabilityProfile = {
 
 expectType<string>(sample.id);
 expectType<CapabilityAdapter>(sample.adapter);
+expectAssignable<CapabilityAdapter>("litellm");
 expectType<string>(sample.originFamily);
 expectType<TrainingClass>(sample.trainingClass);
 expectType<ReasoningSurface>(sample.reasoningSurface);

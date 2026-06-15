@@ -4,6 +4,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import {
   createAI,
+  createLiteLLMProvider,
   createNoopAgentHost,
   createRateLimitGroup,
   defineAgent,
@@ -14,6 +15,10 @@ import {
 import type {
   AgentTransport,
   CrewResult,
+  GatewayMetadataValue,
+  GatewayPolicy,
+  LiteLLMProviderOptions,
+  LiteLLMQuirks,
   RateLimitGroup,
   ReceiptEnvelope,
 } from "..";
@@ -46,3 +51,19 @@ expectType<Promise<CrewResult>>(
     hosts: { childHost: createNoopAgentHost() },
   }),
 );
+
+const gatewayPolicy: GatewayPolicy = {
+  routeTags: ["prod"],
+  providerPreferences: ["openai"],
+  metadata: { trace_id: "trace-41" },
+  allowFallbacks: false,
+};
+const options: LiteLLMProviderOptions = {
+  model: "gpt-4o",
+  gateway: gatewayPolicy,
+};
+const litellm = createLiteLLMProvider(options);
+expectType<"provider-adapter">(litellm.kind);
+expectAssignable<LiteLLMQuirks>(litellm.quirks);
+const metadataValue: GatewayMetadataValue = { nested: ["ok", 1, false, null] };
+void metadataValue;

@@ -4,6 +4,7 @@ import {
   contract,
   createAI,
   createInMemorySigner,
+  createLiteLLMProvider,
   createMemoryKeySet,
   evaluateTripwires,
   generateEd25519KeyPairJwk,
@@ -75,6 +76,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createGoalProgressTracker",
   "createHookPipeline",
   "createInMemorySigner",
+  "createLiteLLMProvider",
   "createLmStudioProvider",
   "createLocalArtifactStore",
   "createMemoryArtifactStore",
@@ -140,6 +142,12 @@ describe("public-surface inventory", () => {
     const mod = await import("../src/index.js");
     expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
     expect("default" in mod).toBe(false);
+  });
+});
+
+describe("Phase 41 public surface", () => {
+  it("exports createLiteLLMProvider as a first-class helper", () => {
+    expect(typeof createLiteLLMProvider).toBe("function");
   });
 });
 
