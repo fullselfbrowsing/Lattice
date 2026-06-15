@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
 status: planning
-last_updated: "2026-06-15T09:29:07.703Z"
+last_updated: "2026-06-15T09:54:18.322Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 0
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-15)
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-06-15 — Milestone v1.4 started
+Last activity: 2026-06-15 — FSB-via-npm dogfood validation completed; v1.4 requirements next
 
 ## Performance Metrics
 
@@ -41,8 +41,9 @@ Last activity: 2026-06-15 — Milestone v1.4 started
 **Recent Trend:**
 
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. Current audited state: 13/16 phases complete; Phase 29 and Phase 39 are fully complete and the remaining work is Phases 30-32.
+- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. It closed on 2026-06-15 with Phases 30-32 superseded by FSB-via-npm dogfooding.
 - `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live on npm with SLSA provenance attestations and `latest` dist-tags. GitHub Release `v1.3.0` exists.
+- FSB dogfood validation passed against the published npm package: registry install only, no local/git/workspace refs, offscreen bundle inlined Lattice, `npm run test:lattice` reported 426 PASS / 0 FAIL, and `modelClass` now round-trips through a signed receipt assertion.
 
 *Updated after each plan completion*
 
@@ -54,18 +55,19 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decisions affecting v1.4:
 
-- [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded.
+- [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
 - [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
 - [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
 
 ### Pending Todos
 
-- None carried forward. The Phase 30/32 canary todos were superseded at v1.3 close — FSB-via-npm dogfooding replaces the synthetic canary. v1.4 todos will be authored during milestone planning.
+- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has a green published-package validation run. Track the Lattice version-stamping bug during v1.4 planning or as a quick fix.
 
 ### Blockers/Concerns
 
-- None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession — FSB-via-npm dogfooding replaces the synthetic canary. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
-- Residual (tracked for v1.4): packaging-integrity validation of the published tarball now relies on FSB's npm consumption rather than an isolated, exhaustive canary; an unused public export could regress silently. Revisit a thin packaging canary if FSB coverage proves insufficient.
+- None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession, and FSB-via-npm dogfooding validated the published `1.3.0` tarball path. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
+- Follow-up (tracked for v1.4 or quick fix): `packages/lattice/src/version.ts` and `packages/lattice-cli/src/version.ts` are hardcoded to `"0.0.0"`, so `latticeVersion` and the CLI banner do not report the published package version. Low severity; FSB pins by package version and tarball integrity.
+- Residual (tracked for v1.4): FSB exercises only the API slice it uses, so an unused public export could regress silently. Revisit a thin packaging-only canary if FSB coverage proves insufficient.
 
 ## Deferred Items
 
@@ -98,11 +100,12 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | 2026-06-11 | Complete Phase 29 stable v1.3.0 publish | Merged Version Packages PR #8, pushed `v1.3.0`, approved `npm-publish`, verified both npm packages at `1.3.0` with signatures/provenance, repaired GitHub Release notes, and closed PUB-02..04. |
 | 2026-06-15 | Author IEEE LaTeX paper on Lattice capability receipts and verifiable replay | Created top-level `paper/` (IEEEtran two-column `main.tex`, 19-entry `refs.bib`, README, Makefile, .gitignore). All quantitative claims verified against the codebase by 4 parallel agents and corrected vs stale planning docs (960 tests/82 files, 332 profiles, 7 providers, 7 verify error kinds). No-dash style enforced; pure ASCII. No TeX toolchain present, so PDF not compiled (verified structurally). See `.planning/quick/260615-5m0-author-ieee-latex-paper-on-lattice-capab/`. |
 | 2026-06-15 | Polish Lattice paper (title, author, Times fonts, diagrams, graph) | Retitled to lead with "Lattice:", switched to Times fonts (newtxtext/newtxmath), updated author to Venkat Lakshman Turlapati (preferred Lakshman Turlapati) and email to lakshmanturlapati@gmail.com, and added TikZ diagrams (run-lifecycle figure*, receipt-construction flow) plus a pgfplots test-suite bar chart. Installed tectonic 0.16.9; `main.pdf` compiles clean (0 overfull, 8 pages) and was visually verified page by page. See `.planning/quick/260615-689-polish-lattice-paper-mention-lattice-in-/`. |
+| 2026-06-15 | Record FSB-via-npm dogfood validation and version-stamping follow-up | Recorded that FSB validates `@full-self-browsing/lattice@1.3.0` as a real npm downstream consumer with `npm run test:lattice` at 426 PASS / 0 FAIL, including `modelClass` signed-body coverage. Captured the remaining Lattice-side version-stamping bug as low-severity follow-up. |
 
 ## Session Continuity
 
 Last session: 2026-06-15
-Stopped at: v1.4 milestone opened; defining requirements (research-first)
+Stopped at: v1.4 milestone opened; FSB-via-npm validation complete; defining requirements (research-first)
 Resume: `/gsd-new-milestone` research → requirements → roadmap for v1.4 (phases continue from 39, start at 40)
 
 ## Operator Next Steps

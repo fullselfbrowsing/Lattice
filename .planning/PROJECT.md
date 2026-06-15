@@ -12,7 +12,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ## Current State
 
-**v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo.
+**v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
 **v1.4 in planning** — Provider Breadth + Live Multimodal + Observability Export (scope captured under Requirements below; phases/REQ-IDs to be authored via `/gsd-new-milestone`).
 
@@ -26,7 +26,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - **Eval + observability** — OpenTelemetry exporter for `RunEventKind`, `lattice eval --agent`, export *into* Langfuse / Phoenix rather than building dashboards.
 
 **Key context:**
-- Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded.
+- Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded, and the first FSB published-package validation run passed 426 / 426 checks with `modelClass` signed-body coverage.
 - **Theme considered and dropped:** a managed / hosted deploy runtime (conflicts with the standing "Hosted control plane — Out of Scope" decision); a lightweight deploy-adapter framing is parked for possible future pickup.
 - **Research-first:** per-theme implementation-pattern research precedes requirements.
 - Phases / REQ-IDs to be authored by `/gsd-new-milestone` (research → requirements → roadmap); phase numbering continues from v1.3 (starts at Phase 40).
@@ -65,9 +65,9 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is in planning** — requirements + roadmap to be authored via `/gsd-new-milestone`. The v1.4 scope is captured below.
+v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is in planning** — requirements + roadmap to be authored via `/gsd-new-milestone`. The v1.4 scope is captured below. Initial FSB-via-npm dogfood validation is complete; the remaining Lattice-side follow-up is a low-severity version-stamping bug where the runtime and CLI report `0.0.0` instead of the package version.
 
-**v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opens only after v1.3 canary validation (Phases 30–32) closes:
+**v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opened after v1.3 canary validation was superseded by FSB-via-npm dogfooding:
 
 *Provider breadth + capability-catalog maintenance* — lean on gateway delegation (LiteLLM / OpenRouter) and auto-refresh the capability catalog from feeds so coverage stops being a hand-maintained tax.
 - OpenRouter multi-model routing / fallback array.
@@ -157,7 +157,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | **Superseded 2026-06-15** — synthetic canary descoped; FSB consumes the published package via npm (real-world dogfooding) instead. |
 | Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | **Superseded 2026-06-15** — canary descoped; see above. |
 | v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closes the three library-native competitive gaps from the June 2026 analysis. A managed/hosted runtime conflicts with the "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; lightweight deploy adapters parked. | v1.3 closed 2026-06-15; v1.4 opening now. Canary superseded (not a blocker). |
-| Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Decided 2026-06-15; thin packaging-only canary parked for possible v1.4 pickup. |
+| Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
 
 ## Evolution
 
@@ -177,4 +177,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 — v1.3 milestone closed and archived (canary 30–32 superseded for FSB-via-npm dogfooding); v1.4 (Provider Breadth + Live Multimodal + Observability) in planning.*
+*Last updated: 2026-06-15 — FSB-via-npm dogfood validation passed against published Lattice 1.3.0; v1.4 (Provider Breadth + Live Multimodal + Observability) in planning.*

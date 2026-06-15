@@ -42,4 +42,4 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 
 **Goal:** Close the three library-native competitive gaps found vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse — provider breadth via gateway delegation + an auto-refreshing capability catalog, live/streaming multimodal, and eval + OpenTelemetry observability export — without becoming a platform.
 
-Phases (40+) and REQ-IDs are pending — to be authored by `/gsd-new-milestone` (research → requirements → roadmap). Validation shifts from a synthetic canary to FSB-via-npm dogfooding. The managed/hosted deploy-runtime theme was considered and dropped (conflicts with the standing "no hosted control plane" decision).
+Phases (40+) and REQ-IDs are pending — to be authored by `/gsd-new-milestone` (research → requirements → roadmap). Validation shifted from a synthetic canary to FSB-via-npm dogfooding; the initial published-package dogfood run passed 426 / 426 checks, with a low-severity Lattice version-stamping follow-up still tracked. The managed/hosted deploy-runtime theme was considered and dropped (conflicts with the standing "no hosted control plane" decision).
