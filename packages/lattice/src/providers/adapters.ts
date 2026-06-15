@@ -255,6 +255,27 @@ function gatewayPolicyToMetadata(
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
+function sanitizedGatewayPolicyForPlan(
+  policy: GatewayPolicy | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const metadata = sanitizeGatewayMetadata(policy.metadata);
+
+  return {
+    ...(policy.routeTags !== undefined && policy.routeTags.length > 0
+      ? { routeTags: [...policy.routeTags] }
+      : {}),
+    ...(policy.providerPreferences !== undefined && policy.providerPreferences.length > 0
+      ? { providerPreferences: [...policy.providerPreferences] }
+      : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    ...(policy.allowFallbacks !== undefined ? { allowFallbacks: policy.allowFallbacks } : {}),
+  };
+}
+
 function observedModelFromResponse(body: unknown): string | undefined {
   if (!isRecord(body)) {
     return undefined;
@@ -402,7 +423,7 @@ export function createOpenAICompatibleProvider(
         model?: unknown;
         usage?: unknown;
       };
-      observedModelFromResponse(body);
+      const observedModel = observedModelFromResponse(body);
       const text = String(body.choices?.[0]?.message?.content ?? "");
       const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
@@ -415,12 +436,22 @@ export function createOpenAICompatibleProvider(
         : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
       const usage = normalizeUsage(body.usage);
       const normalizedUsage = normalizeUsageToRunUsage(body.usage, options.pricing);
+      const sanitizedGatewayPolicy = sanitizedGatewayPolicyForPlan(mergedGatewayPolicy);
+      const gateway = id === "litellm" || mergedGatewayPolicy !== undefined
+        ? {
+            used: true,
+            requestedModel: options.model,
+            ...(observedModel !== undefined ? { observedModel } : {}),
+            ...(sanitizedGatewayPolicy !== undefined ? { policy: sanitizedGatewayPolicy } : {}),
+          }
+        : undefined;
 
       return {
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
         ...(toolCalls !== undefined ? { toolCalls } : {}),
+        ...(gateway !== undefined ? { gateway } : {}),
         rawResponse: body,
       };
     },

@@ -23,7 +23,7 @@ import {
   type SelectedRoute,
   type UsageRecord,
 } from "../plan/plan.js";
-import { mergePolicy, type PolicySpec } from "../policy/policy.js";
+import { mergePolicy, type GatewayMetadataValue, type PolicySpec } from "../policy/policy.js";
 import { packageArtifactsForProvider } from "../providers/packaging.js";
 import type {
   ProviderAdapter,
@@ -138,6 +138,85 @@ interface BuiltPlan {
   readonly toolResults: readonly ToolCallResult[];
   readonly mergedPolicy?: PolicySpec;
   readonly sessionRecord?: SessionRecord;
+}
+
+function gatewayMetadataForRoute(
+  route: SelectedRoute,
+  policy: PolicySpec["gateway"] | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const sanitizedPolicy = sanitizeGatewayPolicyForEvents(policy);
+
+  return {
+    providerId: route.providerId,
+    selectedProviderId: route.providerId,
+    requestedModel: route.modelId,
+    ...(sanitizedPolicy !== undefined ? { policy: sanitizedPolicy } : {}),
+  };
+}
+
+function sanitizeGatewayPolicyForEvents(
+  policy: PolicySpec["gateway"] | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const metadata = sanitizeGatewayMetadataForEvents(policy.metadata);
+
+  return {
+    ...(policy.routeTags !== undefined && policy.routeTags.length > 0
+      ? { routeTags: [...policy.routeTags] }
+      : {}),
+    ...(policy.providerPreferences !== undefined && policy.providerPreferences.length > 0
+      ? { providerPreferences: [...policy.providerPreferences] }
+      : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    ...(policy.allowFallbacks !== undefined ? { allowFallbacks: policy.allowFallbacks } : {}),
+  };
+}
+
+function sanitizeGatewayMetadataForEvents(
+  metadata: Record<string, GatewayMetadataValue> | undefined,
+): Record<string, unknown> | undefined {
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  const sanitized = Object.fromEntries(
+    Object.entries(metadata).flatMap(([key, value]) => {
+      if (isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(value)) {
+        return [];
+      }
+
+      return [[key, value]];
+    }),
+  );
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
+function isSecretGatewayMetadataKey(key: string): boolean {
+  return /api[-_]?key|authorization|headers?|secret|token|password/iu.test(key);
+}
+
+function containsSecretGatewayMetadataValue(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /^sk-[\w-]+/u.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(containsSecretGatewayMetadataValue);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).some(([key, nested]) => (
+      isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(nested)
+    ));
+  }
+
+  return false;
 }
 
 export function createAI(config: LatticeConfig = {}): AI {
@@ -318,6 +397,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       providerPackaging: attemptPackaging.plan,
       packagedArtifacts: attemptPackaging.packagedArtifacts,
     };
+    const gatewayMetadata = gatewayMetadataForRoute(route, built.mergedPolicy?.gateway);
 
     try {
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
@@ -325,7 +405,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: plan.id,
         providerId: route.providerId,
         modelId: route.modelId,
-        metadata: { status: "started", fallback: index > 0 },
+        metadata: {
+          status: "started",
+          fallback: index > 0,
+          ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
+        },
       }));
       await intent.overrides?.hooks?.beforeProviderCall?.({ plan, request });
 
@@ -344,6 +428,17 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
       const response = await adapter.execute(request);
       await intent.overrides?.hooks?.afterProviderCall?.({ plan, response });
+      await emitEvent(normalized, events, createRunEvent("provider.attempt", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: {
+          status: "succeeded",
+          fallback: index > 0,
+          ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+        },
+      }));
 
       const completedAt = new Date().toISOString();
       const validation = await validateOutputMap(intent.outputs, response.rawOutputs, plan);
@@ -353,6 +448,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         startedAt,
         completedAt,
         response.usage,
+        response.gateway !== undefined ? { gateway: response.gateway } : undefined,
       );
 
       if (!validation.ok) {
@@ -691,6 +787,9 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
     ...(route.selected !== undefined ? { route: route.selected } : {}),
     ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
   });
+  const gatewayMetadata = route.selected !== undefined
+    ? gatewayMetadataForRoute(route.selected, mergedPolicy?.gateway)
+    : undefined;
   let plan = createExecutionPlan({
     task: intent.task,
     artifacts: artifacts.map(toArtifactRef),
@@ -706,6 +805,7 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
       ...(summaryRefs.length > 0
         ? { summaryArtifactIds: summaryRefs.map((summary) => summary.id) }
         : {}),
+      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
     },
   });
   plan = withPlanStatus(plan, plan.status, {
@@ -766,6 +866,7 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
       selected: route.selected?.modelId,
       rejected: route.rejected.length,
       fallbacks: route.fallbackChain.length,
+      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
     },
   }));
 
@@ -831,6 +932,7 @@ function attemptSucceeded(
   startedAt: string,
   completedAt: string,
   usage?: UsageRecord,
+  metadata?: Record<string, unknown>,
 ): ProviderAttemptRecord {
   return {
     providerId,
@@ -839,6 +941,7 @@ function attemptSucceeded(
     startedAt,
     completedAt,
     ...(usage !== undefined ? { usage } : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
   };
 }
 
