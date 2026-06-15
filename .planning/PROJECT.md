@@ -73,19 +73,28 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 v1.3 is active. Phases 24, 25, 26, 27, 28, and 33-37 are complete. Next step is Phase 38: receipt v1.2 schema plus `modelClass` tag, including authoring the `RECEIPT12` REQ-IDs before implementation. Stable `1.3.0` publish remains deferred until canary validation and Phases 38-39 complete.
 
-**Deferred to v1.4** (carryforward themes still outside the expanded v1.3 scope):
+**v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opens only after v1.3 canary validation (Phases 30–32) closes:
 
-- Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
+*Provider breadth + capability-catalog maintenance* — lean on gateway delegation (LiteLLM / OpenRouter) and auto-refresh the capability catalog from feeds so coverage stops being a hand-maintained tax.
+- OpenRouter multi-model routing / fallback array.
+
+*Live / streaming multimodal* — close the gap vs ADK (Gemini Live) and OpenAI realtime.
+- Streaming for the 5 new Phase 17 provider adapters (Anthropic / Gemini / xAI / OpenRouter / LM Studio).
+- Anthropic / Gemini multimodal request shaping.
+
+*Eval + observability surface* — richer eval tooling and export INTO existing platforms (Langfuse / Phoenix) rather than reinventing dashboards.
+- OpenTelemetry exporter for `RunEventKind`.
 - `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel.
+
+*Also carried (theme-agnostic):*
+- Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
 - Multi-scenario agent-loop showcase (tripwire / stall / budget-exceeded variants).
 - KMS adapter shapes for `ReceiptSigner`.
 - Lineage merkle root signed inside receipts.
 - `lattice receipt diff` subcommand.
-- OpenTelemetry exporter for `RunEventKind`.
-- Streaming for the 5 new Phase 17 provider adapters (Anthropic / Gemini / xAI / OpenRouter / LM Studio).
-- OpenRouter multi-model routing / fallback array.
 - LM Studio latency-tail diagnostics module.
-- Anthropic / Gemini multimodal request shaping.
+
+*Considered and dropped:* a managed / hosted deploy runtime ("one-command hosting" à la ADK→Vertex, Strands→AgentCore). Conflicts with the standing "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; a lightweight deploy-adapter framing (`lattice serve`, serverless wrappers, Dockerfile) is parked for possible future pickup but is not v1.4 scope.
 
 ### v1.1-to-v1.2 carryforward outcomes (closed)
 
@@ -153,6 +162,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | Validated by npm rc.0 provenance attestations for both packages. |
 | v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | Pending: Phases 30-32. |
 | Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | Pending: Phase 31. |
+| v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closes the three library-native competitive gaps from the June 2026 analysis. A managed/hosted runtime conflicts with the "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; lightweight deploy adapters parked. | Pending — v1.4 opens after canary 30–32 closes v1.3. |
 
 ## Evolution
 
@@ -172,4 +182,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 — Phase 37 (Tool-Call Validation Layer) UAT complete*
+*Last updated: 2026-06-15 — v1.4 scope confirmed (provider breadth, live multimodal, eval + observability); managed deploy-runtime theme dropped; v1.3 canary (Phases 30–32) to close first.*
