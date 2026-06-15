@@ -90,7 +90,11 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 3. Execution plans and run events distinguish Lattice-selected provider/model from gateway-internal routing hints.
 4. Fake-fetch tests cover LiteLLM-style base URLs, headers, request bodies, error taxonomy, and usage normalization.
 
-**Plans**: TBD
+**Plans**:
+
+- **Wave 1:** `41-01` — Gateway policy + LiteLLM provider helper.
+- **Wave 2** *(blocked on Wave 1 completion)*: `41-02` — Runtime route/event accounting.
+- **Wave 3** *(blocked on Waves 1-2 completion)*: `41-03` — Public surface, provider parity, and release hygiene closure.
 
 ### Phase 42: OpenRouter Fallback + Capability Catalog Refresh
 
