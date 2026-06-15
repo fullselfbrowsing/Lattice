@@ -1,12 +1,24 @@
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const binPath = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+
+function stripAnsi(text: string): string {
+  return text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function runBin(args: readonly string[]): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync(process.execPath, [binPath, ...args], {
     encoding: "utf8",
+    env: { ...process.env, NO_COLOR: "1" },
     timeout: 10_000,
   });
   return {
@@ -19,10 +31,13 @@ function runBin(args: readonly string[]): { status: number | null; stdout: strin
 describe("lattice CLI bin smoke test", () => {
   it("prints help and exits 0 for --help", () => {
     const { status, stdout } = runBin(["--help"]);
+    const help = stripAnsi(stdout);
     expect(status).toBe(0);
-    expect(stdout).toMatch(/repro/);
-    expect(stdout).toMatch(/verify/);
-    expect(stdout).toMatch(/eval/);
+    expect(help).toMatch(/repro/);
+    expect(help).toMatch(/verify/);
+    expect(help).toMatch(/eval/);
+    expect(help).toMatch(new RegExp(`\\(lattice v${escapeRegExp(pkg.version)}\\)`));
+    expect(help).not.toContain("v0.0.0");
   });
 
   // Plan 11-03 replaced the repro stub with the real handler. Calling repro
