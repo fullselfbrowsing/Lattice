@@ -1,1 +1,4 @@
-export const latticeCliVersion = "0.0.0";
+// AUTO-GENERATED FILE - DO NOT EDIT.
+// Source: package.json version field.
+// Regenerate with this package's stamp:version script.
+export const latticeCliVersion = "1.3.0";

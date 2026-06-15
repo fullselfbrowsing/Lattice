@@ -35,8 +35,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "stamp:version": "node ../../scripts/stamp-package-version.mjs --package package.json --out src/version.ts --export latticeCliVersion",
+    "build": "pnpm stamp:version && tsdown",
+    "typecheck": "pnpm stamp:version && tsc -p tsconfig.json --noEmit",
     "test": "pnpm build && vitest run",
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
   },

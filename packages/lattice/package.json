@@ -32,10 +32,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:types": "vitest --typecheck --run && tsd",
+    "stamp:version": "node ../../scripts/stamp-package-version.mjs --package package.json --out src/version.ts --export latticeVersion",
+    "build": "pnpm stamp:version && tsdown",
+    "typecheck": "pnpm stamp:version && tsc -p tsconfig.json --noEmit",
+    "test": "pnpm stamp:version && vitest run",
+    "test:types": "pnpm stamp:version && vitest --typecheck --run && tsd",
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only && node ./scripts/check-cli-deps.mjs"
   },
   "tsd": {
