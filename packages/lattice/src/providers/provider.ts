@@ -111,6 +111,13 @@ export interface ProviderRunRequest {
   readonly cacheSystemPrefix?: string;
 }
 
+export interface ProviderGatewayMetadata {
+  readonly used: boolean;
+  readonly requestedModel?: string;
+  readonly observedModel?: string;
+  readonly policy?: Record<string, unknown>;
+}
+
 export interface ProviderRunResponse {
   readonly rawOutputs: Record<string, unknown>;
   readonly artifactRefs?: readonly (ArtifactInput | ArtifactRef)[];
@@ -129,6 +136,7 @@ export interface ProviderRunResponse {
    */
   readonly normalizedUsage?: Usage;
   readonly toolCalls?: readonly ValidatedToolCall[];
+  readonly gateway?: ProviderGatewayMetadata;
   readonly rawResponse?: unknown;
 }
 

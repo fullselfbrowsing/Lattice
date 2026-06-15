@@ -133,6 +133,7 @@ export interface ProviderAttemptRecord {
   readonly completedAt?: string;
   readonly error?: string;
   readonly usage?: UsageRecord;
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface UsageRecord {
