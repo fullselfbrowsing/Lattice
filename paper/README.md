@@ -4,9 +4,11 @@ This directory contains a submission-ready IEEE-conference LaTeX paper about
 Lattice: a capability-first TypeScript runtime whose every multimodal model run
 emits a signed, canonical, replayable capability receipt.
 
-- Title: Capability Receipts: Verifiable and Reproducible Multimodal Model
-  Orchestration
-- Author: Lakshman Turlapati, Full Self Browsing
+- Title: Lattice: Capability Receipts for Verifiable and Reproducible Multimodal
+  Model Orchestration
+- Author: Venkat Lakshman Turlapati (preferred name: Lakshman Turlapati), Full Self
+  Browsing
+- Email: lakshmanturlapati@gmail.com
 - Document class: `\documentclass[conference]{IEEEtran}`
 
 ## Files
@@ -18,13 +20,16 @@ emits a signed, canonical, replayable capability receipt.
 
 ## Requirements
 
-You need a TeX distribution that provides `latexmk`, `pdflatex`, `bibtex`, and the
-`IEEEtran` document class. `IEEEtran.cls` ships with standard TeX distributions
-(TeX Live, MiKTeX), so it does not need to be vendored into this directory.
+You need a TeX distribution that provides `latexmk`, `pdflatex`, `bibtex`, the
+`IEEEtran` document class, the `newtx` Times fonts, and `tikz` with `pgfplots`. All of
+these ship with standard TeX distributions (TeX Live, MiKTeX), so nothing needs to be
+vendored into this directory.
 
-- macOS: install MacTeX or BasicTeX, then `tlmgr install latexmk ieeetran`.
-- Debian or Ubuntu: `sudo apt-get install texlive-latex-recommended texlive-publishers latexmk`.
-- Windows: install MiKTeX, which fetches `IEEEtran` on first use.
+- macOS: install MacTeX (recommended, complete) or BasicTeX, then
+  `tlmgr install latexmk ieeetran newtx pgfplots`.
+- Debian or Ubuntu: `sudo apt-get install texlive-latex-recommended texlive-publishers texlive-fonts-extra texlive-pictures texlive-science latexmk`.
+- Windows: install MiKTeX, which fetches missing packages on first use.
+- Single binary alternative: `tectonic main.tex` (auto-fetches every package it needs).
 
 ## Build
 

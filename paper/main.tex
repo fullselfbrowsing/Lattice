@@ -4,25 +4,39 @@
 % --- Packages -------------------------------------------------------------
 \usepackage{cite}
 \usepackage{amsmath}
-\usepackage{amssymb}
+\usepackage{newtxtext}   % Times text, the professional IEEE look
+\usepackage{newtxmath}   % matching Times math (loaded after amsmath)
 \usepackage{array}
 \usepackage{booktabs}
 \usepackage{url}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
 \usepackage[hidelinks]{hyperref}
 
-% IEEEtran prefers no extra vertical hacks. Keep the preamble small so the
-% document compiles on a stock TeX Live or MiKTeX installation.
+% TikZ styles shared by the figures.
+\tikzset{
+  lbox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+               text width=17mm, minimum height=9mm, inner sep=2pt, fill=blue!5},
+  iobox/.style={lbox, fill=black!8},
+  cbox/.style={lbox, fill=green!8},
+  stepbox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+               text width=58mm, minimum height=6mm, inner sep=3pt, fill=blue!5},
+  flow/.style={-{Latex[length=2mm]}, semithick},
+}
 
 \newcommand{\code}[1]{\texttt{\small #1}}
 
 \begin{document}
 
-\title{Capability Receipts: Verifiable and Reproducible\\ Multimodal Model Orchestration}
+\title{Lattice: Capability Receipts for Verifiable and\\ Reproducible Multimodal Model Orchestration}
 
-\author{\IEEEauthorblockN{Lakshman Turlapati}
+\author{\IEEEauthorblockN{Venkat Lakshman Turlapati}
 \IEEEauthorblockA{Full Self Browsing\\
-Email: lakshman@infinitechoice.com}}
+Preferred name: Lakshman Turlapati\\
+Email: lakshmanturlapati@gmail.com}}
 
 \maketitle
 
@@ -242,6 +256,33 @@ travels with the run rather than a record locked inside a service.
 % --- Design ---------------------------------------------------------------
 \section{Design}
 
+Figure~\ref{fig:arch} shows the end to end run lifecycle that produces and then
+consumes a capability receipt. The subsections that follow walk through each stage.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[node distance=6mm and 7mm]
+  \node[iobox] (intent) {Run intent\\ task, artifacts,\\ outputs, policy,\\ contract};
+  \node[lbox, right=of intent] (router) {Deterministic\\ router};
+  \node[lbox, right=of router] (exec) {Execution\\ pipeline\\ (nine stages)};
+  \node[lbox, right=of exec] (trip) {Tripwire\\ (terminal)};
+  \node[lbox, right=of trip] (rcpt) {Capability\\ receipt\\ \tiny redact, JCS,\\ \tiny PAE, Ed25519};
+  \node[cbox, above right=2mm and 8mm of rcpt] (verify) {verify\\ public key};
+  \node[cbox, below right=2mm and 8mm of rcpt] (repro) {repro /\\ replay};
+  \draw[flow] (intent) -- (router);
+  \draw[flow] (router) -- (exec);
+  \draw[flow] (exec) -- (trip);
+  \draw[flow] (trip) -- (rcpt);
+  \draw[flow] (rcpt.east) -- (verify.west);
+  \draw[flow] (rcpt.east) -- (repro.west);
+\end{tikzpicture}
+\caption{The Lattice run lifecycle. A run intent is routed by a deterministic and
+inspectable function, executed through a nine stage pipeline, checked by terminal
+output invariants, and committed to a signed capability receipt. The receipt is later
+consumed by offline verification and by content addressed reproduction.}
+\label{fig:arch}
+\end{figure*}
+
 \subsection{The capability-first run model}
 
 A run is described by a small intent: a \code{task} string, a set of \code{artifacts}
@@ -329,19 +370,19 @@ guideline.
 
 \begin{figure}[t]
 \centering
-\footnotesize
-\begin{tabular}{@{}r l@{}}
-\toprule
-Step & Operation \\
-\midrule
-1 & assemble raw receipt body \\
-2 & redact body (record \code{redactions[]}, policy id) \\
-3 & canonicalize redacted body (RFC 8785 JCS) \\
-4 & base64 encode canonical bytes as payload \\
-5 & build DSSE pre authentication encoding \\
-6 & sign pre authentication encoding with Ed25519 \\
-\bottomrule
-\end{tabular}
+\begin{tikzpicture}[node distance=4mm]
+  \node[stepbox] (s1) {1. assemble raw receipt body};
+  \node[stepbox, below=of s1] (s2) {2. redact body (record \code{redactions[]}, policy id)};
+  \node[stepbox, below=of s2] (s3) {3. canonicalize redacted body (RFC 8785 JCS)};
+  \node[stepbox, below=of s3] (s4) {4. base64 encode canonical bytes as payload};
+  \node[stepbox, below=of s4] (s5) {5. build DSSE pre authentication encoding (PAE)};
+  \node[stepbox, below=of s5, fill=blue!10] (s6) {6. sign the PAE with Ed25519};
+  \draw[flow] (s1) -- (s2);
+  \draw[flow] (s2) -- (s3);
+  \draw[flow] (s3) -- (s4);
+  \draw[flow] (s4) -- (s5);
+  \draw[flow] (s5) -- (s6);
+\end{tikzpicture}
 \caption{The receipt construction pipeline. Canonicalization is only ever applied to
 the output of redaction, so signing unredacted bytes is structurally impossible.}
 \label{fig:pipeline}
@@ -399,7 +440,7 @@ check that the \code{kid} inside the body matches the key entry.
 \caption{The seven \code{verifyReceipt} error kinds.}
 \label{tab:verify}
 \scriptsize
-\begin{tabular}{@{}l p{0.50\columnwidth}@{}}
+\begin{tabular}{@{}l p{0.47\columnwidth}@{}}
 \toprule
 Error kind & Fires when \\
 \midrule
@@ -444,7 +485,7 @@ by a test that fails the build when the property is violated.
 \toprule
 Guarantee & Mechanism & Enforcement \\
 \midrule
-Deterministic routing & pure \code{routeDeterministically} & recorded decision, no I/O or randomness \\
+Deterministic routing & a pure routing function & recorded decision, no I/O or randomness \\
 Terminal invariants & \code{isTerminal} consulted by fallback & fallback never retries a terminal error \\
 Redact then sign & canonicalize only on redaction output & ordering is structurally unrepresentable otherwise \\
 Verifiable replay & verify before load & loader call count is zero on verify failure; output hash round trip \\
@@ -565,7 +606,35 @@ that fails the build when the property does not hold, rather than by measuring l
 or model output quality, which depend on providers outside our trust boundary. The
 suite contains 960 automated test cases across 82 test files, with 816 in the core
 package and 144 in the command line package, and it runs under a standard TypeScript
-test runner.
+test runner. Figure~\ref{fig:tests} shows the distribution by package.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  width=\columnwidth, height=44mm,
+  bar width=14mm,
+  ymin=0, ymax=900,
+  ylabel={test cases},
+  ylabel near ticks,
+  symbolic x coords={core package, CLI package},
+  xtick=data,
+  nodes near coords,
+  every node near coord/.append style={font=\scriptsize},
+  xticklabel style={font=\scriptsize},
+  yticklabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  enlarge x limits=0.5,
+]
+\addplot[draw=blue!60!black, fill=blue!30] coordinates {(core package,816) (CLI package,144)};
+\end{axis}
+\end{tikzpicture}
+\caption{Automated test cases by package. The suite totals 960 cases across 82 files,
+816 in the core package and 144 in the command line package, and it encodes the
+paper's guarantees as executable obligations.}
+\label{fig:tests}
+\end{figure}
 
 We organize the evaluation around the four guarantees.
 
