@@ -1,4 +1,5 @@
 import type { UsageRecord } from "../plan/plan.js";
+import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import type { OpenAIQuirks, OpenAICompatQuirks } from "./quirks.js";
@@ -27,6 +28,7 @@ export interface OpenAICompatibleProviderOptions {
   readonly model: string;
   readonly baseUrl: string;
   readonly apiKey?: string;
+  readonly gateway?: GatewayPolicy;
   readonly fetch?: typeof fetch;
   /**
    * Phase 7 addition: caller-supplied per-1k pricing. When provided, the
@@ -91,6 +93,177 @@ export interface SdkLikeProviderOptions {
   }) => Promise<ProviderRunResponse> | ProviderRunResponse;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isGatewayMetadataValue);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every(isGatewayMetadataValue);
+  }
+
+  return false;
+}
+
+function isSecretMetadataKey(key: string): boolean {
+  return /api[-_]?key|authorization|headers?|secret|token|password/iu.test(key);
+}
+
+function isSecretMetadataValue(value: GatewayMetadataValue): boolean {
+  if (typeof value === "string") {
+    return /^sk-[\w-]+/u.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(isSecretMetadataValue);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).some(([key, nested]) => (
+      isSecretMetadataKey(key) || isSecretMetadataValue(nested)
+    ));
+  }
+
+  return false;
+}
+
+function sanitizeGatewayMetadata(
+  metadata: Record<string, GatewayMetadataValue> | undefined,
+): Record<string, GatewayMetadataValue> | undefined {
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  const sanitized = Object.fromEntries(
+    Object.entries(metadata).filter(([key, value]) => (
+      !isSecretMetadataKey(key) && !isSecretMetadataValue(value)
+    )),
+  );
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
+function normalizeGatewayPolicy(value: unknown): GatewayPolicy {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const routeTags = Array.isArray(value.routeTags)
+    ? value.routeTags.filter((tag): tag is string => typeof tag === "string")
+    : undefined;
+  const providerPreferences = Array.isArray(value.providerPreferences)
+    ? value.providerPreferences.filter((provider): provider is string => typeof provider === "string")
+    : undefined;
+  const gatewayMetadata: Record<string, GatewayMetadataValue> = {};
+  if (isRecord(value.metadata)) {
+    for (const [key, metadataValue] of Object.entries(value.metadata)) {
+      if (isGatewayMetadataValue(metadataValue)) {
+        gatewayMetadata[key] = metadataValue;
+      }
+    }
+  }
+  const metadata = Object.keys(gatewayMetadata).length > 0
+    ? sanitizeGatewayMetadata(gatewayMetadata)
+    : undefined;
+  const allowFallbacks = typeof value.allowFallbacks === "boolean"
+    ? value.allowFallbacks
+    : undefined;
+
+  return {
+    ...(routeTags !== undefined ? { routeTags } : {}),
+    ...(providerPreferences !== undefined ? { providerPreferences } : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    ...(allowFallbacks !== undefined ? { allowFallbacks } : {}),
+  };
+}
+
+function readGatewayPolicy(policy: unknown): GatewayPolicy | undefined {
+  if (!isRecord(policy) || !isRecord(policy.gateway)) {
+    return undefined;
+  }
+
+  return normalizeGatewayPolicy(policy.gateway);
+}
+
+function mergeGatewayPolicy(
+  providerGateway: GatewayPolicy | undefined,
+  requestGateway: GatewayPolicy | undefined,
+): GatewayPolicy | undefined {
+  if (providerGateway === undefined && requestGateway === undefined) {
+    return undefined;
+  }
+
+  const providerMetadata = sanitizeGatewayMetadata(providerGateway?.metadata);
+  const requestMetadata = sanitizeGatewayMetadata(requestGateway?.metadata);
+  const metadata = {
+    ...(providerMetadata ?? {}),
+    ...(requestMetadata ?? {}),
+  };
+
+  return {
+    routeTags: [
+      ...(providerGateway?.routeTags ?? []),
+      ...(requestGateway?.routeTags ?? []),
+    ],
+    providerPreferences: [
+      ...(providerGateway?.providerPreferences ?? []),
+      ...(requestGateway?.providerPreferences ?? []),
+    ],
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+    ...(requestGateway?.allowFallbacks !== undefined
+      ? { allowFallbacks: requestGateway.allowFallbacks }
+      : providerGateway?.allowFallbacks !== undefined
+        ? { allowFallbacks: providerGateway.allowFallbacks }
+        : {}),
+  };
+}
+
+function gatewayPolicyToMetadata(
+  policy: GatewayPolicy | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const metadata: Record<string, unknown> = {
+    ...(sanitizeGatewayMetadata(policy.metadata) ?? {}),
+  };
+  const latticeGateway: Record<string, unknown> = {};
+
+  if (policy.routeTags !== undefined && policy.routeTags.length > 0) {
+    latticeGateway.route_tags = [...policy.routeTags];
+  }
+  if (policy.providerPreferences !== undefined && policy.providerPreferences.length > 0) {
+    latticeGateway.provider_preferences = [...policy.providerPreferences];
+  }
+  if (policy.allowFallbacks !== undefined) {
+    latticeGateway.allow_fallbacks = policy.allowFallbacks;
+  }
+  if (Object.keys(latticeGateway).length > 0) {
+    metadata.lattice_gateway = latticeGateway;
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+function observedModelFromResponse(body: unknown): string | undefined {
+  if (!isRecord(body)) {
+    return undefined;
+  }
+  const model = body.model;
+
+  return typeof model === "string" ? model : undefined;
+}
+
 /**
  * Phase 34 — D-04 / QUIRK-02 — OpenAI-compatible provider factory.
  *
@@ -151,6 +324,11 @@ export function createOpenAICompatibleProvider(
       },
     ],
     async execute(request) {
+      const mergedGatewayPolicy = mergeGatewayPolicy(
+        options.gateway,
+        readGatewayPolicy(request.policy),
+      );
+      const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -159,6 +337,7 @@ export function createOpenAICompatibleProvider(
         },
         body: JSON.stringify({
           model: options.model,
+          ...(metadata !== undefined ? { metadata } : {}),
           messages: [
             {
               role: "user",
@@ -220,8 +399,10 @@ export function createOpenAICompatibleProvider(
 
       const body = await response.json() as {
         choices?: readonly { message?: { content?: unknown } }[];
+        model?: unknown;
         usage?: unknown;
       };
+      observedModelFromResponse(body);
       const text = String(body.choices?.[0]?.message?.content ?? "");
       const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {

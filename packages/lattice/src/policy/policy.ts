@@ -1,3 +1,18 @@
+export type GatewayMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly GatewayMetadataValue[]
+  | { readonly [key: string]: GatewayMetadataValue };
+
+export interface GatewayPolicy {
+  readonly routeTags?: readonly string[];
+  readonly providerPreferences?: readonly string[];
+  readonly metadata?: Record<string, GatewayMetadataValue>;
+  readonly allowFallbacks?: boolean;
+}
+
 export interface PolicySpec {
   readonly maxCostUsd?: number;
   readonly latency?: "interactive" | "batch";
@@ -7,6 +22,7 @@ export interface PolicySpec {
   readonly noUpload?: boolean;
   readonly noPublicUrl?: boolean;
   readonly noLogging?: boolean;
+  readonly gateway?: GatewayPolicy;
   readonly metadata?: Record<string, unknown>;
 }
 
