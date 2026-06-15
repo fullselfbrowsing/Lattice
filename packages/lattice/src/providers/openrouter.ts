@@ -23,10 +23,6 @@ import { createRunEvent } from "../tracing/tracing.js";
  *
  * DEFERRED (D-17 carryforward; Phase 4 ships the named adapter as a
  * first-class OpenAI-compat wrapper):
- *   - model-routing array  -- caller supplies `model` (single id); OpenRouter's
- *                             `models: [primary, fallback, ...]` array
- *                             feature is deferred to a follow-on phase.
- *   - fallback-array       -- deferred (same phase as model-routing).
  *   - per-message routing  -- deferred.
  *   - streaming            -- deferred (single-shot per CONTEXT.md D-06).
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter).
@@ -388,11 +384,28 @@ export function createOpenRouterProvider(
     void options.runEventSink(event);
   }
 
+  const executeFetch: typeof fetch = fallbackModels === undefined
+    ? fetchImpl
+    : (async (url, init) => {
+        if (typeof init?.body !== "string") {
+          return fetchImpl(url, init);
+        }
+        const body = JSON.parse(init.body) as Record<string, unknown>;
+        return fetchImpl(url, {
+          ...init,
+          body: JSON.stringify({
+            ...body,
+            models: [...fallbackModels],
+          }),
+        });
+      }) as typeof fetch;
+
   // Create the underlying OpenAI-compat execute() adapter for chat completions
   const baseAdapter = createOpenAICompatibleProvider({
     ...options,
     id: options.id ?? "openrouter",
     baseUrl,
+    fetch: executeFetch,
   });
 
   return {
