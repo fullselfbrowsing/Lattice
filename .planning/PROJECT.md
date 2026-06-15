@@ -14,7 +14,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
-**v1.4 active** — Provider Breadth + Live Multimodal + Observability Export. Phase 40 is complete: package version stamping, root public-surface inventory, packed-artifact version checks, and core dependency boundary gates are in place. Phase 41 is next: Gateway Delegation — LiteLLM + Gateway Policy.
+**v1.4 active** — Provider Breadth + Live Multimodal + Observability Export. Phases 40 and 41 are complete: package version stamping/public-surface guardrails are in place, and the first gateway delegation surface ships through `createLiteLLMProvider` plus typed gateway policy metadata. Phase 42 is next: OpenRouter fallback + capability catalog refresh.
 
 ## Current Milestone: v1.4 Provider Breadth + Live Multimodal + Observability Export
 
@@ -29,7 +29,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded, and the first FSB published-package validation run passed 426 / 426 checks with `modelClass` signed-body coverage.
 - **Theme considered and dropped:** a managed / hosted deploy runtime (conflicts with the standing "Hosted control plane — Out of Scope" decision); a lightweight deploy-adapter framing is parked for possible future pickup.
 - **Research-first:** per-theme implementation-pattern research precedes requirements.
-- Requirements and roadmap authored by `/gsd-new-milestone`; phase numbering continues from v1.3. Phase 40 completed the package identity and public-surface guardrails before new v1.4 APIs begin in Phase 41.
+- Requirements and roadmap authored by `/gsd-new-milestone`; phase numbering continues from v1.3. Phase 40 completed the package identity and public-surface guardrails before new v1.4 APIs, and Phase 41 delivered the first gateway delegation API without weakening deterministic route accounting.
 
 ## Shipped Milestones
 
@@ -63,10 +63,11 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] v1.3 Model-aware SDK (Phases 33-37): capability registry seeded from the OpenRouter feed (~337 profiles) + static supplements (CAPS); adapter quirk flags + capability negotiation with live `/models` + registry fallback (QUIRK/NEG); deterministic prompt scaffolds (SCAFF); opt-in output sanitizers (SANITIZE) + returned tool-call validators (VALID) across all 7 adapters, default v1.2 behavior unchanged. — v1.3
 - [x] v1.3 Receipt v1.2 + multi-agent crew (Phases 38-39): receipt schema `lattice-receipt/v1.2` with optional signed `modelClass` + downgrade defense (RECEIPT12); opt-in delegation surface — `defineAgent`/`runAgentCrew`, CrewDispatcher, crew budgets, prompt-cache-prefix sharing, rate-limit groups, `parentReceiptCid` chained receipts, `examples/agent-crew/` (DELEG). — v1.3
 - [x] v1.4 Phase 40 package hygiene: `latticeVersion` and CLI banner are stamped from package-local manifests, root value exports are exact-inventory guarded, package-entrypoint `tsd` remains the type-only export path, packed tarballs verify version surfaces, and CI/release block optional v1.4 integrations from leaking into the core runtime package. (PKG-01..03)
+- [x] v1.4 Phase 41 gateway delegation: `createLiteLLMProvider` delegates to the OpenAI-compatible provider path, typed `GatewayPolicy` carries gateway hints/metadata, plans and run events preserve the Lattice-selected route separately from gateway observations, and public-surface/type/parity/package gates cover the new API. (GATE-01..03)
 
 ### Active
 
-v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is active** — 44 requirements are mapped to Phases 40-49 in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`. Initial FSB-via-npm dogfood validation is complete. Phase 40 closed the remaining low-severity version-stamping bug and installed package/public-surface guardrails; Phase 41 is ready for planning.
+v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is active** — 44 requirements are mapped to Phases 40-49 in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`. Initial FSB-via-npm dogfood validation is complete. Phase 40 closed the remaining low-severity version-stamping bug and installed package/public-surface guardrails; Phase 41 shipped LiteLLM gateway delegation and typed gateway policy accounting; Phase 42 is ready for planning.
 
 **v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opened after v1.3 canary validation was superseded by FSB-via-npm dogfooding:
 
@@ -179,4 +180,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 — Phase 40 complete; v1.4 package guardrails installed.*
+*Last updated: 2026-06-15 — Phase 41 complete; LiteLLM gateway delegation and typed gateway policy accounting installed.*
