@@ -62,6 +62,7 @@ Each task was committed atomically:
 1. **Task 1: Add packed artifact version-surface smoke** - `5f8362d` (test)
 2. **Task 2: Add core runtime optional-dependency boundary scan** - `4134430` (test)
 3. **Task 3: Wire new package gates into CI, release, and final full suite** - `ad9e7ae` (ci)
+4. **Review fix: Catch forbidden subpath imports** - `c7ab52e` (fix)
 
 ## Files Created/Modified
 
@@ -88,10 +89,18 @@ Each task was committed atomically:
 - **Verification:** `pnpm -r build && node scripts/check-package-version-surfaces.mjs` passed.
 - **Committed in:** `5f8362d`
 
+**2. [Rule 2 - Missing Critical] Extended forbidden import scan to package subpaths**
+- **Found during:** Code review gate
+- **Issue:** The first boundary regex matched exact package specifiers like `openai` but not subpath imports like `openai/resources`.
+- **Fix:** Updated `importPattern()` to match the forbidden package root and any slash-delimited subpath.
+- **Files modified:** `scripts/check-core-package-boundary.mjs`
+- **Verification:** `pnpm --filter @full-self-browsing/lattice build && node scripts/check-core-package-boundary.mjs`, followed by the full Phase 40 gate, passed.
+- **Committed in:** `c7ab52e`
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 blocking local-pack smoke issue)
-**Impact on plan:** The smoke still validates the packed files and packed manifests; the dependency link only supplies the install-time dependencies a real consumer would have.
+**Total deviations:** 2 auto-fixed (1 blocking local-pack smoke issue, 1 missing critical boundary-scan gap)
+**Impact on plan:** The smoke still validates the packed files and packed manifests; the dependency link only supplies the install-time dependencies a real consumer would have. The boundary scan now covers exact package imports and forbidden subpath imports.
 
 ## Issues Encountered
 
@@ -103,7 +112,7 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-Final full gate passed:
+Final full gate passed after the code-review hardening fix:
 
 - `pnpm -r build`
 - `pnpm -r typecheck`
