@@ -144,3 +144,16 @@ export interface LmStudioQuirks extends AdapterQuirks {
   readonly customChatTemplateRiskFlag: boolean;
   readonly noAuthRequired: boolean;
 }
+
+/**
+ * LiteLLM adapter quirks (extends AdapterQuirks with gateway-specific flags).
+ *
+ * LiteLLM is consumed as an OpenAI-compatible gateway. Lattice does not start,
+ * embed, or depend on a LiteLLM gateway process; these flags describe the
+ * helper's supported gateway metadata contract over HTTP.
+ */
+export interface LiteLLMQuirks extends AdapterQuirks {
+  readonly gatewayMetadataSupported: boolean;
+  readonly gatewayFallbacksSupported: boolean;
+  readonly openAIErrorMapping: boolean;
+}

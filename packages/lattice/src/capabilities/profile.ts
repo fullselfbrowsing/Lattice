@@ -10,7 +10,7 @@
 // queried at run construction time but answer orthogonal questions.
 
 /**
- * Closed enum of the 7 Lattice transport adapters (D-06). Adding a new
+ * Closed enum of the 8 Lattice transport adapters (D-06). Adding a new
  * adapter is a typed breaking change. Phase 34 quirk dispatch reads this
  * field.
  */
@@ -21,7 +21,8 @@ export type CapabilityAdapter =
   | "openai-compat"
   | "xai"
   | "gemini"
-  | "lm-studio";
+  | "lm-studio"
+  | "litellm";
 
 /**
  * Runtime list of the closed `CapabilityAdapter` union. MUST stay in sync with
@@ -37,11 +38,12 @@ export const CAPABILITY_ADAPTERS: readonly CapabilityAdapter[] = [
   "xai",
   "gemini",
   "lm-studio",
+  "litellm",
 ] as const;
 
 /**
  * Runtime type guard for the closed `CapabilityAdapter` union (IN-04). Returns
- * true iff `id` is one of the 7 first-party adapter identifiers. Consumers passing
+ * true iff `id` is one of the 8 first-party adapter identifiers. Consumers passing
  * a third-party adapter id (e.g., `"openrouter-prod"` typo) get `false` and the
  * caller can route to the graceful-degradation empty-stub path without performing
  * a registry lookup that would silently miss.
