@@ -4,11 +4,10 @@ This directory contains a submission-ready IEEE-conference LaTeX paper about
 Lattice: a capability-first TypeScript runtime whose every multimodal model run
 emits a signed, canonical, replayable capability receipt.
 
-- Title: Lattice: Capability Receipts for Verifiable and Reproducible Multimodal
-  Model Orchestration
-- Author: Venkat Lakshman Turlapati (preferred name: Lakshman Turlapati), Full Self
-  Browsing
+- Title: Lattice: Signed, Replayable Capability Receipts for Model Runs
+- Author: Lakshman Turlapati, Full Self Browsing
 - Email: lakshmanturlapati@gmail.com
+- Code: https://github.com/fullselfbrowsing/Lattice
 - Document class: `\documentclass[conference]{IEEEtran}`
 
 ## Files
