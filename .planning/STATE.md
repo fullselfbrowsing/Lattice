@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: executing
+status: Awaiting next milestone
 stopped_at: Phase 30 ready - canary bootstrap next
-last_updated: "2026-06-11T21:12:48Z"
-last_activity: 2026-06-11 -- Phase 29 stable v1.3.0 publish completed; npm provenance and GitHub Release proof captured
+last_updated: "2026-06-15T07:55:49.222Z"
+last_activity: 2026-06-15 — Milestone v1.3 completed and archived
 progress:
   total_phases: 16
-  completed_phases: 13
+  completed_phases: 10
   total_plans: 42
-  completed_plans: 42
-  percent: 81
+  completed_plans: 44
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-09)
 
 ## Current Position
 
-Phase: 30 (Canary Bootstrap + Layer 1 Fake-Provider Suite) — READY
-Plan: not yet planned/executed
-Status: READY - stable v1.3.0 is published with npm provenance and GitHub Release proof; canary bootstrap is unblocked
-Last activity: 2026-06-11 -- Phase 29 stable publish closed with postpublish proof and release-note extractor repair
-
-Progress: [████████░░] 81% (13/16 v1.3 phases complete; 3 phases remaining)
+Phase: Milestone v1.3 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-15 — Milestone v1.3 completed and archived
 
 ## Performance Metrics
 
@@ -67,15 +65,23 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 30: Canary repo bootstrap should run against exact stable `1.3.0` from npm, not workspace symlinks.
-- Phase 32: Cross-repo dispatch and milestone audit remain last; verify all 87 REQ-IDs once the missing groups are authored and implemented.
+- None carried forward. The Phase 30/32 canary todos were superseded at v1.3 close — FSB-via-npm dogfooding replaces the synthetic canary. v1.4 todos will be authored during milestone planning.
 
 ### Blockers/Concerns
 
-- Canary repo work is not present in this repository's branches. Validate the separate `fullselfbrowsing/lattice-canary` repo before marking Phases 30-32 complete.
-- The v1.3.0 publish workflow run `27376721154` failed after `Publish to npm with provenance` succeeded because release-note extraction only matched bracketed changelog headings. Do not rerun the publish workflow; both npm packages are already published. GitHub Release `v1.3.0` was repaired manually, and `scripts/extract-release-notes.mjs` now accepts both `## 1.3.0` and `## [1.2.0]` headings.
-- Real-provider integration tests need API key secrets configured in the canary repo. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` to be set before nightly cron arms.
-- First stable publish is complete. Future release risk is now cross-repo canary dispatch and milestone audit.
+- None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession — FSB-via-npm dogfooding replaces the synthetic canary. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
+- Residual (tracked for v1.4): packaging-integrity validation of the published tarball now relies on FSB's npm consumption rather than an isolated, exhaustive canary; an unused public export could regress silently. Revisit a thin packaging canary if FSB coverage proves insufficient.
+
+## Deferred Items
+
+Acknowledged and deferred at v1.3 milestone close on 2026-06-15:
+
+| Category | Item | Status |
+|----------|------|--------|
+| quick_task | 260422-gle-create-lattice-readme-matching-existing- | missing (stale index entry) |
+| quick_task | 260609-ewo-clean-planning-state-after-v1-3-code-reg | missing (stale index entry) |
+
+The Phase-25 partial human-UAT and one verification gap moved into `milestones/v1.3-phases/` with the archive and are documented in `milestones/v1.3-MILESTONE-AUDIT.md`.
 
 ## Quick Tasks Completed
 
@@ -101,3 +107,7 @@ Recent decisions affecting current work:
 Last session: 2026-06-11T21:12:48Z
 Stopped at: Phase 30 ready - canary bootstrap next
 Resume file: .planning/ROADMAP.md (Phase 30 section; Phase 30 artifacts not generated yet)
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

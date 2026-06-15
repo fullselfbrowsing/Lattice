@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface (Shipped: 2026-06-15)
+
+**Phases completed:** 13 phases, 42 plans, 80 tasks
+
+**Delivered:** Lattice's first public npm release under `@full-self-browsing/*`, plus a model-aware SDK upgrade and a first-class opt-in multi-agent crew surface.
+
+**Key accomplishments:**
+
+- **Public release infrastructure (Phases 24–29):** scope rename to `@full-self-browsing/*`, release-hygiene docs + receipt-downgrade defense, PR-time `ci.yml` + tag-driven `release.yml`, and npm org + OIDC Trusted Publisher. `@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0` published with SLSA provenance attestations and GitHub Release `v1.3.0`.
+- **Model capability registry (Phase 33):** `ModelCapabilityProfile` + 6 closed string-literal unions on the public surface; `getCapabilityProfile` / `findCapabilityProfile`; a build-time generator seeding ~337 profiles from the OpenRouter feed plus 4 static supplements, with a weekly drift-check workflow.
+- **Adapter quirks + capability negotiation (Phase 34):** `AdapterQuirks` base + 7 narrowed sub-interfaces, and `negotiateCapabilities` with live `/models` + registry fallback, TTL cache, and single-flight coalescing.
+- **Prompt scaffolds (Phase 35):** deterministic, version-pinned structured-output and tool-use contract fragments per prompt strategy; the open-weight scaffold prevents internal-envelope leaks.
+- **Opt-in adapter hardening (Phases 36–37):** `sanitizeOutput` and `validateToolCalls` across all 7 adapters with all-seven parity tests; default v1.2 behavior unchanged.
+- **Receipt v1.2 (Phase 38):** schema bump to `lattice-receipt/v1.2` with optional signed `modelClass`, downgrade defenses preserved, registry-derived issuance for known models.
+- **Multi-agent crew surface (Phase 39):** `defineAgent` / `runAgentCrew`, CrewDispatcher chokepoint, crew budgets, prompt-cache-prefix sharing, a rate-limit-group primitive, `parentReceiptCid` chained receipts, and the `examples/agent-crew/` showcase — all additive, single-agent behavior bit-for-bit unchanged (834/834 tests).
+
+**Coverage:** 64 / 87 REQ-IDs shipped. **23 canary REQ-IDs (Phases 30–32) were superseded** — the dedicated synthetic `fullselfbrowsing/lattice-canary` repo was descoped in favor of dogfooding the published package through FSB-via-npm. See `milestones/v1.3-MILESTONE-AUDIT.md`.
+
+---
+
 ## v1.2 FSB Integration + Agent Capability (Shipped: 2026-05-31)
 
 **Phases completed:** 9 phases, 25 plans, 46 REQ-IDs WIRED end-to-end
