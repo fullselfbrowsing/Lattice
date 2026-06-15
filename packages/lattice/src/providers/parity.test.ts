@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createAnthropicProvider } from "./anthropic.js";
 import { createGeminiProvider } from "./gemini.js";
+import { createLiteLLMProvider } from "./litellm.js";
 import { createLmStudioProvider } from "./lm-studio.js";
 import { createOpenRouterProvider } from "./openrouter.js";
 import { createXaiProvider } from "./xai.js";
@@ -17,13 +18,13 @@ import type { ValidateToolCallsOption } from "../tools/tool-call-validation.js";
 import type { ProviderAdapter } from "./provider.js";
 
 /**
- * Phase 4 -- INV-03 provider-parity smoke. Iterates all 7 logical providers
+ * Phase 4 -- INV-03 provider-parity smoke. Iterates all first-party logical providers
  * against provider-shaped fake fetch responses; asserts each adapter returns
  * a ProviderRunResponse with rawOutputs populated, normalizedUsage shape,
  * AbortSignal wiring, distinct provider ids, and consistent non-OK error
  * behavior.
  *
- * INV-03 ("every improvement works equally across all 7 universal-provider.js
+ * INV-03 ("every improvement works equally across all first-party universal-provider.js
  * targets") is the hard gate for this milestone; this file is the substantive
  * proof. The 5 newly-shipped adapters (Anthropic + Gemini + xAI + OpenRouter
  * + LM Studio) are exercised alongside the pre-existing OpenAI + OpenAI-compat
@@ -177,10 +178,22 @@ const PROVIDERS: readonly ProviderRow[] = [
         fetch,
       }),
   },
+  {
+    logicalName: "LiteLLM",
+    expectedId: "litellm",
+    fakeBody: OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createLiteLLMProvider({
+        model: "gpt-4o",
+        apiKey: "sk-litellm-test",
+        fetch,
+      }),
+  },
 ];
 
 describe("INV-03 provider-parity smoke (Phase 4)", () => {
-  it("Test 1 (INV-03): all 7 logical providers expose ProviderAdapter shape", () => {
+  it("Test 1 (INV-03): all first-party logical providers expose ProviderAdapter shape", () => {
     for (const row of PROVIDERS) {
       const { fetch } = makeFakeFetchCapturing(row.fakeBody);
       const adapter = row.build({ fetch });
@@ -265,7 +278,7 @@ describe("INV-03 provider-parity smoke (Phase 4)", () => {
     }
   });
 
-  it("Test 7 (CD-02 covered): all 7 adapters claim distinct ids", () => {
+  it("Test 7 (CD-02 covered): all first-party adapters claim distinct ids", () => {
     const ids = new Set<string>();
     for (const row of PROVIDERS) {
       const { fetch } = makeFakeFetchCapturing(row.fakeBody);
@@ -273,7 +286,7 @@ describe("INV-03 provider-parity smoke (Phase 4)", () => {
       expect(ids.has(adapter.id), `${row.logicalName}: id "${adapter.id}" not collision`).toBe(false);
       ids.add(adapter.id);
     }
-    expect(ids.size).toBe(7);
+    expect(ids.size).toBe(PROVIDERS.length);
   });
 });
 
@@ -391,10 +404,23 @@ const SANITIZER_PROVIDERS: readonly ProviderRow[] = [
         sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
       }),
   },
+  {
+    logicalName: "LiteLLM",
+    expectedId: "litellm",
+    fakeBody: SANITIZER_OPENAI_COMPAT_BODY,
+    errorPattern: /OpenAI-compatible provider failed with/,
+    build: ({ fetch }) =>
+      createLiteLLMProvider({
+        model: "gpt-4o",
+        apiKey: "sk-litellm-test",
+        fetch,
+        sanitizeOutput: unwrapInternalEnvelope({ field: "summary" }),
+      }),
+  },
 ];
 
 describe("Phase 36 output sanitizer parity", () => {
-  it("all seven providers unwrap the session_1780792387779 internal envelope for every requested output", async () => {
+  it("all first-party providers unwrap the session_1780792387779 internal envelope for every requested output", async () => {
     const seenIds: string[] = [];
 
     for (const row of SANITIZER_PROVIDERS) {
@@ -420,6 +446,7 @@ describe("Phase 36 output sanitizer parity", () => {
       "xai",
       "openrouter",
       "lm-studio",
+      "litellm",
     ]);
   });
 });
@@ -517,6 +544,17 @@ const VALIDATION_PROVIDERS: readonly ValidationProviderRow[] = [
         validateToolCalls,
       }),
   },
+  {
+    logicalName: "LiteLLM",
+    expectedId: "litellm",
+    build: ({ fetch, validateToolCalls }) =>
+      createLiteLLMProvider({
+        model: "gpt-4o",
+        apiKey: "sk-litellm-test",
+        fetch,
+        validateToolCalls,
+      }),
+  },
 ];
 
 function validationBodyForProvider(providerId: string, text: string): unknown {
@@ -545,7 +583,7 @@ function validationBodyForProvider(providerId: string, text: string): unknown {
 }
 
 describe("Phase 37 tool-call validation parity", () => {
-  it("all seven providers return validated toolCalls for valid prompt-encoded envelopes", async () => {
+  it("all first-party providers return validated toolCalls for valid prompt-encoded envelopes", async () => {
     for (const row of VALIDATION_PROVIDERS) {
       const { fetch } = makeFakeFetchCapturing(
         validationBodyForProvider(row.expectedId, VALID_TOOL_ENVELOPE),
@@ -569,7 +607,7 @@ describe("Phase 37 tool-call validation parity", () => {
     }
   });
 
-  it("all seven providers drop invalid returned tool calls when configured", async () => {
+  it("all first-party providers drop invalid returned tool calls when configured", async () => {
     for (const row of VALIDATION_PROVIDERS) {
       const { fetch } = makeFakeFetchCapturing(
         validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
@@ -592,7 +630,7 @@ describe("Phase 37 tool-call validation parity", () => {
     }
   });
 
-  it("all seven providers throw for hallucinated tool names when configured", async () => {
+  it("all first-party providers throw for hallucinated tool names when configured", async () => {
     for (const row of VALIDATION_PROVIDERS) {
       const { fetch } = makeFakeFetchCapturing(
         validationBodyForProvider(row.expectedId, INVALID_TOOL_ENVELOPE),
