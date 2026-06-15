@@ -291,7 +291,7 @@ export {
   negotiateCapabilities,
   synthesizeNegotiatedCapabilitiesFromRegistry,
 } from "./capabilities/index.js";
-// Phase 34 — AdapterQuirks base + 7 per-adapter narrowed sub-interfaces (D-03)
+// Phase 34 — AdapterQuirks base + per-adapter narrowed sub-interfaces (D-03)
 export type {
   AdapterQuirks,
   AnthropicQuirks,

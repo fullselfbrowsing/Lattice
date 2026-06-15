@@ -26,9 +26,8 @@ import type { ProviderAdapter } from "./provider.js";
  *
  * INV-03 ("every improvement works equally across all first-party universal-provider.js
  * targets") is the hard gate for this milestone; this file is the substantive
- * proof. The 5 newly-shipped adapters (Anthropic + Gemini + xAI + OpenRouter
- * + LM Studio) are exercised alongside the pre-existing OpenAI + OpenAI-compat
- * factories.
+ * proof. All first-party adapters are exercised through the same behavior
+ * matrix.
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-12: INV-03 parity smoke).
  */

@@ -139,7 +139,7 @@ export interface ModelCapabilityProfile {
   /**
    * The Lattice transport adapter that ships this profile (D-05 /
    * D-06). Phase 34 adapter-quirk dispatch reads this field. Closed
-   * union of 7 values.
+   * union of 8 values.
    */
   readonly adapter: CapabilityAdapter;
   /**
