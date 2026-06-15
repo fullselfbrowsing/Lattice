@@ -1,355 +1,190 @@
 # Feature Research
 
-**Domain:** TypeScript SDK — first public npm release + external canary consumer (Lattice v1.3)
-**Researched:** 2026-06-03
-**Confidence:** HIGH for areas 1, 4, 5, 6 (verified against npm docs, GitHub Changelog, and inspectable open-source repos); MEDIUM for areas 2, 3 (verified against multiple OSS examples but cost-control details vary per project).
+**Domain:** TypeScript SDK capability runtime — v1.4 Provider Breadth + Live Multimodal + Eval/Observability
+**Researched:** 2026-06-15
+**Confidence:** HIGH for gateway delegation and OTel export (verified against official docs + multiple credible sources); MEDIUM for realtime/Live API (official docs clear but TypeScript-specific surface thin); MEDIUM for eval/agent CLI extension (existing surface inspected, downstream pattern research verified)
 
-> Scope note: v1.0/1.1/1.2 features are already shipped. This file ONLY covers v1.3's six new areas (npm publish polish, canary consumer, real-provider tests, provenance, OIDC UX, GitHub Release object). All complexity estimates are in focused engineering days (1 day = ~6 hours of uninterrupted work by a senior TS engineer who already knows the codebase).
-
----
-
-## Feature Landscape
-
-The six v1.3 areas naturally cluster into three groups:
-
-- **A. Package hygiene & publish flow** (areas 1 + 4 + 5 + 6) — what ships and how
-- **B. Canary consumer** (area 2) — separate repo that proves the publish worked
-- **C. Real-provider integration** (area 3) — nightly cost-bounded smoke tests
-
-Each area below is broken into Table Stakes / Differentiators / Anti-Features.
+> Scope note: v1.0–v1.3 features are shipped and treated as given. This file covers ONLY the three v1.4 themes. The existing surface that v1.4 extends is: 7 `ProviderAdapter` implementations (openai, openai-compat, anthropic, gemini, xai, openrouter, lm-studio), a `RunEventKind` tracing union (20 literals including step.transition, recovery.*, capabilities.negotiation.fallback), a `lattice eval` command with baseline-relative cost/quality gating, and `evalAgentRun` kernel. No feature below recreates any of these.
 
 ---
 
-### Area 1 — npm Publish Flow: First Public Release Polish
+## Theme 1 — Provider Breadth + Capability-Catalog Maintenance
 
-#### Table Stakes (every comparable library does these)
+### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| `license` field in every publishable `package.json` (currently missing — flagged in PROJECT.md) | npm UI shows "No license" warning otherwise; some consumer scanners (Snyk, npm audit, FOSSA) gate on this | LOW (~0.25 day) | MIT root LICENSE already present; just add `"license": "MIT"` to `packages/lattice/package.json` and `packages/lattice-cli/package.json`. Must precede first publish. |
-| `repository` / `bugs` / `homepage` fields | Required for npm provenance validation (see Area 4); also drives "Repository" sidebar link on npmjs.com | LOW (~0.25 day) | `repository.type: "git"`, `repository.url: "git+https://github.com/fullselfbrowsing/lattice.git"`, `repository.directory: "packages/lattice"` for the monorepo subpath. Vercel AI SDK and `@openai/agents-core` both use this pattern. |
-| README badges (npm version, license, CI status, types) | Signal of liveness and quality at a glance; ~all 2026-era TS libs do this | LOW (~0.5 day) | Shields.io is canonical: `npm version`, `npm downloads`, `license`, `CI status`, `bundle size` (bundlephobia or packagephobia). AI SDK README shows version + downloads + discord; tRPC shows version + types + license. |
-| `CHANGELOG.md` per publishable package via changesets | Consumers expect chronological "what changed" file; changesets already in repo (PROJECT.md confirms) | LOW (~0.5 day for first scaffolding, then automatic) | Mastra ([deepwiki](https://deepwiki.com/mastra-ai/mastra/12.4-dependency-management-with-renovate)) and `vercel/ai` ([CHANGELOG.md](https://github.com/vercel/ai/blob/main/CHANGELOG.md)) both run changesets in CI and let it write the changelog. One-time setup: `pnpm changeset init`, then `.changeset/config.json` with `access: "public"`. |
-| Semver from 1.0.0+, public scope access flag | Default `npm publish` on a scoped package publishes private; need explicit `--access public` once (or `publishConfig.access: "public"` in `package.json`) | LOW (~0.1 day, easy to forget) | Anti-feature trap: forgetting this means first publish fails with `402 Payment Required`. Set `"publishConfig": {"access": "public", "provenance": true}` in each publishable `package.json`. |
-| Working `types` / `exports` map, validated by `publint` + `arethetypeswrong` (both already in repo per PROJECT.md) | Modern bundlers (Vite, esbuild, Bun) all check `exports`; consumers paying attention will run `attw` themselves | LOW (~0.5 day to verify clean output across both packages) | Just run them in CI on PR; fail the build if either reports an error. Drizzle, Hono, AI SDK all do this. |
-| `CONTRIBUTING.md` + `SECURITY.md` | GitHub renders both in the repo sidebar; security researchers expect SECURITY.md for disclosure | LOW (~0.5 day total) | SECURITY.md must include contact (email or GitHub security advisory) and supported-versions table. PROJECT.md already calls these out. |
-| Pinned Node engine field | Avoids confusing failures on Node 18; lattice already requires Node 24 WebCrypto Ed25519 | LOW (~0.1 day) | `"engines": {"node": ">=24"}` in both packages. |
+| Streaming text responses across all 5 newer adapters (Anthropic, Gemini, xAI, OpenRouter, LM Studio) | Every comparable SDK (Vercel AI SDK, LangChain, LiteLLM) surfaces streaming as the default; synchronous is the edge case | MEDIUM (per-adapter SSE/stream parsing, uniform `AsyncIterable<string>` contract) | Anthropic uses SSE with `message_start → content_block_start → content_block_delta (text_delta) → content_block_stop → message_stop` events. Gemini `generateContentStream` returns an async iterable over chunks. The existing openai-compat adapter already handles SSE; the newer adapters need equivalent wiring. Each partial-token event must not emit a new `RunEvent` — only `stage.start` and `stage.complete` bracket the stream. |
+| Cross-provider streaming contract: `AsyncIterable<string>` from `ProviderAdapter.run()` | Without a uniform return, callers cannot consume partial tokens regardless of provider | LOW (type contract + iterator adapter) | The minimal contract: `{ stream: AsyncIterable<string>, usage: Promise<Usage> }` where `usage` resolves when the stream drains. This isolates streaming from replay / receipt signing (both need the full output). Lattice can buffer the stream internally for receipt generation while passing the live iterator to the caller. |
+| OpenRouter multi-model fallback array (`models: [...]`) passed through to the OpenRouter adapter | OpenRouter natively supports passing a `models` array in priority order; fallback fires on context-length errors, moderation flags, rate limits, or downtime | LOW (additive option on existing `createOpenRouterProvider`) | The existing OpenRouter adapter sends to `/api/v1/chat/completions`. Adding a `fallbackModels?: string[]` option that serializes as `models: [primary, ...fallbackModels]` in the request body requires no new HTTP plumbing. The response includes a `model` field indicating which model was actually used; this should surface in the `RunEvent.modelId` for the `stage.complete` event so receipts accurately reflect the resolved model. |
+| LiteLLM gateway delegation: treat a LiteLLM proxy as an `openai-compat` target with routing config passthrough | Developers already running LiteLLM want to point Lattice at it; LiteLLM exposes `/v1/chat/completions` exactly like OpenAI | LOW (documentation + optional `liteLLMHeaders` on existing openai-compat) | LiteLLM's proxy accepts `x-litellm-tags`, `x-litellm-routing-strategy` as headers and any OpenAI-compatible body. The existing `createOpenAICompatibleProvider` handles this without code changes; what's needed is (a) a `createLiteLLMProvider` factory that pre-configures sensible defaults and (b) documentation. No new transport code. |
+| Auto-refresh capability catalog from the OpenRouter `/api/v1/models` feed | The current catalog (~337 static profiles) ages; the OpenRouter feed includes `context_length`, `pricing`, `input_modalities`, `output_modalities`, and `supported_parameters` per model | MEDIUM (scheduled fetch, JSON normalization, delta merge into registry) | The OpenRouter GET `/api/v1/models` response includes per-model: `id`, `context_length`, `pricing.prompt`, `pricing.completion`, `pricing.image`, `architecture.input_modalities`, `architecture.output_modalities`, `supported_parameters[]`. A TTL-based refresh (configurable, default 24h) that merges new profiles into `registry.generated.ts` at build time (or optionally at runtime) closes the hand-maintenance tax. Build-time code-gen is safer than runtime mutation of the registry. |
 
-#### Differentiators (stand out, not required)
+### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| `keywords` curated for npm search | Drives discoverability; AI SDK lists `ai`, `agents`, `openai`, `anthropic`; Lattice should claim `capability-runtime`, `signed-receipts`, `replay`, `tripwire` to define a unique semantic space | LOW (~0.25 day) | Differentiator because most first-release packages forget this; 5-12 well-chosen keywords meaningfully improves rank. |
-| README "Why this vs X" comparison table | Differentiates Lattice from Vercel AI SDK / LangChain / OpenAI Agents SDK upfront; PROJECT.md already has the comparison thesis | MEDIUM (~1 day to write well) | Mastra README does this. Critical for category-creating libraries because the obvious question is "isn't this just X?". |
-| 60-second "quickstart" runnable copy-paste block in README | First impression — does it work in under a minute? | LOW (~0.5 day) | `npx create-something` is the gold standard but overkill for v1.3; a 6-line `ai.run()` snippet exercising fake provider + receipt is enough. |
-| `package.json` `funding` field | Free signal; renders on npm UI as a "Sponsor" link | LOW (~0.1 day) | Even pointing at the GitHub repo's `.github/FUNDING.yml` is meaningful. Skip if no sponsorship strategy. |
-| Inline TSDoc on every public export driving the IDE hover | Lattice's whole pitch is "inspectable runtime" — IDE hover documentation reinforces that promise. Hono and tRPC are exemplary here. | MEDIUM (~1-2 days to audit and backfill) | Differentiator because most TS SDKs ship with empty hover docs; competitive with `@openai/agents` and AI SDK. |
-| `.npmignore` or `files` allowlist tuned tight | Smaller tarball = faster installs; shows engineering care. `files: ["dist", "README.md", "LICENSE"]` is the modern pattern (Hono, Drizzle, AI SDK all do this). | LOW (~0.25 day) | Default `npm publish` ships test files, source maps, internal scratch — bad first impression. |
+| Receipt accurately records the resolved model when OpenRouter fallback fires | Lattice's signed-receipt thesis: every run is verifiable. If the fallback chain resolves to `gryphe/mythomax-l2-13b` instead of `claude-3-5-sonnet`, the receipt must say so — not the primary model the caller requested | LOW (read `response.model` from OpenRouter response, write to receipt `modelId` + `modelClass`) | Ties directly to Lattice's core differentiator. Competitors (Vercel AI SDK, LiteLLM client) do not sign and record the resolved model. |
+| Provider routing params forwarded into the Lattice `policy` object (OpenRouter `provider.sort`, `provider.only`, `provider.max_price`) | Lattice's routing is deterministic and inspectable; surfacing gateway-level routing decisions in the `ExecutionPlan` makes "why did this go to provider X" answerable | MEDIUM (new `gatewayPolicy` field on `RunPolicy`, serialized into `provider` object per adapter) | This is additive to the existing contract system and does not break existing consumers. The capability router continues to pick the adapter; `gatewayPolicy` controls behavior inside the adapter's gateway. |
+| LM Studio latency-tail diagnostics module (flagged in v1.4 scope) | LM Studio is the primary local inference target; P95/P99 latency attribution for local models is invisible in standard monitoring | MEDIUM (rolling window stats on `provider.attempt` events, exposed as a `LatencyReport` on `RunResult.diagnostics`) | Uses existing `RunEventKind.provider.attempt` events. No new telemetry hook needed; purely additive aggregation. |
 
-#### Anti-Features (don't ship)
+### Anti-Features
 
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| Polished marketing site as part of v1.3 | "First impression matters" | Sinks weeks; PROJECT.md correctly defers anything beyond the publish. Vercel AI SDK ships docs alongside but they had a marketing team. | Defer. README + GitHub Pages on the existing showcase is enough. |
-| `private: false` on the root workspace package | Easy to flip blindly | The root is a workspace coordinator, not publishable. Publishing it leaks `.planning/`, internal scripts, and tests. | Keep root `package.json` `"private": true`; only `packages/lattice` and `packages/lattice-cli` flip to public. (Mastra root is private; only `@mastra/*` packages publish.) |
-| Hand-written CHANGELOG | "More personal" | Diverges from changesets; double-bookkeeping; humans forget. | Let changesets generate it, hand-edit only the top section (release notes) if needed before merging the version PR. |
-| Pre-1.0 version (e.g., `0.9.0`) for the first public release | Signals "still beta, expect breakage" | Lattice is already at internal v1.2 with 733 passing tests; semantic regression. Also: pre-1.0 changesets behave differently (no major bumps), which surprises maintainers later. | Ship as `1.3.0` per PROJECT.md ("Decisions" table). Matches internal versioning continuity. |
-| Publishing both packages from a single root version bump | "Simpler CI" | Couples cadence; if `lattice-cli` has a doc-only fix, lattice gets a useless version bump too. | Independent versioning via changesets (each changeset names which package). `@openai/agents-core` vs `@openai/agents-openai` ship on independent cadences. |
-| Adding badges that don't reflect reality (e.g., "100% test coverage" without coverage in CI) | Looks professional | Lying badge is worse than no badge; sophisticated consumers check | Only add badges backed by real data sources. |
-
-#### Dependencies / ordering
-
-- `license` + `repository` + `files` allowlist **must** land before first publish workflow runs (provenance refuses to attest without `repository`).
-- Scope rename to `@fullselfbrowsing/*` **must** precede CI publish workflow (workflow filename gets bound to scope in npm UI; see Area 5).
-- `publint` + `attw` **must** be green before publish workflow runs (gate them in the PR-time `ci.yml`).
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Building a provider gateway in Lattice | "One gateway to rule them all" — avoids needing LiteLLM / OpenRouter separately | Lattice is an SDK, not a proxy. A gateway requires auth management, rate-limit enforcement, billing, and a network hop — all platform concerns explicitly out of scope | Delegate to LiteLLM or OpenRouter gateway; Lattice wraps them via `openai-compat` |
+| Automatic runtime catalog refresh on every `ai.run()` call | "Always current models" | Adds network latency to every cold start; breaks determinism guarantees (router result can change between plan and execute); cache invalidation is hard | Build-time code-gen refresh (CI job PRs a new `registry.generated.ts`) or explicit `refreshCatalog()` call at app startup with configurable TTL |
+| Vendoring 100+ provider SDKs directly in Lattice | "Deep integration" | Install-size explosion; auth sprawl; every provider SDK upgrade is a Lattice release | Use openai-compat HTTP for all OpenAI-compatible providers; native SDKs only for Anthropic and Gemini which have non-compatible protocols |
 
 ---
 
-### Area 2 — Canary Consumer Pattern
+## Theme 2 — Live / Streaming Multimodal
 
-The PROJECT.md "Out of Scope" lines call this out exactly right: workspace-internal `examples/*` use pnpm symlinks and silently mask packaging bugs. The canary repo must `npm install @fullselfbrowsing/lattice@1.3.0` from the public registry.
-
-#### Table Stakes
+### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Separate public GitHub repo (`fullselfbrowsing/lattice-canary`) | Already decided in PROJECT.md; only way to prove publish actually works | LOW (~0.25 day to create + initialize) | Public so consumers can read it as a working example, like AI SDK's [`examples/` apps](https://github.com/vercel/ai/tree/main/examples) but in their own repo. |
-| Lockfile pinning the published version (not `workspace:*` or `file:..`) | Whole point of the canary — install path identical to a real user | LOW (~0.1 day) | `package.json` deps reference `^1.3.0` (or exact `1.3.0` for true canary determinism). Lockfile commits. |
-| Type-level smoke test (using already-installed `tsd`) | Validates `.d.ts` files actually shipped and resolve | LOW (~0.5 day) | `tsd` is already a v1.2 dependency. One `.test-d.ts` per public type — `createAI` signature, `ai.run` return type, `ai.runAgent` intent shape. tRPC examples use exactly this pattern. |
-| Runtime smoke test on every public export against fake providers | No API keys needed; catches "I exported X from the wrong barrel file" | LOW (~1 day) | Layer-1 in PROJECT.md. Use `createFakeProvider` (already shipped in v1.0). Covers receipt creation, replay, tripwire eval, agent loop. |
-| CI on the canary repo running on PR + nightly | Nothing useful without automation; nightly catches "publish was overwritten" | LOW (~0.5 day) | GitHub Actions workflow installs from registry, runs vitest, reports. |
-| Documented purpose in canary README | External readers will find this repo; they shouldn't think it's THE example | LOW (~0.25 day) | One paragraph: "This is the v1.3 release validation canary. For getting-started examples, see lattice/examples/*". |
+| Anthropic multimodal request shaping: image artifacts → `content[].image` blocks | Anthropic Messages API accepts `{ type: "image", source: { type: "base64", media_type, data } }` inside the `content` array; the current adapter likely handles text only | MEDIUM (artifact-type dispatch in the Anthropic adapter's request builder) | The Lattice artifact model already has `image` as a first-class type. What's missing is the translation from `Artifact<"image">` to the Anthropic `content.image` block shape. The adapter must handle both inline base64 and URL-referenced images (Anthropic supports `{ type: "url", url }` for HTTPS URLs). Tool-use streaming from Anthropic uses `input_json_delta` delta type — the streaming parser must handle both `text_delta` and `input_json_delta` in the same stream. |
+| Gemini multimodal request shaping: image/audio/video artifacts → `parts[]` | Gemini `generateContent` accepts `{ parts: [{ inlineData: { mimeType, data } }, { text: ... }] }`; without this, Gemini calls fail silently on image inputs | MEDIUM (artifact-type dispatch in the Gemini adapter's request builder) | The `@google/genai` TypeScript SDK (`googleapis/js-genai`) supports `generateContentStream` returning an async iterable. Multimodal parts must set `responseModalities` when requesting image outputs. The existing Gemini adapter covers text; this adds binary artifact plumbing. |
+| Streaming cross-provider delta contract: distinguish text token, tool-call input fragment, and end-of-stream | Without this distinction, callers cannot progressively render partial tool-call inputs or know when a stream is done vs paused | MEDIUM (typed delta union in the streaming return) | Recommended contract: `type StreamDelta = { type: "text"; text: string } \| { type: "tool_input_fragment"; toolName: string; partialJson: string } \| { type: "done"; usage: Usage }`. Anthropic already uses these semantics (text_delta vs input_json_delta). OpenAI uses `delta.content` vs `delta.tool_calls[].function.arguments`. Gemini uses `parts[].text` vs `functionCall`. A thin normalizer per adapter produces this common union. |
+| OpenAI Realtime API session management: WebSocket connection lifecycle | OpenAI Realtime uses WebSockets (server-to-server path) or WebRTC (browser path). Events: client sends `session.update`, `input_audio_buffer.append`, `response.create`; server sends `response.output_text.delta`, `response.output_audio.delta`, `response.output_audio_transcript.delta` | HIGH (new `RealtimeSession` surface, not a `ProviderAdapter.run()` call) | Realtime sessions are stateful and long-lived — fundamentally different from request/response. This requires a distinct `ai.realtimeSession()` entry point or a `RealtimeAdapter` seam. Audio encoding: PCM16 input and output. Tool calling is supported inside sessions. TypeScript SDK available via `openai` npm package. |
+| Gemini Live API session management: WebSocket connection lifecycle | Gemini Live uses WSS (stateful bidirectional). Input: raw 16-bit PCM 16kHz audio, JPEG images at ≤1FPS. Output: raw 16-bit PCM 24kHz audio + text transcript. Supports function calls within a session | HIGH (same fundamental shape as OpenAI Realtime — distinct from batch `generateContent`) | The `@google/genai` SDK supports Live API connections. Session model is stateful: connect → stream input → receive events → disconnect. Firebase AI SDK also supports it. Key difference from Anthropic/standard Gemini: no per-request receipt can be minted for a streaming session without explicit checkpointing. |
 
-#### Differentiators
+### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Verdaccio-based pre-publish dry-run **inside lattice CI** (separate from canary) | OpenAI Agents JS does this ([repo](https://github.com/openai/openai-agents-js)) — publish to local Verdaccio, install from it, run integration tests. Catches packaging bugs before public publish. | MEDIUM (~1-2 days) | Strong differentiator: failure mode "publish breaks but canary nightly catches it" becomes "publish CI fails before tag, no broken release goes out". Recommended even though canary exists. |
-| Matrix install across `npm`, `pnpm`, `yarn`, `bun` | Catches package-manager-specific resolution bugs (looking at you, `pnpm` strict mode) | MEDIUM (~1 day) | AI SDK runs this matrix. Lattice should at minimum cover `npm` + `pnpm` (FSB ecosystem default). |
-| Test against multiple Node versions (24 LTS + current) | Lattice requires Node 24 WebCrypto Ed25519; verify forward-compat | LOW (~0.25 day on top of matrix above) | `strategy.matrix.node: [24, 26]` in workflow. |
-| Failure paging via GitHub Issue auto-open on nightly failure | Closes the "nightly silently red for a week" loop | LOW (~0.5 day with `actions/github-script`) | PROJECT.md target features mention "failure paging" already. Stay GitHub-native; avoid PagerDuty integration in v1.3. |
-| Canary results posted as a status badge on the main lattice README | Public-facing trust signal — anyone visiting npm/GitHub sees "canary green" | LOW (~0.25 day) | Shields.io endpoint pointing at the canary's `release.yml` status. Worth it because PROJECT.md emphasizes the publish is the milestone. |
+| Lattice receipt checkpointing inside a realtime session | Lattice's signed-receipt model is per-run; a realtime session is unbounded. A `createSessionCheckpoint()` call at defined points (e.g., end of each utterance) mints a signed receipt for that segment, maintaining the verifiability thesis even for live audio/video | HIGH (session-segment receipt schema, PCM segment hashing, Ed25519 signing mid-stream) | This is the key differentiator vs Google ADK and OpenAI Realtime directly. ADK and OpenAI provide no cryptographic proof of what was said/heard. Each checkpoint receipt carries: session ID, segment start/end timestamps, audio hash, transcript hash, token usage for that segment, and a `parentReceiptCid` chaining to prior segments. |
+| Cross-provider streaming contract that preserves deterministic routing semantics | When streaming is active, the capability router still ran before the stream started. The `ExecutionPlan` with its chosen provider, fallback chain, and capability match is still recorded and signed | LOW (structural; streaming does not bypass the router) | Competitors streaming via Vercel AI SDK skip the routing plan entirely. Lattice's thesis is that even streaming runs are explainable. The `stage.start` event fires before the stream opens; `stage.complete` fires after the stream drains; receipts are minted from the buffered output. |
+| Streaming runs emit `RunEvent` at stream start and end, not per token | Prevents event-sink flooding on high-throughput streams | LOW (discipline in the streaming adapter wrapper) | The `RunEventSink` receives `stage.start` → stream tokens flow to caller's `AsyncIterable` → `stage.complete` with final usage. No per-token events. This keeps OTel span cardinality manageable. |
 
-#### Anti-Features
+### Anti-Features
 
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| `workspace:*` or `file:../lattice` dependency in canary | "Faster iteration during development" | Defeats the entire point. Symlinks bypass tarball semantics, `exports` map resolution, peer dependencies, `files` allowlist. | Hard rule: canary always pulls from registry. For pre-publish testing use Verdaccio (see Differentiators), not symlinks. |
-| Single huge canary monolith test file | "Just run everything" | When it fails, you can't tell which surface broke. Hard to gate "fake-providers passed, real-providers failed". | Split into `tests/fake/*.test.ts` (Layer 1) and `tests/real/*.test.ts` (Layer 2). Different CI jobs, different cost profiles. |
-| Canary tries to recreate the showcase | "Demonstrative" | Examples already exist in lattice/examples/agent-loop, work-inbox. Duplication. | Canary asserts behavior, not flow. It calls `ai.run`, asserts receipt validity, asserts replay round-trip — not "demo a multimodal work inbox". |
-| Canary owns its own changelog / release process | "Consistency" | Canary isn't published anywhere — it's a runner. Tags/releases on canary muddy the signal. | Canary's only artifacts are CI runs. No semver, no tags, no GitHub releases. |
-| Canary tests version-pin to `latest` dist-tag | "Always tests newest" | If a broken release ships, every canary run goes red until the next release; no way to reproduce a historical green state. | Pin to specific `1.3.x` version in `package.json`. Bump explicitly when validating a new release. Dependabot can auto-PR the bump. |
-
-#### Dependencies / ordering
-
-- Canary repo creation **depends on** the `@fullselfbrowsing` scope being claimed (Area 5) and first publish succeeding (Area 1).
-- Canary CI **depends on** publish workflow producing a real registry artifact (chicken-and-egg: first canary run only works after first publish lands).
-- Bootstrap order: (1) scope claim, (2) publish workflow + first release to npm, (3) create canary repo, (4) canary CI green, (5) put canary badge on main README.
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Per-token `RunEvent` emission during streaming | "Full observability" | Crushes the event sink with thousands of events per second; breaks OTel span budgets; destroys replay file size | `stage.start` and `stage.complete` bracket the stream; a single span covers the full provider call. Token text is in the receipt, not in individual events |
+| WebRTC support for realtime (browser-side audio capture) | "Lower latency in browser" | Lattice is a server-side SDK; WebRTC requires browser media APIs and SDP negotiation. This is a frontend concern | Use OpenAI WebRTC guide for browser clients; Lattice handles the server-to-server WebSocket path |
+| Building a custom realtime audio pipeline (VAD, echo cancellation, resampling) | "Full-stack audio" | Platform-sized scope; these are OS/driver/DSP concerns | Accept PCM input that the caller already prepared; document the expected format (16kHz PCM16 for OpenAI, 16kHz PCM16 for Gemini) |
+| Streaming responses bypassing the capability router | "Faster path" | Destroys the deterministic-routing thesis and the ability to sign what ran | All runs, streaming or realtime, go through the router. The router decides the provider before the socket opens. |
 
 ---
 
-### Area 3 — Real-Provider Integration Test Patterns (Layer 2 canary)
+## Theme 3 — Eval + Observability Export
 
-This is the highest-risk and most under-tooled v1.3 area. PROJECT.md correctly gates real-provider tests to nightly + manual dispatch only.
-
-#### Table Stakes
+### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Provider keys stored as GitHub repo secrets (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) | Required to call APIs at all | LOW (~0.25 day) | Per-provider keys, scoped to a dedicated "canary" budget account, not shared with production. |
-| Per-test cost ceiling using Lattice's own `CostTracker` (v1.2, AGENT-INFRA-01) | Lattice owns the primitive; eat your own dog food and bound spend | MEDIUM (~1 day) | PROJECT.md explicitly calls this out. Per-run budget set in workflow env (e.g., `LATTICE_CANARY_BUDGET_USD=1.50`); each test calls `ai.run({ contract: { budget: { maxUsd: 0.20 }}})`. |
-| `if-no-key` graceful skip | Forks / external contributors can't have your API keys; PR-time tests must not require them | LOW (~0.5 day) | Pattern from many OSS libs: `it.skipIf(!process.env.OPENAI_API_KEY)('exercises OpenAI', ...)`. Vitest has `it.skipIf` built-in. |
-| Trigger: `schedule.cron` (nightly) + `workflow_dispatch` (manual), never `pull_request` | Cost + flakiness; one bad night doesn't block contributors | LOW (~0.1 day) | `on: { schedule: [{cron: '0 6 * * *'}], workflow_dispatch: {} }`. PROJECT.md key decision. |
-| One provider per job (not all-in-one) | Per-provider rate limits + per-provider key gating | LOW (~0.5 day) | Matrix strategy `matrix.provider: [openai, anthropic, gemini]` with `if: secrets[matrix.provider_key]`. |
-| Concurrency group cancellation | Prevents 5 nightly runs piling up if one hangs | LOW (~0.1 day) | `concurrency: { group: canary-${{ matrix.provider }}, cancel-in-progress: true }`. |
+| OpenTelemetry exporter for `RunEventKind`: map each event to an OTel span or span event | OTel is the industry-standard substrate for distributed tracing; Langfuse, Phoenix, Datadog, and Jaeger all accept OTLP. Without an exporter, Lattice's `RunEventSink` is a closed system | MEDIUM (bridge from `RunEventSink` to OTel `Tracer.startSpan` / `span.addEvent`) | Recommended mapping: one root span per `ai.run()` call (`run.start` → `run.complete/run.failed`), child spans for each `stage.start` → `stage.complete` pair, span events for `router.candidates`, `fallback.activated`, `tool.call`, `validation.complete`, `validation.failed`, `capabilities.negotiation.fallback`. The `@opentelemetry/api` package is the only required dep (peer); the SDK-specific setup stays in the app. Key attributes: `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.finish_reasons`, `gen_ai.system` (provider name), `lattice.run_id`, `lattice.plan_id`. |
+| Langfuse OTLP ingestion: Lattice spans arrive at `/api/public/otel/v1/traces` | Langfuse accepts OTLP/HTTP (JSON and protobuf; gRPC not supported). Auth: Basic with `pk-lf-xxx:sk-lf-xxx` base64-encoded. It reads `gen_ai.request.model`, `gen_ai.usage.*`, `user.id`, `session.id` and maps them to its trace model | LOW (documentation + `createLangfuseOtelExporter` thin factory that sets the URL and auth header) | The OTel exporter (table stake above) does the hard work. Langfuse integration is a one-page guide + a factory function that configures `OTLPTraceExporter` pointed at the Langfuse endpoint with correct headers. No Langfuse SDK needed — standard OTLP. |
+| Arize Phoenix OTLP ingestion: Lattice spans arrive at Phoenix's OTLP endpoint | Phoenix accepts OTLP via the `@arizeai/phoenix-otel` npm package which registers a provider and re-exports `@arizeai/openinference-core` helpers. It uses OpenInference semantic conventions (similar to GenAI semconv) | LOW (documentation + `createPhoenixOtelExporter` factory) | Same pattern as Langfuse. Phoenix's npm package `@arizeai/phoenix-otel` simplifies provider registration. The key distinction: Phoenix uses OpenInference attribute names (e.g., `llm.token_count.prompt` alongside `gen_ai.usage.input_tokens`). The Lattice OTel bridge should emit both to maximize compatibility. |
+| `lattice eval --agent` CLI subcommand wrapping `evalAgentRun` | The existing `lattice eval` walks receipt fixtures and gates regression. `evalAgentRun` (v1.2 SHOWCASE-AGENT-02) evaluates iterations-to-goal and total cost for agent runs. Connecting them via CLI makes agent regression gating available in CI without custom scripts | MEDIUM (new `--agent` flag on existing `lattice eval`, or a separate `lattice eval agent` subcommand that invokes `evalAgentRun` with the same fixture/baseline/keyset infrastructure) | The existing `EvalConfig` and `EvalRunReport` types should extend to cover agent-specific metrics: `iterationsToGoal`, `stuckDetected`, `safetyVetoes`. The `EvalRunReport.tripwireOutcomes: readonly never[]` forward-compat slot (already in `types.ts`) expands here. |
+| `lattice receipt diff` subcommand | v1.4 scope item; allows comparing two receipts side-by-side — useful when debugging why a replay diverges | LOW (new citty subcommand under `lattice receipt`; reads two receipt files, outputs structured diff on `modelId`, `usage`, `outputHash`, `artifacts`) | Additive to existing CLI; no new runtime deps. |
 
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Cost summary posted as workflow summary (markdown table) | Operators see "last night cost $0.84 across 14 calls" without log-diving | LOW (~0.5 day) | Use Lattice's `CostTracker.summary()` → write to `$GITHUB_STEP_SUMMARY`. Strong differentiator — most OSS libs don't surface this. |
-| Provider-side abort on budget breach (Lattice's `CostTracker` is already budget-aware per AGENT-INFRA-01) | Cap is real, not aspirational. If a tool calls itself in a loop, test fails fast with `tripwire-violated` rather than burning $50. | MEDIUM (~0.5 day to wire) | Lattice already has this primitive — just enable it. |
-| Use cheapest competent model per provider (`gpt-5-nano`, `claude-haiku-4`, `gemini-flash-lite`) | Order-of-magnitude cost savings without changing API surface coverage | LOW (~0.5 day) | Cost ladder: nightly = cheapest, manual dispatch can override with `inputs.model`. Production OSS libs (LangChain test suite, AI SDK tests) follow this. |
-| **OpenAI Batch API for non-time-sensitive nightly runs** | 50% cost reduction on standard models (gpt-5.4 $2.50/$15 → $1.25/$7.50 per million tokens per the cost research). Lattice's deterministic-router design is compatible. | HIGH (~3-4 days; requires async polling in test harness) | Differentiator but complex — defer to v1.4 unless cost ceiling repeatedly trips. |
-| Per-iteration receipt verification asserted in the canary | Lattice's pitch is "every run is inspectable + verifiable"; canary should prove this on a real provider, not just a fake | LOW (~0.5 day) | Already implemented in `examples/agent-loop` — port the assertions. |
-| Replay-against-recording fallback when budget exhausted | If nightly hits cap, replay the last green run's receipts to verify the public surface still works | MEDIUM (~1 day) | Stretch goal; safety net so a hard budget cap doesn't mean "test suite goes red". |
-
-#### Anti-Features
-
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| Run real-provider tests on every PR | "Catch regressions early" | $$$ on fork PRs (which can't access secrets anyway); flaky on rate limits; can be exploited by a malicious PR. | Nightly + manual dispatch ONLY (PROJECT.md decision). PR-time uses fake providers (Layer 1). |
-| Single shared organization-wide OpenAI key | "Simpler" | One leak burns all rate limit; no per-canary spend attribution; key rotation requires updating everything. | Dedicated key per canary repo, scoped to a $50/month organization with hard cap (OpenAI org-level budget). |
-| Test against the most expensive model ("for realism") | "Production parity" | $2-15/M tokens × hundreds of nightly runs = real money | Cheapest competent model is the default. Manual dispatch can override for one-off pre-release validation. |
-| Re-running on flake automatically | "Reduces noise" | Doubles cost on every flake; hides legitimate provider regressions | One run, one result. Failures triage to a GitHub issue (Area 2 differentiator). Network-tier retry inside the SDK is fine; suite-level retry is not. |
-| Snapshot-test provider responses | "Deterministic" | LLM outputs vary; snapshots break weekly; misleading green/red | Use Lattice's `evalAgentRun` regression kernel (v1.2 SHOWCASE-AGENT-02) — semantic gates, not text equality. |
-| Long-running multi-turn agent loops in nightly (10+ iterations) | "Most realistic" | Highest cost; lowest signal density; one stuck loop wastes the budget | Cap iterations at 3-5 in canary tests. Multi-iteration is exercised in lattice's own examples, not canary. |
-
-#### Dependencies / ordering
-
-- Real-provider tests **depend on** Layer 1 (fake providers) being green first (no point testing OpenAI if the package's exports are broken).
-- Cost ceiling enforcement **depends on** `CostTracker` being part of the public `@fullselfbrowsing/lattice` export (already shipped v1.2).
-- Per-provider gating **depends on** GitHub Actions `secrets` being conditionally referenceable (use `if: ${{ secrets.OPENAI_API_KEY }}` pattern).
-
----
-
-### Area 4 — npm Provenance: Consumer Experience
-
-#### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Provenance attestation generated automatically by OIDC publish | Free supply-chain signal; appears as a badge on the npmjs.com package page next to the version number | LOW (already enabled by Trusted Publisher) | Confirmed in [npm docs](https://docs.npmjs.com/generating-provenance-statements/) — no `--provenance` flag needed when using Trusted Publisher in 2026. |
-| Attestation uploaded to Sigstore Rekor transparency log | Industry-standard tamper-evident log; what every modern provenance system uses | LOW (automatic) | Per [GitHub blog](https://github.blog/security/supply-chain-security/introducing-npm-package-provenance/) — automatic part of the publish action. |
-| Public repository required (private repos don't get provenance) | npm rule; `fullselfbrowsing/lattice` is already public | LOW (already true) | No action needed. |
-| Consumer can run `npm audit signatures` to verify | Discoverable verification path for security-conscious consumers | LOW (no action; works automatically) | npm CLI 9.5+ ships this. |
-
-#### Differentiators
+### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| README section explaining "how to verify Lattice's provenance" | Lattice already pitches signed receipts as its core value; provenance on the install path is a coherent story to tell | LOW (~0.5 day) | Cite `npm audit signatures` + Rekor lookup URL. Half a page. |
-| Cross-link from the npm provenance attestation to Lattice's receipt verification | "Both ends of the trust chain are inspectable" — install provenance + runtime receipts | LOW (~0.25 day) | Just a sentence and a link. Unique to libraries that ship signing primitives. |
-| `cosign verify` instructions for advanced consumers | Sigstore's `cosign` CLI can verify attestations directly ([Sigstore blog](https://blog.sigstore.dev/cosign-verify-bundles/)) | LOW (~0.25 day) | Stretch — most consumers will use `npm audit signatures`. |
+| Signed receipts as OTel span attributes | Competitors (Langfuse, Phoenix, LangSmith) export spans but cannot prove what ran. Lattice can attach the receipt CID and signature to the OTel span, making the span a verifiable pointer into the signed audit trail | LOW (add `lattice.receipt_cid` and `lattice.receipt_signature` as span attributes in the bridge) | This is uniquely Lattice. A Phoenix or Langfuse trace pointing at a Lattice receipt CID allows: (a) UI-side drill-down into the verifiable receipt, (b) offline `lattice verify` of any span in the trace. No other LLM observability SDK provides this. |
+| Lineage merkle root signed inside receipts (v1.4 scope item) | Multi-step runs accumulate artifact lineage graphs. A merkle root over all input/output artifact hashes, signed in the receipt, means a receipt verifier can prove the full provenance of derived artifacts | HIGH (merkle computation over `ArtifactLineage` graph, inclusion in receipt `body`, re-signed with existing Ed25519 infrastructure) | This extends the existing `ArtifactRef.fingerprint` and lineage tracking. Merkle root computation is pure crypto — no new dependencies. The receipt schema bumps to `lattice-receipt/v1.3`. |
+| KMS adapter shapes for `ReceiptSigner` (v1.4 scope item) | Current Ed25519 signing uses in-process key material. Production deployments want AWS KMS, GCP Cloud KMS, or HashiCorp Vault as the signing backend | MEDIUM (new `KmsReceiptSigner` interface that wraps the existing `ReceiptSigner` contract; implementations for AWS KMS and a generic PKCS#11-compatible interface) | The `ReceiptSigner` interface is already the extension point. KMS adapters are pure adapter implementations — no changes to receipt schema or verification. |
+| `lattice eval` baseline gates on agent-specific metrics (iterations, stuck detection) | Standard eval gates on cost and output quality. Agent-specific regression: did the agent take more iterations? Did it stall? These are not captured by output-hash comparison | MEDIUM (extend `BaselineEntry` with optional `agentMetrics: { iterationsToGoal, stuckCount, safetyVetoCount }` and add regression gates) | Ties to `evalAgentRun` which already computes these. The CI gate becomes: `max(actual_iterations / baseline_iterations) <= 1 + iterationsTolerance`. |
 
-#### Anti-Features
+### Anti-Features
 
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| Custom signing key on top of provenance | "More signatures = more secure" | Provenance is sufficient; user-managed keys add operational burden and a single point of compromise. | Trust the npm + Sigstore chain. Lattice's runtime Ed25519 keys are for receipts (per-run), not for the npm artifact. |
-| Bypassing provenance with `--provenance=false` for emergency releases | "Speed during incident" | Defeats the entire trust model. Once you've taught users "look for the badge", any unsigned release looks suspicious. | If trusted publisher CI is down, accept the release delay. Hot-fix via the same CI path. |
-| Documenting provenance as a "feature" in README without explaining what it gives consumers | "Marketing the badge" | Performative; consumers want to know what's actually verified | Explain: "this proves the published tarball was built from commit X by workflow Y in this repo at time Z; nothing about runtime safety". |
-
-#### Dependencies / ordering
-
-- Provenance **depends on** OIDC Trusted Publisher (Area 5) being live; cannot exist without it.
-- Provenance **depends on** `repository` field being set correctly in `package.json` (Area 1 table stakes).
-- README explanation (differentiator) **depends on** first successful provenance-enabled publish (else screenshots are vaporware).
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Building a tracing dashboard or UI in Lattice | "Full-stack observability" | Platform-sized commitment; Langfuse, Phoenix, Datadog, Grafana are already excellent at this; maintaining a UI is a product in itself | Export into existing platforms via OTLP. Lattice provides the exporter bridge, not the dashboard. This is explicit in the v1.4 scope statement. |
+| Baking Langfuse or Phoenix SDK as a hard dependency | "Seamless integration" | Adds install size and version coupling for every user who doesn't use those platforms; most production users already have a preferred observability stack | Peer dependency on `@opentelemetry/api` only. Langfuse and Phoenix integration is documentation + thin factory functions with zero required imports from those SDKs. |
+| Per-token OTel spans | "Maximum granularity" | 100K spans per 1K-token response; exceeds all OTLP ingest quotas; destroys trace readability | One span per provider call; token counts as span attributes; full output text as optional span attribute (gated by `includePromptContent` flag per Langfuse pattern) |
+| LangSmith integration | "Broadens observability compatibility" | LangSmith is tightly coupled to LangChain's trace model; integrating it encourages LangChain dependency creep; Phoenix and Langfuse cover the same use cases via standard OTLP | Phoenix and Langfuse via OTLP is sufficient and vendor-neutral |
+| Multi-scenario agent-loop showcase as an eval feature | The v1.4 scope lists "multi-scenario agent-loop showcase" but this is an example, not an eval feature | Conflating examples with eval infrastructure blurs the purpose of `lattice eval` | Multi-scenario showcase lives in `examples/agent-loop-v2/`; `lattice eval` gates regressions against those scenarios as fixtures |
 
 ---
 
-### Area 5 — OIDC Trusted Publisher UX on npmjs.com
-
-#### Table Stakes (what the user actually does — sequenced)
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Claim `@fullselfbrowsing` org on npmjs.com | Scope is unclaimed per PROJECT.md recon; whoever claims first owns it | LOW (~0.25 day, user-driven) | npm UI → "Add Organization" → free tier. Currently the only thing blocking the rename. |
-| Add team members to the org | Bus-factor; FSB likely wants more than one human with publish rights | LOW (~0.1 day) | npm UI → org settings → members. |
-| Publish package(s) once with a token (legacy path) OR pre-create empty package via npm web UI | Trusted publisher must be attached to an EXISTING package; brand-new package names need first publish under classic auth | MEDIUM (~0.5-1 day with potential gotcha) | Two options: (a) one-time classic token publish of a stub `1.3.0-rc.0` then immediately revoke token; (b) some workflows now allow trusted-publisher publish on first-ever publish if you preconfigure via API. Verify current behavior at publish time. **Anti-pattern: leaving the classic token in repo secrets after first publish.** |
-| Configure trusted publisher on the package settings page | Required to wire repo → scope → workflow | LOW (~0.25 day per package, user-driven) | Per [npm docs](https://docs.npmjs.com/trusted-publishers/): navigate to package settings → Trusted Publisher → GitHub Actions → fill in: organization (`fullselfbrowsing`), repository (`lattice`), workflow filename (`release.yml`), optional environment (`npm-publish`). |
-| Choose "npm publish" allowed action | Required since May 20, 2026; configurations created after that date must explicitly select at least one allowed action | LOW (~0.1 day) | Per [GitHub Changelog](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/). Check `npm publish`; leave `npm stage publish` unchecked unless using staged-release feature. |
-| GitHub workflow with `permissions: { id-token: write }` | Without this, OIDC token issuance fails silently | LOW (~0.1 day) | Documented gotcha — workflow runs but `npm publish` errors with `403 oidc token not found`. |
-| npm CLI 11.5.1+ in CI | Required version per current docs | LOW (~0.1 day) | `setup-node` action: pin Node 24 + ensure shipped npm is >= 11.5.1, or `npm install -g npm@latest` step. |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| GitHub Environment `npm-publish` with required reviewer + branch protection | Adds human approval before tag → publish; defense-in-depth | MEDIUM (~0.5 day) | If `release.yml` references `environment: npm-publish`, the workflow pauses for a reviewer click before issuing OIDC token. Strong for first-public-release era; can relax later. |
-| Separate trusted publisher configs per package (`@fullselfbrowsing/lattice` and `@fullselfbrowsing/lattice-cli`) bound to the SAME workflow file | One workflow, two packages, both attest cleanly | LOW (~0.25 day extra) | Both packages list the same `release.yml` as their trusted publisher; release workflow publishes both atomically. |
-| Restrict trusted publisher to a release branch | Defense against compromised tag from a fork | LOW (~0.1 day) | npm UI doesn't fully gate this; use GitHub branch protection + `if: github.ref == 'refs/heads/main'` in the workflow. |
-
-#### Anti-Features
-
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| Keep a long-lived `NPM_TOKEN` "as backup" | "What if OIDC breaks" | Defeats the whole point; one leak = full publish access; rotation theater | Use trusted publisher exclusively. If OIDC fails, fix the workflow. PROJECT.md decision is explicit. |
-| Bind trusted publisher to "any workflow in the repo" | "Flexibility" | Any compromised action (`actions/script` with malicious input) can publish | Bind to ONE workflow file by name (`release.yml`). |
-| Skip the environment-based approval gate "to move fast" | "Friction reduction" | First-release era is exactly when human eyes matter most | Keep approval gate at minimum through v1.3.x; revisit after a few clean releases. |
-| Use the `NODE_AUTH_TOKEN` setup-node trick alongside OIDC | "Belt and suspenders" | Confusing failure modes; the token gets picked up over OIDC silently | Trusted publisher only; remove all `NODE_AUTH_TOKEN` references from workflow. |
-
-#### Dependencies / ordering
-
-Strict order (each blocks the next):
-1. Scope claim on npmjs.com (manual, user-driven; can happen in parallel with everything else as Day 0).
-2. Package rename in repo to `@fullselfbrowsing/*` + `repository`/`license`/`publishConfig` fields landed.
-3. First publish (classic token path or stub).
-4. Trusted publisher config attached to each published package.
-5. Update `release.yml` to remove any classic token reference; next release uses OIDC.
-
----
-
-### Area 6 — GitHub Release Object
-
-#### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Release per published tag (`v1.3.0`) auto-created by changesets release action | Standard pattern; changesets has `createGithubReleases: true` option | LOW (~0.1 day, one config line) | The `changesets/action@v1` step takes `createGithubReleases: aggregate` or `true`. AI SDK, Mastra, OpenAI Agents JS all use this. |
-| Release notes sourced from the CHANGELOG entry for that version | Single source of truth; no double-bookkeeping | LOW (~0.1 day, default behavior) | Changesets writes `CHANGELOG.md` + creates the matching GitHub release with the same content. |
-| Tag is signed or at least pushed by the CI bot's protected token | Tampered tags are the original supply-chain attack | LOW (~0.25 day) | Use the `GITHUB_TOKEN` with `contents: write` from the changesets action; don't push tags manually. |
-| Release marked "latest" automatically | npm dist-tag `latest` and GitHub "latest release" align | LOW (~0.1 day) | Default for non-prerelease versions. |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Hand-edited release intro before merging the version PR | Changesets aggregates raw entries; a 2-paragraph intro framing the release for humans is a meaningful upgrade | LOW (~0.5 day per release) | Pattern: changesets opens a "Version Packages" PR with the auto-generated `CHANGELOG.md`. Hand-edit the top of `CHANGELOG.md` in that PR with a narrative intro before merging. AI SDK does this; that's why their releases read well. |
-| "Validated against canary" link in release notes pointing to the canary CI run | Closes the loop: "this release passed the external consumer canary against real providers" | LOW (~0.25 day, with workflow scripting) | Strong differentiator; ties Area 2 directly into the release artifact. |
-| Linked install snippet in release notes (`npm install @fullselfbrowsing/lattice@1.3.0`) | One-click copy for consumers | LOW (~0.1 day, template fragment) | Add to changesets release template. |
-| Provenance attestation link in release notes | Visible reinforcement of the supply-chain story | LOW (~0.25 day) | Sigstore Rekor URL is deterministic from the publish event; can be templated. |
-| Migration notes section for breaking changes | First public release likely has none; but template the section so it's habitual from v1.4 onward | LOW (~0.25 day) | Pattern from Drizzle, AI SDK. |
-
-#### Anti-Features
-
-| Feature | Why Tempting | Why Problematic | Alternative |
-|---------|--------------|-----------------|-------------|
-| Asset attachments (tarballs, zips) on the release | "More to download" | npm registry IS the distribution; duplicating in GitHub releases creates "which tarball is canonical" confusion; consumers might verify the GitHub one and get a different SHA than what `npm install` pulled | Don't attach binaries. Link to the npm package page. |
-| Release-branch strategy (long-lived `release/1.x` branch) | "Industry pattern" | Adds maintenance overhead; changesets + tag-driven flow doesn't need it; merge conflicts | Single-branch flow: `main` → changesets PR → merge → tag → release. (AI SDK, Drizzle, Hono all use this.) |
-| Generating release notes from raw commit messages (`git log`) | "Auto-magic" | Reads like a changelog of typos and merge commits; not human-aimed | Use changesets (PROJECT.md confirms it's already in the repo). |
-| Pre-release tags on the public scope (`@fullselfbrowsing/lattice@1.3.0-rc.1`) before 1.3.0 stable | "Safer rollout" | Pollutes the dist-tag space; trusted-publisher pre-releases require extra setup; canary already covers pre-release validation | Use the canary repo to validate; tag and release only stable. Pre-releases are a v1.4+ concern. |
-| Creating a release without a corresponding npm publish | "Tag the milestone" | Decouples github releases from npm versions; consumers get confused | Strict invariant: every GitHub release maps 1:1 to a published npm version. |
-
-#### Dependencies / ordering
-
-- GitHub release **depends on** changesets `release.yml` job, which **depends on** OIDC publish (Area 5) succeeding first.
-- Canary-validation link (differentiator) **depends on** canary CI publishing a stable badge URL (Area 2).
-
----
-
-## Feature Dependencies (cross-area)
+## Feature Dependencies
 
 ```
-[Scope claim @fullselfbrowsing on npmjs.com]
-    └──blocks──> [Package rename in monorepo]
-                    └──blocks──> [First publish (any path)]
-                                    └──blocks──> [Trusted Publisher config in npm UI]
-                                                    └──blocks──> [OIDC release.yml workflow]
-                                                                    └──enables──> [Automatic provenance]
-                                                                    └──enables──> [Auto GitHub Release object]
+[Streaming cross-provider contract]
+    └──required-by──> [Anthropic multimodal request shaping w/ streaming tool-use]
+    └──required-by──> [Gemini multimodal request shaping]
+    └──required-by──> [OpenAI Realtime session management]
+    └──required-by──> [Gemini Live session management]
 
-[package.json: license + repository + publishConfig + files allowlist]
-    └──blocks──> [First publish] (provenance refuses without `repository`)
-    └──blocks──> [publint / attw clean] (gating CI check)
+[OpenRouter multi-model fallback array]
+    └──enhances──> [Receipt records resolved model (not requested model)]
 
-[publint + attw green]
-    └──blocks──> [PR-time ci.yml passes]
-                    └──blocks──> [Merge to main]
-                                    └──blocks──> [Tag → release.yml]
+[Auto-refresh capability catalog from OpenRouter feed]
+    └──requires──> [OpenRouter /api/v1/models response normalization]
+    └──enhances──> [Deterministic router — broader model coverage without manual maintenance]
 
-[Successful first publish to @fullselfbrowsing/lattice@1.3.0]
-    └──blocks──> [Create lattice-canary repo + Layer 1 fake-provider tests]
-                    └──enhances──> [Layer 2 real-provider tests gated by per-provider secrets]
-                                    └──enhances──> [Cost summary in workflow run]
+[RunEventKind OTel exporter bridge]
+    └──required-by──> [Langfuse OTLP ingestion]
+    └──required-by──> [Phoenix OTLP ingestion]
+    └──enhances──> [Signed receipts as OTel span attributes]
 
-[Canary green]
-    └──enhances──> [Canary badge in main README]
-    └──enhances──> [Validated-against-canary link in GitHub Release notes]
+[lattice eval --agent wrapping evalAgentRun]
+    └──requires──> [EvalConfig/EvalRunReport extended with agent metrics]
+    └──requires──> [existing evalAgentRun kernel (v1.2 SHOWCASE-AGENT-02, shipped)]
 
-[CHANGELOG.md generated by changesets]
-    └──feeds──> [GitHub Release notes body]
-    └──feeds──> [npm package page version history]
+[Lineage merkle root in receipts]
+    └──requires──> [receipt schema bump lattice-receipt/v1.3]
+    └──enhances──> [Signed receipts as OTel span attributes (merkle root as attribute)]
+
+[KMS adapter for ReceiptSigner]
+    └──requires──> [existing ReceiptSigner interface (v1.1, shipped)]
+    └──conflicts-with──> [in-process key material as the only signing path]
+
+[Realtime session checkpointing]
+    └──requires──> [OpenAI Realtime or Gemini Live session management]
+    └──requires──> [receipt schema that supports segment-level signing]
+    └──enhances──> [Signed receipts as OTel span attributes]
 ```
 
-### Critical-path summary
+### Dependency Notes
 
-The single hard ordering constraint is: **scope claim → repo rename → first publish → trusted publisher attach → all subsequent automation**. Everything else can parallelize.
+- **Streaming contract required before multimodal shaping:** Anthropic image inputs can arrive in a streaming response that mixes `text_delta` and `input_json_delta` types; the normalizer must handle both before the adapter is considered complete.
+- **OTel exporter required before Langfuse/Phoenix integration:** Both platforms accept standard OTLP; integration is purely configuration, not code, once the bridge exists.
+- **`lattice eval --agent` requires only CLI plumbing:** The `evalAgentRun` kernel is shipped. This is a CLI surface extension, not a runtime change.
+- **Realtime sessions are architecturally distinct:** Neither `ProviderAdapter.run()` nor `ai.run()` can represent a stateful WebSocket session. A new surface (`RealtimeSession` or `ai.realtimeSession()`) is required. This does NOT break existing consumers.
+- **Lineage merkle root requires receipt schema v1.3:** Downgrade defense (already established by v1.2) must extend to reject `lattice-receipt/v1.3` receipts on a v1.2 verifier.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v1.3.0)
+### Ship in v1.4.0
 
-The absolute minimum to call v1.3 done:
+Features needed to close the three competitive gaps against Mastra / OpenRouter / Portkey / Google ADK / Langfuse:
 
-- [ ] **A1** Scope `@fullselfbrowsing` claimed on npmjs.com — blocks everything
-- [ ] **A1** `license`, `repository`, `bugs`, `homepage`, `publishConfig.access: "public"`, `publishConfig.provenance: true`, `files`, `engines` fields in both publishable `package.json` files
-- [ ] **A1** Both packages renamed to `@fullselfbrowsing/*`, CLI bin remains `lattice`
-- [ ] **A1** README badges (version, license, types, CI), 60-second quickstart, "Why this vs X" comparison table
-- [ ] **A1** CONTRIBUTING.md, SECURITY.md, CHANGELOG.md (changesets-generated)
-- [ ] **A1** `publint` + `arethetypeswrong` gate in PR-time CI
-- [ ] **A5** Trusted Publisher configured per package, workflow file name bound, `id-token: write` permission set
-- [ ] **A5** `release.yml` (tag-driven, OIDC publish, no `NPM_TOKEN`, optional environment gate)
-- [ ] **A5** `ci.yml` (PR-time: install, build, test, typecheck, publint, attw)
-- [ ] **A4** Provenance attestation generated automatically by Trusted Publisher (no config needed once Area 5 is live)
-- [ ] **A4** README section "Verifying the publish" with `npm audit signatures` + Rekor link template
-- [ ] **A6** Changesets-driven CHANGELOG.md feeding GitHub Release notes with `createGithubReleases: true`
-- [ ] **A6** Install snippet in release notes template
-- [ ] **A2** `fullselfbrowsing/lattice-canary` public repo created
-- [ ] **A2** Layer 1: tsd type tests + vitest runtime tests on every public export using `createFakeProvider`
-- [ ] **A2** Canary CI on PR + nightly cron
-- [ ] **A3** Layer 2: real-provider nightly tests for OpenAI, Anthropic, Gemini gated by per-provider secrets
-- [ ] **A3** Per-run `CostTracker` budget ceiling enforced; cheapest competent model per provider
-- [ ] **A3** `if-no-key` skip pattern so PR-time and forks don't fail
-- [ ] **A3** Workflow summary table with cost breakdown
-- [ ] **A2** Failure paging via auto-opened GitHub issue on nightly red
+- [ ] **STREAM-01** Streaming text across all 5 newer adapters with `AsyncIterable<string>` contract
+- [ ] **STREAM-02** Typed delta union (text token, tool-input fragment, done) from the streaming bridge
+- [ ] **STREAM-03** Anthropic multimodal request shaping (image artifacts → `content[].image` blocks, streaming tool-use)
+- [ ] **STREAM-04** Gemini multimodal request shaping (image/audio → `parts[]`, `generateContentStream`)
+- [ ] **GATEWAY-01** OpenRouter multi-model fallback array (`fallbackModels[]` option, resolved model in receipt)
+- [ ] **GATEWAY-02** LiteLLM provider factory (`createLiteLLMProvider`) with documentation
+- [ ] **GATEWAY-03** Auto-refresh capability catalog from OpenRouter `/api/v1/models` feed (build-time code-gen, configurable TTL)
+- [ ] **OTEL-01** `RunEventKind` → OTel span bridge (`createLatticeOtelExporter` factory, peer dep on `@opentelemetry/api`)
+- [ ] **OTEL-02** Langfuse OTLP export factory + integration guide
+- [ ] **OTEL-03** Phoenix OTLP export factory + integration guide
+- [ ] **EVAL-01** `lattice eval --agent` subcommand wrapping `evalAgentRun` kernel
+- [ ] **EVAL-02** Agent-specific baseline metrics (iterations, stuck, safety vetoes) extending `EvalRunReport`
+- [ ] **CLI-01** `lattice receipt diff` subcommand
 
-### Add After Validation (v1.3.x patches)
+### Add After Core Validation (v1.4.x)
 
-- [ ] **A2** Verdaccio-based pre-publish dry-run in lattice CI (catches packaging bugs before public publish) — defer to v1.3.1
-- [ ] **A2** Package manager matrix (npm + pnpm + yarn + bun) — defer to v1.3.1
-- [ ] **A2** Node version matrix — defer to v1.3.1
-- [ ] **A6** Canary-validated badge link inside GitHub Release notes — defer to v1.3.1 (depends on canary being stable for a few cycles)
-- [ ] **A3** Replay-against-recording fallback when nightly hits budget cap — defer if budget overruns happen
+- [ ] **REALTIME-01** OpenAI Realtime API session surface (`ai.realtimeSession()` or `RealtimeAdapter`) — needs architecture decision first
+- [ ] **REALTIME-02** Gemini Live API session surface — same architecture decision as REALTIME-01
+- [ ] **REALTIME-03** Realtime session receipt checkpointing (segment-level signing)
+- [ ] **RECEIPT-01** Lineage merkle root signed inside receipts (receipt schema v1.3 bump)
+- [ ] **KMS-01** KMS adapter shapes for `ReceiptSigner` (AWS KMS + generic PKCS#11)
+- [ ] **DIAG-01** LM Studio latency-tail diagnostics module
 
-### Future Consideration (v1.4+)
+### Future Consideration (v1.5+)
 
-- [ ] OpenAI Batch API for 50% cost reduction on nightly suite — complex, defer until cost actually hurts
-- [ ] `cosign verify` advanced-consumer instructions — niche audience
-- [ ] Pre-release `-rc` versioning workflow — needed only when v1.4 has breaking changes
-- [ ] Migration-notes templating — kicks in when first breaking change ships
+- [ ] OpenRouter provider routing params in `RunPolicy.gatewayPolicy` (inspectable in `ExecutionPlan`)
+- [ ] Multi-scenario agent-loop showcase exercising tripwire / stall / budget-exceeded variants
+- [ ] Streaming replay: replaying a receipt that was produced from a streamed run
 
 ---
 
@@ -357,69 +192,135 @@ The absolute minimum to call v1.3 done:
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Scope rename + license/repository fields | HIGH (blocks publish) | LOW (~1 day total) | P1 |
-| Trusted Publisher + OIDC release workflow | HIGH (security signature for the whole release) | MEDIUM (~2 days first time) | P1 |
-| Provenance (automatic with above) | MEDIUM (signal to security-aware users) | LOW (free) | P1 |
-| Canary Layer 1 (fake providers, type tests) | HIGH (proves publish actually works) | MEDIUM (~2 days) | P1 |
-| Canary Layer 2 (real providers, cost-bounded) | HIGH (proves real-world integration) | MEDIUM (~2-3 days) | P1 |
-| CHANGELOG via changesets + auto GitHub release | HIGH (release hygiene baseline) | LOW (~1 day) | P1 |
-| README badges + quickstart + comparison | MEDIUM (first impression) | LOW (~1-2 days) | P1 |
-| publint + attw CI gating | MEDIUM (catches packaging regressions) | LOW (~0.5 day) | P1 |
-| Verdaccio pre-publish dry-run | MEDIUM (catches packaging bugs before public release) | MEDIUM (~1-2 days) | P2 |
-| Package manager + Node version matrix | MEDIUM (catches resolver edge cases) | LOW (~1 day) | P2 |
-| Failure paging via auto-opened issues | MEDIUM (closes the silent-red loop) | LOW (~0.5 day) | P2 |
-| Cost summary in workflow run | MEDIUM (operational visibility) | LOW (~0.5 day) | P2 |
-| Canary status badge on main README | LOW-MEDIUM (public trust signal) | LOW (~0.25 day) | P2 |
-| OpenAI Batch API integration | LOW until budget pain | HIGH (~3-4 days) | P3 |
-| `cosign verify` instructions | LOW (niche) | LOW (~0.25 day) | P3 |
-| Pre-release versioning workflow | LOW (not needed yet) | MEDIUM | P3 |
+| Streaming across 5 adapters (STREAM-01) | HIGH — blocks every streaming use case | MEDIUM | P1 |
+| Anthropic multimodal shaping (STREAM-03) | HIGH — core "multimodal work inbox" use case | MEDIUM | P1 |
+| Gemini multimodal shaping (STREAM-04) | HIGH — closes ADK gap | MEDIUM | P1 |
+| OTel span bridge (OTEL-01) | HIGH — required for both Langfuse + Phoenix | MEDIUM | P1 |
+| OpenRouter fallback array (GATEWAY-01) | HIGH — "coverage without hand-maintenance" thesis | LOW | P1 |
+| `lattice eval --agent` (EVAL-01) | HIGH — closes eval CLI gap vs LangSmith | MEDIUM | P1 |
+| Langfuse export factory (OTEL-02) | MEDIUM — documentation-weight once OTEL-01 done | LOW | P1 |
+| Phoenix export factory (OTEL-03) | MEDIUM — same as OTEL-02 | LOW | P1 |
+| Catalog auto-refresh (GATEWAY-03) | MEDIUM — reduces maintenance tax | MEDIUM | P1 |
+| LiteLLM provider factory (GATEWAY-02) | MEDIUM — enables self-hosted gateway users | LOW | P2 |
+| `lattice receipt diff` (CLI-01) | MEDIUM — developer ergonomics | LOW | P2 |
+| Signed receipts as OTel attributes | HIGH for trust story | LOW (additive to OTEL-01) | P2 |
+| Agent baseline metrics (EVAL-02) | MEDIUM — extends existing eval; additive | MEDIUM | P2 |
+| Typed delta union (STREAM-02) | MEDIUM — needed for tool-use streaming callers | LOW (part of STREAM-01) | P2 |
+| OpenAI Realtime session (REALTIME-01) | HIGH potential; HIGH risk | HIGH | P2 (post-core) |
+| Gemini Live session (REALTIME-02) | HIGH potential; HIGH risk | HIGH | P2 (post-core) |
+| Lineage merkle root (RECEIPT-01) | MEDIUM — extends signing thesis | HIGH | P3 |
+| KMS adapter (KMS-01) | MEDIUM — enterprise need | MEDIUM | P3 |
+| Realtime checkpointing (REALTIME-03) | HIGH for trust story; depends on REALTIME-01/02 | HIGH | P3 |
+| LM Studio latency diagnostics (DIAG-01) | LOW-MEDIUM — niche but differentiating | MEDIUM | P3 |
 
 ---
 
 ## Competitor Feature Analysis
 
-Five comparable TypeScript libraries, with the specific repo/file we'd learn from:
+| Feature | Vercel AI SDK | LiteLLM (gateway) | Google ADK | Langfuse | Lattice v1.4 approach |
+|---------|--------------|-------------------|------------|----------|----------------------|
+| Streaming | Default path, `StreamingTextResponse` | Proxy-level, transparent | Default in ADK | N/A (observability) | `AsyncIterable<string>` from `ProviderAdapter.run()` with typed delta union |
+| Multimodal | `useChat` accepts image parts | Pass-through to providers | Gemini-native multimodal | N/A | Artifact model → provider-native block translation per adapter |
+| Provider routing / fallback | `experimental_telemetry`; no gateway | Full gateway with fallback chains, virtual keys, cost routing | Routes only to Google models (Vertex/Gemini) | N/A | OpenRouter `fallbackModels[]` + LiteLLM delegation; Lattice router picks the adapter, gateway router picks the model instance |
+| Realtime audio/video | No — defers to WebRTC | No built-in realtime | Gemini Live (ADK's biggest differentiator) | N/A | WebSocket-based `RealtimeSession` surface wrapping OpenAI Realtime + Gemini Live |
+| OTel / observability export | `experimental_telemetry` adds spans | OTLP exporter built-in | Cloud Trace | Accepts OTLP via `/api/public/otel` | `createLatticeOtelExporter` factory; receipts as span attributes |
+| Agent eval in CI | No | No | No | Partial (Langfuse Evals) | `lattice eval --agent` with iterations/stuck/cost gates, baseline-relative |
+| Signed/verifiable runs | No | No | No | No | Signed receipts (v1.1) + OTel span attributes carrying receipt CID (v1.4) |
+| Catalog auto-maintenance | AI SDK provider registry (manually maintained by Vercel) | Gateway does this at proxy level | Static per ADK release | N/A | OpenRouter feed → `registry.generated.ts` code-gen with configurable TTL |
 
-| Feature | Vercel AI SDK (`vercel/ai`) | OpenAI Agents JS (`openai/openai-agents-js`) | Mastra (`mastra-ai/mastra`) | Drizzle (`drizzle-team/drizzle-orm`) | Hono (`honojs/hono`) | Our Approach (Lattice v1.3) |
-|---------|------------------------------|---------------------------------------------|---------------------------|------------------------------------|---------------------|-----------------------------|
-| Release tooling | Changesets ([CHANGELOG.md](https://github.com/vercel/ai/blob/main/CHANGELOG.md)) | Changesets + Verdaccio integration-tests ([repo](https://github.com/openai/openai-agents-js)) | Changesets ([deepwiki](https://deepwiki.com/mastra-ai/mastra/12.4-dependency-management-with-renovate)) — continuous alpha prereleases | Changesets | Changesets | Changesets (already installed); skip alpha-prerelease pattern |
-| Package scoping | `ai` (unscoped, claimed years ago) + `@ai-sdk/*` subpackages | `@openai/agents-core`, `@openai/agents-openai`, `@openai/agents-extensions` | `mastra` + `@mastra/core`, `@mastra/*` modules | `drizzle-orm` (unscoped) + `drizzle-kit` | `hono` (unscoped) | `@fullselfbrowsing/lattice` + `@fullselfbrowsing/lattice-cli`; matches OpenAI/Mastra pattern |
-| Pre-publish validation | tests + lint in CI | **Verdaccio local registry + install-and-run integration tests** — strongest of all, worth copying | tests + alpha pre-release on every commit | tests | tests | Layer 1 (fake) + Layer 2 (real) canary in separate repo; consider Verdaccio dry-run for v1.3.1 |
-| Examples as validation | [`examples/*` apps](https://github.com/vercel/ai/tree/main/examples) pinned to real published versions | Mostly in-repo `examples/` | Workspaces and integration tests | `examples/` and `drizzle-kit` self-test | `examples/` plus `bench/` | **Separate external canary repo** — stronger than examples folder because it actually exercises the publish |
-| Provenance | Yes (visible badge on [`ai` npm page](https://www.npmjs.com/package/ai)) | Yes | Yes ([`@mastra/core`](https://www.npmjs.com/package/@mastra/core)) | Recently enabled | Yes | Yes — automatic via Trusted Publisher |
-| Release object | Auto-created by changesets, hand-edited intro | Auto-created, terse | Auto-created | Auto-created, often hand-curated | Auto-created | Auto-created via changesets + hand-edited intro on the version PR |
-| Real-provider testing | Mock providers documented; real-provider tests exist but not exposed | LIVE provider tests gated to manual/scheduled with key gating | Has real-provider tests with skips | N/A (DB, not LLM) | N/A | Nightly + manual dispatch, per-provider secrets, `CostTracker` budget ceiling |
+---
 
-**Most copy-worthy patterns**:
-- **OpenAI Agents JS** for the Verdaccio + integration-tests pattern (closest analog to Lattice's situation: scoped packages, TypeScript-first, provider-adjacent, ships cryptographic primitives).
-- **Vercel AI SDK** for the README polish, CHANGELOG.md narrative quality, and pinned-version examples (the way release notes read in `vercel/ai` is the gold standard for first-impression communication).
-- **Mastra** for changesets-as-the-only-source-of-truth release flow.
+## Streaming Protocol Reference (SSE vs WebSocket vs WebRTC)
+
+This section records the authoritative protocol facts that each adapter implementation must match. It exists here so implementation phases do not re-research the same ground.
+
+### Anthropic (SSE — unidirectional)
+
+- Protocol: HTTP SSE (`text/event-stream`)
+- Event sequence: `message_start` → `content_block_start` → `N × content_block_delta` → `content_block_stop` → `message_delta` (with `stop_reason`, `usage`) → `message_stop`
+- Delta types in `content_block_delta.delta`: `{ type: "text_delta", text }` for text, `{ type: "input_json_delta", partial_json }` for tool-call inputs
+- Usage: available on `message_delta` at end of stream (not per-token)
+- TypeScript: `client.messages.stream(...).on("text", cb)` or raw iterator; `@anthropic-ai/sdk`
+
+### OpenAI (SSE — unidirectional for completions)
+
+- Protocol: HTTP SSE for `/v1/chat/completions` with `stream: true`
+- Delta: `choices[].delta.content` (text) or `choices[].delta.tool_calls[].function.arguments` (partial JSON for tool args)
+- Terminator: `data: [DONE]`
+- Realtime: WebSocket (`wss://api.openai.com/v1/realtime`) or WebRTC (browser). Client events: `session.update`, `input_audio_buffer.append`, `response.create`. Server events: `response.output_text.delta`, `response.output_audio.delta`. Audio: PCM16 16kHz in, PCM16 24kHz out.
+
+### Gemini (async iterable chunks via SDK)
+
+- Protocol: `generateContentStream` returns `AsyncIterable<GenerateContentResponse>` via `@google/genai` SDK
+- Each chunk: `candidates[].content.parts[]` where parts are `{ text }` or `{ functionCall }` or `{ inlineData }` for image outputs
+- Usage: available on final chunk's `usageMetadata`
+- Live API: WebSocket (WSS). Audio in: PCM16 16kHz. Audio out: PCM16 24kHz. Image in: JPEG ≤1FPS. Supports function calls within session.
+
+### OpenRouter (SSE — transparent proxy)
+
+- Protocol: same SSE as OpenAI (OpenRouter is OpenAI-compatible); routing is transparent
+- `model` field in response body indicates the actually-resolved model (critical for receipt accuracy)
+- Fallback: pass `models: [primary, ...fallbacks]` in request body; `allow_fallbacks: true` in `provider` object (default)
+- Provider routing: `provider.sort` (price/throughput/latency), `provider.only`, `provider.ignore`, `provider.max_price`, `provider.require_parameters`
+
+### LiteLLM (SSE — transparent proxy)
+
+- Protocol: OpenAI-compatible SSE at `/v1/chat/completions`
+- Routing configured server-side (LiteLLM router strategies: latency-based, usage-based, cost-based, simple-shuffle)
+- Fallback: server-side fallback chains with cooldowns; `order` parameter per deployment
+- TypeScript client: identical to OpenAI client; no LiteLLM-specific npm package needed
+
+---
+
+## OTel GenAI Semantic Convention Reference
+
+Status as of June 2026: most GenAI semantic conventions are **experimental** (not stable). Production use requires `OTEL_SEMCONV_STABILITY_OPT_IN` for dual-emission during transition. Lattice should emit both legacy and new attribute names.
+
+Key attributes for Lattice's OTel bridge:
+
+| OTel Attribute | Lattice Source | Notes |
+|----------------|----------------|-------|
+| `gen_ai.operation.name` | `"chat"` or `"generate_content"` | Fixed per adapter type |
+| `gen_ai.system` | Provider adapter ID (`"anthropic"`, `"openai"`, etc.) | |
+| `gen_ai.request.model` | `RunEvent.modelId` | |
+| `gen_ai.response.model` | Resolved model from provider response | May differ from request (OpenRouter fallback) |
+| `gen_ai.usage.input_tokens` | `Usage.promptTokens` | |
+| `gen_ai.usage.output_tokens` | `Usage.completionTokens` | |
+| `gen_ai.response.finish_reasons` | Adapter-normalized stop reason | |
+| `lattice.run_id` | `RunEvent.runId` | Lattice-specific namespace |
+| `lattice.plan_id` | `RunEvent.planId` | |
+| `lattice.receipt_cid` | Receipt CID after signing | Differentiator: verifiable pointer |
+| `gen_ai.client.operation.duration` | Histogram metric: span duration | |
+| `gen_ai.client.token.usage` | Histogram metric: token counts | |
+
+Langfuse also reads: `user.id`, `session.id`, `langfuse.observation.model.name` (takes precedence over `gen_ai.request.model`).
+
+Phoenix also reads: `llm.token_count.prompt`, `llm.token_count.completion` (OpenInference conventions alongside GenAI semconv).
 
 ---
 
 ## Sources
 
-- [npm Docs — Trusted publishing for npm packages](https://docs.npmjs.com/trusted-publishers/) — HIGH confidence, authoritative
-- [npm Docs — Generating provenance statements](https://docs.npmjs.com/generating-provenance-statements/) — HIGH confidence, authoritative
-- [GitHub Changelog — npm trusted publishing with OIDC GA (2025-07-31)](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — HIGH confidence, official announcement
-- [GitHub Blog — Introducing npm package provenance](https://github.blog/security/supply-chain-security/introducing-npm-package-provenance/) — HIGH confidence
-- [Sigstore Blog — cosign Verification of npm Provenance](https://blog.sigstore.dev/cosign-verify-bundles/) — HIGH confidence
-- [Things you need to do for npm trusted publishing to work (philna.sh, Jan 2026)](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/) — MEDIUM, recent practitioner walkthrough
-- [vercel/ai CHANGELOG.md](https://github.com/vercel/ai/blob/main/CHANGELOG.md) — HIGH, primary source
-- [vercel/ai GitHub repository](https://github.com/vercel/ai) — HIGH, primary source
-- [@openai/agents-core on npm](https://www.npmjs.com/package/@openai/agents-core) — HIGH, primary source
-- [openai/openai-agents-js GitHub repository](https://github.com/openai/openai-agents-js) — HIGH, primary source (Verdaccio integration-tests pattern)
-- [OpenAI Agents SDK TypeScript docs](https://openai.github.io/openai-agents-js/) — HIGH
-- [Mastra release management with Changesets](https://deepwiki.com/mastra-ai/mastra/12.4-dependency-management-with-renovate) — MEDIUM (deepwiki is generated)
-- [@mastra/core on npm](https://www.npmjs.com/package/@mastra/core) — HIGH, primary source
-- [Artsy Engineering — Deploying canaries with auto](https://artsy.github.io/blog/2020/02/20/deploying-canaries-with-auto/) — MEDIUM, established canary pattern
-- [trpc/examples-next-prisma-starter](https://github.com/trpc/examples-next-prisma-starter) — HIGH, primary source for vitest e2e pattern
-- [trpc-cli on npm](https://www.npmjs.com/package/trpc-cli) — HIGH (vitest CLI subprocess fixture pattern)
-- [OpenAI vs Anthropic API Pricing Comparison 2026 (Finout)](https://www.finout.io/blog/openai-vs-anthropic-api-pricing-comparison) — MEDIUM, used to size cost ceilings
-- [LLM API Pricing 2026 (CloudIDR)](https://www.cloudidr.com/llm-pricing) — MEDIUM
-- [OpenAI API Cost in 2026 (CloudZero)](https://www.cloudzero.com/blog/openai-pricing/) — MEDIUM (Batch API discount confirmation)
-- [Lattice PROJECT.md](file:///Users/lakshmanturlapati/Desktop/FSB/lattice/.planning/PROJECT.md) — HIGH, internal source of truth
+- [OpenTelemetry GenAI Observability blog (2026)](https://opentelemetry.io/blog/2026/genai-observability/) — MEDIUM confidence (official OTel blog, summarizes spec)
+- [OpenTelemetry GenAI semantic conventions — Greptime analysis (May 2026)](https://greptime.com/blogs/2026-05-09-opentelemetry-genai-semantic-conventions) — MEDIUM (third-party but recent and detailed)
+- [Langfuse OpenTelemetry integration docs](https://langfuse.com/integrations/native/opentelemetry) — HIGH (official Langfuse docs, fetched directly)
+- [Langfuse OTLP endpoint and attribute mapping (fetched 2026-06-15)](https://langfuse.com/integrations/native/opentelemetry) — HIGH
+- [@arizeai/phoenix-otel on npm](https://www.npmjs.com/package/@arizeai/phoenix-otel) — HIGH (official package)
+- [Arize Phoenix tracing overview](https://arize.com/docs/phoenix/tracing/llm-traces) — MEDIUM (official docs, limited detail fetched)
+- [Gemini Live API overview](https://ai.google.dev/gemini-api/docs/live-api) — HIGH (official Google docs, fetched directly)
+- [Gemini Live API WebSocket get-started](https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket) — HIGH (official Google docs)
+- [googleapis/js-genai TypeScript SDK](https://github.com/googleapis/js-genai) — HIGH (official Google SDK)
+- [OpenAI Realtime API guide (developers.openai.com)](https://developers.openai.com/api/docs/guides/realtime) — HIGH (official OpenAI docs, fetched directly)
+- [Anthropic streaming messages docs](https://platform.claude.com/docs/en/build-with-claude/streaming) — HIGH (official Anthropic docs, fetched directly — full SSE event taxonomy)
+- [LiteLLM Router docs](https://docs.litellm.ai/docs/routing) — HIGH (official LiteLLM docs, fetched directly)
+- [OpenRouter model fallback docs](https://openrouter.ai/docs/guides/routing/model-fallbacks) — HIGH (official OpenRouter docs, fetched directly)
+- [OpenRouter provider selection docs](https://openrouter.ai/docs/guides/routing/provider-selection) — HIGH (official OpenRouter docs, fetched directly)
+- [OpenRouter GET /api/v1/models API reference](https://openrouter.ai/docs/api/api-reference/models/get-models) — HIGH (official OpenRouter docs, fetched directly)
+- [LiteLLM vs OpenRouter comparison (truefoundry.com)](https://www.truefoundry.com/blog/litellm-vs-openrouter) — MEDIUM (third-party, recent)
+- Lattice codebase: `packages/lattice/src/tracing/tracing.ts` (RunEventKind union — inspected directly) — HIGH
+- Lattice codebase: `packages/lattice-cli/src/commands/eval.ts` and `eval/types.ts` (existing eval surface — inspected directly) — HIGH
+- Lattice codebase: `packages/lattice/src/providers/adapters.ts` and `capabilities/profile.ts` (CapabilityAdapter enum — inspected directly) — HIGH
 
 ---
-*Feature research for: Lattice v1.3 — first public npm release + canary consumer*
-*Researched: 2026-06-03*
+*Feature research for: Lattice v1.4 — Provider Breadth + Live Multimodal + Eval/Observability Export*
+*Researched: 2026-06-15*
