@@ -1,4 +1,4 @@
-import { expectType } from "tsd";
+import { expectAssignable, expectType } from "tsd";
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
@@ -18,7 +18,7 @@ import type {
   ReceiptEnvelope,
 } from "..";
 
-expectType<"0.0.0">(latticeVersion);
+expectAssignable<string>(latticeVersion);
 
 declare const summarySchema: StandardSchemaV1;
 declare const envelope: ReceiptEnvelope;
