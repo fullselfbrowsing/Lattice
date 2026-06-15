@@ -14,8 +14,8 @@
 
 ### Gateway Delegation and Provider Breadth (`GATE-*`)
 
-- [ ] **GATE-01**: Developer can create a LiteLLM-backed provider with a first-class `createLiteLLMProvider` helper that delegates to the existing OpenAI-compatible provider path.
-- [ ] **GATE-02**: Developer can pass gateway policy fields such as route tags, provider preference, and gateway metadata without losing Lattice's deterministic router decision.
+- [x] **GATE-01**: Developer can create a LiteLLM-backed provider with a first-class `createLiteLLMProvider` helper that delegates to the existing OpenAI-compatible provider path.
+- [x] **GATE-02**: Developer can pass gateway policy fields such as route tags, provider preference, and gateway metadata without losing Lattice's deterministic router decision.
 - [ ] **GATE-03**: Execution plans and run events record when a run used a gateway adapter and preserve the Lattice-selected adapter/model decision separately from gateway-internal routing.
 
 ### OpenRouter Fallback and Catalog Refresh (`ORCAT-*`)
@@ -105,8 +105,8 @@
 | PKG-01 | Phase 40 | Complete |
 | PKG-02 | Phase 40 | Complete |
 | PKG-03 | Phase 40 | Complete |
-| GATE-01 | Phase 41 | Pending |
-| GATE-02 | Phase 41 | Pending |
+| GATE-01 | Phase 41 | Complete |
+| GATE-02 | Phase 41 | Complete |
 | GATE-03 | Phase 41 | Pending |
 | ORCAT-01 | Phase 42 | Pending |
 | ORCAT-02 | Phase 42 | Pending |
