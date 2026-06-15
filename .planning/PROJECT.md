@@ -16,31 +16,20 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.4 in planning** — Provider Breadth + Live Multimodal + Observability Export (scope captured under Requirements below; phases/REQ-IDs to be authored via `/gsd-new-milestone`).
 
-## Current Milestone: v1.3 Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
+## Current Milestone: v1.4 Provider Breadth + Live Multimodal + Observability Export
 
-**Goal:** Cut Lattice's first public npm release under `@full-self-browsing/*` with OIDC Trusted Publisher + provenance attestations; prove correctness end-to-end via a separately-repo'd canary consumer; add model-aware contract negotiation; and ship the first opt-in multi-agent crew surface.
+**Goal:** Close the three library-native competitive gaps found vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse — without becoming a platform.
 
 **Target features:**
-- Rename publishable packages to the `@full-self-browsing` scope (`lattice` → `@full-self-browsing/lattice`, `lattice-cli` → `@full-self-browsing/lattice-cli`; CLI keeps user-facing `lattice` bin).
-- Release-quality hygiene: license fields, `repository` / `bugs` / `homepage` metadata, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` via changesets, publint + arethetypeswrong clean across both packages.
-- Full CI scaffolding from scratch: PR-time `ci.yml` (build + test + typecheck) and tag-driven `release.yml` (changesets → OIDC publish with provenance).
-- npm org + Trusted Publisher setup for `@full-self-browsing` completed via user-driven FSB steps; rc.0 OIDC publish verifies the path.
-- First stable publish: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` with GitHub Release object after Phases 30, 31, and 36-39 complete.
-- Separate public canary consumer repo `fullselfbrowsing/lattice-canary` installing from the registry, not the workspace.
-- Canary coverage layer 1: type-level + runtime assertions on every public export against the published tarball using fake providers (no API keys).
-- Canary coverage layer 2: real-provider integration (OpenAI + Anthropic + Gemini) covering receipts, hook bands, agent loop, survivability round-trip, CLI subprocess.
-- Canary CI: nightly + manual dispatch, per-run cost ceiling enforced via Lattice's own `CostTracker`, failure paging.
+- **Provider breadth + capability-catalog maintenance** — gateway delegation (LiteLLM / OpenRouter), auto-refresh the capability catalog from feeds, OpenRouter multi-model routing + fallback so coverage stops being a hand-maintained tax.
+- **Live / streaming multimodal** — streaming across the 5 newer adapters; Anthropic / Gemini multimodal request shaping; realtime audio/video direction (close the gap vs ADK Gemini Live / OpenAI realtime).
+- **Eval + observability** — OpenTelemetry exporter for `RunEventKind`, `lattice eval --agent`, export *into* Langfuse / Phoenix rather than building dashboards.
 
 **Key context:**
-- License: MIT (`LICENSE` and package `license` fields present).
-- Auth model: **OIDC Trusted Publisher**, not long-lived `NPM_TOKEN`. Provenance attestations enabled.
-- Release trigger: tag push (`v*.*.*` → workflow); changesets PR-driven version bumps.
-- Real-provider tests gated to manual dispatch + nightly cron, never PR-time.
-- npm scope `@full-self-browsing` is claimed; `1.3.0-rc.0` is published with SLSA provenance attestations for both packages.
-- `.github/workflows/ci.yml`, `.github/workflows/release.yml`, and `.github/workflows/registry-drift.yml` exist with SHA-pinned third-party actions.
-- Stable `1.3.0` is not published. npm currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
-- Phases 36-37 are implemented and verified. Phases 38-39 have no implementation yet in the checked git refs; their detailed REQ-IDs still need to be authored.
-- Tooling foundation already in place: changesets, publint, arethetypeswrong/cli, tsd.
+- Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded.
+- **Theme considered and dropped:** a managed / hosted deploy runtime (conflicts with the standing "Hosted control plane — Out of Scope" decision); a lightweight deploy-adapter framing is parked for possible future pickup.
+- **Research-first:** per-theme implementation-pattern research precedes requirements.
+- Phases / REQ-IDs to be authored by `/gsd-new-milestone` (research → requirements → roadmap); phase numbering continues from v1.3 (starts at Phase 40).
 
 ## Shipped Milestones
 

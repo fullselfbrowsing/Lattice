@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
-status: Awaiting next milestone
-stopped_at: Phase 30 ready - canary bootstrap next
-last_updated: "2026-06-15T07:55:49.222Z"
-last_activity: 2026-06-15 — Milestone v1.3 completed and archived
+milestone: v1.4
+milestone_name: Provider Breadth + Live Multimodal + Observability Export
+status: planning
+last_updated: "2026-06-15T08:09:32.863Z"
+last_activity: 2026-06-15
 progress:
-  total_phases: 16
-  completed_phases: 10
-  total_plans: 42
-  completed_plans: 44
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-09)
+See: .planning/PROJECT.md (updated 2026-06-15)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 30 — Canary Bootstrap + Layer 1 Fake-Provider Suite
+**Current focus:** v1.4 — Provider Breadth + Live Multimodal + Observability Export (defining requirements)
 
 ## Current Position
 
-Phase: Milestone v1.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-15 — Milestone v1.3 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-15 — Milestone v1.4 started
 
 ## Performance Metrics
 
@@ -52,16 +51,12 @@ Last activity: 2026-06-15 — Milestone v1.3 completed and archived
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
 
-- [v1.3 Scope]: Public release + canary validation now also includes the model-aware SDK surface from Phases 33-38 and the opt-in multi-agent crew surface in Phase 39. Stable publish remains deferred until that surface is complete.
-- [v1.3 Distribution]: Publish under `@full-self-browsing` scope (both `lattice` and `lattice-cli`). CLI keeps user-facing `lattice` bin. The scope is claimed and rc.0 packages are published.
-- [v1.3 Auth model]: OIDC Trusted Publisher binding `fullselfbrowsing/Lattice` to the npm scope. No long-lived `NPM_TOKEN`. Provenance attestations are present on the rc.0 tarballs.
-- [v1.3 Release trigger]: Tag-driven (`v*.*.*` push triggers workflow publish job). Changesets PR-driven version bumps.
-- [v1.3 Canary]: Single separate-repo public consumer (`fullselfbrowsing/lattice-canary`). Installs from npm, not workspace. Two coverage layers: type+runtime exports against published tarball with fake providers (PR-time), and real-provider integration (OpenAI + Anthropic + Gemini) against published tarball (nightly + manual dispatch).
-- [v1.3 Real-provider posture]: Nightly cron + manual dispatch only. Never PR-time. Per-run cost ceiling enforced via Lattice's own `CostTracker`.
-- [v1.3 Phase plan]: 16 phases (24-39). Completed: 24, 25, 26, 27, 28, 29, 33, 34, 35, 36, 37, 38, 39. Remaining: 30, 31, 32.
-- [v1.3 Adapter hardening]: Output sanitizers and returned tool-call validators are opt-in adapter options, preserving default v1.2 behavior while giving consumers model-shape guardrails.
+v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decisions affecting v1.4:
+
+- [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded.
+- [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
+- [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
 
 ### Pending Todos
 
@@ -104,9 +99,9 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 ## Session Continuity
 
-Last session: 2026-06-11T21:12:48Z
-Stopped at: Phase 30 ready - canary bootstrap next
-Resume file: .planning/ROADMAP.md (Phase 30 section; Phase 30 artifacts not generated yet)
+Last session: 2026-06-15
+Stopped at: v1.4 milestone opened; defining requirements (research-first)
+Resume: `/gsd-new-milestone` research → requirements → roadmap for v1.4 (phases continue from 39, start at 40)
 
 ## Operator Next Steps
 
