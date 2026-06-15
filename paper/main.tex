@@ -16,6 +16,13 @@
 \pgfplotsset{compat=1.18}
 \usepackage[hidelinks]{hyperref}
 
+% No automatic end-of-line hyphenation. Lines stay justified and avoid overfull
+% boxes through micro-stretch rather than by breaking words with a hyphen.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\tolerance=9999
+\emergencystretch=3em
+
 % TikZ styles shared by the figures.
 \tikzset{
   lbox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
@@ -45,7 +52,7 @@ Email: lakshmanturlapati@gmail.com}}
 Production systems built on large language models increasingly route work across
 many providers and modalities, yet the run itself remains opaque. A typical stack
 records, at best, a free text log that no third party can verify and no operator
-can replay. We present Lattice, a capability-first TypeScript runtime in which
+can replay. We present Lattice, a capability first TypeScript runtime in which
 every model run emits a \emph{capability receipt}: a canonical, signed, and
 replayable record of what the system was asked to do, how it routed the work, what
 constraints it enforced, and what it produced. A receipt is canonicalized with the
@@ -95,7 +102,7 @@ public key.
 This paper argues that the missing primitive is a per run, signed, replayable
 \emph{capability receipt}, and that a runtime can make such a receipt a default
 byproduct of normal operation rather than an after the fact instrumentation task.
-We build this argument concretely through Lattice, a capability-first runtime SDK
+We build this argument concretely through Lattice, a capability first runtime SDK
 written in TypeScript. A developer describes the job, supplies any mix of artifacts,
 declares the desired outputs and policy constraints, and optionally attaches a
 contract. Lattice then routes the work deterministically, packs context, prepares
@@ -183,8 +190,8 @@ Scheme \cite{rfc8785} defines such an encoding for JSON, and the I-JSON message 
 \cite{rfc7493} constrains JSON to an interoperable subset, which matters for how
 numbers and floats are serialized. Lattice canonicalizes receipts with RFC 8785 and
 serializes monetary cost as an I-JSON string so that receipts never carry raw floats.
-Signatures use the Edwards-Curve Digital Signature Algorithm \cite{rfc8032}, the same
-EdDSA construction widely deployed for compact and fast signatures.
+Signatures use EdDSA \cite{rfc8032}, the elliptic curve signature construction that is
+widely deployed for compact and fast signatures.
 
 \subsection{Transparency and reproducibility in machine learning}
 
@@ -283,14 +290,14 @@ consumed by offline verification and by content addressed reproduction.}
 \label{fig:arch}
 \end{figure*}
 
-\subsection{The capability-first run model}
+\subsection{The capability first run model}
 
 A run is described by a small intent: a \code{task} string, a set of \code{artifacts}
 that may be text, JSON, images, audio, documents, or tool results, a map of declared
 \code{outputs} with their schemas, a \code{policy} that expresses privacy, latency,
 provider allow and deny lists, and budget, and an optional \code{contract}. The
 developer does not select a model. The runtime selects one from a capability catalog
-and records the decision. This capability-first shape is what makes a receipt
+and records the decision. This capability first shape is what makes a receipt
 meaningful, because the receipt can record the declared intent and the chosen route
 side by side.
 
@@ -737,7 +744,7 @@ differs structurally from a request and response.
 \section{Conclusion}
 
 Production systems built on large language models need runs that an auditor can verify
-and an operator can reproduce. We presented Lattice, a capability-first runtime in which
+and an operator can reproduce. We presented Lattice, a capability first runtime in which
 every multimodal model run emits a capability receipt that is canonicalized, redacted
 before signing, and signed inside a Dead Simple Signing Envelope, backed by a
 deterministic and inspectable router and by output invariants with terminal semantics. A
