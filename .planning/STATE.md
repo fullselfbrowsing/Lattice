@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
 status: planning
-last_updated: "2026-06-15T08:09:32.863Z"
+last_updated: "2026-06-15T09:02:24.831Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 0
@@ -96,6 +96,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | 2026-06-11 | Execute Phase 29 wave 1 and plan 02 local preflight | Added stable README/release-note extraction, refreshed stale model registry snapshot, passed full local release preflight, and stopped at GitHub Actions workflow permission checkpoint. |
 | 2026-06-11 | Resolve Phase 29 GitHub Actions workflow permission gate | Used FSB + GitHub device flow to refresh `gh` with `admin:org`, enabled org and repo `can_approve_pull_request_reviews`, and verified both settings true. |
 | 2026-06-11 | Complete Phase 29 stable v1.3.0 publish | Merged Version Packages PR #8, pushed `v1.3.0`, approved `npm-publish`, verified both npm packages at `1.3.0` with signatures/provenance, repaired GitHub Release notes, and closed PUB-02..04. |
+| 2026-06-15 | Author IEEE LaTeX paper on Lattice capability receipts and verifiable replay | Created top-level `paper/` (IEEEtran two-column `main.tex`, 19-entry `refs.bib`, README, Makefile, .gitignore). All quantitative claims verified against the codebase by 4 parallel agents and corrected vs stale planning docs (960 tests/82 files, 332 profiles, 7 providers, 7 verify error kinds). No-dash style enforced; pure ASCII. No TeX toolchain present, so PDF not compiled (verified structurally). See `.planning/quick/260615-5m0-author-ieee-latex-paper-on-lattice-capab/`. |
 
 ## Session Continuity
 
