@@ -14,6 +14,7 @@
     "test:types": "pnpm -r test:types",
     "lint:packages": "pnpm -r lint:packages",
     "check:package-version": "node scripts/check-package-version-surfaces.mjs",
+    "check:core-boundary": "node scripts/check-core-package-boundary.mjs",
     "example:work-inbox": "pnpm --filter @full-self-browsing/lattice build && node examples/work-inbox/index.mjs",
     "changeset": "changeset"
   },
