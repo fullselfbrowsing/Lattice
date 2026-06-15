@@ -14,7 +14,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
-**v1.4 in planning** — Provider Breadth + Live Multimodal + Observability Export (scope captured under Requirements below; phases/REQ-IDs to be authored via `/gsd-new-milestone`).
+**v1.4 active** — Provider Breadth + Live Multimodal + Observability Export. Requirements and roadmap are authored: 44 REQ-IDs across Phases 40-49.
 
 ## Current Milestone: v1.4 Provider Breadth + Live Multimodal + Observability Export
 
@@ -29,7 +29,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded, and the first FSB published-package validation run passed 426 / 426 checks with `modelClass` signed-body coverage.
 - **Theme considered and dropped:** a managed / hosted deploy runtime (conflicts with the standing "Hosted control plane — Out of Scope" decision); a lightweight deploy-adapter framing is parked for possible future pickup.
 - **Research-first:** per-theme implementation-pattern research precedes requirements.
-- Phases / REQ-IDs to be authored by `/gsd-new-milestone` (research → requirements → roadmap); phase numbering continues from v1.3 (starts at Phase 40).
+- Requirements and roadmap authored by `/gsd-new-milestone`; phase numbering continues from v1.3 (Phase 40 starts the milestone).
 
 ## Shipped Milestones
 
@@ -65,7 +65,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is in planning** — requirements + roadmap to be authored via `/gsd-new-milestone`. The v1.4 scope is captured below. Initial FSB-via-npm dogfood validation is complete; the remaining Lattice-side follow-up is a low-severity version-stamping bug where the runtime and CLI report `0.0.0` instead of the package version.
+v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) is active** — 44 requirements are mapped to Phases 40-49 in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`. Initial FSB-via-npm dogfood validation is complete; the first phase fixes the remaining low-severity version-stamping bug where the runtime and CLI report `0.0.0` instead of the package version.
 
 **v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opened after v1.3 canary validation was superseded by FSB-via-npm dogfooding:
 
@@ -158,6 +158,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | **Superseded 2026-06-15** — canary descoped; see above. |
 | v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closes the three library-native competitive gaps from the June 2026 analysis. A managed/hosted runtime conflicts with the "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; lightweight deploy adapters parked. | v1.3 closed 2026-06-15; v1.4 opening now. Canary superseded (not a blocker). |
 | Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
+| v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Phase 40 owns version stamping and public-surface guardrails. |
 
 ## Evolution
 
@@ -177,4 +178,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 — FSB-via-npm dogfood validation passed against published Lattice 1.3.0; v1.4 (Provider Breadth + Live Multimodal + Observability) in planning.*
+*Last updated: 2026-06-15 — v1.4 requirements and roadmap authored by gsd-new-milestone.*

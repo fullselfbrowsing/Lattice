@@ -41,21 +41,22 @@ Lattice v1.4 closes three competitive gaps (provider breadth, live/streaming mul
 
 Everything else uses native Node 24 APIs or the existing SDK surface. `@opentelemetry/sdk-node` stays a host-app dep; the exporter package peer-deps only on the stable `@opentelemetry/api@^1.9.0`.
 
-## Proposed Phase Ordering (Phases 40–48)
+## Proposed Phase Ordering (Phases 40–49)
 
 | Phase | Name | Notes |
 |---|---|---|
-| 40 | Gateway Delegation — LiteLLM + Catalog Auto-Refresh | Low-code; closes GW risks before streaming widens the surface. |
-| 41 | OpenRouter Multi-Model Routing + Fallback Array | `models[]` body field; `allow_fallbacks:false` default. |
-| 42 | Streaming Contract + `collectStream()` | **Must freeze before any adapter implements `executeStream()`** (STRM-1/2). |
-| 43 | Anthropic + Gemini Streaming Adapters | Co-designed with multimodal shaping. |
-| 44 | xAI + OpenRouter + LM Studio Streaming Adapters | Different files from 43 → parallelizable. |
-| 45 | Anthropic + Gemini Multimodal Request Shaping | Image/audio/video request inputs. |
-| 46 | OTel `RunEventSink` Exporter + Langfuse/Phoenix factories | `SpanSanitizer` + `BatchSpanProcessor` gating; receipt-CID span attribute is the differentiator. |
-| 47 | `lattice eval --agent` (+ `lattice receipt diff`) | Order-independent; thin CLI over `evalAgentRun`. |
-| 48 | Realtime Audio/Video Direction (interface-level) | Depends on 42 + 45; ships interface definitions only. |
+| 40 | Package Version Stamping + Public-Surface Guardrails | Small cleanup first; prevents the known FSB-reported `0.0.0` regression from leaking into v1.4 surfaces. |
+| 41 | Gateway Delegation — LiteLLM + Gateway Policy | Low-code; closes GW risks before streaming widens the surface. |
+| 42 | OpenRouter Fallback + Catalog Refresh | `models[]` body field; resolved-model accounting; deterministic catalog refresh/diff. |
+| 43 | Streaming Contract + `collectStream()` | **Must freeze before any adapter implements `executeStream()`** (STRM-1/2). |
+| 44 | Streaming Adapter Implementations | Anthropic, Gemini, xAI, OpenRouter, LM Studio. |
+| 45 | Multimodal Request Shaping + Realtime Direction | Anthropic/Gemini artifact shaping plus interface-level realtime seams. |
+| 46 | Receipt Provenance + KMS Signer Shapes | Lineage merkle root and signer adapters build on existing receipt spine. |
+| 47 | OTel `RunEventSink` Exporter + Langfuse/Phoenix factories | `SpanSanitizer` + `BatchSpanProcessor` gating; receipt-CID span attribute is the differentiator. |
+| 48 | Eval + Diagnostics CLI Expansion | `lattice eval --agent`, `lattice receipt diff`, LM Studio latency tails. |
+| 49 | Showcase + FSB Dogfood Validation | Multi-scenario agent-loop/work-inbox validation and tarball/public-surface checks. |
 
-**Ordering rationale:** 40–41 first (close gateway integrity risks). 42 before 43–44 (freeze the streaming contract to enforce STRM-1/2 architecturally). 43 with/before 45 (multimodal shaping co-evolves with streaming adapters). 46 + 47 are largely order-independent and parallelizable. 48 last (interface-only).
+**Ordering rationale:** 40 clears the known version-stamping defect before new public exports. 41–42 close gateway/catalog integrity risks. 43 must precede 44 so streaming receipt semantics are structurally enforced before adapters ship. 45 co-evolves multimodal shaping with realtime direction. 46–48 are largely independent after the core run/receipt/event contracts exist. 49 validates the whole milestone through examples, package checks, and FSB dogfooding.
 
 ## Research Flags & Gaps
 

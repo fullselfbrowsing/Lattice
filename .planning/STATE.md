@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
 status: planning
-last_updated: "2026-06-15T09:54:18.322Z"
+last_updated: "2026-06-15T10:05:31.519Z"
 last_activity: 2026-06-15
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-15)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** v1.4 — Provider Breadth + Live Multimodal + Observability Export (defining requirements)
+**Current focus:** v1.4 — Provider Breadth + Live Multimodal + Observability Export (Phase 40 next)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-15 — FSB-via-npm dogfood validation completed; v1.4 requirements next
+Phase: 40 of 49 — Package Version Stamping + Public-Surface Guardrails
+Plan: Not planned
+Status: Ready to discuss / plan
+Last activity: 2026-06-15 — v1.4 requirements and roadmap authored
 
 ## Performance Metrics
 
@@ -58,15 +58,16 @@ v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decis
 - [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
 - [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
 - [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
+- [v1.4 roadmap]: 44 REQ-IDs mapped across Phases 40-49. Phase 40 fixes version stamping and public-surface guardrails before new v1.4 APIs land.
 
 ### Pending Todos
 
-- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has a green published-package validation run. Track the Lattice version-stamping bug during v1.4 planning or as a quick fix.
+- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has a green published-package validation run. The Lattice version-stamping bug is now Phase 40 scope.
 
 ### Blockers/Concerns
 
 - None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession, and FSB-via-npm dogfooding validated the published `1.3.0` tarball path. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
-- Follow-up (tracked for v1.4 or quick fix): `packages/lattice/src/version.ts` and `packages/lattice-cli/src/version.ts` are hardcoded to `"0.0.0"`, so `latticeVersion` and the CLI banner do not report the published package version. Low severity; FSB pins by package version and tarball integrity.
+- Follow-up now scoped to Phase 40: `packages/lattice/src/version.ts` and `packages/lattice-cli/src/version.ts` are hardcoded to `"0.0.0"`, so `latticeVersion` and the CLI banner do not report the published package version. Low severity; FSB pins by package version and tarball integrity.
 - Residual (tracked for v1.4): FSB exercises only the API slice it uses, so an unused public export could regress silently. Revisit a thin packaging-only canary if FSB coverage proves insufficient.
 
 ## Deferred Items
@@ -105,9 +106,9 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 ## Session Continuity
 
 Last session: 2026-06-15
-Stopped at: v1.4 milestone opened; FSB-via-npm validation complete; defining requirements (research-first)
-Resume: `/gsd-new-milestone` research → requirements → roadmap for v1.4 (phases continue from 39, start at 40)
+Stopped at: v1.4 milestone initialized; Phase 40 ready
+Resume: `/gsd-discuss-phase 40` or `/gsd-plan-phase 40`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start Phase 40 with `/gsd-discuss-phase 40` (or `/gsd-plan-phase 40` to skip discussion)
