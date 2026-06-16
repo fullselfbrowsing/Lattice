@@ -118,6 +118,28 @@ export type ToolCallSurface =
   | "json_only"
   | "text_only";
 
+export type ModelCapabilityProfilePricingKey =
+  | "prompt"
+  | "completion"
+  | "image"
+  | "audio"
+  | "web_search"
+  | "internal_reasoning"
+  | "input_cache_read"
+  | "input_cache_write";
+
+export type ModelCapabilityProfilePricing = Partial<
+  Record<ModelCapabilityProfilePricingKey, string>
+>;
+
+export type ModelCapabilityProfileModality =
+  | "text"
+  | "image"
+  | "audio"
+  | "video"
+  | "file"
+  | "embeddings";
+
 /**
  * Phase 33 — D-05 / D-08 — Capability profile for one (adapter, model)
  * pair. Sibling to `ModelCapability`, not a replacement. Built-time baked
@@ -173,6 +195,10 @@ export interface ModelCapabilityProfile {
    * the model card's aspirational maximum.
    */
   readonly contextWindow: number;
+  readonly pricing?: ModelCapabilityProfilePricing;
+  readonly inputModalities?: readonly ModelCapabilityProfileModality[];
+  readonly outputModalities?: readonly ModelCapabilityProfileModality[];
+  readonly supportedParameters?: readonly string[];
   /**
    * Failure modes this model class is known to exhibit (D-14). Class-
    * derived defaults plus per-family overrides. Phase 36 sanitizer
