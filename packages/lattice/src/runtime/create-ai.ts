@@ -476,7 +476,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               : {}),
             artifacts: built.artifacts,
             contractVerdict: "validation-failed",
-            model: { requested: route.modelId, observed: null },
+            model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
               providerId: route.providerId,
               capabilityId: route.modelId,
@@ -489,6 +489,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
+            ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
             ...(receipt !== undefined ? { receipt } : {}),
           };
         }
@@ -552,7 +553,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               : {}),
             artifacts: built.artifacts,
             contractVerdict: "tripwire-violated",
-            model: { requested: route.modelId, observed: null },
+            model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
               providerId: route.providerId,
               capabilityId: route.modelId,
@@ -575,6 +576,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
+            ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
             ...(receipt !== undefined ? { receipt } : {}),
           };
         }
@@ -636,7 +638,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: built.artifacts,
         contractVerdict: "success",
-        model: { requested: route.modelId, observed: null },
+        model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {
           providerId: route.providerId,
           capabilityId: route.modelId,
@@ -652,6 +654,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         usage: normalizeAdapterUsage(response),
         plan: completedPlan,
         events,
+        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
         ...(receipt !== undefined ? { receipt } : {}),
       };
     } catch (error) {
@@ -1041,6 +1044,10 @@ function normalizeAdapterUsage(response: ProviderRunResponse): Usage {
   };
 }
 
+function observedModelForReceipt(response: ProviderRunResponse): string | null {
+  return response.gateway?.observedModel ?? null;
+}
+
 /**
  * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
  * hex digests in declaration order. Missing/undefined values produce an
@@ -1097,9 +1104,9 @@ function resolveReceiptModelClass(
   model: ReceiptModel,
 ): TrainingClass | undefined {
   if (route.providerId === "" || model.requested === "") return undefined;
-  return getCapabilityProfile(
-    `${route.providerId}:${model.requested}`,
-  )?.trainingClass;
+  const modelForClass = model.observed ?? model.requested;
+  return getCapabilityProfile(`${route.providerId}:${modelForClass}`)?.trainingClass
+    ?? getCapabilityProfile(`${route.providerId}:${model.requested}`)?.trainingClass;
 }
 
 /**
