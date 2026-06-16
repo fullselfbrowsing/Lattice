@@ -10,7 +10,12 @@ import {
   type FakeProviderOptions,
 } from "../providers/fake.js";
 import { createOpenRouterProvider } from "../providers/openrouter.js";
-import type { ModelCapability } from "../providers/provider.js";
+import type {
+  ModelCapability,
+  ProviderAdapter,
+  ProviderStream,
+  ProviderStreamChunk,
+} from "../providers/provider.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
 import {
   createInMemorySigner,
@@ -488,6 +493,130 @@ describe("Phase 8 tripwire integration", () => {
       // Tripwire stage never advanced — stays at its initial 'pending'/'skipped'
       // status. It must NOT be 'completed' or 'failed'.
       expect(["pending", "skipped"]).toContain(tripwire?.status);
+    }
+  });
+});
+
+describe("Phase 43 streaming runtime", () => {
+  function streamingProvider(input: {
+    readonly execute?: ProviderAdapter["execute"];
+    readonly executeStream?: ProviderAdapter["executeStream"];
+  }): ProviderAdapter {
+    const providerId = "streaming-runtime";
+    const modelId = "streaming-runtime:model";
+    return {
+      id: providerId,
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider(providerId),
+          modelId,
+          outputModalities: ["text"],
+          streaming: true,
+        },
+      ],
+      ...(input.execute !== undefined ? { execute: input.execute } : {}),
+      ...(input.executeStream !== undefined ? { executeStream: input.executeStream } : {}),
+    };
+  }
+
+  async function* streamFrom(
+    chunks: readonly ProviderStreamChunk[],
+  ): ProviderStream {
+    for (const chunk of chunks) {
+      yield chunk;
+    }
+  }
+
+  it("uses executeStream only when policy.stream is true", async () => {
+    let executeCalls = 0;
+    let streamCalls = 0;
+    const provider = streamingProvider({
+      execute: async () => {
+        executeCalls += 1;
+        return { rawOutputs: { answer: "buffered" } };
+      },
+      executeStream: () => {
+        streamCalls += 1;
+        return streamFrom([
+          { kind: "text-delta", output: "answer", text: "streamed" },
+        ]);
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const buffered = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+    });
+    expect(buffered.ok).toBe(true);
+    if (buffered.ok) {
+      expect(buffered.outputs.answer).toBe("buffered");
+    }
+    expect(executeCalls).toBe(1);
+    expect(streamCalls).toBe(0);
+
+    const streamed = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+    expect(streamed.ok).toBe(true);
+    if (streamed.ok) {
+      expect(streamed.outputs.answer).toBe("streamed");
+    }
+    expect(executeCalls).toBe(1);
+    expect(streamCalls).toBe(1);
+  });
+
+  it("emits stream start and complete without per-chunk events", async () => {
+    const provider = streamingProvider({
+      executeStream: () => streamFrom([
+        { kind: "text-delta", output: "answer", text: "a" },
+        { kind: "text-delta", output: "answer", text: "b" },
+        { kind: "text-delta", output: "answer", text: "c" },
+      ]),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    const eventKinds = (result.events ?? []).map((event) => event.kind);
+    expect(eventKinds.filter((kind) => kind === "stream.start")).toHaveLength(1);
+    expect(eventKinds.filter((kind) => kind === "stream.complete")).toHaveLength(1);
+    expect(eventKinds.some((kind) => kind.startsWith("stream.delta"))).toBe(false);
+    const completeEvent = result.events?.find((event) => event.kind === "stream.complete");
+    expect(completeEvent?.metadata?.outputNames).toEqual(["answer"]);
+  });
+
+  it("emits stream.failed and returns provider_execution when collection throws", async () => {
+    async function* failingStream(): ProviderStream {
+      yield { kind: "text-delta", output: "answer", text: "partial-secret" };
+      throw new Error("stream boom");
+    }
+    const provider = streamingProvider({
+      executeStream: () => failingStream(),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("provider_execution");
+    }
+    expect((result.events ?? []).some((event) => event.kind === "stream.failed")).toBe(true);
+    for (const event of result.events ?? []) {
+      expect(JSON.stringify(event.metadata ?? {})).not.toContain("partial-secret");
     }
   });
 });
