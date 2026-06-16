@@ -1,0 +1,142 @@
+{
+  "phase": "43",
+  "phase_name": "Streaming Contract + collectStream",
+  "timestamp": "2026-06-16T00:42:29-05:00",
+  "areas_completed": [
+    "Stream chunk contract",
+    "collectStream() semantics",
+    "Runtime/API exposure"
+  ],
+  "areas_remaining": [
+    "Event and receipt boundaries",
+    "Verification strategy"
+  ],
+  "decisions": {
+    "Stream chunk contract": [
+      {
+        "question": "How expressive should the normalized ProviderStreamChunk union be in Phase 43?",
+        "answer": "Text + tool-input fragments + usage/done",
+        "options_presented": [
+          "Text only + usage/done",
+          "Text + tool-input fragments + usage/done",
+          "Broad multimodal chunks now"
+        ]
+      },
+      {
+        "question": "For the final usage signal, what shape should the stream contract use?",
+        "answer": "The done chunk carries optional usage",
+        "options_presented": [
+          "Separate usage chunk before done",
+          "done carries optional usage",
+          "Both allowed"
+        ]
+      },
+      {
+        "question": "For tool-call fragments, what identifiers should the normalized chunk carry?",
+        "answer": "Tool name, tool call id, index, and partial JSON",
+        "options_presented": [
+          "Minimal fragment only",
+          "Tool name + id + index + partial JSON",
+          "Provider raw event included too"
+        ]
+      },
+      {
+        "question": "For stream failures, how should the normalized contract behave?",
+        "answer": "Iterator throws; no error chunk in the union",
+        "options_presented": [
+          "Iterator throws",
+          "error chunk in the union",
+          "Both allowed"
+        ]
+      }
+    ],
+    "collectStream() semantics": [
+      {
+        "question": "When collectStream() turns stream chunks into a ProviderRunResponse, where should assembled text land?",
+        "answer": "Caller-provided output key; collectStream(stream, { outputName }) returns rawOutputs using that key",
+        "options_presented": [
+          "Caller-provided output key",
+          "Hardcoded text key",
+          "Whole rawOutputs builder callback"
+        ]
+      },
+      {
+        "question": "How should collectStream() handle multiple requested outputs?",
+        "answer": "Require exactly one output name for Phase 43",
+        "options_presented": [
+          "Require exactly one output name for Phase 43",
+          "Accept a primary output plus static extras",
+          "Try to infer output mapping from chunks"
+        ]
+      },
+      {
+        "question": "How should collectStream() handle stream termination validity?",
+        "answer": "Require a done chunk; iterator exhaustion without done is malformed and rejects",
+        "options_presented": [
+          "Require a done chunk",
+          "Allow iterator exhaustion without done",
+          "Allow both but warn"
+        ]
+      },
+      {
+        "question": "What buffer policy should Phase 43 define for assembled text/tool fragments?",
+        "answer": "Default bounded buffer with caller override; overflow rejects before receipt issuance",
+        "options_presented": [
+          "Default bounded buffer with override",
+          "Unbounded in Phase 43",
+          "No built-in buffer cap, document caller responsibility"
+        ]
+      }
+    ],
+    "Runtime/API exposure": [
+      {
+        "question": "Should Phase 43 add a user-facing runtime streaming method, or only freeze provider-level streaming primitives?",
+        "answer": "Provider-level only; no ai.runStream until adapters exist in Phase 44",
+        "options_presented": [
+          "Provider-level only",
+          "Add ai.runStream now",
+          "Internal runtime support only"
+        ]
+      },
+      {
+        "question": "Which public exports should Phase 43 intentionally add at the package root?",
+        "answer": "collectStream value export plus stream contract/options/error type exports",
+        "options_presented": [
+          "collectStream value + stream types",
+          "Types only",
+          "Provider submodule only"
+        ]
+      },
+      {
+        "question": "Should createFakeProvider grow streaming support in Phase 43 for tests/examples?",
+        "answer": "Yes, opt-in fake stream support",
+        "options_presented": [
+          "Yes, opt-in fake stream support",
+          "No, local test helper only",
+          "No fake streaming until Phase 44"
+        ]
+      },
+      {
+        "question": "How should runtime routing treat streaming: true capability metadata in Phase 43?",
+        "answer": "No runtime routing change yet",
+        "options_presented": [
+          "No runtime routing change yet",
+          "Add a streaming route intent flag now",
+          "Change default route preference toward streaming-capable models"
+        ]
+      }
+    ]
+  },
+  "deferred_ideas": [],
+  "canonical_refs": [
+    ".planning/ROADMAP.md",
+    ".planning/REQUIREMENTS.md",
+    ".planning/PROJECT.md",
+    ".planning/research/SUMMARY.md",
+    ".planning/research/ARCHITECTURE.md",
+    ".planning/research/PITFALLS.md",
+    ".planning/phases/40-package-version-stamping-public-surface-guardrails/40-CONTEXT.md",
+    ".planning/phases/41-gateway-delegation-litellm-gateway-policy/41-CONTEXT.md",
+    ".planning/phases/42-openrouter-fallback-capability-catalog-refresh/42-CONTEXT.md"
+  ]
+}
