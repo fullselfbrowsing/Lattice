@@ -1,6 +1,12 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
-import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  ProviderStream,
+  Usage,
+} from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import type { OpenAIQuirks, OpenAICompatQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -13,6 +19,7 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import type { ToolUseRequest } from "../agent/types.js";
 import { parseToolUseEnvelope } from "../agent/format-tools.js";
 import {
   validateToolCallRequests,
@@ -22,6 +29,7 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import { readSseEvents } from "./sse.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
@@ -285,6 +293,69 @@ function observedModelFromResponse(body: unknown): string | undefined {
   return typeof model === "string" ? model : undefined;
 }
 
+function createOpenAICompatibleRequestBody(input: {
+  readonly model: string;
+  readonly request: ProviderRunRequest;
+  readonly metadata?: Record<string, unknown>;
+  readonly stream?: boolean;
+}): Record<string, unknown> {
+  return {
+    model: input.model,
+    ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: input.request.task,
+          },
+          {
+            type: "text",
+            text: JSON.stringify({
+              contextPack: input.request.contextPack === undefined
+                ? undefined
+                : {
+                    id: input.request.contextPack.id,
+                    tokenBudget: input.request.contextPack.tokenBudget,
+                    estimatedTokens: input.request.contextPack.estimatedTokens,
+                    included: input.request.contextPack.included,
+                    summarized: input.request.contextPack.summarized,
+                    archived: input.request.contextPack.archived,
+                    omitted: input.request.contextPack.omitted,
+                    warnings: input.request.contextPack.warnings,
+                  },
+            }),
+          },
+          ...input.request.artifacts.map((inputArtifact) => ({
+            type: "text",
+            text: JSON.stringify({
+              artifactId: inputArtifact.id,
+              kind: inputArtifact.kind,
+              mediaType: inputArtifact.mediaType,
+              privacy: inputArtifact.privacy,
+              transport: input.request.providerPackaging?.artifacts.find(
+                (item) => item.artifactId === inputArtifact.id,
+              )?.transport ?? input.request.plan?.providerPackaging?.artifacts.find(
+                (item) => item.artifactId === inputArtifact.id,
+              )?.transport,
+              value:
+                typeof inputArtifact.value === "string" && inputArtifact.kind !== "url"
+                  ? inputArtifact.value
+                  : undefined,
+              url:
+                inputArtifact.kind === "url" && typeof inputArtifact.value === "string"
+                  ? inputArtifact.value
+                  : undefined,
+            }),
+          })),
+        ],
+      },
+    ],
+    ...(input.stream === true ? { stream: true } : {}),
+  };
+}
+
 /**
  * Phase 34 — D-04 / QUIRK-02 — OpenAI-compatible provider factory.
  *
@@ -310,6 +381,7 @@ export function createOpenAICompatibleProvider(
 } {
   const id = options.id ?? "openai-compatible";
   const fetchImpl = options.fetch ?? fetch;
+  const baseUrl = options.baseUrl.replace(/\/$/u, "");
 
   // Phase 34 — D-04 — OpenAI-compat negotiate() is registry-only (no fetch,
   // no cache, no inflight). Source: "registry" signals intentional no-endpoint.
@@ -356,63 +428,14 @@ export function createOpenAICompatibleProvider(
           "content-type": "application/json",
           ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
         },
-        body: JSON.stringify({
+        body: JSON.stringify(createOpenAICompatibleRequestBody({
           model: options.model,
+          request,
           ...(metadata !== undefined ? { metadata } : {}),
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: request.task,
-                },
-                {
-                  type: "text",
-                  text: JSON.stringify({
-                    contextPack: request.contextPack === undefined
-                      ? undefined
-                      : {
-                          id: request.contextPack.id,
-                          tokenBudget: request.contextPack.tokenBudget,
-                          estimatedTokens: request.contextPack.estimatedTokens,
-                          included: request.contextPack.included,
-                          summarized: request.contextPack.summarized,
-                          archived: request.contextPack.archived,
-                          omitted: request.contextPack.omitted,
-                          warnings: request.contextPack.warnings,
-                        },
-                  }),
-                },
-                ...request.artifacts.map((inputArtifact) => ({
-                  type: "text",
-                  text: JSON.stringify({
-                    artifactId: inputArtifact.id,
-                    kind: inputArtifact.kind,
-                    mediaType: inputArtifact.mediaType,
-                    privacy: inputArtifact.privacy,
-                    transport: request.providerPackaging?.artifacts.find(
-                      (item) => item.artifactId === inputArtifact.id,
-                    )?.transport ?? request.plan?.providerPackaging?.artifacts.find(
-                      (item) => item.artifactId === inputArtifact.id,
-                    )?.transport,
-                    value:
-                      typeof inputArtifact.value === "string" && inputArtifact.kind !== "url"
-                        ? inputArtifact.value
-                        : undefined,
-                    url:
-                      inputArtifact.kind === "url" && typeof inputArtifact.value === "string"
-                        ? inputArtifact.value
-                        : undefined,
-                  }),
-                })),
-              ],
-            },
-          ],
-        }),
+        })),
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
-      const response = await fetchImpl(`${options.baseUrl.replace(/\/$/u, "")}/chat/completions`, init);
+      const response = await fetchImpl(`${baseUrl}/chat/completions`, init);
 
       if (!response.ok) {
         throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
@@ -455,7 +478,227 @@ export function createOpenAICompatibleProvider(
         rawResponse: body,
       };
     },
+    executeStream(request) {
+      return streamOpenAICompatibleResponse({
+        id,
+        model: options.model,
+        baseUrl,
+        fetchImpl,
+        request,
+        ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
+        ...(options.gateway !== undefined ? { providerGateway: options.gateway } : {}),
+        ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+        ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
+        ...(options.validateToolCalls !== undefined
+          ? { validateToolCalls: options.validateToolCalls }
+          : {}),
+      });
+    },
   };
+}
+
+async function* streamOpenAICompatibleResponse(input: {
+  readonly id: string;
+  readonly model: string;
+  readonly baseUrl: string;
+  readonly apiKey?: string;
+  readonly fetchImpl: typeof fetch;
+  readonly request: ProviderRunRequest;
+  readonly providerGateway?: GatewayPolicy;
+  readonly pricing?: {
+    readonly inputPer1kTokens?: number;
+    readonly outputPer1kTokens?: number;
+  };
+  readonly sanitizeOutput?: SanitizeOutputOption;
+  readonly validateToolCalls?: ValidateToolCallsOption;
+}): ProviderStream {
+  const mergedGatewayPolicy = mergeGatewayPolicy(
+    input.providerGateway,
+    readGatewayPolicy(input.request.policy),
+  );
+  const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+  const response = await input.fetchImpl(`${input.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(input.apiKey !== undefined ? { authorization: `Bearer ${input.apiKey}` } : {}),
+    },
+    body: JSON.stringify(createOpenAICompatibleRequestBody({
+      model: input.model,
+      request: input.request,
+      ...(metadata !== undefined ? { metadata } : {}),
+      stream: true,
+    })),
+    ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
+  }
+
+  const textParts: string[] = [];
+  const rawChunks: unknown[] = [];
+  const nativeToolCalls = new Map<number, AccumulatedOpenAIToolCall>();
+  let usagePayload: unknown;
+  let observedModel: string | undefined;
+
+  for await (const event of readSseEvents(response)) {
+    const data = event.data.trim();
+    if (data.length === 0) {
+      continue;
+    }
+    if (data === "[DONE]") {
+      break;
+    }
+
+    const chunk = parseJsonObject(data);
+    rawChunks.push(chunk);
+    const chunkObservedModel = observedModelFromResponse(chunk);
+    if (chunkObservedModel !== undefined) {
+      observedModel = chunkObservedModel;
+    }
+    if (isRecord(chunk) && chunk.usage !== undefined) {
+      usagePayload = chunk.usage;
+    }
+
+    for (const choice of streamChoices(chunk)) {
+      const delta = isRecord(choice.delta) ? choice.delta : {};
+      const content = typeof delta.content === "string" ? delta.content : undefined;
+      if (content !== undefined && content.length > 0) {
+        textParts.push(content);
+        for (const output of input.request.outputs) {
+          yield { kind: "text-delta", output, text: content };
+        }
+      }
+      accumulateOpenAIToolCalls(nativeToolCalls, delta.tool_calls);
+    }
+  }
+
+  const text = textParts.join("");
+  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
+    providerId: input.id,
+    modelId: input.model,
+  });
+  const parsedToolCalls = parseToolUseEnvelope(text);
+  const promptToolCalls = parsedToolCalls === null
+    ? undefined
+    : await validateToolCallRequests(parsedToolCalls, input.validateToolCalls);
+  const nativeToolRequests = openAIToolUseRequests(nativeToolCalls);
+  const nativeValidatedToolCalls = nativeToolRequests.length === 0
+    ? undefined
+    : await validateToolCallRequests(nativeToolRequests, input.validateToolCalls);
+  const toolCalls = [
+    ...(promptToolCalls ?? []),
+    ...(nativeValidatedToolCalls ?? []),
+  ];
+  const usage = normalizeUsage(usagePayload);
+  const normalizedUsage = normalizeUsageToRunUsage(usagePayload, input.pricing);
+  const sanitizedGatewayPolicy = sanitizedGatewayPolicyForPlan(mergedGatewayPolicy);
+  const gateway = input.id === "litellm" ||
+    input.id === "openrouter" ||
+    mergedGatewayPolicy !== undefined
+    ? {
+        used: true,
+        requestedModel: input.model,
+        ...(observedModel !== undefined ? { observedModel } : {}),
+        ...(sanitizedGatewayPolicy !== undefined ? { policy: sanitizedGatewayPolicy } : {}),
+      }
+    : undefined;
+
+  yield {
+    kind: "complete",
+    rawOutputs: sanitizedOutputs,
+    ...(usage !== undefined ? { usage } : {}),
+    normalizedUsage,
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(gateway !== undefined ? { gateway } : {}),
+    rawResponse: {
+      kind: "openai-compatible-stream",
+      chunks: rawChunks,
+    },
+  };
+}
+
+interface AccumulatedOpenAIToolCall {
+  id?: string;
+  name?: string;
+  arguments: string;
+}
+
+function parseJsonObject(data: string): unknown {
+  try {
+    return JSON.parse(data) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`OpenAI-compatible stream returned invalid JSON: ${message}`);
+  }
+}
+
+function streamChoices(chunk: unknown): readonly Record<string, unknown>[] {
+  if (!isRecord(chunk) || !Array.isArray(chunk.choices)) {
+    return [];
+  }
+
+  return chunk.choices.filter(isRecord);
+}
+
+function accumulateOpenAIToolCalls(
+  calls: Map<number, AccumulatedOpenAIToolCall>,
+  deltas: unknown,
+): void {
+  if (!Array.isArray(deltas)) {
+    return;
+  }
+
+  for (const delta of deltas) {
+    if (!isRecord(delta) || typeof delta.index !== "number") {
+      continue;
+    }
+    const current = calls.get(delta.index) ?? { arguments: "" };
+    if (typeof delta.id === "string") {
+      current.id = delta.id;
+    }
+    if (isRecord(delta.function)) {
+      if (typeof delta.function.name === "string") {
+        current.name = `${current.name ?? ""}${delta.function.name}`;
+      }
+      if (typeof delta.function.arguments === "string") {
+        current.arguments += delta.function.arguments;
+      }
+    }
+    calls.set(delta.index, current);
+  }
+}
+
+function openAIToolUseRequests(
+  calls: ReadonlyMap<number, AccumulatedOpenAIToolCall>,
+): readonly ToolUseRequest[] {
+  return [...calls.entries()]
+    .sort(([left], [right]) => left - right)
+    .flatMap(([index, call]) => {
+      if (call.name === undefined) {
+        return [];
+      }
+      return [{
+        id: call.id ?? `tool-call-${index}`,
+        name: call.name,
+        args: parseToolArguments(call.arguments),
+      }];
+    });
+}
+
+function parseToolArguments(value: string): unknown {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`OpenAI-compatible stream returned invalid tool arguments: ${message}`);
+  }
 }
 
 /**

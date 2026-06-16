@@ -6,6 +6,7 @@ import {
   createOpenAIProvider,
 } from "./adapters.js";
 import { createFakeProvider } from "./fake.js";
+import { collectStream } from "./streaming.js";
 import type { ModelCapability } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -18,6 +19,40 @@ function makeFakeFetch(body: unknown, status = 200): typeof fetch {
       status,
       headers: { "content-type": "application/json" },
     })) as unknown as typeof fetch;
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(
+  chunks: readonly string[],
+  status = 200,
+): {
+  fetch: typeof fetch;
+  requests: Array<{ url: string; init: RequestInit }>;
+} {
+  const requests: Array<{ url: string; init: RequestInit }> = [];
+  const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    requests.push({ url: String(url), init: init ?? {} });
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      {
+        status,
+        headers: { "content-type": "text/event-stream" },
+      },
+    );
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, requests };
 }
 
 /**
@@ -333,6 +368,157 @@ describe("Phase 37: OpenAI-compatible tool-call validation", () => {
     expect(response.toolCalls).toEqual([
       { id: "c3", name: "search", args: { query: "ok" } },
     ]);
+  });
+});
+
+describe("Phase 44: OpenAI-compatible streaming adapter", () => {
+  it("streaming request body includes stream true", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "ok" } }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake/",
+      fetch,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    expect(first.url).toBe("http://fake/chat/completions");
+    const body = JSON.parse(first.init.body as string) as Record<string, unknown>;
+    expect(body.model).toBe("test");
+    expect(body.stream).toBe(true);
+  });
+
+  it("text chunks collect to final output", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({ model: "observed-model", choices: [{ delta: { content: "hel" } }] }),
+      sseData({
+        choices: [{ delta: { content: "lo" } }],
+        usage: { prompt_tokens: 2, completion_tokens: 3 },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.rawOutputs).toEqual({ text: "hello" });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 2,
+      completionTokens: 3,
+      costUsd: null,
+    });
+    expect(response.rawResponse).toMatchObject({
+      kind: "openai-compatible-stream",
+      chunks: expect.any(Array),
+    });
+  });
+
+  it("split SSE frames parse correctly", async () => {
+    const { fetch } = makeStreamingFetch([
+      "data: {\"choices\":[{\"delta\":{\"content\":\"hel",
+      "lo\"}}]}\n\n",
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("native tool-call deltas validate into toolCalls", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: "call-1",
+                  function: { name: "search", arguments: "{\"query\":\"" },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      sseData({
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  function: { arguments: "ok\"}" },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.toolCalls).toEqual([
+      { id: "call-1", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("non-OK streaming response throws", async () => {
+    const { fetch } = makeStreamingFetch([], 503);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await expect(
+      collectStream(await adapter.executeStream!({
+        task: "t",
+        artifacts: [],
+        outputs: ["text"],
+      })),
+    ).rejects.toThrow("OpenAI-compatible provider failed with 503.");
   });
 });
 
