@@ -6,6 +6,7 @@ import {
   createInMemorySigner,
   createLiteLLMProvider,
   createMemoryKeySet,
+  createOpenRouterProvider,
   evaluateTripwires,
   generateEd25519KeyPairJwk,
   inv,
@@ -16,6 +17,7 @@ import {
   getStructuredOutputContract,
   getToolUseContract,
   stripChatTemplateArtifacts,
+  stripOpenRouterVariant,
   stripReasoningTags,
   ToolCallValidationError,
   unwrapInternalEnvelope,
@@ -148,6 +150,13 @@ describe("public-surface inventory", () => {
 describe("Phase 41 public surface", () => {
   it("exports createLiteLLMProvider as a first-class helper", () => {
     expect(typeof createLiteLLMProvider).toBe("function");
+  });
+});
+
+describe("Phase 42 public surface", () => {
+  it("preserves OpenRouter runtime exports while catalog metadata remains type-only", () => {
+    expect(typeof createOpenRouterProvider).toBe("function");
+    expect(stripOpenRouterVariant("openai/gpt-oss-120b:free")).toBe("openai/gpt-oss-120b");
   });
 });
 

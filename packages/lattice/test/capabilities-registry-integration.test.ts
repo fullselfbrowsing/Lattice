@@ -27,8 +27,11 @@ import {
   findCapabilityProfile,
   getCapabilityProfile,
 } from "../src/index.js";
+import type { ModelCapabilityProfile } from "../src/index.js";
 import { GENERATED_PROFILES } from "../src/capabilities/registry.generated.js";
 import { STATIC_PROFILES } from "../src/capabilities/registry.static.js";
+
+const GENERATED_PROFILE_VIEW = GENERATED_PROFILES as readonly ModelCapabilityProfile[];
 
 describe("Phase 33 registry — coverage (CAPS-05)", () => {
   it("ships at least 200 distinct canonical keys across generated + static", () => {
@@ -148,6 +151,25 @@ describe("Phase 33 registry — anchor case study session_1780792387779 (CAPS-02
         (p) => p.adapter === "openrouter" && p.id === "openai/gpt-oss-120b",
       ),
     ).toBe(true);
+  });
+});
+
+describe("Phase 42 registry — OpenRouter feed metadata", () => {
+  it("captures supported parameter metadata in generated OpenRouter profiles", () => {
+    const profile = GENERATED_PROFILE_VIEW.find(
+      (p) => p.adapter === "openrouter" && Array.isArray(p.supportedParameters),
+    );
+    expect(profile).toBeDefined();
+    expect(profile!.supportedParameters!.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the gpt-oss anchor profile resolvable with optional pricing strings", () => {
+    const profile = getCapabilityProfile("openrouter:openai/gpt-oss-120b");
+    expect(profile).toBeDefined();
+    expect(profile!.adapter).toBe("openrouter");
+    if (profile!.pricing?.prompt !== undefined) {
+      expect(typeof profile!.pricing.prompt).toBe("string");
+    }
   });
 });
 
