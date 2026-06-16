@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectStream,
   contract,
   createAI,
   createInMemorySigner,
@@ -66,6 +67,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "STUCK_REASONS",
   "ToolCallValidationError",
   "artifact",
+  "collectStream",
   "contract",
   "createAI",
   "createAISdkProvider",
@@ -157,6 +159,12 @@ describe("Phase 42 public surface", () => {
   it("preserves OpenRouter runtime exports while catalog metadata remains type-only", () => {
     expect(typeof createOpenRouterProvider).toBe("function");
     expect(stripOpenRouterVariant("openai/gpt-oss-120b:free")).toBe("openai/gpt-oss-120b");
+  });
+});
+
+describe("Phase 43 public surface", () => {
+  it("exports collectStream as the streaming collection helper", () => {
+    expect(typeof collectStream).toBe("function");
   });
 });
 

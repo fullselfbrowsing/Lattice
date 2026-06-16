@@ -70,9 +70,18 @@ export type {
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderStream,
+  ProviderStreamChunk,
+  ProviderStreamCompleteChunk,
+  ProviderStreamGatewayChunk,
+  ProviderStreamOutputChunk,
+  ProviderStreamTextDeltaChunk,
+  ProviderStreamToolCallChunk,
+  ProviderStreamUsageChunk,
   ProviderTransportMode,
   Usage,
 } from "../providers/provider.js";
+export type { CollectStreamOptions } from "../providers/streaming.js";
 export type {
   ArtifactLoader,
   MaterializationError,

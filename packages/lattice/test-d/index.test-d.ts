@@ -3,6 +3,7 @@ import { expectAssignable, expectType } from "tsd";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import {
+  collectStream,
   createAI,
   createLiteLLMProvider,
   createNoopAgentHost,
@@ -15,6 +16,7 @@ import {
 } from "..";
 import type {
   AgentTransport,
+  CollectStreamOptions,
   CrewResult,
   GatewayMetadataValue,
   GatewayPolicy,
@@ -22,6 +24,10 @@ import type {
   LiteLLMQuirks,
   OpenRouterProviderOptions,
   ProviderGatewayMetadata,
+  ProviderRunResponse,
+  ProviderStream,
+  ProviderStreamChunk,
+  ProviderStreamTextDeltaChunk,
   RateLimitGroup,
   ReceiptEnvelope,
 } from "..";
@@ -83,3 +89,16 @@ const gatewayObservation: ProviderGatewayMetadata = {
 void gatewayObservation;
 const metadataValue: GatewayMetadataValue = { nested: ["ok", 1, false, null] };
 void metadataValue;
+const streamChunk: ProviderStreamTextDeltaChunk = {
+  kind: "text-delta",
+  output: "answer",
+  text: "hi",
+};
+const streamChunks: ProviderStreamChunk[] = [streamChunk];
+async function* publicStream(): ProviderStream {
+  for (const chunk of streamChunks) {
+    yield chunk;
+  }
+}
+const collectOptions: CollectStreamOptions = { defaultOutput: "answer" };
+expectType<Promise<ProviderRunResponse>>(collectStream(publicStream(), collectOptions));

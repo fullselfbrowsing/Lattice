@@ -42,6 +42,7 @@ export { createOpenRouterProvider } from "./providers/openrouter.js";
 export type { OpenRouterProviderOptions } from "./providers/openrouter.js";
 export { createXaiProvider } from "./providers/xai.js";
 export type { XaiProviderOptions } from "./providers/xai.js";
+export { collectStream } from "./providers/streaming.js";
 export { materializeReplayEnvelope } from "./replay/materialize.js";
 export {
   createReplayEnvelope,
@@ -186,6 +187,7 @@ export type {
   CapabilityContract,
   CapabilityContractInput,
   CapabilityReceiptBody,
+  CollectStreamOptions,
   ContractRejectReasonCode,
   ContractVerdict,
   ExecutionPlanStub,
@@ -215,6 +217,14 @@ export type {
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderStream,
+  ProviderStreamChunk,
+  ProviderStreamCompleteChunk,
+  ProviderStreamGatewayChunk,
+  ProviderStreamOutputChunk,
+  ProviderStreamTextDeltaChunk,
+  ProviderStreamToolCallChunk,
+  ProviderStreamUsageChunk,
   QualityFloorInvariant,
   ReceiptEnvelope,
   ReceiptModel,
