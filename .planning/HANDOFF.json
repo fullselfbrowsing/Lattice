@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-16T14:38:17.982Z",
+  "context": "default",
+  "phase": null,
+  "phase_name": null,
+  "phase_dir": null,
+  "plan": null,
+  "task": null,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Close v1.4 milestone audit",
+      "status": "done",
+      "commit": "511bfa8"
+    },
+    {
+      "id": 2,
+      "name": "Archive v1.4 milestone roadmap, requirements, and audit",
+      "status": "done",
+      "commit": "a97eeea"
+    },
+    {
+      "id": 3,
+      "name": "Archive v1.4 phase directories",
+      "status": "done",
+      "commit": "132bde1"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 1,
+      "name": "Start the next milestone cycle",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "Treat the handoff as project-level default context instead of phase context.",
+      "rationale": "The live phase directory is empty, roadmap analysis reports no current or next phase, and v1.4 has already been archived.",
+      "phase": null
+    },
+    {
+      "decision": "Leave .DS_Store untracked.",
+      "rationale": "It was pre-existing workspace noise and unrelated to the v1.4 archive or pause handoff.",
+      "phase": null
+    }
+  ],
+  "uncommitted_files": [
+    {
+      "path": ".DS_Store",
+      "status": "untracked",
+      "note": "pre-existing workspace noise; intentionally not committed"
+    }
+  ],
+  "next_action": "Run /gsd-new-milestone to open the next milestone cycle and create fresh .planning/REQUIREMENTS.md and active roadmap content.",
+  "context_notes": "Milestone v1.4 is complete and archived. The local annotated tag v1.4 points at commit a97eeea. The branch has not been pushed. No implementation task is in progress."
+}
