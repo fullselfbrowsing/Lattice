@@ -509,6 +509,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: built.artifacts,
+            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
             contractVerdict: "validation-failed",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -586,6 +587,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: built.artifacts,
+            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
             contractVerdict: "tripwire-violated",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
