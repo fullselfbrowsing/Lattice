@@ -9,6 +9,10 @@
  *   - types field (string)
  *   - tsd.compilerOptions.paths keys
  *
+ * Phase 49 extension:
+ *   - published packages must not ship install-time lifecycle scripts
+ *   - the core runtime package must not depend directly on optional native/heavy integrations
+ *
  * Implements PITFALLS RENAME-1 / RENAME-3 forever-guard: catches a regression
  * where the rename to @full-self-browsing/* leaves a stale bare "lattice"
  * reference that would ship to the registry tarball.
@@ -33,14 +37,40 @@ const repoRoot = resolve(here, "..");
 // Hard-coded publishable set. Changing this list should be a deliberate edit
 // to this script, not a side-effect of adding a new workspace directory.
 const PACKAGES = [
-  { dir: "packages/lattice", name: "@full-self-browsing/lattice" },
-  { dir: "packages/lattice-cli", name: "@full-self-browsing/lattice-cli" },
+  { dir: "packages/lattice", name: "@full-self-browsing/lattice", kind: "runtime" },
+  { dir: "packages/lattice-cli", name: "@full-self-browsing/lattice-cli", kind: "cli" },
 ];
 
 // Matches the bare token "lattice" when it is NOT preceded by the
 // @full-self-browsing/ scope. Same logic the Phase 24 tarball-inspection
 // step used.
 const BARE_LATTICE = /(?<!@full-self-browsing\/)\blattice\b/;
+
+const INSTALL_LIFECYCLE_SCRIPTS = [
+  "preinstall",
+  "install",
+  "postinstall",
+  "prepare",
+];
+
+// Core package direct-dependency denylist. These integrations are useful in
+// adapters/examples, but they must not become always-on runtime install cost.
+const RUNTIME_DISALLOWED_DEPENDENCIES = new Set([
+  "@aws-sdk/client-s3",
+  "@ffmpeg-installer/ffmpeg",
+  "@langfuse/tracing",
+  "@opentelemetry/api",
+  "@opentelemetry/exporter-trace-otlp-http",
+  "@opentelemetry/sdk-node",
+  "better-sqlite3",
+  "ffmpeg-static",
+  "langfuse",
+  "music-metadata",
+  "pdf-parse",
+  "pdfjs-dist",
+  "sharp",
+  "sqlite3",
+]);
 
 function runCommand(cmd, args, options) {
   return new Promise((resolvePromise, rejectPromise) => {
@@ -54,8 +84,9 @@ function runCommand(cmd, args, options) {
   });
 }
 
-function inspectManifest(name, manifest) {
+function inspectManifest(entry, manifest) {
   const offenders = [];
+  const { name } = entry;
   const depGroups = [
     "dependencies",
     "devDependencies",
@@ -69,6 +100,17 @@ function inspectManifest(name, manifest) {
         if (key === "lattice") {
           offenders.push({ package: name, surface: `${group}["${key}"]`, value: block[key] });
         }
+        if (entry.kind === "runtime" && RUNTIME_DISALLOWED_DEPENDENCIES.has(key)) {
+          offenders.push({ package: name, surface: `${group}["${key}"]`, value: "disallowed core dependency" });
+        }
+      }
+    }
+  }
+  const scripts = manifest.scripts;
+  if (scripts && typeof scripts === "object") {
+    for (const scriptName of INSTALL_LIFECYCLE_SCRIPTS) {
+      if (typeof scripts[scriptName] === "string" && scripts[scriptName].trim().length > 0) {
+        offenders.push({ package: name, surface: `scripts["${scriptName}"]`, value: scripts[scriptName] });
       }
     }
   }
@@ -132,7 +174,7 @@ async function inspectPackage(entry) {
         tarball: tgz,
       };
     }
-    const offenders = inspectManifest(entry.name, manifest);
+    const offenders = inspectManifest(entry, manifest);
     return { offenders, fatal: null, tarball: tgz };
   } finally {
     await rm(tmp, { recursive: true, force: true });
