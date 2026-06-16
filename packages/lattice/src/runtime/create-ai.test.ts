@@ -9,6 +9,7 @@ import {
   createFakeProvider,
   type FakeProviderOptions,
 } from "../providers/fake.js";
+import { createOpenRouterProvider } from "../providers/openrouter.js";
 import type { ModelCapability } from "../providers/provider.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
 import {
@@ -865,5 +866,57 @@ describe("Phase 9 receipts integration", () => {
     }
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(5000);
+  });
+
+  it("OpenRouter fallback receipts carry requested and observed model", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const fakeFetch = (async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "fallback ok" } }],
+          model: "anthropic/claude-sonnet-4.5",
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        }),
+        {
+          headers: { "content-type": "application/json" },
+        },
+      )) as unknown as typeof fetch;
+    const provider = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      fetch: fakeFetch,
+    });
+    const ai = createAI({ providers: [provider], signer });
+
+    const result = await ai.run({
+      task: "fallback",
+      outputs: { answer: "text" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
+    expect(result.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(result.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
+    expect(result.plan.route.selected?.modelId).toBe("openai/gpt-oss-120b");
+    const succeededAttemptEvent = result.events?.find(
+      (event) =>
+        event.kind === "provider.attempt" &&
+        event.metadata?.status === "succeeded",
+    );
+    expect(succeededAttemptEvent?.metadata?.gateway).toMatchObject({
+      requestedModel: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      observedModel: "anthropic/claude-sonnet-4.5",
+    });
+
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.model.requested).toBe("openai/gpt-oss-120b");
+      expect(verifyResult.body.model.observed).toBe("anthropic/claude-sonnet-4.5");
+      expect(verifyResult.body.route.capabilityId).toBe("openai/gpt-oss-120b");
+      expect(verifyResult.body.modelClass).toBe("frontier_rlhf");
+    }
   });
 });
