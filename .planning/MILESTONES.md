@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.4 Provider Breadth + Live Multimodal + Observability Export (Shipped: 2026-06-16)
+
+**Phases completed:** 10 phases, 36 plans, 54 tasks
+**Audit:** Passed — 44 / 44 REQ-IDs satisfied (`milestones/v1.4-MILESTONE-AUDIT.md`)
+**Validation:** 1026 runtime tests, 157 CLI tests, package version/tarball checks, offline v1.4 showcase, and FSB package-candidate dogfood.
+**Known deferred items at close:** 7 stale quick-task index entries (see `STATE.md` Deferred Items).
+
+**Key accomplishments:**
+
+- Package hygiene guardrails: package-local version stamping, exact root value-export inventory, package-entrypoint type smoke tests, packed-artifact version checks, and core dependency boundary scans.
+- Gateway and provider breadth: first-class LiteLLM helper, typed gateway policy metadata, OpenRouter fallback arrays, observed served-model accounting, and deterministic OpenRouter registry refresh metadata.
+- Live and multimodal surface: provider-neutral streaming contract, explicit `policy.stream` runtime path, chunk-boundary receipt invariants, five streaming adapter implementations, seven-provider parity, and Anthropic/Gemini multimodal request shaping.
+- Receipt and signing provenance: lineage merkle roots, runtime/crew lineage issuance, and remote signer/KMS adapter shapes without cloud SDK dependencies in core.
+- Observability and diagnostics: structural OpenTelemetry event export, content-safe sanitizer, Langfuse/Phoenix OTLP helpers, agent eval CLI mode, receipt diffing, and LM Studio latency-tail diagnostics.
+- Release validation: offline v1.4 showcase, stricter tarball leak/install-script checks, and isolated FSB package-candidate dogfood with generated FSB-side smoke coverage.
+
+---
+
 ## v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface (Shipped: 2026-06-15)
 
 **Phases completed:** 13 phases, 42 plans, 80 tasks

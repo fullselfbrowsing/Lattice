@@ -37,6 +37,43 @@
 
 ---
 
+## Milestone: v1.4 — Provider Breadth + Live Multimodal + Observability Export
+
+**Shipped:** 2026-06-16
+**Phases:** 10 (40–49) | **Plans:** 36 | **REQ-IDs:** 44/44
+
+### What Was Built
+- Package identity and release guardrails: package-local version stamping, root value-export inventory, package-entrypoint type tests, packed-artifact version checks, tarball leak checks, and native/install-script dependency gates.
+- Provider breadth and live surface: first-class LiteLLM helper, typed gateway metadata, OpenRouter fallback arrays and catalog refresh, normalized streaming contract, five streaming adapter implementations, seven-provider parity, and Anthropic/Gemini multimodal request shaping.
+- Inspectability upgrades: receipt lineage merkle roots, remote signer/KMS adapter shapes, structural OpenTelemetry export with content-safe defaults, Langfuse/Phoenix OTLP helpers, agent eval CLI, receipt diffing, and LM Studio latency diagnostics.
+- Validation closure: offline v1.4 showcase plus isolated FSB package-candidate dogfood from a packed tarball.
+
+### What Worked
+- **Fix package identity before API expansion.** Phase 40 closed the `0.0.0` version-stamping defect first, then every later v1.4 public export inherited stronger package and public-surface gates.
+- **Gateway delegation stayed deterministic.** LiteLLM/OpenRouter metadata became additive provider/gateway metadata while Lattice route fields remained stable and replayable.
+- **Package-candidate dogfood caught the right boundary.** Installing the packed runtime tarball into an isolated FSB temp consumer validated the external-consumer path without relying on workspace symlinks.
+
+### What Was Inefficient
+- Some phase summaries were too verbose for milestone extraction, which produced noisy `Status:` bullets in `MILESTONES.md` and required manual cleanup.
+- ROADMAP plan lists drifted during late-phase edits; the archive close needed a final reconciliation against the actual plan files.
+- A chained verification command hung once even though the underlying package gates passed when rerun separately; future final gates should prefer independent commands with clearer failure boundaries.
+
+### Patterns Established
+- **Package-candidate validation** as the final release gate: pack, install in an isolated consumer, run generated smoke, then run downstream compatible tests.
+- **Core dependency boundary scans** for optional integrations: native/heavy SDKs remain out of core unless intentionally added.
+- **Content-safe observability by default:** telemetry exports structural attributes and receipt pointers, with raw content capture requiring explicit opt-in.
+
+### Key Lessons
+1. **Tarball validation should be a first-class gate, not a release afterthought.** It caught the packaging boundary that source-level tests cannot prove.
+2. **Archived roadmap generation needs reconciliation against phase artifacts.** If plan lists are manually patched during execution, milestone close should compare them to `*-PLAN.md` files before commit.
+3. **Real downstream dogfood and offline showcase cover different risks.** The showcase proves broad v1.4 behavior deterministically; FSB proves install/package compatibility as an external consumer.
+
+### Cost Observations
+- Model mix: not instrumented this milestone. Most validation was local/offline against fake providers and package checks.
+- Notable: Phase 49 ran the broadest final gate set, including 1026 runtime tests, 157 CLI tests, package version checks, tarball leak checks, offline showcase, and FSB package-candidate dogfood.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -47,7 +84,9 @@
 | v1.1 | 7–13 | Signed receipts + replay + CLI; the verifiability thesis took shape. |
 | v1.2 | 14–22 | FSB integration (retro) + agent capability (forward); 7-adapter parity contract. |
 | v1.3 | 24–39 | First public npm release + model-aware SDK + multi-agent crew; first use of `superseded` to descope a planned sub-scope (canary) for a cheaper real-consumer path. |
+| v1.4 | 40–49 | Provider/gateway breadth, streaming/multimodal, OTel/eval diagnostics, and package-candidate downstream dogfood became the release-validation pattern. |
 
 ### Top Lessons (Verified Across Milestones)
 1. **Opt-in, additive surfaces preserve the parity contract** — validated across v1.2 (adapters) and v1.3 (sanitizers/validators/crew).
 2. **Inspectable, signed, reproducible artifacts are the differentiator** — every milestone has leaned further into receipts/replay rather than feature breadth.
+3. **Validate releases as packages, not just source trees** — v1.3 FSB-via-npm and v1.4 packed-candidate dogfood both found or defended boundaries that workspace-local tests would miss.

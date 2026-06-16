@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
-status: milestone_complete
-stopped_at: Milestone complete (Phase 49 was final phase)
-last_updated: 2026-06-16T09:21:08.191Z
-last_activity: 2026-06-16
+status: Awaiting next milestone
+stopped_at: Milestone v1.4 completed and archived; ready for next milestone
+last_updated: "2026-06-16T09:34:26Z"
+last_activity: 2026-06-16 — Milestone v1.4 completed and archived
 progress:
   total_phases: 10
   completed_phases: 10
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-15)
+See: .planning/PROJECT.md (updated 2026-06-16)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 49
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-16
+Phase: Milestone v1.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-16 — Milestone v1.4 completed and archived
 
 ## Performance Metrics
 
@@ -80,14 +80,24 @@ v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decis
 
 ## Deferred Items
 
-Acknowledged and deferred at v1.3 milestone close on 2026-06-15:
+Items acknowledged and deferred at v1.4 milestone close on 2026-06-16:
 
 | Category | Item | Status |
 |----------|------|--------|
 | quick_task | 260422-gle-create-lattice-readme-matching-existing- | missing (stale index entry) |
 | quick_task | 260609-ewo-clean-planning-state-after-v1-3-code-reg | missing (stale index entry) |
+| quick_task | 260615-5m0-author-ieee-latex-paper-on-lattice-capab | missing (stale index entry) |
+| quick_task | 260615-689-polish-lattice-paper-mention-lattice-in- | missing (stale index entry) |
+| quick_task | 260615-6t9-record-fsb-via-npm-dogfood-validation-an | missing (stale index entry) |
+| quick_task | 260615-7qq-update-paper-author-name-to-lakshman-tur | missing (stale index entry) |
+| quick_task | 260615-ei0-capitalize-t-in-paper-author-last-name-a | missing (stale index entry) |
 
 The Phase-25 partial human-UAT and one verification gap moved into `milestones/v1.3-phases/` with the archive and are documented in `milestones/v1.3-MILESTONE-AUDIT.md`.
+
+## Recent Plan Metrics Snapshot
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
 | Phase 40 P01 | 18 min | 3 tasks | 8 files |
 | Phase 40 P02 | 3 min | 2 tasks | 2 files |
 | Phase 40 P03 | 5 min | 3 tasks | 5 files |
@@ -129,9 +139,9 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 ## Session Continuity
 
 Last session: 2026-06-16T04:16:14-05:00
-Stopped at: Phase 49 complete; ready for v1.4 milestone audit
+Stopped at: Milestone v1.4 completed and archived; ready for next milestone
 Resume: `/gsd-autonomous`
 
 ## Operator Next Steps
 
-- Run the v1.4 milestone lifecycle: audit → complete → cleanup.
+- Start the next milestone with /gsd-new-milestone

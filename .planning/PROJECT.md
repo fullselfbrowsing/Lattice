@@ -14,22 +14,11 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
-**v1.4 implementation phases complete; milestone audit next** — Provider Breadth + Live Multimodal + Observability Export. Phases 40-49 are complete: package/version guardrails, gateway delegation, OpenRouter fallback/catalog refresh, streaming contract and adapters, multimodal request shaping, realtime direction, receipt provenance/KMS signer shapes, OpenTelemetry export, eval/diagnostics CLI, offline showcase validation, tarball checks, and FSB package-candidate dogfood are all verified.
+**v1.4 Provider Breadth + Live Multimodal + Observability Export shipped 2026-06-16.** Phases 40-49 are complete and archived: package/version guardrails, gateway delegation, OpenRouter fallback/catalog refresh, streaming contract and adapters, multimodal request shaping, realtime direction, receipt provenance/KMS signer shapes, OpenTelemetry export, eval/diagnostics CLI, offline showcase validation, tarball checks, and FSB package-candidate dogfood. The milestone audit passed with 44 / 44 REQ-IDs satisfied.
 
-## Current Milestone: v1.4 Provider Breadth + Live Multimodal + Observability Export
+## Current Milestone
 
-**Goal:** Close the three library-native competitive gaps found vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse — without becoming a platform.
-
-**Target features:**
-- **Provider breadth + capability-catalog maintenance** — gateway delegation (LiteLLM / OpenRouter), auto-refresh the capability catalog from feeds, OpenRouter multi-model routing + fallback so coverage stops being a hand-maintained tax.
-- **Live / streaming multimodal** — streaming across the 5 newer adapters; Anthropic / Gemini multimodal request shaping; realtime audio/video direction (close the gap vs ADK Gemini Live / OpenAI realtime).
-- **Eval + observability** — OpenTelemetry exporter for `RunEventKind`, `lattice eval --agent`, export *into* Langfuse / Phoenix rather than building dashboards.
-
-**Key context:**
-- Validation strategy is **FSB-via-npm dogfooding** (the maintainer integrates FSB as a published-package consumer and feeds findings back), not a synthetic canary. v1.3's canary phases 30–32 were superseded, and the first FSB published-package validation run passed 426 / 426 checks with `modelClass` signed-body coverage.
-- **Theme considered and dropped:** a managed / hosted deploy runtime (conflicts with the standing "Hosted control plane — Out of Scope" decision); a lightweight deploy-adapter framing is parked for possible future pickup.
-- **Research-first:** per-theme implementation-pattern research precedes requirements.
-- Requirements and roadmap authored by `/gsd-new-milestone`; phase numbering continues from v1.3. Phases 40-49 completed all 44 v1.4 REQ-IDs, with `49-MILESTONE-EVIDENCE.md` mapping each requirement to phase summaries, tests, package checks, or scoped deferral notes.
+No active milestone. v1.4 is archived under `.planning/milestones/v1.4-*`; the next cycle should start with `/gsd-new-milestone`, which will create fresh requirements and expand the compact roadmap.
 
 ## Shipped Milestones
 
@@ -37,6 +26,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - **v1.1 Capability Receipts** (2026-05-12) — Contract-bound, signed, reproducible runs: contracts + pre-flight + cost, tripwire invariants, RFC 8785 + Ed25519 signed receipts with `kid`/`KeySet`, replay envelope integration, `lattice` CLI (`repro`/`verify`/`eval`), sidecar support, end-to-end showcase exercising all 36 REQ-IDs.
 - **v1.2 FSB Integration + Agent Capability** (2026-05-31) — Five FSB-integration extensions backfilled onto canonical Lattice (Phases 14-18): public surface index + packaging readiness, receipt v1.1 schema extension, tripwire band pipeline + lifecycle events, step-transition tracing + checkpoint hook, 5 new provider adapters (Anthropic, Gemini, xAI, OpenRouter, LM Studio) + INV-03 parity smoke across 7 providers, survivability adapter contract. Plus a runtime-agnostic single-agent capability (Phases 19-22): `ai.runAgent(intent)` with uniform tool-use across 7 providers + per-iteration signed receipts + SAFETY-band veto, pluggable `AgentHost` with scheduler / transport / storage seams + recovery markers closing v1.1 TRACE-EXT-01, five agent infrastructure primitives (cost / transcript / goal-progress / action-history / permission-context), `examples/agent-loop` showcase + `evalAgentRun` regression gate. Brand identity also shipped (mark + wordmark + app icon + favicons + social card + animated spin GIF, generated from a parametric 3D renderer).
 - **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface** (2026-06-15) — First public npm release under `@full-self-browsing/*` (OIDC Trusted Publisher + SLSA provenance, GitHub Release `v1.3.0`); model capability registry (~337 profiles from the OpenRouter feed + static supplements), adapter quirk flags + capability negotiation, prompt scaffolds, opt-in output sanitizers + tool-call validators across 7 adapters, receipt v1.2 + `modelClass`; first-class opt-in multi-agent crew surface (`defineAgent` / `runAgentCrew`, crew budgets, prompt-cache-prefix sharing, rate-limit groups, chained receipts). 64/87 REQ-IDs shipped; canary phases 30–32 superseded for FSB-via-npm dogfooding.
+- **v1.4 Provider Breadth + Live Multimodal + Observability Export** (2026-06-16) — Package identity guardrails, LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage + remote signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, agent eval/receipt diff/LM Studio diagnostics CLI, offline validation, tarball checks, and FSB package-candidate dogfood. 44/44 REQ-IDs shipped; audit passed.
 
 ## Requirements
 
@@ -68,30 +58,14 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-v1.3 shipped 2026-06-15. **v1.4 (Provider Breadth + Live Multimodal + Observability Export) implementation is complete pending milestone lifecycle** — 44 requirements are mapped to Phases 40-49 in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`, and all 44 are complete. Phase 49 added offline v1.4 validation, packed-candidate FSB dogfood, strengthened tarball checks, and the full evidence matrix needed for milestone audit.
+No active milestone requirements. The next cycle starts by running `/gsd-new-milestone`, which will create a fresh `.planning/REQUIREMENTS.md` and expand `.planning/ROADMAP.md`.
 
-**v1.4 scope** (confirmed 2026-06-15, from a competitive-gap analysis vs Mastra / OpenRouter / Portkey / Google ADK / Langfuse). Opened after v1.3 canary validation was superseded by FSB-via-npm dogfooding:
+Carryforward considerations for the next milestone:
 
-*Provider breadth + capability-catalog maintenance* — lean on gateway delegation (LiteLLM / OpenRouter) and auto-refresh the capability catalog from feeds so coverage stops being a hand-maintained tax.
-- OpenRouter multi-model routing / fallback array.
-
-*Live / streaming multimodal* — close the gap vs ADK (Gemini Live) and OpenAI realtime.
-- Streaming for the 5 new Phase 17 provider adapters (Anthropic / Gemini / xAI / OpenRouter / LM Studio).
-- Anthropic / Gemini multimodal request shaping.
-
-*Eval + observability surface* — richer eval tooling and export INTO existing platforms (Langfuse / Phoenix) rather than reinventing dashboards.
-- OpenTelemetry exporter for `RunEventKind`.
-- `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel.
-
-*Also carried (theme-agnostic):*
+- Full production implementation of OpenAI Realtime and Gemini Live bidirectional sessions beyond the v1.4 interface-level design.
 - Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
-- Multi-scenario agent-loop showcase (tripwire / stall / budget-exceeded variants).
-- KMS adapter shapes for `ReceiptSigner`.
-- Lineage merkle root signed inside receipts.
-- `lattice receipt diff` subcommand.
-- LM Studio latency-tail diagnostics module.
-
-*Considered and dropped:* a managed / hosted deploy runtime ("one-command hosting" à la ADK→Vertex, Strands→AgentCore). Conflicts with the standing "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; a lightweight deploy-adapter framing (`lattice serve`, serverless wrappers, Dockerfile) is parked for possible future pickup but is not v1.4 scope.
+- Multi-scenario agent-loop showcase variants for tripwire, stall, and budget-exceeded behavior.
+- Lightweight deploy-adapter framing (`lattice serve`, serverless wrappers, Dockerfile) remains parked; hosted control plane remains out of scope.
 
 ### v1.1-to-v1.2 carryforward outcomes (closed)
 
@@ -159,9 +133,9 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | Validated by npm rc.0 provenance attestations for both packages. |
 | v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | **Superseded 2026-06-15** — synthetic canary descoped; FSB consumes the published package via npm (real-world dogfooding) instead. |
 | Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | **Superseded 2026-06-15** — canary descoped; see above. |
-| v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closes the three library-native competitive gaps from the June 2026 analysis. A managed/hosted runtime conflicts with the "Hosted control plane — Out of Scope" decision and is a platform-sized commitment; lightweight deploy adapters parked. | v1.3 closed 2026-06-15; v1.4 opening now. Canary superseded (not a blocker). |
+| v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closed the three library-native competitive gaps from the June 2026 analysis while avoiding a platform/control-plane commitment. Lightweight deploy adapters remain parked. | Shipped 2026-06-16 with 44/44 REQ-IDs complete and passed milestone audit. |
 | Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
-| v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40: stamped runtime/CLI versions, root export inventory, packed-artifact version smoke, and core dependency boundary gates. |
+| v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40 and rechecked in Phase 49 package-candidate FSB dogfood. |
 
 ## Evolution
 
@@ -181,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-16 — Phase 49 complete; v1.4 implementation ready for milestone audit.*
+*Last updated: 2026-06-16 after v1.4 milestone archive.*
