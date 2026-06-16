@@ -24,6 +24,13 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import {
+  anthropicFileId,
+  artifactBase64Data,
+  artifactHttpUrl,
+  mediaTypeForArtifact,
+  packagedPlanForArtifact,
+} from "./multimodal.js";
 import { readSseEvents } from "./sse.js";
 
 /**
@@ -97,11 +104,16 @@ const DEFAULT_MODELS_RETRY_COUNT = 2;
 /** D-11: Backoff schedule for transient /v1/models failures -- immediate, 200ms, 1s. */
 const MODELS_BACKOFF_MS = [0, 200, 1000] as const;
 
-function createAnthropicMessagesBody(input: {
+interface AnthropicMessagesBodyResult {
+  readonly body: Record<string, unknown>;
+  readonly usesFilesApi: boolean;
+}
+
+async function createAnthropicMessagesBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
   readonly stream?: boolean;
-}): Record<string, unknown> {
+}): Promise<AnthropicMessagesBodyResult> {
   // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
   // it to a `cache_control`-marked system content block. Conditional VALUE,
   // not conditional spread: the `system` key is always present per the
@@ -117,18 +129,92 @@ function createAnthropicMessagesBody(input: {
         ]
       : "";
 
+  const content = await createAnthropicUserContent(input.request);
+
   return {
-    model: input.model,
-    system,
-    messages: [
-      {
-        role: "user",
-        content: input.request.task,
-      },
-    ],
-    max_tokens: DEFAULT_MAX_TOKENS,
-    ...(input.stream === true ? { stream: true } : {}),
+    body: {
+      model: input.model,
+      system,
+      messages: [
+        {
+          role: "user",
+          content: content.blocks.length === 0
+            ? input.request.task
+            : [...content.blocks, { type: "text", text: input.request.task }],
+        },
+      ],
+      max_tokens: DEFAULT_MAX_TOKENS,
+      ...(input.stream === true ? { stream: true } : {}),
+    },
+    usesFilesApi: content.usesFilesApi,
   };
+}
+
+async function createAnthropicUserContent(request: ProviderRunRequest): Promise<{
+  readonly blocks: readonly Record<string, unknown>[];
+  readonly usesFilesApi: boolean;
+}> {
+  const blocks: Record<string, unknown>[] = [];
+  let usesFilesApi = false;
+
+  for (const inputArtifact of request.artifacts) {
+    if (inputArtifact.kind !== "image") {
+      continue;
+    }
+
+    const packaged = packagedPlanForArtifact(request, inputArtifact.id);
+    if (packaged === undefined) {
+      continue;
+    }
+
+    if (packaged.transport === "file-id") {
+      const fileId = anthropicFileId(inputArtifact);
+      if (fileId === undefined) {
+        continue;
+      }
+      blocks.push({
+        type: "image",
+        source: {
+          type: "file",
+          file_id: fileId,
+        },
+      });
+      usesFilesApi = true;
+      continue;
+    }
+
+    if (packaged.transport === "url") {
+      const url = artifactHttpUrl(inputArtifact);
+      if (url === undefined) {
+        continue;
+      }
+      blocks.push({
+        type: "image",
+        source: {
+          type: "url",
+          url,
+        },
+      });
+      continue;
+    }
+
+    if (packaged.transport === "base64" || packaged.transport === "inline") {
+      const data = await artifactBase64Data(inputArtifact);
+      if (data === undefined) {
+        continue;
+      }
+      blocks.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mediaTypeForArtifact(inputArtifact, "image/jpeg"),
+          data,
+        },
+      });
+    }
+  }
+
+  return { blocks, usesFilesApi };
 }
 
 export function createAnthropicProvider(options: AnthropicProviderOptions): ProviderAdapter & {
@@ -391,7 +477,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       {
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
-        fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
         streaming: true,
       },
     ],
@@ -430,17 +516,21 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     } satisfies AnthropicQuirks,
     negotiateCapabilities,
     async execute(request) {
+      const messagesBody = await createAnthropicMessagesBody({
+        model: options.model,
+        request,
+      });
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-api-key": options.apiKey,
           "anthropic-version": anthropicVersion,
+          ...(messagesBody.usesFilesApi
+            ? { "anthropic-beta": "files-api-2025-04-14" }
+            : {}),
         },
-        body: JSON.stringify(createAnthropicMessagesBody({
-          model: options.model,
-          request,
-        })),
+        body: JSON.stringify(messagesBody.body),
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
@@ -510,18 +600,22 @@ async function* streamAnthropicResponse(input: {
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
+  const messagesBody = await createAnthropicMessagesBody({
+    model: input.model,
+    request: input.request,
+    stream: true,
+  });
   const response = await input.fetchImpl(`${input.baseUrl}/v1/messages`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "x-api-key": input.apiKey,
       "anthropic-version": input.anthropicVersion,
+      ...(messagesBody.usesFilesApi
+        ? { "anthropic-beta": "files-api-2025-04-14" }
+        : {}),
     },
-    body: JSON.stringify(createAnthropicMessagesBody({
-      model: input.model,
-      request: input.request,
-      stream: true,
-    })),
+    body: JSON.stringify(messagesBody.body),
     ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
   });
 
