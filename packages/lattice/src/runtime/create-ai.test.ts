@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import canonicalize from "canonicalize";
-import fc from "fast-check";
 
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
@@ -25,6 +24,7 @@ import {
 import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { fc } from "../test-support/fast-check.js";
 import { createAI } from "./create-ai.js";
 
 function pricedFakeProvider(): ReturnType<typeof createFakeProvider> {

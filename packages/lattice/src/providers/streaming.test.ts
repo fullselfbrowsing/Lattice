@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import fc from "fast-check";
 
+import { fc } from "../test-support/fast-check.js";
 import type { ProviderAdapter, ProviderStream } from "./provider.js";
 import { collectStream } from "./streaming.js";
 
