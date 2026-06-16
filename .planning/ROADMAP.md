@@ -44,7 +44,7 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 
 **Phase span:** 40 to 49 (10 phases, 44 REQ-IDs).
 **Granularity:** coarse (per `.planning/config.json`).
-**Coverage:** 44 / 44 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 0 / 44 complete.
+**Coverage:** 44 / 44 planned REQ-IDs authored in `.planning/REQUIREMENTS.md`; 44 / 44 complete.
 
 **Reference docs driving v1.4:**
 - `.planning/research/SUMMARY.md` — v1.4 synthesis across stack, features, architecture, and pitfalls.
@@ -60,7 +60,7 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 - [x] **Phase 46: Receipt Provenance + KMS Signer Shapes** — Extend receipts with lineage merkle roots and define production signer adapter shapes without pulling KMS SDKs into core. (completed 2026-06-16)
 - [x] **Phase 47: OpenTelemetry Exporter + Langfuse/Phoenix Paths** — Export Lattice run events to OTel spans with safe defaults, receipt links, and documented OTLP setup for Langfuse/Phoenix. (completed 2026-06-16)
 - [x] **Phase 48: Eval + Diagnostics CLI Expansion** — Add agent eval CLI support, receipt diffing, and LM Studio latency-tail diagnostics. (completed 2026-06-16)
-- [ ] **Phase 49: Showcase + FSB Dogfood Validation** — Prove the v1.4 surface through offline examples, tarball checks, and FSB-via-npm dogfood validation.
+- [x] **Phase 49: Showcase + FSB Dogfood Validation** — Prove the v1.4 surface through offline examples, tarball checks, and FSB-via-npm dogfood validation. (completed 2026-06-16)
 
 ## Phase Details
 
@@ -76,7 +76,12 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 3. Public-surface tests are updated so every new v1.4 root export must be deliberately asserted.
 4. `pnpm -r build`, `pnpm -r test`, `pnpm -r test:types`, and `pnpm -r lint:packages` pass or any skipped gate is explicitly documented.
 
-**Plans**: TBD
+**Plans**:
+
+- **Wave 1:** `49-01` — Offline v1.4 validation showcase.
+- **Wave 2:** `49-02` — Tarball native/install-script validation.
+- **Wave 3:** `49-03` — FSB package-candidate dogfood.
+- **Wave 4:** `49-04` — Milestone evidence and closure.
 
 ### Phase 41: Gateway Delegation — LiteLLM + Gateway Policy
 

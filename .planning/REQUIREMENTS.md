@@ -75,10 +75,10 @@
 
 ### Showcase, Dogfood, and Release Validation (`VAL-*`)
 
-- [ ] **VAL-01**: The agent-loop or work-inbox showcase includes streaming, gateway, observability, and failure-mode scenarios that run offline with fake providers.
-- [ ] **VAL-02**: FSB-via-npm dogfood is rerun against the v1.4 package candidate and explicitly checks new public exports, version stamping, and receipt compatibility.
-- [ ] **VAL-03**: Tarball validation proves optional integrations do not leak unwanted native dependencies or install scripts into the core package.
-- [ ] **VAL-04**: The milestone audit maps every v1.4 requirement to a phase summary, test evidence, or intentionally deferred scope item.
+- [x] **VAL-01**: The agent-loop or work-inbox showcase includes streaming, gateway, observability, and failure-mode scenarios that run offline with fake providers.
+- [x] **VAL-02**: FSB-via-npm dogfood is rerun against the v1.4 package candidate and explicitly checks new public exports, version stamping, and receipt compatibility.
+- [x] **VAL-03**: Tarball validation proves optional integrations do not leak unwanted native dependencies or install scripts into the core package.
+- [x] **VAL-04**: The milestone audit maps every v1.4 requirement to a phase summary, test evidence, or intentionally deferred scope item.
 
 ## Future Requirements
 
@@ -142,10 +142,10 @@
 | EVAL-02 | Phase 48 | Complete |
 | EVAL-03 | Phase 48 | Complete |
 | EVAL-04 | Phase 48 | Complete |
-| VAL-01 | Phase 49 | Pending |
-| VAL-02 | Phase 49 | Pending |
-| VAL-03 | Phase 49 | Pending |
-| VAL-04 | Phase 49 | Pending |
+| VAL-01 | Phase 49 | Complete |
+| VAL-02 | Phase 49 | Complete |
+| VAL-03 | Phase 49 | Complete |
+| VAL-04 | Phase 49 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 44 total
@@ -154,4 +154,4 @@
 
 ---
 *Requirements defined: 2026-06-15*
-*Last updated: 2026-06-15 after gsd-new-milestone*
+*Last updated: 2026-06-16 after Phase 49*

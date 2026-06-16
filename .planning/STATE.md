@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
-status: ready_to_plan
-stopped_at: Phase 48 complete (4/4) — ready to discuss Phase 49
-last_updated: 2026-06-16T08:45:59.295Z
+status: ready_for_audit
+stopped_at: Phase 49 complete (4/4) — ready for v1.4 milestone audit
+last_updated: 2026-06-16T04:16:14-05:00
 last_activity: 2026-06-16
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 32
-  completed_plans: 32
-  percent: 90
+  completed_phases: 10
+  total_plans: 36
+  completed_plans: 36
+  percent: 100
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-15)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 49 — showcase + fsb dogfood validation
+**Current focus:** v1.4 milestone audit and completion
 
 ## Current Position
 
 Phase: 49
-Plan: Not started
-Status: Ready to plan
+Plan: 4/4 complete
+Status: Ready for audit
 Last activity: 2026-06-16
 
 ## Performance Metrics
@@ -44,7 +44,7 @@ Last activity: 2026-06-16
 - v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
 - v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. It closed on 2026-06-15 with Phases 30-32 superseded by FSB-via-npm dogfooding.
 - `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live on npm with SLSA provenance attestations and `latest` dist-tags. GitHub Release `v1.3.0` exists.
-- FSB dogfood validation passed against the published npm package: registry install only, no local/git/workspace refs, offscreen bundle inlined Lattice, `npm run test:lattice` reported 426 PASS / 0 FAIL, and `modelClass` now round-trips through a signed receipt assertion.
+- FSB dogfood validation passed against the published npm package for v1.3 and against the packed local package candidate for v1.4. Phase 49's candidate run installed from tarball in an isolated temp consumer, ran a generated FSB-side v1.4 smoke, and ran FSB's compatible provider smoke with 47 PASS assertions.
 
 *Updated after each plan completion*
 
@@ -59,17 +59,24 @@ v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decis
 - [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
 - [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
 - [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
-- [v1.4 roadmap]: 44 REQ-IDs mapped across Phases 40-49. Phase 40 fixes version stamping and public-surface guardrails before new v1.4 APIs land.
+- [v1.4 roadmap]: 44 REQ-IDs mapped across Phases 40-49. All 44 are complete and mapped to evidence in `49-MILESTONE-EVIDENCE.md`.
 
 ### Pending Todos
 
-- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has a green published-package validation run. The Lattice version-stamping bug is now Phase 40 scope.
+- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has both published-package and packed-candidate validation runs. The Lattice version-stamping bug was closed in Phase 40.
 
 ### Blockers/Concerns
 
 - None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession, and FSB-via-npm dogfooding validated the published `1.3.0` tarball path. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
-- Follow-up now scoped to Phase 40: `packages/lattice/src/version.ts` and `packages/lattice-cli/src/version.ts` are hardcoded to `"0.0.0"`, so `latticeVersion` and the CLI banner do not report the published package version. Low severity; FSB pins by package version and tarball integrity.
-- Residual (tracked for v1.4): FSB exercises only the API slice it uses, so an unused public export could regress silently. Revisit a thin packaging-only canary if FSB coverage proves insufficient.
+- Phase 40 closed the version-stamping bug: `latticeVersion` and CLI banner version are stamped from package manifests.
+- Phase 49 closed the residual FSB coverage risk for v1.4 by adding a generated FSB-side package-candidate smoke that explicitly checks new public exports, version stamping, `collectStream`, `evalAgentRun`, and v1.3 receipt compatibility alongside FSB's compatible provider smoke.
+
+### v1.4 Phase 49 validation
+
+- Offline v1.4 validation passed via `examples/v14-validation`: streaming, gateway, OTel observability, and failure behavior all run against fake providers.
+- FSB package-candidate dogfood passed from an isolated temp install of the packed runtime tarball. The original FSB checkout remained untouched; its two dirty generated files were pre-existing and unchanged.
+- Tarball validation now checks packed runtime/CLI tarballs for stale bare `lattice` refs, install-time scripts, and native/heavy dependency leakage into core.
+- `49-MILESTONE-EVIDENCE.md` maps all 44 v1.4 requirements to phase summaries, tests, package checks, or scoped deferral notes.
 
 ## Deferred Items
 
@@ -121,10 +128,10 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 ## Session Continuity
 
-Last session: 2026-06-16T06:53:00.573Z
-Stopped at: Phase 44 complete; ready for Phase 45
-Resume: `/gsd-discuss-phase 43`
+Last session: 2026-06-16T04:16:14-05:00
+Stopped at: Phase 49 complete; ready for v1.4 milestone audit
+Resume: `/gsd-autonomous`
 
 ## Operator Next Steps
 
-- Start Phase 43 with `/gsd-discuss-phase 43`
+- Run the v1.4 milestone lifecycle: audit → complete → cleanup.
