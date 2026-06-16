@@ -407,6 +407,35 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
     const body = JSON.parse(first.init.body as string) as Record<string, unknown>;
     expect(body.model).toBe("test");
     expect(body.stream).toBe(true);
+    expect(body.stream_options).toEqual({ include_usage: true });
+  });
+
+  it("streaming request body includes stream_options include_usage and captures usage from final chunk", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "hi" } }] }),
+      sseData({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 4 } }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake/",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    const reqBody = JSON.parse(first.init.body as string) as Record<string, unknown>;
+    expect(reqBody.stream_options).toEqual({ include_usage: true });
+    expect(response.normalizedUsage?.promptTokens).toBeGreaterThan(0);
+    expect(response.normalizedUsage?.completionTokens).toBeGreaterThan(0);
   });
 
   it("text chunks collect to final output", async () => {

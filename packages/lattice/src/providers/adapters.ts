@@ -352,7 +352,7 @@ function createOpenAICompatibleRequestBody(input: {
         ],
       },
     ],
-    ...(input.stream === true ? { stream: true } : {}),
+    ...(input.stream === true ? { stream: true, stream_options: { include_usage: true } } : {}),
   };
 }
 
