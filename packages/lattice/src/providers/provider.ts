@@ -141,11 +141,63 @@ export interface ProviderRunResponse {
   readonly rawResponse?: unknown;
 }
 
+export interface ProviderStreamTextDeltaChunk {
+  readonly kind: "text-delta";
+  readonly output?: string;
+  readonly text: string;
+}
+
+export interface ProviderStreamOutputChunk {
+  readonly kind: "output";
+  readonly output: string;
+  readonly value: unknown;
+}
+
+export interface ProviderStreamUsageChunk {
+  readonly kind: "usage";
+  readonly usage?: UsageRecord;
+  readonly normalizedUsage?: Usage;
+}
+
+export interface ProviderStreamGatewayChunk {
+  readonly kind: "gateway";
+  readonly gateway: ProviderGatewayMetadata;
+}
+
+export interface ProviderStreamToolCallChunk {
+  readonly kind: "tool-call";
+  readonly toolCall: ValidatedToolCall;
+}
+
+export interface ProviderStreamCompleteChunk {
+  readonly kind: "complete";
+  readonly rawOutputs?: Record<string, unknown>;
+  readonly artifactRefs?: readonly (ArtifactInput | ArtifactRef)[];
+  readonly usage?: UsageRecord;
+  readonly normalizedUsage?: Usage;
+  readonly gateway?: ProviderGatewayMetadata;
+  readonly toolCalls?: readonly ValidatedToolCall[];
+  readonly rawResponse?: unknown;
+}
+
+export type ProviderStreamChunk =
+  | ProviderStreamTextDeltaChunk
+  | ProviderStreamOutputChunk
+  | ProviderStreamUsageChunk
+  | ProviderStreamGatewayChunk
+  | ProviderStreamToolCallChunk
+  | ProviderStreamCompleteChunk;
+
+export type ProviderStream = AsyncIterable<ProviderStreamChunk>;
+
 export interface ProviderAdapter {
   readonly id: string;
   readonly kind: "provider-adapter";
   readonly capabilities?: readonly ModelCapability[];
   readonly execute?: (request: ProviderRunRequest) => Promise<ProviderRunResponse>;
+  readonly executeStream?: (
+    request: ProviderRunRequest,
+  ) => ProviderStream | Promise<ProviderStream>;
   /**
    * Phase 34 — D-01 — Per-adapter behavioral deviation flags. OPTIONAL on the
    * base interface so v1.2 consumer adapters (4-field literals) continue to work
