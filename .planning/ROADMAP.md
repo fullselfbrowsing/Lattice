@@ -59,7 +59,7 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 - [x] **Phase 45: Multimodal Request Shaping + Realtime Direction** — Map Lattice artifacts into Anthropic/Gemini multimodal request shapes and define realtime session/checkpoint interfaces. (completed 2026-06-16)
 - [x] **Phase 46: Receipt Provenance + KMS Signer Shapes** — Extend receipts with lineage merkle roots and define production signer adapter shapes without pulling KMS SDKs into core. (completed 2026-06-16)
 - [x] **Phase 47: OpenTelemetry Exporter + Langfuse/Phoenix Paths** — Export Lattice run events to OTel spans with safe defaults, receipt links, and documented OTLP setup for Langfuse/Phoenix. (completed 2026-06-16)
-- [ ] **Phase 48: Eval + Diagnostics CLI Expansion** — Add agent eval CLI support, receipt diffing, and LM Studio latency-tail diagnostics.
+- [x] **Phase 48: Eval + Diagnostics CLI Expansion** — Add agent eval CLI support, receipt diffing, and LM Studio latency-tail diagnostics. (completed 2026-06-16)
 - [ ] **Phase 49: Showcase + FSB Dogfood Validation** — Prove the v1.4 surface through offline examples, tarball checks, and FSB-via-npm dogfood validation.
 
 ## Phase Details

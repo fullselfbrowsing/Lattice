@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
 status: ready_to_plan
-stopped_at: Phase 47 complete (4/4) — ready to discuss Phase 48
-last_updated: 2026-06-16T08:19:31.862Z
+stopped_at: Phase 48 complete (4/4) — ready to discuss Phase 49
+last_updated: 2026-06-16T08:45:59.295Z
 last_activity: 2026-06-16
 progress:
   total_phases: 10
-  completed_phases: 8
-  total_plans: 28
-  completed_plans: 28
-  percent: 80
+  completed_phases: 9
+  total_plans: 32
+  completed_plans: 32
+  percent: 90
 ---
 
 # Project State
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-15)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 48 — eval + diagnostics cli expansion
+**Current focus:** Phase 49 — showcase + fsb dogfood validation
 
 ## Current Position
 
-Phase: 48
+Phase: 49
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-16

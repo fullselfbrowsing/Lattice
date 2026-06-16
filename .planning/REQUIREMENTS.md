@@ -68,10 +68,10 @@
 
 ### Eval and Diagnostics CLI (`EVAL-*`)
 
-- [ ] **EVAL-01**: `lattice eval --agent` or an equivalent `lattice eval agent` command wraps the existing `evalAgentRun` kernel with fixture discovery, baseline loading, and JSON reporting.
-- [ ] **EVAL-02**: Agent eval reports include iterations-to-goal and cost regression outcomes without breaking the existing `lattice-eval/v1` receipt replay report.
-- [ ] **EVAL-03**: `lattice receipt diff` compares two receipt envelopes and reports model, route, usage, hashes, lineage, parent receipt, and signature/key differences.
-- [ ] **EVAL-04**: LM Studio latency-tail diagnostics summarize local provider latency distributions from run events without sending data to any hosted service.
+- [x] **EVAL-01**: `lattice eval --agent` or an equivalent `lattice eval agent` command wraps the existing `evalAgentRun` kernel with fixture discovery, baseline loading, and JSON reporting.
+- [x] **EVAL-02**: Agent eval reports include iterations-to-goal and cost regression outcomes without breaking the existing `lattice-eval/v1` receipt replay report.
+- [x] **EVAL-03**: `lattice receipt diff` compares two receipt envelopes and reports model, route, usage, hashes, lineage, parent receipt, and signature/key differences.
+- [x] **EVAL-04**: LM Studio latency-tail diagnostics summarize local provider latency distributions from run events without sending data to any hosted service.
 
 ### Showcase, Dogfood, and Release Validation (`VAL-*`)
 
@@ -138,10 +138,10 @@
 | OTEL-03 | Phase 47 | Complete |
 | OTEL-04 | Phase 47 | Complete |
 | OTEL-05 | Phase 47 | Complete |
-| EVAL-01 | Phase 48 | Pending |
-| EVAL-02 | Phase 48 | Pending |
-| EVAL-03 | Phase 48 | Pending |
-| EVAL-04 | Phase 48 | Pending |
+| EVAL-01 | Phase 48 | Complete |
+| EVAL-02 | Phase 48 | Complete |
+| EVAL-03 | Phase 48 | Complete |
+| EVAL-04 | Phase 48 | Complete |
 | VAL-01 | Phase 49 | Pending |
 | VAL-02 | Phase 49 | Pending |
 | VAL-03 | Phase 49 | Pending |
