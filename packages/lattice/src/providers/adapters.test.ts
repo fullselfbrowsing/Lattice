@@ -5,6 +5,8 @@ import {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./adapters.js";
+import { createAnthropicProvider } from "./anthropic.js";
+import { createGeminiProvider } from "./gemini.js";
 import { createFakeProvider } from "./fake.js";
 import { collectStream } from "./streaming.js";
 import type { ModelCapability } from "./provider.js";
@@ -945,5 +947,270 @@ describe("Phase 36: OpenAI-compatible output sanitizers", () => {
     });
 
     expect(response.rawOutputs.text).toBe("Greeted the user.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// h31: noPublicUrl cross-adapter parity
+// ---------------------------------------------------------------------------
+// Tests A and B are RED before adapters.ts is patched (Task 2).
+// Tests C, D, E must be GREEN immediately (positive path + Anthropic/Gemini parity lock).
+// ---------------------------------------------------------------------------
+
+describe("noPublicUrl cross-adapter parity", () => {
+  const ARTIFACT_ID = "img-1";
+  const PUBLIC_URL = "https://example.com/img.png";
+
+  // Minimal SSE response to drive executeStream to completion.
+  const minimalSseChunks = [
+    sseData({ choices: [{ delta: { content: "ok" } }] }),
+    sseData("[DONE]"),
+  ];
+
+  // Test A: url-kind artifact with transport "inline" (noPublicUrl blocks url field).
+  it("Test A: OpenAI-compat omits url field when transport is not 'url' (noPublicUrl blocked)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          {
+            id: ARTIFACT_ID,
+            kind: "url",
+            value: PUBLIC_URL,
+          },
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "inline",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test B: image-kind artifact whose value is a public URL with transport "base64"
+  // (noPublicUrl fallback — value-borne URL must not leak).
+  it("Test B: OpenAI-compat omits value-borne public URL when transport is not 'url' (noPublicUrl blocked)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          {
+            id: ARTIFACT_ID,
+            kind: "image",
+            value: PUBLIC_URL,
+          },
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "base64",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test C: positive / no over-blocking — url-kind artifact with transport "url"
+  // must still emit the url field (noPublicUrl is NOT set for this case).
+  it("Test C: OpenAI-compat emits url field when transport is 'url' (no over-blocking)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          {
+            id: ARTIFACT_ID,
+            kind: "url",
+            value: PUBLIC_URL,
+          },
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "url",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).toContain(PUBLIC_URL);
+  });
+
+  // Test D: Anthropic parity lock — image artifact with transport "base64" must not
+  // include a public URL in the request body (Anthropic already compliant; regression lock).
+  it("Test D: Anthropic omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = [];
+    const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push({ url: String(url), init: init ?? {} });
+      return new Response(
+        JSON.stringify({
+          id: "msg-1",
+          type: "message",
+          role: "assistant",
+          content: [{ type: "text", text: "ok" }],
+          model: "claude-3-opus-20240229",
+          stop_reason: "end_turn",
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const adapter = createAnthropicProvider({
+      model: "claude-3-opus-20240229",
+      apiKey: "sk-test",
+      fetch: fakeFetch,
+    });
+
+    await adapter.execute!({
+      task: "describe this image",
+      artifacts: [
+        {
+          id: ARTIFACT_ID,
+          kind: "image",
+          value: PUBLIC_URL,
+        },
+      ],
+      outputs: ["text"],
+      providerPackaging: {
+        providerId: "anthropic",
+        modelId: "claude-3-opus-20240229",
+        artifacts: [
+          {
+            artifactId: ARTIFACT_ID,
+            transport: "base64",
+            lineageTransform: "provider-packaging",
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    });
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a request.");
+    const bodyStr = first.init.body as string;
+    // Anthropic is already compliant: image with base64 transport must not emit the public URL
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test E: Gemini parity lock — image artifact with transport "base64" must not
+  // include a public URL in the request body (Gemini already compliant; regression lock).
+  it("Test E: Gemini omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = [];
+    const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push({ url: String(url), init: init ?? {} });
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                role: "model",
+                parts: [{ text: "ok" }],
+              },
+              finishReason: "STOP",
+            },
+          ],
+          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-pro",
+      apiKey: "test-key",
+      fetch: fakeFetch,
+    });
+
+    await adapter.execute!({
+      task: "describe this image",
+      artifacts: [
+        {
+          id: ARTIFACT_ID,
+          kind: "image",
+          value: PUBLIC_URL,
+        },
+      ],
+      outputs: ["text"],
+      providerPackaging: {
+        providerId: "gemini",
+        modelId: "gemini-1.5-pro",
+        artifacts: [
+          {
+            artifactId: ARTIFACT_ID,
+            transport: "base64",
+            lineageTransform: "provider-packaging",
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    });
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a request.");
+    const bodyStr = first.init.body as string;
+    // Gemini is already compliant: image with base64 transport must not emit the public URL
+    expect(bodyStr).not.toContain(PUBLIC_URL);
   });
 });
