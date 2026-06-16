@@ -676,6 +676,51 @@ describe("Phase 43 streaming runtime", () => {
       expect(JSON.stringify(event.metadata ?? {})).not.toContain("partial-secret");
     }
   });
+
+  it("surfaces non-zero usage from streaming final chunk into result.usage and signed receipt", async () => {
+    // Local copy of makeSignerAndKeySet (defined in Phase 9 scope, not accessible here)
+    const kid = "phase-43-streaming-usage";
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([
+      { kid, publicKeyJwk, state: "active" },
+    ]);
+
+    // Use the OpenAI-compatible adapter with a final SSE chunk carrying usage,
+    // mirroring the existing test at line 595 but with usage assertions added.
+    const provider = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      fetch: makeOpenAICompatibleStreamingFetch([
+        openAICompatibleSseData({ choices: [{ delta: { content: "answer" } }] }),
+        openAICompatibleSseData({
+          choices: [{ delta: {} }],
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        }),
+        openAICompatibleSseData("[DONE]"),
+      ]),
+    });
+    const ai = createAI({ providers: [provider], signer });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.usage.promptTokens).toBeGreaterThan(0);
+    expect(result.usage.completionTokens).toBeGreaterThan(0);
+
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.usage.promptTokens).toBeGreaterThan(0);
+      expect(verifyResult.body.usage.completionTokens).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("Phase 9 receipts integration", () => {
