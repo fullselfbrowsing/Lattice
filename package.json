@@ -18,6 +18,7 @@
     "check:core-boundary": "node scripts/check-core-package-boundary.mjs",
     "example:work-inbox": "pnpm --filter @full-self-browsing/lattice build && node examples/work-inbox/index.mjs",
     "example:v14-validation": "pnpm --filter @full-self-browsing/lattice build && node examples/v14-validation/index.mjs",
+    "dogfood:fsb": "node scripts/dogfood-fsb-candidate.mjs",
     "changeset": "changeset"
   },
   "devDependencies": {
