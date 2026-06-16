@@ -31,6 +31,7 @@ import {
 } from "../sanitizers/index.js";
 import { readSseEvents } from "./sse.js";
 import { isHttpUrl } from "./multimodal.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
@@ -434,17 +435,19 @@ export function createOpenAICompatibleProvider(
         readGatewayPolicy(request.policy),
       );
       const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+      const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+        model: options.model,
+        request,
+        ...(metadata !== undefined ? { metadata } : {}),
+      }));
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
           ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
         },
-        body: JSON.stringify(createOpenAICompatibleRequestBody({
-          model: options.model,
-          request,
-          ...(metadata !== undefined ? { metadata } : {}),
-        })),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
       const response = await fetchImpl(`${baseUrl}/chat/completions`, init);
@@ -529,18 +532,20 @@ async function* streamOpenAICompatibleResponse(input: {
     readGatewayPolicy(input.request.policy),
   );
   const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+  const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+    model: input.model,
+    request: input.request,
+    ...(metadata !== undefined ? { metadata } : {}),
+    stream: true,
+  }));
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(`${input.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(input.apiKey !== undefined ? { authorization: `Bearer ${input.apiKey}` } : {}),
     },
-    body: JSON.stringify(createOpenAICompatibleRequestBody({
-      model: input.model,
-      request: input.request,
-      ...(metadata !== undefined ? { metadata } : {}),
-      stream: true,
-    })),
+    body: streamBodyStr,
     ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
   });
 

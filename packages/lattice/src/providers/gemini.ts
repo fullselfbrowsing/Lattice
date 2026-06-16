@@ -35,6 +35,7 @@ import {
   packagedPlanForArtifact,
 } from "./multimodal.js";
 import { readSseEvents } from "./sse.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 /**
  * Options for {@link createGeminiProvider}.
@@ -497,12 +498,14 @@ export function createGeminiProvider(
     negotiateCapabilities: negotiate,
     async execute(request) {
       const requestBody = await createGeminiGenerateContentBody(request);
+      const bodyStr = JSON.stringify(requestBody);
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
@@ -582,6 +585,8 @@ async function* streamGeminiResponse(input: {
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
   const requestBody = await createGeminiGenerateContentBody(input.request);
+  const streamBodyStr = JSON.stringify(requestBody);
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(
     geminiGenerateContentUrl({
       baseUrl: input.baseUrl,
@@ -594,7 +599,7 @@ async function* streamGeminiResponse(input: {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: streamBodyStr,
       ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
     },
   );
