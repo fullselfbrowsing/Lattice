@@ -198,6 +198,70 @@ describe("Phase 4 OpenRouter adapter", () => {
   });
 });
 
+describe("Phase 42: OpenRouter fallback models", () => {
+  it("serializes fallbackModels as OpenRouter models while preserving primary model", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5", "google/gemini-3-flash-preview"],
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.model).toBe("openai/gpt-oss-120b");
+    expect(body.models).toEqual([
+      "anthropic/claude-sonnet-4.5",
+      "google/gemini-3-flash-preview",
+    ]);
+  });
+
+  it("omits models when fallbackModels is absent", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(body, "models")).toBe(false);
+  });
+
+  it("returns gateway metadata with requested, fallback, and observed models", async () => {
+    const { fetch } = makeFakeFetch({
+      choices: [{ message: { content: "fallback response" } }],
+      model: "anthropic/claude-sonnet-4.5",
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    });
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      fetch,
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
+    expect(response.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(response.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
+  });
+});
+
 describe("Phase 34: OpenRouter quirks + negotiateCapabilities", () => {
   it("Test 1: factory return narrows to expose quirks: OpenRouterQuirks + negotiateCapabilities", () => {
     const { fetch } = makeFakeFetch(HAPPY_BODY);

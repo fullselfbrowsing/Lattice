@@ -410,6 +410,21 @@ export function createOpenRouterProvider(
 
   return {
     ...baseAdapter,
+    async execute(request) {
+      const response = await baseAdapter.execute!(request);
+      const observedModel =
+        response.gateway?.observedModel ?? observedModelFromRawResponse(response.rawResponse);
+      return {
+        ...response,
+        gateway: {
+          ...(response.gateway ?? { used: true }),
+          used: true,
+          requestedModel: options.model,
+          ...(fallbackModels !== undefined ? { fallbackModels } : {}),
+          ...(observedModel !== undefined ? { observedModel } : {}),
+        },
+      };
+    },
     quirks: OPENROUTER_QUIRKS,
     negotiateCapabilities: negotiate,
   };

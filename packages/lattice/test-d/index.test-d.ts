@@ -6,6 +6,7 @@ import {
   createAI,
   createLiteLLMProvider,
   createNoopAgentHost,
+  createOpenRouterProvider,
   createRateLimitGroup,
   defineAgent,
   latticeVersion,
@@ -19,6 +20,7 @@ import type {
   GatewayPolicy,
   LiteLLMProviderOptions,
   LiteLLMQuirks,
+  OpenRouterProviderOptions,
   RateLimitGroup,
   ReceiptEnvelope,
 } from "..";
@@ -65,5 +67,11 @@ const options: LiteLLMProviderOptions = {
 const litellm = createLiteLLMProvider(options);
 expectType<"provider-adapter">(litellm.kind);
 expectAssignable<LiteLLMQuirks>(litellm.quirks);
+const openrouterOptions: OpenRouterProviderOptions = {
+  model: "openai/gpt-oss-120b",
+  fallbackModels: ["anthropic/claude-sonnet-4.5"],
+};
+const openrouter = createOpenRouterProvider(openrouterOptions);
+expectType<"provider-adapter">(openrouter.kind);
 const metadataValue: GatewayMetadataValue = { nested: ["ok", 1, false, null] };
 void metadataValue;
