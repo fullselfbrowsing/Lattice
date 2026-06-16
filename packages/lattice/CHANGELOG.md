@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0
+
+### Minor Changes
+
+- 3b152a1: Add a first-class LiteLLM gateway provider helper plus typed gateway policy metadata for OpenAI-compatible gateway delegation.
+- 5f77ec5: Add OpenRouter fallback model arrays, resolved-model accounting, and richer OpenRouter capability catalog metadata.
+- e68d1e5: Add a dependency-free OpenTelemetry run-event sink plus Langfuse and Phoenix OTLP configuration helpers.
+- 25a36bc: Add native multimodal request shaping for Anthropic image inputs and Gemini image, audio, and video inputs, with provider packaging evidence in execution plans. Also expose direction-level realtime session and checkpoint types for future OpenAI Realtime and Gemini Live support without implementing production bidirectional transports.
+- 6503486: Add v1.3 receipt provenance roots that commit to descriptor-only artifact lineage graphs, including runtime, streaming, and crew completion receipt issuance where lineage exists. Also expose a cloud-SDK-free remote receipt signer adapter shape so production KMS/HSM signers can receive the exact DSSE PAE bytes while preserving existing KeySet verification.
+- 9278b77: Implement normalized provider streaming adapters for Anthropic, Gemini, and the OpenAI-compatible provider family, including OpenAI, xAI, OpenRouter, LM Studio, and LiteLLM-compatible gateways.
+- 25ef841: Add the core streaming provider contract with optional `ProviderAdapter.executeStream?`, normalized provider stream chunk types, and `collectStream()` for assembling streams into the existing provider response and receipt flow.
+
 ## 1.3.0
 
 ### Minor Changes
