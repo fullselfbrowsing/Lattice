@@ -23,6 +23,7 @@ import type {
   LiteLLMProviderOptions,
   LiteLLMQuirks,
   OpenRouterProviderOptions,
+  PolicySpec,
   ProviderGatewayMetadata,
   ProviderRunResponse,
   ProviderStream,
@@ -102,3 +103,5 @@ async function* publicStream(): ProviderStream {
 }
 const collectOptions: CollectStreamOptions = { defaultOutput: "answer" };
 expectType<Promise<ProviderRunResponse>>(collectStream(publicStream(), collectOptions));
+const streamPolicy: PolicySpec = { stream: true };
+void streamPolicy;

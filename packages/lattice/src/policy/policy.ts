@@ -22,6 +22,7 @@ export interface PolicySpec {
   readonly noUpload?: boolean;
   readonly noPublicUrl?: boolean;
   readonly noLogging?: boolean;
+  readonly stream?: boolean;
   readonly gateway?: GatewayPolicy;
   readonly metadata?: Record<string, unknown>;
 }
