@@ -96,7 +96,7 @@ export function createOtelRunEventSink(
     }
 
     if (event.kind === "run.failed") {
-      const message = metadataString(event, "error") ?? metadataString(event, "reason");
+      const message = metadataString(event, "reason");
       span.setStatus?.({
         code: OTEL_STATUS_ERROR,
         ...(message !== undefined ? { message } : {}),
@@ -133,12 +133,12 @@ export function sanitizeRunEventAttributes(
 
   const metadata = event.metadata ?? {};
   assignString(attributes, "lattice.event.status", metadataString(event, "status"));
-  assignString(attributes, "lattice.error.message", metadataString(event, "error"));
+  assignBoolean(attributes, "lattice.error.present", metadataString(event, "error") !== undefined ? true : undefined);
   assignString(attributes, "lattice.failure.reason", metadataString(event, "reason"));
   assignString(attributes, "lattice.tripwire.invariant_id", asString(metadata.invariantId));
   assignString(attributes, "lattice.artifact.source", asString(metadata.source));
   assignString(attributes, "lattice.receipt.id", asString(metadata.receiptId));
-  assignString(attributes, "lattice.receipt.mint_error", asString(metadata.mintError));
+  assignBoolean(attributes, "lattice.receipt.mint_error.present", asString(metadata.mintError) !== undefined ? true : undefined);
   assignString(attributes, "lattice.route.selected_model", asString(metadata.selected));
   assignNumber(attributes, "lattice.route.rejected.count", asNumber(metadata.rejected));
   assignNumber(attributes, "lattice.route.fallback.count", asNumber(metadata.fallbacks));

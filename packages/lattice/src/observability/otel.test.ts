@@ -153,7 +153,7 @@ describe("createOtelRunEventSink", () => {
     });
   });
 
-  it("marks run.failed spans as errors and records the sanitized failure message", async () => {
+  it("marks run.failed spans as errors without recording arbitrary error text", async () => {
     const tracer = new FakeTracer();
     const sink = createOtelRunEventSink({ tracer });
 
@@ -161,9 +161,21 @@ describe("createOtelRunEventSink", () => {
     await sink(event("run.failed", { metadata: { error: "Provider unavailable" } }));
 
     const span = tracer.starts[0]?.span;
-    expect(span?.statuses).toEqual([{ code: 2, message: "Provider unavailable" }]);
-    expect(span?.exceptions).toEqual(["Provider unavailable"]);
+    expect(span?.statuses).toEqual([{ code: 2 }]);
+    expect(span?.exceptions).toEqual([]);
     expect(span?.ended).toBe(true);
+  });
+
+  it("uses safe failure reasons as error status messages", async () => {
+    const tracer = new FakeTracer();
+    const sink = createOtelRunEventSink({ tracer });
+
+    await sink(event("run.start"));
+    await sink(event("run.failed", { metadata: { reason: "no-route" } }));
+
+    const span = tracer.starts[0]?.span;
+    expect(span?.statuses).toEqual([{ code: 2, message: "no-route" }]);
+    expect(span?.exceptions).toEqual(["no-route"]);
   });
 
   it("maps every current RunEventKind to a predictable span event", async () => {
@@ -282,8 +294,11 @@ describe("sanitizeRunEventAttributes", () => {
       },
     }));
 
+    expect(attributes).toMatchObject({
+      "lattice.error.present": true,
+    });
     const serialized = JSON.stringify(attributes);
-    expect(serialized).toContain("schema failed");
+    expect(serialized).not.toContain("schema failed");
     expect(serialized).not.toContain("raw user prompt");
     expect(serialized).not.toContain("raw model output");
     expect(serialized).not.toContain("file bytes");
