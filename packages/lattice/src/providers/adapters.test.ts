@@ -9,6 +9,7 @@ import { createAnthropicProvider } from "./anthropic.js";
 import { createGeminiProvider } from "./gemini.js";
 import { createFakeProvider } from "./fake.js";
 import { collectStream } from "./streaming.js";
+import { artifact } from "../artifacts/artifact.js";
 import type { ModelCapability } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -980,11 +981,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
-          {
-            id: ARTIFACT_ID,
-            kind: "url",
-            value: PUBLIC_URL,
-          },
+          artifact.url(PUBLIC_URL, { id: ARTIFACT_ID }),
         ],
         outputs: ["text"],
         providerPackaging: {
@@ -1023,11 +1020,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
-          {
-            id: ARTIFACT_ID,
-            kind: "image",
-            value: PUBLIC_URL,
-          },
+          artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
         ],
         outputs: ["text"],
         providerPackaging: {
@@ -1066,11 +1059,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
-          {
-            id: ARTIFACT_ID,
-            kind: "url",
-            value: PUBLIC_URL,
-          },
+          artifact.url(PUBLIC_URL, { id: ARTIFACT_ID }),
         ],
         outputs: ["text"],
         providerPackaging: {
@@ -1124,11 +1113,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     await adapter.execute!({
       task: "describe this image",
       artifacts: [
-        {
-          id: ARTIFACT_ID,
-          kind: "image",
-          value: PUBLIC_URL,
-        },
+        artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
       ],
       outputs: ["text"],
       providerPackaging: {
@@ -1185,11 +1170,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     await adapter.execute!({
       task: "describe this image",
       artifacts: [
-        {
-          id: ARTIFACT_ID,
-          kind: "image",
-          value: PUBLIC_URL,
-        },
+        artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
       ],
       outputs: ["text"],
       providerPackaging: {
