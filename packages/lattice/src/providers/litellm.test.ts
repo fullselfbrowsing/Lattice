@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLiteLLMProvider } from "./litellm.js";
+import { collectStream } from "./streaming.js";
 
 interface FakeFetchCapture {
   url: string;
@@ -20,6 +21,37 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[]): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {}, calls: 0 };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    capture.calls += 1;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    );
   }) as unknown as typeof fetch;
 
   return { fetch: fakeFetch, capture };
@@ -195,5 +227,43 @@ describe("Phase 41 LiteLLM provider", () => {
     expect(adapter.quirks.gatewayMetadataSupported).toBe(true);
     expect(adapter.quirks.gatewayFallbacksSupported).toBe(true);
     expect(adapter.quirks.openAIErrorMapping).toBe(true);
+  });
+
+  it("inherits executeStream and serializes gateway metadata", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        model: "azure/gpt-4o",
+        choices: [{ delta: { content: "litellm stream" } }],
+        usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createLiteLLMProvider({
+      model: "gpt-4o",
+      gateway: {
+        routeTags: ["prod"],
+        providerPreferences: ["azure"],
+        metadata: { trace_id: "trace-1" },
+      },
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = requestBody(capture);
+    const metadata = body.metadata as Record<string, unknown>;
+    const latticeGateway = metadata.lattice_gateway as Record<string, unknown>;
+    expect(body.stream).toBe(true);
+    expect(metadata.trace_id).toBe("trace-1");
+    expect(latticeGateway.route_tags).toEqual(["prod"]);
+    expect(latticeGateway.provider_preferences).toEqual(["azure"]);
+    expect(latticeGateway.allow_fallbacks).toBe(false);
+    expect(response.rawOutputs.text).toBe("litellm stream");
+    expect(response.gateway?.requestedModel).toBe("gpt-4o");
+    expect(response.gateway?.observedModel).toBe("azure/gpt-4o");
   });
 });

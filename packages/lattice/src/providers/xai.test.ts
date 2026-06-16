@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createXaiProvider } from "./xai.js";
+import { collectStream } from "./streaming.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { SanitizerFn } from "../sanitizers/index.js";
 import { defineTool } from "../tools/tools.js";
@@ -32,6 +33,35 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[]): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {} };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -268,6 +298,39 @@ describe("Phase 4 xAI adapter", () => {
     });
     await adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] });
     expect(capture.url).toMatch(/proxy\.example\.com\/xai\/v1\/chat\/completions/);
+  });
+});
+
+describe("Phase 44: xAI streaming", () => {
+  it("exposes executeStream and preserves reasoning_tokens in usage", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "hello" } }] }),
+      sseData({
+        choices: [{ delta: {} }],
+        usage: {
+          prompt_tokens: 1,
+          completion_tokens: 2,
+          completion_tokens_details: { reasoning_tokens: 4 },
+        },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createXaiProvider({
+      model: "grok-4",
+      apiKey: "xai-test-key",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.stream).toBe(true);
+    expect(response.rawOutputs.text).toBe("hello");
+    expect(response.usage?.totalTokens).toBe(7);
   });
 });
 

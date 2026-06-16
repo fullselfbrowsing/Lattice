@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createLmStudioProvider } from "./lm-studio.js";
+import { collectStream } from "./streaming.js";
 import type { LmStudioQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
@@ -31,6 +32,36 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[]): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {}, urls: [] };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    capture.urls.push(url);
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -190,6 +221,35 @@ describe("Phase 4 LM Studio adapter", () => {
       Object.prototype.hasOwnProperty.call(headers, "authorization") ||
       Object.prototype.hasOwnProperty.call(headers, "Authorization");
     expect(hasAuth).toBe(false);
+  });
+});
+
+describe("Phase 44: LM Studio streaming", () => {
+  it("inherits executeStream from the OpenAI-compatible path without auth by default", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        choices: [{ delta: { content: "local stream" } }],
+        usage: { prompt_tokens: 1, completion_tokens: 2 },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createLmStudioProvider({
+      model: "qwen2.5-coder-32b-instruct",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const headers = capture.init.headers as Record<string, string>;
+    expect(capture.url).toMatch(/localhost:1234\/v1\/chat\/completions/);
+    expect(body.stream).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(headers, "authorization")).toBe(false);
+    expect(response.rawOutputs.text).toBe("local stream");
   });
 });
 

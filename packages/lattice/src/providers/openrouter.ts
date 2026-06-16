@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from "./provider.js";
+import type { ProviderAdapter, ProviderStream } from "./provider.js";
 import { createOpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from "./adapters.js";
 import type { OpenRouterQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -21,10 +21,11 @@ import { createRunEvent } from "../tracing/tracing.js";
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
+ * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ *
  * DEFERRED (D-17 carryforward; Phase 4 ships the named adapter as a
  * first-class OpenAI-compat wrapper):
  *   - per-message routing  -- deferred.
- *   - streaming            -- deferred (single-shot per CONTEXT.md D-06).
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter).
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03: thin wrapper; D-17: model-routing deferred).
@@ -407,6 +408,7 @@ export function createOpenRouterProvider(
     baseUrl,
     fetch: executeFetch,
   });
+  const baseExecuteStream = baseAdapter.executeStream;
 
   return {
     ...baseAdapter,
@@ -425,9 +427,39 @@ export function createOpenRouterProvider(
         },
       };
     },
+    ...(baseExecuteStream !== undefined
+      ? {
+          executeStream: async (request: Parameters<typeof baseExecuteStream>[0]) => {
+            const stream = await baseExecuteStream(request);
+            return withOpenRouterStreamGateway(stream);
+          },
+        }
+      : {}),
     quirks: OPENROUTER_QUIRKS,
     negotiateCapabilities: negotiate,
   };
+
+  async function* withOpenRouterStreamGateway(stream: ProviderStream): ProviderStream {
+    for await (const chunk of stream) {
+      if (chunk.kind !== "complete") {
+        yield chunk;
+        continue;
+      }
+
+      const observedModel =
+        chunk.gateway?.observedModel ?? observedModelFromRawResponse(chunk.rawResponse);
+      yield {
+        ...chunk,
+        gateway: {
+          ...(chunk.gateway ?? { used: true }),
+          used: true,
+          requestedModel: options.model,
+          ...(fallbackModels !== undefined ? { fallbackModels } : {}),
+          ...(observedModel !== undefined ? { observedModel } : {}),
+        },
+      };
+    }
+  }
 }
 
 /**

@@ -414,6 +414,7 @@ export function createOpenAICompatibleProvider(
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        streaming: true,
       },
     ],
     async execute(request) {

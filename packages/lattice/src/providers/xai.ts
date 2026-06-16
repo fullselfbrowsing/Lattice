@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from "./provider.js";
+import type { ProviderAdapter, ProviderStream } from "./provider.js";
 import { createOpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from "./adapters.js";
 import type { XaiQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -23,9 +23,10 @@ import { createRunEvent } from "../tracing/tracing.js";
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
+ * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ *
  * DEFERRED (Phase 4 carryforward notes):
  *   - tool-streaming -- deferred
- *   - streaming      -- deferred (single-shot Promise per CONTEXT.md D-06)
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03 + D-07: thin wrapper; reasoning_tokens quirk preserved).
@@ -280,6 +281,7 @@ export function createXaiProvider(
     baseUrl: resolvedBaseUrl,
   });
   const innerExecute = inner.execute;
+  const innerExecuteStream = inner.executeStream;
 
   // Wrap the execute function to add xAI reasoning_tokens quirk preservation (D-07).
   const wrappedExecute =
@@ -294,14 +296,7 @@ export function createXaiProvider(
           // `Usage` (promptTokens/completionTokens/costUsd) is unchanged by
           // design -- normalized usage represents billable tokens; reasoning_tokens
           // is xAI-extra-counts that consumers access via rawResponse for now.
-          const raw = response.rawResponse as
-            | {
-                usage?: {
-                  completion_tokens_details?: { reasoning_tokens?: unknown };
-                };
-              }
-            | undefined;
-          const reasoningTokens = raw?.usage?.completion_tokens_details?.reasoning_tokens;
+          const reasoningTokens = reasoningTokensFromRawResponse(response.rawResponse);
           if (typeof reasoningTokens === "number" && response.usage !== undefined) {
             const inputTokens = response.usage.inputTokens ?? 0;
             const outputTokens = response.usage.outputTokens ?? 0;
@@ -316,6 +311,35 @@ export function createXaiProvider(
             };
           }
           return response;
+        };
+
+  const wrappedExecuteStream =
+    innerExecuteStream === undefined
+      ? undefined
+      : async function* (request: Parameters<typeof innerExecuteStream>[0]): ProviderStream {
+          const stream = await innerExecuteStream(request);
+          for await (const chunk of stream) {
+            if (chunk.kind !== "complete") {
+              yield chunk;
+              continue;
+            }
+
+            const reasoningTokens = reasoningTokensFromRawResponse(chunk.rawResponse);
+            if (typeof reasoningTokens === "number" && chunk.usage !== undefined) {
+              const inputTokens = chunk.usage.inputTokens ?? 0;
+              const outputTokens = chunk.usage.outputTokens ?? 0;
+              yield {
+                ...chunk,
+                usage: {
+                  ...chunk.usage,
+                  totalTokens: inputTokens + outputTokens + reasoningTokens,
+                },
+              };
+              continue;
+            }
+
+            yield chunk;
+          }
         };
 
   // Build the returned object without spreading the inner compat adapter (which has
@@ -346,6 +370,41 @@ export function createXaiProvider(
     negotiateCapabilities: negotiate,
     ...(inner.capabilities !== undefined ? { capabilities: inner.capabilities } : {}),
     ...(wrappedExecute !== undefined ? { execute: wrappedExecute } : {}),
+    ...(wrappedExecuteStream !== undefined ? { executeStream: wrappedExecuteStream } : {}),
   };
   return result;
+}
+
+function reasoningTokensFromRawResponse(rawResponse: unknown): number | undefined {
+  const direct = reasoningTokensFromUsage((rawResponse as { usage?: unknown } | undefined)?.usage);
+  if (direct !== undefined) {
+    return direct;
+  }
+
+  if (!isRecord(rawResponse) || !Array.isArray(rawResponse.chunks)) {
+    return undefined;
+  }
+
+  for (let index = rawResponse.chunks.length - 1; index >= 0; index -= 1) {
+    const chunk = rawResponse.chunks[index];
+    const fromChunk = reasoningTokensFromUsage((chunk as { usage?: unknown } | undefined)?.usage);
+    if (fromChunk !== undefined) {
+      return fromChunk;
+    }
+  }
+
+  return undefined;
+}
+
+function reasoningTokensFromUsage(usage: unknown): number | undefined {
+  if (!isRecord(usage) || !isRecord(usage.completion_tokens_details)) {
+    return undefined;
+  }
+
+  const value = usage.completion_tokens_details.reasoning_tokens;
+  return typeof value === "number" ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

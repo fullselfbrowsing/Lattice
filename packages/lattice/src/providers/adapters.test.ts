@@ -372,6 +372,16 @@ describe("Phase 37: OpenAI-compatible tool-call validation", () => {
 });
 
 describe("Phase 44: OpenAI-compatible streaming adapter", () => {
+  it("advertises streaming capability", () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({ choices: [{ message: { content: "hi" } }], usage: {} }),
+    });
+
+    expect(adapter.capabilities?.[0]?.streaming).toBe(true);
+  });
+
   it("streaming request body includes stream true", async () => {
     const { fetch, requests } = makeStreamingFetch([
       sseData({ choices: [{ delta: { content: "ok" } }] }),
