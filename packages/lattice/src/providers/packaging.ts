@@ -129,6 +129,13 @@ function chooseTransport(
       continue;
     }
 
+    // noPublicUrl blocks the "url" transport (HTTP/HTTPS URIs sent directly to the
+    // provider as a publicly reachable URL). It does NOT block the "file-id" transport,
+    // which uses Gemini-internal file handles (e.g. "files/audio-123") or other
+    // provider-internal file identifiers that are not publicly reachable. Codex PR #12
+    // review finding P2-2 (fileUri leak under noPublicUrl) does not reproduce: the
+    // "url" transport branch in gemini.ts that references artifactHttpUrl() is only
+    // reached when transport === "url", which is already blocked here for noPublicUrl.
     if (policy?.noPublicUrl === true && transport === "url") {
       continue;
     }
