@@ -37,6 +37,19 @@ export type {
   InferOutputMap,
 } from "../outputs/infer.js";
 export type {
+  LangfuseOtlpConfigOptions,
+  OtelAttributeValue,
+  OtelAttributes,
+  OtelContentCaptureMode,
+  OtelHttpTraceConfig,
+  OtelRunEventSinkOptions,
+  OtelSanitizerOptions,
+  OtelSpanLike,
+  OtelSpanStatus,
+  OtelTracerLike,
+  PhoenixOtlpConfigOptions,
+} from "../observability/otel.js";
+export type {
   OutputContract,
   OutputContractMap,
 } from "../outputs/contracts.js";

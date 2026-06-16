@@ -5,9 +5,12 @@ import {
   contract,
   createAI,
   createInMemorySigner,
+  createLangfuseOtlpConfig,
   createLiteLLMProvider,
   createMemoryKeySet,
   createOpenRouterProvider,
+  createOtelRunEventSink,
+  createPhoenixOtlpConfig,
   createRealtimeCheckpointContext,
   createRemoteReceiptSigner,
   evaluateTripwires,
@@ -21,6 +24,7 @@ import {
   getStructuredOutputContract,
   getToolUseContract,
   realtimeStepName,
+  sanitizeRunEventAttributes,
   stripChatTemplateArtifacts,
   stripOpenRouterVariant,
   stripReasoningTags,
@@ -50,6 +54,7 @@ import type {
   RemoteReceiptSignRequest,
   RemoteReceiptSignerOptions,
   ReplayEnvelope,
+  OtelTracerLike,
   TrainingClass,
   TripwireEvidence,
   TripwireResult,
@@ -87,6 +92,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createGoalProgressTracker",
   "createHookPipeline",
   "createInMemorySigner",
+  "createLangfuseOtlpConfig",
   "createLiteLLMProvider",
   "createLmStudioProvider",
   "createLocalArtifactStore",
@@ -98,8 +104,11 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createOpenAICompatibleProvider",
   "createOpenAIProvider",
   "createOpenRouterProvider",
+  "createOtelReceiptAttributes",
+  "createOtelRunEventSink",
   "createPermissionContext",
   "createPermissionGuardHook",
+  "createPhoenixOtlpConfig",
   "createRateLimitGroup",
   "createRealtimeCheckpointContext",
   "createRealtimeReceiptDescriptors",
@@ -141,6 +150,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "runAgent",
   "runAgentCrew",
   "runTool",
+  "sanitizeRunEventAttributes",
   "stripChatTemplateArtifacts",
   "stripOpenRouterVariant",
   "stripReasoningTags",
@@ -194,6 +204,30 @@ describe("Phase 45 public surface", () => {
     })).toMatchObject({
       stepName: "realtime.openai-realtime.session.start",
       stepIndex: 0,
+    });
+  });
+});
+
+describe("Phase 47 public surface", () => {
+  it("exports OTel sink and OTLP config helpers without SDK side effects", () => {
+    const tracer: OtelTracerLike = {
+      startSpan() {
+        return {};
+      },
+    };
+    expect(typeof createOtelRunEventSink({ tracer })).toBe("function");
+    expect(createLangfuseOtlpConfig().endpoint).toBe(
+      "https://cloud.langfuse.com/api/public/otel/v1/traces",
+    );
+    expect(createPhoenixOtlpConfig().endpoint).toBe(
+      "http://localhost:6006/v1/traces",
+    );
+    expect(sanitizeRunEventAttributes({
+      kind: "run.start",
+      timestamp: "2026-06-16T00:00:00.000Z",
+      runId: "run:public",
+    })).toMatchObject({
+      "lattice.run.id": "run:public",
     });
   });
 });

@@ -15,6 +15,13 @@ export {
   evaluateContractAgainstRoute,
 } from "./contract/preflight.js";
 export { evaluateTripwires } from "./contract/tripwire.js";
+export {
+  createLangfuseOtlpConfig,
+  createOtelReceiptAttributes,
+  createOtelRunEventSink,
+  createPhoenixOtlpConfig,
+  sanitizeRunEventAttributes,
+} from "./observability/otel.js";
 export { output } from "./outputs/contracts.js";
 export { createMemoryKeySet } from "./receipts/keyset.js";
 export { createRemoteReceiptSigner } from "./receipts/remote-signer.js";
@@ -214,8 +221,19 @@ export type {
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
+  LangfuseOtlpConfigOptions,
+  OtelAttributeValue,
+  OtelAttributes,
+  OtelContentCaptureMode,
+  OtelHttpTraceConfig,
+  OtelRunEventSinkOptions,
+  OtelSanitizerOptions,
+  OtelSpanLike,
+  OtelSpanStatus,
+  OtelTracerLike,
   OutputContract,
   OutputContractMap,
+  PhoenixOtlpConfigOptions,
   PiiDetector,
   PiiDetectorResult,
   PolicySpec,

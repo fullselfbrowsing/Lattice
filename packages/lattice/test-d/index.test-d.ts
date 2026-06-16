@@ -5,9 +5,12 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import {
   collectStream,
   createAI,
+  createLangfuseOtlpConfig,
   createLiteLLMProvider,
   createNoopAgentHost,
   createOpenRouterProvider,
+  createOtelRunEventSink,
+  createPhoenixOtlpConfig,
   createRateLimitGroup,
   defineAgent,
   latticeVersion,
@@ -23,6 +26,8 @@ import type {
   LiteLLMProviderOptions,
   LiteLLMQuirks,
   OpenRouterProviderOptions,
+  OtelHttpTraceConfig,
+  OtelTracerLike,
   PolicySpec,
   ProviderGatewayMetadata,
   ProviderRunResponse,
@@ -31,6 +36,7 @@ import type {
   ProviderStreamTextDeltaChunk,
   RateLimitGroup,
   ReceiptEnvelope,
+  RunEventSink,
 } from "..";
 
 // Phase 40 public-surface guard:
@@ -105,3 +111,18 @@ const collectOptions: CollectStreamOptions = { defaultOutput: "answer" };
 expectType<Promise<ProviderRunResponse>>(collectStream(publicStream(), collectOptions));
 const streamPolicy: PolicySpec = { stream: true };
 void streamPolicy;
+
+const tracer: OtelTracerLike = {
+  startSpan() {
+    return {};
+  },
+};
+expectType<RunEventSink>(createOtelRunEventSink({ tracer }));
+expectType<OtelHttpTraceConfig>(createLangfuseOtlpConfig({
+  publicKey: "pk-lf-test",
+  secretKey: "sk-lf-test",
+}));
+expectType<OtelHttpTraceConfig>(createPhoenixOtlpConfig({
+  baseUrl: "http://localhost:6006",
+  projectName: "lattice",
+}));
