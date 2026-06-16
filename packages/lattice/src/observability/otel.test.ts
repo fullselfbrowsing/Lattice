@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createOtelReceiptAttributes,
   createOtelRunEventSink,
   sanitizeRunEventAttributes,
   type OtelAttributes,
@@ -8,6 +9,12 @@ import {
   type OtelSpanStatus,
   type OtelTracerLike,
 } from "./otel.js";
+import { createReceipt, type CreateReceiptInput } from "../receipts/receipt.js";
+import {
+  createInMemorySigner,
+  generateEd25519KeyPairJwk,
+} from "../receipts/sign.js";
+import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import type { RunEvent, RunEventKind } from "../tracing/tracing.js";
 
 const ALL_EVENT_KINDS = [
@@ -176,6 +183,20 @@ describe("createOtelRunEventSink", () => {
       });
     }
   });
+
+  it("adds receipt CID and signature attributes when metadata carries an envelope", async () => {
+    const tracer = new FakeTracer();
+    const sink = createOtelRunEventSink({ tracer });
+    const envelope = await makeReceiptEnvelope("otel-receipt-key");
+
+    await sink(event("step.transition", { metadata: { envelope } }));
+
+    expect(tracer.starts[0]?.span.events[0]?.attributes).toMatchObject({
+      "lattice.receipt.cid": expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+      "lattice.receipt.signature.count": 1,
+      "lattice.receipt.signature.keyid": "otel-receipt-key",
+    });
+  });
 });
 
 describe("sanitizeRunEventAttributes", () => {
@@ -206,6 +227,109 @@ describe("sanitizeRunEventAttributes", () => {
       "gen_ai.request.stream": true,
     });
   });
+
+  it("maps usage, gateway, and provider attempt metadata without leaking gateway policy internals", () => {
+    const attributes = sanitizeRunEventAttributes(event("provider.attempt", {
+      providerId: "openrouter",
+      modelId: "openai/gpt-4.1",
+      metadata: {
+        status: "succeeded",
+        fallback: true,
+        usage: { inputTokens: 12, outputTokens: 5, costUsd: 0.03 },
+        gateway: {
+          used: true,
+          providerId: "openrouter",
+          selectedProviderId: "openrouter",
+          requestedModel: "openai/gpt-4.1",
+          observedModel: "openai/gpt-4.1-2026-06",
+          fallbackModels: ["anthropic/claude-sonnet-4"],
+          policy: {
+            authorization: "Bearer secret",
+          },
+        },
+      },
+    }));
+
+    expect(attributes).toMatchObject({
+      "lattice.event.status": "succeeded",
+      "lattice.provider.attempt.fallback": true,
+      "gen_ai.usage.input_tokens": 12,
+      "gen_ai.usage.output_tokens": 5,
+      "llm.token_count.prompt": 12,
+      "llm.token_count.completion": 5,
+      "lattice.usage.cost_usd": 0.03,
+      "lattice.gateway.used": true,
+      "lattice.gateway.requested_model": "openai/gpt-4.1",
+      "lattice.gateway.observed_model": "openai/gpt-4.1-2026-06",
+      "gen_ai.response.model": "openai/gpt-4.1-2026-06",
+      "lattice.gateway.fallback_models": ["anthropic/claude-sonnet-4"],
+    });
+    expect(JSON.stringify(attributes)).not.toContain("Bearer secret");
+  });
+
+  it("excludes raw content and secret-shaped keys by default", () => {
+    const attributes = sanitizeRunEventAttributes(event("validation.failed", {
+      metadata: {
+        error: "schema failed",
+        prompt: "raw user prompt",
+        rawOutputs: { answer: "raw model output" },
+        artifact: { value: "file bytes" },
+        apiKey: "sk-test-secret",
+        authorization: "Bearer secret",
+        content: "message content",
+      },
+    }));
+
+    const serialized = JSON.stringify(attributes);
+    expect(serialized).toContain("schema failed");
+    expect(serialized).not.toContain("raw user prompt");
+    expect(serialized).not.toContain("raw model output");
+    expect(serialized).not.toContain("file bytes");
+    expect(serialized).not.toContain("sk-test-secret");
+    expect(serialized).not.toContain("Bearer secret");
+    expect(serialized).not.toContain("message content");
+  });
+
+  it("captures bounded benign metadata only when explicitly enabled", () => {
+    const attributes = sanitizeRunEventAttributes(event("recovery.complete", {
+      metadata: {
+        workerId: "worker-1",
+        retryCount: 2,
+        resumed: true,
+        tags: ["resume", "storage"],
+        buckets: [1, 2, 3],
+        switches: [true, false],
+        token: "secret",
+        prompt: "raw prompt",
+        nested: { safe: "but not captured" },
+      },
+    }), { contentCapture: "metadata" });
+
+    expect(attributes).toMatchObject({
+      "lattice.metadata.workerId": "worker-1",
+      "lattice.metadata.retryCount": 2,
+      "lattice.metadata.resumed": true,
+      "lattice.metadata.tags": ["resume", "storage"],
+      "lattice.metadata.buckets": [1, 2, 3],
+      "lattice.metadata.switches": [true, false],
+    });
+    const serialized = JSON.stringify(attributes);
+    expect(serialized).not.toContain("secret");
+    expect(serialized).not.toContain("raw prompt");
+    expect(serialized).not.toContain("but not captured");
+  });
+});
+
+describe("createOtelReceiptAttributes", () => {
+  it("derives receipt CID and signature references from a real envelope", async () => {
+    const envelope = await makeReceiptEnvelope("receipt-attrs-key");
+
+    await expect(createOtelReceiptAttributes(envelope)).resolves.toMatchObject({
+      "lattice.receipt.cid": expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+      "lattice.receipt.signature.count": 1,
+      "lattice.receipt.signature.keyid": "receipt-attrs-key",
+    });
+  });
 });
 
 function event(
@@ -224,4 +348,39 @@ function event(
     ...(overrides.metadata !== undefined ? { metadata: overrides.metadata } : {}),
     ...(overrides.runId !== undefined ? { runId: overrides.runId } : {}),
   };
+}
+
+async function makeSigner(
+  kid: string,
+): Promise<{ readonly signer: ReceiptSigner; readonly publicKeyJwk: JsonWebKey }> {
+  const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+  return {
+    signer: createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk }),
+    publicKeyJwk,
+  };
+}
+
+async function makeReceiptEnvelope(kid: string): Promise<ReceiptEnvelope> {
+  const { signer } = await makeSigner(kid);
+  return createReceipt(minimalReceiptInput(), signer);
+}
+
+function minimalReceiptInput(
+  overrides: Partial<CreateReceiptInput> = {},
+): CreateReceiptInput {
+  const base: CreateReceiptInput = {
+    runId: "run-otel-receipt",
+    model: { requested: "gpt-4.1", observed: null },
+    route: {
+      providerId: "openai",
+      capabilityId: "openai/gpt-4.1",
+      attemptNumber: 1,
+    },
+    usage: { promptTokens: 1, completionTokens: 1, costUsd: 0.001 },
+    contractVerdict: "success",
+    contractHash: null,
+    inputHashes: [],
+    outputHash: null,
+  };
+  return { ...base, ...overrides };
 }

@@ -1,3 +1,5 @@
+import { receiptCid } from "../receipts/cid.js";
+import type { ReceiptEnvelope } from "../receipts/types.js";
 import type { RunEvent, RunEventSink } from "../tracing/tracing.js";
 
 export type OtelAttributeValue =
@@ -48,6 +50,8 @@ export interface OtelRunEventSinkOptions extends OtelSanitizerOptions {
 const DEFAULT_SPAN_NAME = "lattice.run";
 const OTEL_STATUS_OK = 1;
 const OTEL_STATUS_ERROR = 2;
+const SECRET_KEY_RE = /api[-_]?key|authorization|credentials?|headers?|password|secret|token/iu;
+const CONTENT_KEY_RE = /artifact|body|content|input|inputs|message|messages|output|outputs|payload|prompt|rawOutputs|task|value/iu;
 
 export function createOtelRunEventSink(
   options: OtelRunEventSinkOptions,
@@ -56,7 +60,7 @@ export function createOtelRunEventSink(
 
   return async (event) => {
     const span = getOrCreateRunSpan(event, options, spans);
-    const attributes = sanitizeRunEventAttributes(event, options);
+    const attributes = await createRunEventAttributes(event, options);
     setSpanAttributes(span, attributes);
     span.addEvent?.(`lattice.${event.kind}`, attributes);
 
@@ -84,7 +88,7 @@ export function createOtelRunEventSink(
 
 export function sanitizeRunEventAttributes(
   event: RunEvent,
-  _options: OtelSanitizerOptions = {},
+  options: OtelSanitizerOptions = {},
 ): OtelAttributes {
   const attributes: OtelAttributes = {
     "lattice.event.kind": event.kind,
@@ -107,16 +111,40 @@ export function sanitizeRunEventAttributes(
   assignString(attributes, "lattice.event.status", metadataString(event, "status"));
   assignString(attributes, "lattice.error.message", metadataString(event, "error"));
   assignString(attributes, "lattice.failure.reason", metadataString(event, "reason"));
+  assignString(attributes, "lattice.tripwire.invariant_id", asString(metadata.invariantId));
+  assignString(attributes, "lattice.artifact.source", asString(metadata.source));
+  assignString(attributes, "lattice.receipt.id", asString(metadata.receiptId));
+  assignString(attributes, "lattice.receipt.mint_error", asString(metadata.mintError));
   assignString(attributes, "lattice.route.selected_model", asString(metadata.selected));
   assignNumber(attributes, "lattice.route.rejected.count", asNumber(metadata.rejected));
   assignNumber(attributes, "lattice.route.fallback.count", asNumber(metadata.fallbacks));
+  assignBoolean(attributes, "lattice.provider.attempt.fallback", asBoolean(metadata.fallback));
   assignNumber(attributes, "lattice.context.estimated_tokens", asNumber(metadata.estimatedTokens));
   assignNumber(attributes, "lattice.context.included.count", asNumber(metadata.included));
   assignNumber(attributes, "lattice.context.summarized.count", asNumber(metadata.summarized));
   assignNumber(attributes, "lattice.context.omitted.count", asNumber(metadata.omitted));
   assignString(attributes, "lattice.tool.name", asString(metadata.toolName));
   assignString(attributes, "lattice.tool.call.id", asString(metadata.callId));
+  assignStringArray(attributes, "lattice.output.names", asStringArray(metadata.outputNames));
+  assignUsage(attributes, metadata);
+  assignGateway(attributes, metadata.gateway);
+  captureSafeMetadata(attributes, metadata, options);
 
+  return attributes;
+}
+
+export async function createOtelReceiptAttributes(
+  envelope: ReceiptEnvelope,
+): Promise<OtelAttributes> {
+  const attributes: OtelAttributes = {
+    "lattice.receipt.cid": await receiptCid(envelope),
+    "lattice.receipt.signature.count": envelope.signatures.length,
+  };
+  assignString(
+    attributes,
+    "lattice.receipt.signature.keyid",
+    envelope.signatures[0]?.keyid,
+  );
   return attributes;
 }
 
@@ -149,6 +177,26 @@ function setSpanAttributes(span: OtelSpanLike, attributes: OtelAttributes): void
   }
 }
 
+async function createRunEventAttributes(
+  event: RunEvent,
+  options: OtelSanitizerOptions,
+): Promise<OtelAttributes> {
+  const attributes = sanitizeRunEventAttributes(event, options);
+  const envelope = findReceiptEnvelope(event.metadata);
+  if (envelope === undefined) {
+    return attributes;
+  }
+
+  try {
+    return {
+      ...attributes,
+      ...(await createOtelReceiptAttributes(envelope)),
+    };
+  } catch {
+    return attributes;
+  }
+}
+
 function eventTime(event: RunEvent): Date {
   return new Date(event.timestamp);
 }
@@ -177,10 +225,216 @@ function assignNumber(
   }
 }
 
+function assignBoolean(
+  attributes: OtelAttributes,
+  key: string,
+  value: boolean | undefined,
+): void {
+  if (value !== undefined) {
+    attributes[key] = value;
+  }
+}
+
+function assignStringArray(
+  attributes: OtelAttributes,
+  key: string,
+  value: readonly string[] | undefined,
+): void {
+  if (value !== undefined && value.length > 0) {
+    attributes[key] = value;
+  }
+}
+
+function assignNumberArray(
+  attributes: OtelAttributes,
+  key: string,
+  value: readonly number[] | undefined,
+): void {
+  if (value !== undefined && value.length > 0) {
+    attributes[key] = value;
+  }
+}
+
+function assignBooleanArray(
+  attributes: OtelAttributes,
+  key: string,
+  value: readonly boolean[] | undefined,
+): void {
+  if (value !== undefined && value.length > 0) {
+    attributes[key] = value;
+  }
+}
+
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function asStringArray(value: unknown): readonly string[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
+    ? value
+    : undefined;
+}
+
+function asNumberArray(value: unknown): readonly number[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isFinite(item))
+    ? value
+    : undefined;
+}
+
+function asBooleanArray(value: unknown): readonly boolean[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "boolean")
+    ? value
+    : undefined;
+}
+
+function assignUsage(attributes: OtelAttributes, metadata: Record<string, unknown>): void {
+  const usage = usageFrom(metadata.normalizedUsage)
+    ?? usageFrom(metadata.usage)
+    ?? usageFrom(metadata);
+
+  if (usage === undefined) {
+    return;
+  }
+
+  assignNumber(attributes, "gen_ai.usage.input_tokens", usage.inputTokens);
+  assignNumber(attributes, "gen_ai.usage.output_tokens", usage.outputTokens);
+  assignNumber(attributes, "llm.token_count.prompt", usage.inputTokens);
+  assignNumber(attributes, "llm.token_count.completion", usage.outputTokens);
+  assignNumber(attributes, "lattice.usage.cost_usd", usage.costUsd);
+}
+
+function usageFrom(value: unknown):
+  | {
+      readonly inputTokens?: number;
+      readonly outputTokens?: number;
+      readonly costUsd?: number;
+    }
+  | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const inputTokens = asNumber(value.promptTokens) ?? asNumber(value.inputTokens);
+  const outputTokens = asNumber(value.completionTokens) ?? asNumber(value.outputTokens);
+  const costUsd = asNumber(value.costUsd);
+
+  if (inputTokens === undefined && outputTokens === undefined && costUsd === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
+  };
+}
+
+function assignGateway(attributes: OtelAttributes, value: unknown): void {
+  if (!isRecord(value)) {
+    return;
+  }
+
+  assignBoolean(attributes, "lattice.gateway.used", asBoolean(value.used));
+  assignString(attributes, "lattice.gateway.provider.id", asString(value.providerId));
+  assignString(attributes, "lattice.gateway.selected_provider.id", asString(value.selectedProviderId));
+  assignString(attributes, "lattice.gateway.requested_model", asString(value.requestedModel));
+  assignString(attributes, "lattice.gateway.observed_model", asString(value.observedModel));
+  assignStringArray(attributes, "lattice.gateway.fallback_models", asStringArray(value.fallbackModels));
+
+  const requestedModel = asString(value.requestedModel);
+  const observedModel = asString(value.observedModel);
+  if (requestedModel !== undefined && attributes["gen_ai.request.model"] === undefined) {
+    attributes["gen_ai.request.model"] = requestedModel;
+  }
+  assignString(attributes, "gen_ai.response.model", observedModel);
+}
+
+function captureSafeMetadata(
+  attributes: OtelAttributes,
+  metadata: Record<string, unknown>,
+  options: OtelSanitizerOptions,
+): void {
+  if (options.contentCapture !== "metadata") {
+    return;
+  }
+
+  const knownKeys = new Set([
+    "callId",
+    "estimatedTokens",
+    "error",
+    "fallback",
+    "fallbacks",
+    "gateway",
+    "included",
+    "invariantId",
+    "mintError",
+    "normalizedUsage",
+    "omitted",
+    "outputNames",
+    "reason",
+    "receiptId",
+    "rejected",
+    "selected",
+    "source",
+    "status",
+    "summarized",
+    "toolName",
+    "usage",
+  ]);
+
+  for (const [key, value] of Object.entries(metadata)) {
+    if (knownKeys.has(key) || isUnsafeMetadataKey(key)) {
+      continue;
+    }
+    const attrKey = `lattice.metadata.${safeAttributeKey(key)}`;
+    assignString(attributes, attrKey, asString(value));
+    assignNumber(attributes, attrKey, asNumber(value));
+    assignBoolean(attributes, attrKey, asBoolean(value));
+    assignStringArray(attributes, attrKey, asStringArray(value));
+    assignNumberArray(attributes, attrKey, asNumberArray(value));
+    assignBooleanArray(attributes, attrKey, asBooleanArray(value));
+  }
+}
+
+function isUnsafeMetadataKey(key: string): boolean {
+  return SECRET_KEY_RE.test(key) || CONTENT_KEY_RE.test(key);
+}
+
+function safeAttributeKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9_.-]+/gu, "_");
+}
+
+function findReceiptEnvelope(metadata: Record<string, unknown> | undefined): ReceiptEnvelope | undefined {
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  const candidates = [metadata.envelope, metadata.receiptEnvelope, metadata.receipt];
+  return candidates.find(isReceiptEnvelope);
+}
+
+function isReceiptEnvelope(value: unknown): value is ReceiptEnvelope {
+  return (
+    isRecord(value) &&
+    value.payloadType === "application/vnd.lattice.receipt+json" &&
+    typeof value.payload === "string" &&
+    Array.isArray(value.signatures) &&
+    value.signatures.every((signature) =>
+      isRecord(signature) &&
+      typeof signature.keyid === "string" &&
+      typeof signature.sig === "string",
+    )
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
