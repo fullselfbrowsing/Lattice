@@ -25,6 +25,7 @@ import {
 } from "../plan/plan.js";
 import { mergePolicy, type GatewayMetadataValue, type PolicySpec } from "../policy/policy.js";
 import { packageArtifactsForProvider } from "../providers/packaging.js";
+import { collectStream } from "../providers/streaming.js";
 import type {
   ProviderAdapter,
   ProviderRunRequest,
@@ -351,11 +352,31 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const attempts: ProviderAttemptRecord[] = [];
   let lastError: Error | undefined;
   let anyExecutableAdapter = false;
+  const streamingRequested = isStreamingRequested(built.mergedPolicy);
 
   for (const [index, route] of routes.entries()) {
-    const adapter = findExecutableAdapter(normalized, route.providerId);
+    const startedAt = new Date().toISOString();
+    const adapter = streamingRequested
+      ? findStreamingAdapter(normalized, route.providerId)
+      : findExecutableAdapter(normalized, route.providerId);
 
     if (adapter === undefined) {
+      if (streamingRequested) {
+        const message =
+          `Streaming requested for provider ${route.providerId} but executeStream() is unavailable.`;
+        attempts.push(
+          attemptFailed(
+            route.providerId,
+            route.modelId,
+            startedAt,
+            new Date().toISOString(),
+            message,
+          ),
+        );
+        lastError = new Error(message);
+        anyExecutableAdapter = true;
+        continue;
+      }
       lastError = new Error("No Phase 1 provider adapter with execute() is configured.");
       continue;
     }
@@ -371,7 +392,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       }));
     }
 
-    const startedAt = new Date().toISOString();
     const attemptPackaging = packageArtifactsForProvider({
       artifacts: built.artifacts,
       route,
@@ -426,7 +446,20 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         ],
       });
 
-      const response = await adapter.execute(request);
+      const response = streamingRequested
+        ? await executeStreamingProvider({
+            normalized,
+            events,
+            runId,
+            plan,
+            route,
+            request,
+            adapter: adapter as ProviderAdapter &
+              Required<Pick<ProviderAdapter, "executeStream">>,
+            ...(gatewayMetadata !== undefined ? { gatewayMetadata } : {}),
+          })
+        : await (adapter as ProviderAdapter &
+            Required<Pick<ProviderAdapter, "execute">>).execute(request);
       await intent.overrides?.hooks?.afterProviderCall?.({ plan, response });
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
         runId,
@@ -974,6 +1007,78 @@ function findExecutableAdapter(
     provider.id === providerId &&
     typeof provider.execute === "function",
   ) as (ProviderAdapter & Required<Pick<ProviderAdapter, "execute">>) | undefined;
+}
+
+function isStreamingRequested(policy: PolicySpec | undefined): boolean {
+  return policy?.stream === true;
+}
+
+function findStreamingAdapter(
+  normalized: NormalizedLatticeConfig,
+  providerId: string,
+): (ProviderAdapter & Required<Pick<ProviderAdapter, "executeStream">>) | undefined {
+  return normalized.providers.find((provider) =>
+    provider.kind === "provider-adapter" &&
+    provider.id === providerId &&
+    typeof provider.executeStream === "function",
+  ) as (ProviderAdapter & Required<Pick<ProviderAdapter, "executeStream">>) | undefined;
+}
+
+async function executeStreamingProvider(input: {
+  readonly normalized: NormalizedLatticeConfig;
+  readonly events: RunEvent[];
+  readonly runId: string;
+  readonly plan: ExecutionPlan;
+  readonly route: SelectedRoute;
+  readonly request: ProviderRunRequest;
+  readonly adapter: ProviderAdapter & Required<Pick<ProviderAdapter, "executeStream">>;
+  readonly gatewayMetadata?: Record<string, unknown>;
+}): Promise<ProviderRunResponse> {
+  await emitEvent(input.normalized, input.events, createRunEvent("stream.start", {
+    runId: input.runId,
+    planId: input.plan.id,
+    providerId: input.route.providerId,
+    modelId: input.route.modelId,
+    metadata: {
+      status: "started",
+      ...(input.gatewayMetadata !== undefined ? { gateway: input.gatewayMetadata } : {}),
+    },
+  }));
+
+  try {
+    const stream = await input.adapter.executeStream(input.request);
+    const defaultOutput = input.request.outputs[0];
+    const response = await collectStream(
+      stream,
+      defaultOutput !== undefined ? { defaultOutput } : {},
+    );
+    await emitEvent(input.normalized, input.events, createRunEvent("stream.complete", {
+      runId: input.runId,
+      planId: input.plan.id,
+      providerId: input.route.providerId,
+      modelId: input.route.modelId,
+      metadata: {
+        status: "completed",
+        outputNames: Object.keys(response.rawOutputs),
+        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+      },
+    }));
+
+    return response;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider stream execution failed.";
+    await emitEvent(input.normalized, input.events, createRunEvent("stream.failed", {
+      runId: input.runId,
+      planId: input.plan.id,
+      providerId: input.route.providerId,
+      modelId: input.route.modelId,
+      metadata: {
+        status: "failed",
+        error: message,
+      },
+    }));
+    throw error;
+  }
 }
 
 function routeFromCandidate(
