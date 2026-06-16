@@ -36,8 +36,22 @@ describe("lattice CLI bin smoke test", () => {
     expect(help).toMatch(/repro/);
     expect(help).toMatch(/verify/);
     expect(help).toMatch(/eval/);
+    expect(help).toMatch(/receipt/);
+    expect(help).toMatch(/diagnostics/);
     expect(help).toMatch(new RegExp(`\\(lattice v${escapeRegExp(pkg.version)}\\)`));
     expect(help).not.toContain("v0.0.0");
+  });
+
+  it("prints help for receipt diff and diagnostics command groups", () => {
+    const receiptHelp = stripAnsi(runBin(["receipt", "--help"]).stdout);
+    const diagnosticsHelp = stripAnsi(runBin(["diagnostics", "--help"]).stdout);
+    const lmStudioHelp = stripAnsi(
+      runBin(["diagnostics", "lm-studio", "--help"]).stdout,
+    );
+
+    expect(receiptHelp).toMatch(/diff/);
+    expect(diagnosticsHelp).toMatch(/lm-studio/);
+    expect(lmStudioHelp).toMatch(/--events/);
   });
 
   // Plan 11-03 replaced the repro stub with the real handler. Calling repro
