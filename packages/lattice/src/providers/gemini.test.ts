@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createGeminiProvider } from "./gemini.js";
+import { collectStream } from "./streaming.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { RunEvent } from "../tracing/tracing.js";
@@ -32,6 +33,38 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[], status = 200): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {} };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      {
+        status,
+        headers: { "content-type": "text/event-stream" },
+      },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -389,6 +422,133 @@ describe("Phase 37: Gemini tool-call validation", () => {
       toolName: "search_database",
       requestId: "bad-1",
     });
+  });
+});
+
+describe("Phase 44: Gemini streaming", () => {
+  it("streams Gemini text parts through executeStream", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        candidates: [{ content: { parts: [{ text: "hel" }] } }],
+      }),
+      sseData({
+        candidates: [{ content: { parts: [{ text: "lo" }] } }],
+      }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(capture.url).toContain(":streamGenerateContent");
+    expect(capture.url).toContain("key=AIza-test");
+    expect(capture.url).toContain("alt=sse");
+    expect(Array.isArray(body.contents)).toBe(true);
+    expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("streams Gemini functionCall parts into validated toolCalls", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  functionCall: {
+                    name: "search",
+                    args: { query: "ok" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.toolCalls).toEqual([
+      { id: "gemini-function-call-0-0", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("streams Gemini usageMetadata into final complete chunk", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({
+        candidates: [{ content: { parts: [{ text: "usage" }] } }],
+        usageMetadata: {
+          promptTokenCount: 1,
+          candidatesTokenCount: 1,
+          totalTokenCount: 2,
+        },
+      }),
+      sseData({
+        usageMetadata: {
+          promptTokenCount: 5,
+          candidatesTokenCount: 3,
+          totalTokenCount: 8,
+        },
+      }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.usage).toEqual({
+      inputTokens: 5,
+      outputTokens: 3,
+      totalTokens: 8,
+    });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 5,
+      completionTokens: 3,
+      costUsd: null,
+    });
+  });
+
+  it("Gemini executeStream throws on non-OK response", async () => {
+    const { fetch } = makeStreamingFetch([], 503);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await expect(
+      collectStream(await adapter.executeStream!({
+        task: "t",
+        artifacts: [],
+        outputs: ["text"],
+      })),
+    ).rejects.toThrow("Gemini provider failed with 503.");
   });
 });
 
