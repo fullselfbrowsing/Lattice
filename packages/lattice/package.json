@@ -1,6 +1,6 @@
 {
   "name": "@full-self-browsing/lattice",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "TypeScript-first capability runtime SDK for AI applications",
   "license": "MIT",
   "repository": {
