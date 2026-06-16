@@ -140,6 +140,48 @@ describe("lattice receipt diff", () => {
     );
   });
 
+  it("detects contractVerdict-only difference", async () => {
+    await writeJson(leftPath, envelope(body({ contractVerdict: "success" })));
+    await writeJson(rightPath, envelope(body({ contractVerdict: "tripwire-violated" })));
+
+    const { deps, bag } = captureDeps();
+    await runReceiptDiff({ left: leftPath, right: rightPath }, deps);
+
+    expect(bag.exitCode).toBe(1);
+    const report = JSON.parse(bag.stdout[0]!) as ReceiptDiffReport;
+    expect(report.equal).toBe(false);
+    const paths = report.differences.map((d) => d.path);
+    expect(paths).toContain("verdict.contractVerdict");
+  });
+
+  it("detects contractHash-only difference", async () => {
+    await writeJson(leftPath, envelope(body({ contractHash: null })));
+    await writeJson(rightPath, envelope(body({ contractHash: "sha256:abc" })));
+
+    const { deps, bag } = captureDeps();
+    await runReceiptDiff({ left: leftPath, right: rightPath }, deps);
+
+    expect(bag.exitCode).toBe(1);
+    const report = JSON.parse(bag.stdout[0]!) as ReceiptDiffReport;
+    expect(report.equal).toBe(false);
+    const paths = report.differences.map((d) => d.path);
+    expect(paths).toContain("verdict.contractHash");
+  });
+
+  it("detects modelClass-only difference", async () => {
+    await writeJson(leftPath, envelope(body({ modelClass: "reasoning" })));
+    await writeJson(rightPath, envelope(body({ modelClass: "chat" })));
+
+    const { deps, bag } = captureDeps();
+    await runReceiptDiff({ left: leftPath, right: rightPath }, deps);
+
+    expect(bag.exitCode).toBe(1);
+    const report = JSON.parse(bag.stdout[0]!) as ReceiptDiffReport;
+    expect(report.equal).toBe(false);
+    const paths = report.differences.map((d) => d.path);
+    expect(paths).toContain("model.modelClass");
+  });
+
   it("exits 2 for malformed receipt payloads and emits no JSON", async () => {
     await writeJson(leftPath, {
       payloadType: "application/vnd.lattice.receipt+json",

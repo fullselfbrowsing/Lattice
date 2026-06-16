@@ -44,10 +44,12 @@ interface ReceiptProjection {
     readonly kid: unknown;
     readonly parentReceiptCid: unknown;
     readonly lineageMerkleRoot: unknown;
+    readonly issuedAt: unknown;
   };
   readonly model: {
     readonly requested: unknown;
     readonly observed: unknown;
+    readonly modelClass: unknown;
   };
   readonly route: {
     readonly providerId: unknown;
@@ -67,6 +69,24 @@ interface ReceiptProjection {
     readonly count: unknown;
     readonly keyids: unknown;
     readonly values: unknown;
+  };
+  readonly verdict: {
+    readonly contractVerdict: unknown;
+    readonly contractHash: unknown;
+    readonly noRouteReasons: unknown;
+    readonly tripwireEvidence: unknown;
+  };
+  readonly redaction: {
+    readonly redactionPolicyId: unknown;
+    readonly redactions: unknown;
+  };
+  readonly step: {
+    readonly stepName: unknown;
+    readonly stepIndex: unknown;
+    readonly parentStepName: unknown;
+    readonly previousStepName: unknown;
+    readonly sessionId: unknown;
+    readonly timestamp: unknown;
   };
 }
 
@@ -261,6 +281,7 @@ function projectReceipt(
   body: CapabilityReceiptBody,
   envelope: ReceiptEnvelope,
 ): ReceiptProjection {
+  const b = body as Record<string, unknown>;
   return {
     receipt: {
       version: body.version,
@@ -269,10 +290,12 @@ function projectReceipt(
       kid: body.kid,
       parentReceiptCid: body.parentReceiptCid ?? null,
       lineageMerkleRoot: body.lineageMerkleRoot ?? null,
+      issuedAt: b.issuedAt ?? null,
     },
     model: {
       requested: body.model?.requested ?? null,
       observed: body.model?.observed ?? null,
+      modelClass: b.modelClass ?? null,
     },
     route: {
       providerId: body.route?.providerId ?? null,
@@ -292,6 +315,24 @@ function projectReceipt(
       count: envelope.signatures.length,
       keyids: envelope.signatures.map((signature: ReceiptSignature) => signature.keyid),
       values: envelope.signatures.map((signature: ReceiptSignature) => signature.sig),
+    },
+    verdict: {
+      contractVerdict: b.contractVerdict ?? null,
+      contractHash: b.contractHash ?? null,
+      noRouteReasons: b.noRouteReasons ?? null,
+      tripwireEvidence: b.tripwireEvidence ?? null,
+    },
+    redaction: {
+      redactionPolicyId: b.redactionPolicyId ?? null,
+      redactions: b.redactions ?? null,
+    },
+    step: {
+      stepName: b.stepName ?? null,
+      stepIndex: b.stepIndex ?? null,
+      parentStepName: b.parentStepName ?? null,
+      previousStepName: b.previousStepName ?? null,
+      sessionId: b.sessionId ?? null,
+      timestamp: b.timestamp ?? null,
     },
   };
 }
@@ -365,6 +406,20 @@ function compareProjection(
   pushDifference(differences, "signatures.count", left.signatures.count, right.signatures.count);
   pushDifference(differences, "signatures.keyids", left.signatures.keyids, right.signatures.keyids);
   pushDifference(differences, "signatures.values", left.signatures.values, right.signatures.values);
+  pushDifference(differences, "receipt.issuedAt", left.receipt.issuedAt, right.receipt.issuedAt);
+  pushDifference(differences, "model.modelClass", left.model.modelClass, right.model.modelClass);
+  pushDifference(differences, "verdict.contractVerdict", left.verdict.contractVerdict, right.verdict.contractVerdict);
+  pushDifference(differences, "verdict.contractHash", left.verdict.contractHash, right.verdict.contractHash);
+  pushDifference(differences, "verdict.noRouteReasons", left.verdict.noRouteReasons, right.verdict.noRouteReasons);
+  pushDifference(differences, "verdict.tripwireEvidence", left.verdict.tripwireEvidence, right.verdict.tripwireEvidence);
+  pushDifference(differences, "redaction.redactionPolicyId", left.redaction.redactionPolicyId, right.redaction.redactionPolicyId);
+  pushDifference(differences, "redaction.redactions", left.redaction.redactions, right.redaction.redactions);
+  pushDifference(differences, "step.stepName", left.step.stepName, right.step.stepName);
+  pushDifference(differences, "step.stepIndex", left.step.stepIndex, right.step.stepIndex);
+  pushDifference(differences, "step.parentStepName", left.step.parentStepName, right.step.parentStepName);
+  pushDifference(differences, "step.previousStepName", left.step.previousStepName, right.step.previousStepName);
+  pushDifference(differences, "step.sessionId", left.step.sessionId, right.step.sessionId);
+  pushDifference(differences, "step.timestamp", left.step.timestamp, right.step.timestamp);
 
   return differences;
 }
