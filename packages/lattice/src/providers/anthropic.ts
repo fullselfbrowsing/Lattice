@@ -1,5 +1,11 @@
 import type { UsageRecord } from "../plan/plan.js";
-import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  ProviderStream,
+  Usage,
+} from "./provider.js";
 import type { AnthropicQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import type { RunEventSink } from "../tracing/tracing.js";
@@ -8,6 +14,7 @@ import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } fr
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import type { ToolUseRequest } from "../agent/types.js";
 import { parseToolUseEnvelope } from "../agent/format-tools.js";
 import {
   validateToolCallRequests,
@@ -17,6 +24,7 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import { readSseEvents } from "./sse.js";
 
 /**
  * Options for {@link createAnthropicProvider}.
@@ -29,11 +37,11 @@ import {
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
+ * STREAMING (Phase 44): supported through native Anthropic Messages SSE events.
+ *
  * DEFERRED (Phase 4 carryforward notes):
  *   - prompt caching   (Phase 39: opt-in via `ProviderRunRequest.cacheSystemPrefix` —
  *                       emitted as a cache_control-marked system block when present)
- *   - streaming        (deferred; this adapter is single-shot Promise -- per CONTEXT.md D-06)
- *   - tool use         (Anthropic tool_use blocks are deferred)
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-02 + D-07: full custom adapter; preserve top-level `system`).
@@ -88,6 +96,40 @@ const DEFAULT_MODELS_CACHE_TTL_MS = 300_000;
 const DEFAULT_MODELS_RETRY_COUNT = 2;
 /** D-11: Backoff schedule for transient /v1/models failures -- immediate, 200ms, 1s. */
 const MODELS_BACKOFF_MS = [0, 200, 1000] as const;
+
+function createAnthropicMessagesBody(input: {
+  readonly model: string;
+  readonly request: ProviderRunRequest;
+  readonly stream?: boolean;
+}): Record<string, unknown> {
+  // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
+  // it to a `cache_control`-marked system content block. Conditional VALUE,
+  // not conditional spread: the `system` key is always present per the
+  // Messages API contract and prior golden-body tests.
+  const system =
+    input.request.cacheSystemPrefix !== undefined
+      ? [
+          {
+            type: "text",
+            text: input.request.cacheSystemPrefix,
+            cache_control: { type: "ephemeral" },
+          },
+        ]
+      : "";
+
+  return {
+    model: input.model,
+    system,
+    messages: [
+      {
+        role: "user",
+        content: input.request.task,
+      },
+    ],
+    max_tokens: DEFAULT_MAX_TOKENS,
+    ...(input.stream === true ? { stream: true } : {}),
+  };
+}
 
 export function createAnthropicProvider(options: AnthropicProviderOptions): ProviderAdapter & {
   readonly quirks: AnthropicQuirks;
@@ -350,6 +392,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        streaming: true,
       },
     ],
     /**
@@ -387,23 +430,6 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     } satisfies AnthropicQuirks,
     negotiateCapabilities,
     async execute(request) {
-      // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
-      // it to a `cache_control`-marked system content block — Anthropic prompt
-      // caching is content-block-granular, so this is the shape that makes
-      // cache hits structurally possible (Pitfall 1). When absent, keep
-      // `system: ""` exactly so the request body stays byte-identical for all
-      // existing callers (T-39-11). Conditional VALUE, not conditional spread:
-      // the `system` key is always present per the Messages API contract (D-07).
-      const system =
-        request.cacheSystemPrefix !== undefined
-          ? [
-              {
-                type: "text",
-                text: request.cacheSystemPrefix,
-                cache_control: { type: "ephemeral" },
-              },
-            ]
-          : "";
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -411,19 +437,10 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
           "x-api-key": options.apiKey,
           "anthropic-version": anthropicVersion,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(createAnthropicMessagesBody({
           model: options.model,
-          // D-07: top-level `system` field PRESERVED (Anthropic Messages API
-          // contract; NOT folded into the `messages` array).
-          system,
-          messages: [
-            {
-              role: "user",
-              content: request.task,
-            },
-          ],
-          max_tokens: DEFAULT_MAX_TOKENS,
-        }),
+          request,
+        })),
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
@@ -459,7 +476,276 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         rawResponse: body,
       };
     },
+    executeStream(request) {
+      return streamAnthropicResponse({
+        id,
+        model: options.model,
+        baseUrl,
+        apiKey: options.apiKey,
+        anthropicVersion,
+        fetchImpl,
+        request,
+        ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+        ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
+        ...(options.validateToolCalls !== undefined
+          ? { validateToolCalls: options.validateToolCalls }
+          : {}),
+      });
+    },
   };
+}
+
+async function* streamAnthropicResponse(input: {
+  readonly id: string;
+  readonly model: string;
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly anthropicVersion: string;
+  readonly fetchImpl: typeof fetch;
+  readonly request: ProviderRunRequest;
+  readonly pricing?: {
+    readonly inputPer1kTokens?: number;
+    readonly outputPer1kTokens?: number;
+  };
+  readonly sanitizeOutput?: SanitizeOutputOption;
+  readonly validateToolCalls?: ValidateToolCallsOption;
+}): ProviderStream {
+  const response = await input.fetchImpl(`${input.baseUrl}/v1/messages`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": input.apiKey,
+      "anthropic-version": input.anthropicVersion,
+    },
+    body: JSON.stringify(createAnthropicMessagesBody({
+      model: input.model,
+      request: input.request,
+      stream: true,
+    })),
+    ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Anthropic provider failed with ${response.status}.`);
+  }
+
+  const textParts: string[] = [];
+  const rawChunks: unknown[] = [];
+  const toolBlocks = new Map<number, AnthropicToolBlock>();
+  const nativeToolRequests: ToolUseRequest[] = [];
+  let usagePayload: Record<string, unknown> | undefined;
+
+  for await (const event of readSseEvents(response)) {
+    const data = event.data.trim();
+    if (data.length === 0) {
+      continue;
+    }
+    if (data === "[DONE]") {
+      break;
+    }
+
+    const chunk = parseJsonObject(data, "Anthropic");
+    rawChunks.push(event.event === undefined ? chunk : { event: event.event, data: chunk });
+    usagePayload = mergeAnthropicUsage(usagePayload, usageFromAnthropicChunk(chunk));
+
+    const eventType = eventTypeFromAnthropicChunk(chunk) ?? event.event;
+    if (eventType === "content_block_start") {
+      startAnthropicToolBlock(toolBlocks, chunk);
+      continue;
+    }
+    if (eventType === "content_block_delta") {
+      const text = anthropicTextDelta(chunk);
+      if (text !== undefined && text.length > 0) {
+        textParts.push(text);
+        for (const output of input.request.outputs) {
+          yield { kind: "text-delta", output, text };
+        }
+      }
+      appendAnthropicToolInput(toolBlocks, chunk);
+      continue;
+    }
+    if (eventType === "content_block_stop") {
+      const request = completeAnthropicToolBlock(toolBlocks, chunk);
+      if (request !== undefined) {
+        nativeToolRequests.push(request);
+      }
+    }
+  }
+
+  const text = textParts.join("");
+  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
+    providerId: input.id,
+    modelId: input.model,
+  });
+  const parsedToolCalls = parseToolUseEnvelope(text);
+  const promptToolCalls = parsedToolCalls === null
+    ? undefined
+    : await validateToolCallRequests(parsedToolCalls, input.validateToolCalls);
+  const nativeToolCalls = nativeToolRequests.length === 0
+    ? undefined
+    : await validateToolCallRequests(nativeToolRequests, input.validateToolCalls);
+  const toolCalls = [
+    ...(promptToolCalls ?? []),
+    ...(nativeToolCalls ?? []),
+  ];
+  const usage = normalizeAnthropicUsage(usagePayload);
+  const normalizedUsage = normalizeAnthropicUsageToRunUsage(usagePayload, input.pricing);
+
+  yield {
+    kind: "complete",
+    rawOutputs: sanitizedOutputs,
+    ...(usage !== undefined ? { usage } : {}),
+    normalizedUsage,
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    rawResponse: {
+      kind: "anthropic-stream",
+      chunks: rawChunks,
+    },
+  };
+}
+
+interface AnthropicToolBlock {
+  readonly id: string;
+  readonly name: string;
+  readonly jsonParts: string[];
+}
+
+function parseJsonObject(data: string, providerName: string): unknown {
+  try {
+    return JSON.parse(data) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`${providerName} stream returned invalid JSON: ${message}`);
+  }
+}
+
+function eventTypeFromAnthropicChunk(chunk: unknown): string | undefined {
+  return isRecord(chunk) && typeof chunk.type === "string" ? chunk.type : undefined;
+}
+
+function usageFromAnthropicChunk(chunk: unknown): unknown {
+  if (!isRecord(chunk)) {
+    return undefined;
+  }
+  if (isRecord(chunk.usage)) {
+    return chunk.usage;
+  }
+  if (isRecord(chunk.message) && isRecord(chunk.message.usage)) {
+    return chunk.message.usage;
+  }
+  return undefined;
+}
+
+function mergeAnthropicUsage(
+  current: Record<string, unknown> | undefined,
+  next: unknown,
+): Record<string, unknown> | undefined {
+  if (!isRecord(next)) {
+    return current;
+  }
+
+  return {
+    ...(current ?? {}),
+    ...next,
+  };
+}
+
+function anthropicIndex(chunk: unknown): number | undefined {
+  return isRecord(chunk) && typeof chunk.index === "number" ? chunk.index : undefined;
+}
+
+function startAnthropicToolBlock(
+  blocks: Map<number, AnthropicToolBlock>,
+  chunk: unknown,
+): void {
+  const index = anthropicIndex(chunk);
+  const contentBlock = isRecord(chunk) && isRecord(chunk.content_block)
+    ? chunk.content_block
+    : undefined;
+  if (
+    index === undefined ||
+    contentBlock === undefined ||
+    contentBlock.type !== "tool_use" ||
+    typeof contentBlock.id !== "string" ||
+    typeof contentBlock.name !== "string"
+  ) {
+    return;
+  }
+
+  blocks.set(index, {
+    id: contentBlock.id,
+    name: contentBlock.name,
+    jsonParts: [],
+  });
+}
+
+function anthropicTextDelta(chunk: unknown): string | undefined {
+  if (!isRecord(chunk) || !isRecord(chunk.delta)) {
+    return undefined;
+  }
+
+  return chunk.delta.type === "text_delta" && typeof chunk.delta.text === "string"
+    ? chunk.delta.text
+    : undefined;
+}
+
+function appendAnthropicToolInput(
+  blocks: Map<number, AnthropicToolBlock>,
+  chunk: unknown,
+): void {
+  const index = anthropicIndex(chunk);
+  if (index === undefined || !isRecord(chunk) || !isRecord(chunk.delta)) {
+    return;
+  }
+  if (
+    chunk.delta.type !== "input_json_delta" ||
+    typeof chunk.delta.partial_json !== "string"
+  ) {
+    return;
+  }
+
+  blocks.get(index)?.jsonParts.push(chunk.delta.partial_json);
+}
+
+function completeAnthropicToolBlock(
+  blocks: Map<number, AnthropicToolBlock>,
+  chunk: unknown,
+): ToolUseRequest | undefined {
+  const index = anthropicIndex(chunk);
+  if (index === undefined) {
+    return undefined;
+  }
+
+  const block = blocks.get(index);
+  if (block === undefined) {
+    return undefined;
+  }
+  blocks.delete(index);
+
+  return {
+    id: block.id,
+    name: block.name,
+    args: parseAnthropicToolInput(block),
+  };
+}
+
+function parseAnthropicToolInput(block: AnthropicToolBlock): unknown {
+  const value = block.jsonParts.join("").trim();
+  if (value.length === 0) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`Anthropic stream returned invalid tool input JSON: ${message}`);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
