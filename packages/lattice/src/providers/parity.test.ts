@@ -11,6 +11,7 @@ import {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./adapters.js";
+import { collectStream } from "./streaming.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 import { defineTool } from "../tools/tools.js";
 import type { ValidateToolCallsOption } from "../tools/tool-call-validation.js";
@@ -49,6 +50,39 @@ function makeFakeFetchCapturing(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function sseEvent(event: string, payload: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetchCapturing(chunks: readonly string[]): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {} };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -191,6 +225,45 @@ const PROVIDERS: readonly ProviderRow[] = [
   },
 ];
 
+function streamingChunksForProvider(providerId: string, text: string): readonly string[] {
+  if (providerId === "anthropic") {
+    return [
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text },
+      }),
+      sseEvent("message_delta", {
+        type: "message_delta",
+        usage: { output_tokens: 1 },
+      }),
+      sseEvent("message_stop", { type: "message_stop" }),
+    ];
+  }
+
+  if (providerId === "gemini") {
+    return [
+      sseData({
+        candidates: [{ content: { parts: [{ text }] } }],
+        usageMetadata: {
+          promptTokenCount: 1,
+          candidatesTokenCount: 1,
+          totalTokenCount: 2,
+        },
+      }),
+    ];
+  }
+
+  return [
+    sseData({
+      model: `${providerId}:observed`,
+      choices: [{ delta: { content: text } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    }),
+    sseData("[DONE]"),
+  ];
+}
+
 describe("INV-03 provider-parity smoke (Phase 4)", () => {
   it("Test 1 (INV-03): all first-party logical providers expose ProviderAdapter shape", () => {
     for (const row of PROVIDERS) {
@@ -286,6 +359,37 @@ describe("INV-03 provider-parity smoke (Phase 4)", () => {
       ids.add(adapter.id);
     }
     expect(ids.size).toBe(PROVIDERS.length);
+  });
+
+  it("INV-03 streaming parity: seven logical providers expose executeStream", async () => {
+    const streamingRows = PROVIDERS.filter((row) => row.expectedId !== "litellm");
+    expect(streamingRows.map((row) => row.expectedId)).toEqual([
+      "openai",
+      "openai-compatible",
+      "anthropic",
+      "gemini",
+      "xai",
+      "openrouter",
+      "lm-studio",
+    ]);
+
+    for (const row of streamingRows) {
+      const expectedText = `${row.expectedId} stream`;
+      const { fetch } = makeStreamingFetchCapturing(
+        streamingChunksForProvider(row.expectedId, expectedText),
+      );
+      const adapter = row.build({ fetch });
+      expect(typeof adapter.executeStream, `${row.logicalName}: executeStream`).toBe("function");
+
+      const response = await collectStream(await adapter.executeStream!({
+        task: `stream-${row.logicalName}`,
+        artifacts: [],
+        outputs: ["text"],
+      }));
+
+      expect(typeof response.rawOutputs.text, `${row.logicalName}: output type`).toBe("string");
+      expect(response.rawOutputs.text, `${row.logicalName}: output text`).toBe(expectedText);
+    }
   });
 });
 
