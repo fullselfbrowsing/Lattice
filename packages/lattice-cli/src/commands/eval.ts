@@ -42,9 +42,11 @@ import { defineCommand } from "citty";
 import {
   isAgentEvalLoadError,
   runAgentEvalSession,
+  writeAgentEvalBaseline as defaultWriteAgentBaseline,
   type AgentEvalRunnerDeps,
 } from "../eval/agent-runner.js";
 import type {
+  AgentEvalBaselineFile,
   AgentEvalConfig,
   AgentEvalRunReport,
 } from "../eval/agent-types.js";
@@ -73,6 +75,11 @@ export interface EvalDeps {
   ) => Promise<EvalRunReport>;
   /** Test injection: override the baseline writer. Defaults to `writeBaseline`. */
   readonly writeBaseline?: (path: string, baseline: Baseline) => Promise<void>;
+  /** Test injection: override the agent baseline writer. */
+  readonly writeAgentBaseline?: (
+    path: string,
+    baseline: AgentEvalBaselineFile,
+  ) => Promise<void>;
   /** Test injection: lock `recordedAt` for snapshots. Defaults to `Date.now()`. */
   readonly now?: () => string;
   /** Test injection: forwarded to the runner. */
@@ -145,6 +152,7 @@ export function buildAgentEvalConfig(args: RunEvalArgs): AgentEvalConfig {
     baselinePath: args.baseline ?? ".lattice/agent-baseline.json",
     iterationsToGoalRegressionLimit: args.iterationsTolerance ?? 1,
     costUsdRegressionLimit: args.costTolerance ?? 0.1,
+    initBaseline: args.initBaseline ?? false,
   };
 }
 
@@ -222,6 +230,8 @@ async function runAgentEval(
 ): Promise<void> {
   const config = buildAgentEvalConfig(args);
   const runSession = deps.runAgentSession ?? runAgentEvalSession;
+  const writeAgentBaselineFn = deps.writeAgentBaseline ?? defaultWriteAgentBaseline;
+  const now = deps.now ?? (() => new Date().toISOString());
 
   let report: AgentEvalRunReport;
   try {
@@ -240,6 +250,32 @@ async function runAgentEval(
       );
     }
     return fail(deps, "agent-eval-session-failed", readErrorMessage(err), 2);
+  }
+
+  if (config.initBaseline === true) {
+    const baseline: AgentEvalBaselineFile = {
+      version: "lattice-agent-eval-baseline/v1",
+      recordedAt: now(),
+      fixtures: Object.fromEntries(
+        report.fixtures.map((fixture) => [fixture.fixtureId, fixture.current]),
+      ),
+    };
+
+    try {
+      await writeAgentBaselineFn(config.baselinePath, baseline);
+    } catch (err) {
+      return fail(
+        deps,
+        "agent-baseline-write-failed",
+        readErrorMessage(err),
+        2,
+      );
+    }
+
+    const finalReport: AgentEvalRunReport = { ...report, exitCode: 0 };
+    emitAgentReport(finalReport, deps);
+    deps.exit(0);
+    return;
   }
 
   const exitCode: 0 | 1 = report.summary.regressed > 0 ? 1 : 0;

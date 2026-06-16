@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -155,6 +155,43 @@ describe("lattice eval --agent", () => {
     const report = JSON.parse(bag.stdout[0]!) as AgentEvalRunReport;
     expect(report.summary.newFixtures).toBe(1);
     expect(report.fixtures[0]?.verdict).toBe("new-fixture");
+  });
+
+  it("bootstraps an agent baseline with --init-baseline when no baseline exists", async () => {
+    const nestedBaselinePath = join(sandbox, ".lattice", "agent-baseline.json");
+    await writeFixture(fixturesDir, "delta", {
+      version: "lattice-agent-eval-fixture/v1",
+      fixtureId: "delta",
+      snapshot: snapshot(2, 0.12),
+    });
+
+    const { deps, bag } = captureDeps();
+    await runEval({
+      agent: true,
+      initBaseline: true,
+      fixtures: fixturesDir,
+      baseline: nestedBaselinePath,
+    }, deps);
+
+    expect(bag.exitCode).toBe(0);
+    const baseline = JSON.parse(await readFile(nestedBaselinePath, "utf8")) as {
+      readonly version: string;
+      readonly recordedAt: string;
+      readonly fixtures: Record<string, unknown>;
+    };
+    expect(baseline.version).toBe("lattice-agent-eval-baseline/v1");
+    expect(baseline.recordedAt).toBe("2026-06-16T00:00:00.000Z");
+    expect(baseline.fixtures).toHaveProperty("delta");
+
+    const report = JSON.parse(bag.stdout[0]!) as AgentEvalRunReport;
+    expect(report.exitCode).toBe(0);
+    expect(report.summary).toEqual({
+      total: 1,
+      passed: 1,
+      regressed: 0,
+      newFixtures: 0,
+    });
+    expect(report.fixtures[0]?.verdict).toBe("match");
   });
 
   it("exits 2 for malformed agent fixtures and writes no JSON report", async () => {

@@ -470,6 +470,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "succeeded",
           fallback: index > 0,
+          normalizedUsage: normalizeAdapterUsage(response),
           ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
         },
       }));

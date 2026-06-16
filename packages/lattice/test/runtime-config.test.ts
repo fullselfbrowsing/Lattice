@@ -56,7 +56,7 @@ describe("phase 1 runtime contracts", () => {
     });
   });
 
-  it("shallow-merges policy defaults and run overrides", () => {
+  it("merges policy defaults and run overrides with nested gateway preservation", () => {
     const defaultPolicy: PolicySpec = {
       maxCostUsd: 10,
       latency: "interactive",
@@ -69,6 +69,15 @@ describe("phase 1 runtime contracts", () => {
       metadata: {
         scope: "default",
       },
+      gateway: {
+        routeTags: ["prod"],
+        providerPreferences: ["openai", "anthropic"],
+        metadata: {
+          trace_id: "default-trace",
+          shared: "default",
+        },
+        allowFallbacks: false,
+      },
     };
 
     const runPolicy: PolicySpec = {
@@ -76,6 +85,13 @@ describe("phase 1 runtime contracts", () => {
       noLogging: true,
       metadata: {
         scope: "run",
+      },
+      gateway: {
+        metadata: {
+          shared: "run",
+          generation_name: "case-1",
+        },
+        allowFallbacks: true,
       },
     };
 
@@ -90,6 +106,16 @@ describe("phase 1 runtime contracts", () => {
       noLogging: true,
       metadata: {
         scope: "run",
+      },
+      gateway: {
+        routeTags: ["prod"],
+        providerPreferences: ["openai", "anthropic"],
+        metadata: {
+          trace_id: "default-trace",
+          shared: "run",
+          generation_name: "case-1",
+        },
+        allowFallbacks: true,
       },
     });
     expect(mergePolicy()).toBeUndefined();

@@ -4,6 +4,7 @@ import { artifact } from "../artifacts/artifact.js";
 import type { ArtifactInput } from "../artifacts/artifact.js";
 import type { ProviderPackagingPlan, SelectedRoute } from "../plan/plan.js";
 import { createGeminiProvider } from "./gemini.js";
+import { NoPublicUrlEgressError } from "./no-public-url.js";
 import { packageArtifactsForProvider } from "./packaging.js";
 import { collectStream } from "./streaming.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -230,6 +231,33 @@ describe("Phase 4 Gemini adapter", () => {
     });
   });
 
+  it("Gemini preserves media types from inline data URLs", async () => {
+    const image = artifact.image("data:image/webp;base64,AAAA", {
+      id: "gemini-data-url",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: geminiPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(geminiParts(body)[1]).toEqual({
+      inlineData: {
+        mimeType: "image/webp",
+        data: "AAAA",
+      },
+    });
+  });
+
   it("Gemini packages audio file references as fileData parts", async () => {
     const audio = artifact.audio("local-audio.mp3", {
       id: "gemini-audio",
@@ -257,6 +285,96 @@ describe("Phase 4 Gemini adapter", () => {
         fileUri: "files/audio-123",
       },
     });
+  });
+
+  it("blocks public Gemini fileUri metadata under noPublicUrl before execute fetch", async () => {
+    const audio = artifact.audio("local-audio.mp3", {
+      id: "gemini-public-file-uri",
+      mediaType: "audio/mpeg",
+      metadata: { geminiFileUri: "https://cdn.example.test/audio.mp3" },
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await expect(adapter.execute!({
+      task: "describe",
+      artifacts: [audio],
+      outputs: ["text"],
+      policy: { noPublicUrl: true },
+      providerPackaging: {
+        providerId: "gemini",
+        modelId: "gemini-1.5-flash",
+        artifacts: [
+          {
+            artifactId: audio.id,
+            transport: "file-id",
+            mediaType: "audio/mpeg",
+            lineageTransform: "provider-packaging",
+            providerRequest: {
+              shape: "gemini:part.fileData",
+              sourceType: "file-reference",
+              reason: "test-forced fileUri path",
+              mediaType: "audio/mpeg",
+              reference: { kind: "file-uri", metadataKey: "geminiFileUri" },
+            },
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    })).rejects.toBeInstanceOf(NoPublicUrlEgressError);
+    expect(capture.url).toBe("");
+  });
+
+  it("blocks public Gemini fileUri metadata under noPublicUrl before stream fetch", async () => {
+    const audio = artifact.audio("local-audio.mp3", {
+      id: "gemini-public-stream-file-uri",
+      mediaType: "audio/mpeg",
+      metadata: { geminiFileUri: "https://cdn.example.test/audio.mp3" },
+    });
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        candidates: [{ content: { parts: [{ text: "ok" }] } }],
+      }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await expect(collectStream(await adapter.executeStream!({
+      task: "describe",
+      artifacts: [audio],
+      outputs: ["text"],
+      policy: { noPublicUrl: true },
+      providerPackaging: {
+        providerId: "gemini",
+        modelId: "gemini-2.0-flash",
+        artifacts: [
+          {
+            artifactId: audio.id,
+            transport: "file-id",
+            mediaType: "audio/mpeg",
+            lineageTransform: "provider-packaging",
+            providerRequest: {
+              shape: "gemini:part.fileData",
+              sourceType: "file-reference",
+              reason: "test-forced fileUri path",
+              mediaType: "audio/mpeg",
+              reference: { kind: "file-uri", metadataKey: "geminiFileUri" },
+            },
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    }))).rejects.toBeInstanceOf(NoPublicUrlEgressError);
+    expect(capture.url).toBe("");
   });
 
   it("Gemini packages video URL artifacts as fileData parts", async () => {

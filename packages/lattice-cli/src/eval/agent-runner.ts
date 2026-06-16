@@ -1,5 +1,5 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 import {
   evalAgentRun,
@@ -189,6 +189,16 @@ export async function loadAgentEvalBaseline(
   return parsed;
 }
 
+export async function writeAgentEvalBaseline(
+  path: string,
+  baseline: AgentEvalBaselineFile,
+): Promise<void> {
+  const tmpPath = `${path}.tmp`;
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(tmpPath, JSON.stringify(baseline, null, 2), "utf8");
+  await rename(tmpPath, path);
+}
+
 export async function loadAgentEvalFixture(
   path: string,
 ): Promise<AgentEvalFixtureFile> {
@@ -269,12 +279,13 @@ function buildFixtureReport(
   fixture: AgentEvalFixtureFile,
   baselineSnapshot: AgentRunSnapshot | undefined,
   options: EvalOptions,
+  mode: "standard" | "init-baseline" = "standard",
 ): AgentEvalFixtureReport {
   if (baselineSnapshot === undefined) {
     const kinds = new Set<string>();
     return {
       fixtureId: fixture.fixtureId,
-      verdict: "new-fixture",
+      verdict: mode === "init-baseline" ? "match" : "new-fixture",
       baseline: null,
       current: fixture.snapshot,
       regressions: [],
@@ -306,7 +317,9 @@ export async function runAgentEvalSession(
   deps: AgentEvalRunnerDeps = {},
 ): Promise<AgentEvalRunReport> {
   const now = deps.now ?? (() => new Date().toISOString());
-  const baseline = await loadAgentEvalBaseline(config.baselinePath);
+  const baseline = config.initBaseline === true
+    ? undefined
+    : await loadAgentEvalBaseline(config.baselinePath);
   const fixturePaths = await listFixturePaths(config.fixturesDir);
   const options: EvalOptions = {
     ...(config.iterationsToGoalRegressionLimit !== undefined
@@ -324,7 +337,12 @@ export async function runAgentEvalSession(
   for (const path of fixturePaths) {
     const fixture = await loadAgentEvalFixture(path);
     fixtures.push(
-      buildFixtureReport(fixture, baseline.fixtures[fixture.fixtureId], options),
+      buildFixtureReport(
+        fixture,
+        baseline?.fixtures[fixture.fixtureId],
+        options,
+        config.initBaseline === true ? "init-baseline" : "standard",
+      ),
     );
   }
 

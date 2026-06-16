@@ -182,6 +182,65 @@ describe("lattice receipt diff", () => {
     expect(paths).toContain("model.modelClass");
   });
 
+  it("detects redaction evidence and step-marker differences", async () => {
+    await writeJson(
+      leftPath,
+      envelope(
+        body({
+          noRouteReasons: [{ code: "streaming-unsupported", message: "no stream" }],
+          tripwireEvidence: { invariantId: "inv-a", message: "blocked" },
+          redactionPolicyId: "policy-a",
+          redactions: [{ path: "$.secret", reason: "pii" }],
+          stepName: "draft",
+          stepIndex: 1,
+          parentStepName: "root",
+          previousStepName: "plan",
+          sessionId: "session-a",
+          timestamp: "2026-06-16T01:00:00.000Z",
+        }),
+      ),
+    );
+    await writeJson(
+      rightPath,
+      envelope(
+        body({
+          noRouteReasons: [{ code: "provider-denied", message: "denied" }],
+          tripwireEvidence: { invariantId: "inv-b", message: "blocked differently" },
+          redactionPolicyId: "policy-b",
+          redactions: [{ path: "$.token", reason: "secret" }],
+          stepName: "final",
+          stepIndex: 2,
+          parentStepName: "parent",
+          previousStepName: "draft",
+          sessionId: "session-b",
+          timestamp: "2026-06-16T02:00:00.000Z",
+        }),
+      ),
+    );
+
+    const { deps, bag } = captureDeps();
+    await runReceiptDiff({ left: leftPath, right: rightPath }, deps);
+
+    expect(bag.exitCode).toBe(1);
+    const report = JSON.parse(bag.stdout[0]!) as ReceiptDiffReport;
+    expect(report.equal).toBe(false);
+    const paths = report.differences.map((d) => d.path);
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        "verdict.noRouteReasons",
+        "verdict.tripwireEvidence",
+        "redaction.redactionPolicyId",
+        "redaction.redactions",
+        "step.stepName",
+        "step.stepIndex",
+        "step.parentStepName",
+        "step.previousStepName",
+        "step.sessionId",
+        "step.timestamp",
+      ]),
+    );
+  });
+
   it("exits 2 for malformed receipt payloads and emits no JSON", async () => {
     await writeJson(leftPath, {
       payloadType: "application/vnd.lattice.receipt+json",
