@@ -17,6 +17,7 @@ export {
 export { evaluateTripwires } from "./contract/tripwire.js";
 export { output } from "./outputs/contracts.js";
 export { createMemoryKeySet } from "./receipts/keyset.js";
+export { createRemoteReceiptSigner } from "./receipts/remote-signer.js";
 export {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -253,6 +254,11 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  RemoteReceiptPayloadFormat,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignResult,
+  RemoteReceiptSignerOptions,
+  RemoteReceiptSignerProvider,
   ReplayEnvelope,
   RunEvent,
   RunEventKind,

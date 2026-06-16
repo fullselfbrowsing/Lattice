@@ -9,6 +9,7 @@ import {
   createMemoryKeySet,
   createOpenRouterProvider,
   createRealtimeCheckpointContext,
+  createRemoteReceiptSigner,
   evaluateTripwires,
   generateEd25519KeyPairJwk,
   inv,
@@ -46,6 +47,8 @@ import type {
   QualityFloorInvariant,
   ReceiptEnvelope,
   ReceiptSigner,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
   ReplayEnvelope,
   TrainingClass,
   TripwireEvidence,
@@ -101,6 +104,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createRealtimeCheckpointContext",
   "createRealtimeReceiptDescriptors",
   "createReceipt",
+  "createRemoteReceiptSigner",
   "createReplayEnvelope",
   "createTranscriptStore",
   "createXaiProvider",
@@ -365,6 +369,23 @@ describe("Phase 9 public surface", () => {
     expect((signer.publicKeyJwk as { kty?: string }).kty).toBe("OKP");
   });
 
+  it("createRemoteReceiptSigner returns a ReceiptSigner shape", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const delegate = createInMemorySigner(privateKeyJwk, {
+      kid: "remote-public",
+      publicKeyJwk,
+    });
+    const signer: ReceiptSigner = createRemoteReceiptSigner({
+      kid: "remote-public",
+      publicKeyJwk,
+      provider: "external-kms",
+      sign: (request) => delegate.sign(request.bytes),
+    });
+    expect(signer.kid).toBe("remote-public");
+    expect(typeof signer.sign).toBe("function");
+    expect(signer.publicKeyJwk).toBe(publicKeyJwk);
+  });
+
   it("createMemoryKeySet returns a KeySet with lookup", async () => {
     const { publicKeyJwk } = await generateEd25519KeyPairJwk();
     const entry: KeyEntry = {
@@ -416,6 +437,8 @@ describe("Phase 9 public surface", () => {
       _class;
     const _envelope: ReceiptEnvelope | undefined = undefined;
     const _signer: ReceiptSigner | undefined = undefined;
+    const _remoteRequest: RemoteReceiptSignRequest | undefined = undefined;
+    const _remoteOptions: RemoteReceiptSignerOptions | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
     const _verifyResult: VerifyResult | undefined = undefined;
     const _verifyError: VerifyError | undefined = undefined;
@@ -425,6 +448,8 @@ describe("Phase 9 public surface", () => {
     void _bodyModelClass;
     void _envelope;
     void _signer;
+    void _remoteRequest;
+    void _remoteOptions;
     void _keyState;
     void _verifyResult;
     void _verifyError;

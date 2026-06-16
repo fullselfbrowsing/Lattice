@@ -7,6 +7,8 @@ import type {
   InvariantDeclaration,
   QualityFloorInvariant,
   RealtimeSessionSpec,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
   Usage,
 } from "./public-types.js";
 
@@ -59,5 +61,10 @@ describe("Phase 7 public type exports", () => {
   it("RealtimeSessionSpec is reachable as a direction-level public type", () => {
     expectTypeOf<RealtimeSessionSpec["kind"]>().toEqualTypeOf<"realtime-session-spec">();
     expectTypeOf<RealtimeSessionSpec["supportLevel"]>().toEqualTypeOf<"direction-only">();
+  });
+
+  it("Remote receipt signer types are reachable from public-types", () => {
+    expectTypeOf<RemoteReceiptSignRequest["payloadFormat"]>().toEqualTypeOf<"dsse-pae">();
+    expectTypeOf<RemoteReceiptSignerOptions["kid"]>().toEqualTypeOf<string>();
   });
 });

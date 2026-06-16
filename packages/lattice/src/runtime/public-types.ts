@@ -147,6 +147,13 @@ export type {
   VerifyResult,
 } from "../receipts/types.js";
 export type {
+  RemoteReceiptPayloadFormat,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignResult,
+  RemoteReceiptSignerOptions,
+  RemoteReceiptSignerProvider,
+} from "../receipts/remote-signer.js";
+export type {
   RunEvent,
   RunEventKind,
   RunEventSink,

@@ -9,6 +9,7 @@ import {
   output,
   createRealtimeCheckpointContext,
   createRealtimeReceiptDescriptors,
+  createRemoteReceiptSigner,
 } from "@full-self-browsing/lattice";
 import type {
   ArtifactFingerprint,
@@ -23,6 +24,9 @@ import type {
   RunSuccess,
   ProviderStream,
   RealtimeSessionSpec,
+  ReceiptSigner,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
   SessionRef,
   StorageLike,
   StoredArtifactEnvelope,
@@ -152,6 +156,19 @@ async function verifyPackageTypes(): Promise<void> {
 
   const descriptors = createRealtimeReceiptDescriptors(realtimeSpec);
   expectType<string>(descriptors.route.providerId);
+
+  const remoteOptions: RemoteReceiptSignerOptions = {
+    kid: "remote",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "x" },
+    provider: "external-kms",
+    sign(request: RemoteReceiptSignRequest) {
+      expectType<"dsse-pae">(request.payloadFormat);
+      expectType<"Ed25519">(request.algorithm);
+      expectType<Uint8Array>(request.bytes);
+      return Promise.resolve(new Uint8Array(64));
+    },
+  };
+  expectType<ReceiptSigner>(createRemoteReceiptSigner(remoteOptions));
 }
 
 void verifyPackageTypes;
