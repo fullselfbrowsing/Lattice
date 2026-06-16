@@ -29,8 +29,8 @@
 
 ### Streaming Contract (`STRM-*`)
 
-- [ ] **STRM-01**: `ProviderAdapter` gains an additive optional `executeStream?` method and typed stream chunk union without changing the existing `execute()` contract.
-- [ ] **STRM-02**: `collectStream()` converts a provider stream into the existing `ProviderRunResponse` shape and is the only supported path from streaming output into receipt issuance.
+- [x] **STRM-01**: `ProviderAdapter` gains an additive optional `executeStream?` method and typed stream chunk union without changing the existing `execute()` contract.
+- [x] **STRM-02**: `collectStream()` converts a provider stream into the existing `ProviderRunResponse` shape and is the only supported path from streaming output into receipt issuance.
 - [ ] **STRM-03**: Streaming receipt issuance happens only after the stream drains, and `outputHash` is computed over the assembled final output rather than provider chunk boundaries.
 - [ ] **STRM-04**: Streaming run events bracket the stream with start, complete, and failed markers without emitting one `RunEvent` per token.
 - [ ] **STRM-05**: Property/regression tests prove equivalent final text with different chunk boundaries produces the same signed output hash.
@@ -114,8 +114,8 @@
 | ORCAT-04 | Phase 42 | Complete |
 | ORCAT-05 | Phase 42 | Complete |
 | ORCAT-06 | Phase 42 | Complete |
-| STRM-01 | Phase 43 | Pending |
-| STRM-02 | Phase 43 | Pending |
+| STRM-01 | Phase 43 | Complete |
+| STRM-02 | Phase 43 | Complete |
 | STRM-03 | Phase 43 | Pending |
 | STRM-04 | Phase 43 | Pending |
 | STRM-05 | Phase 43 | Pending |
