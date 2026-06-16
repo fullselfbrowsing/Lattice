@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import fc from "fast-check";
 
 import type { ProviderAdapter, ProviderStream } from "./provider.js";
 import { collectStream } from "./streaming.js";
@@ -93,5 +94,28 @@ describe("Phase 43 collectStream", () => {
     } satisfies ProviderAdapter;
 
     expect(adapter.kind).toBe("provider-adapter");
+  });
+
+  it("collectStream is invariant to text chunk boundaries", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.string({ minLength: 1, maxLength: 8 }), {
+          minLength: 1,
+          maxLength: 8,
+        }),
+        async (parts) => {
+          const expected = parts.join("");
+          async function* stream() {
+            for (const part of parts) {
+              yield { kind: "text-delta" as const, output: "answer", text: part };
+            }
+          }
+
+          const collected = await collectStream(stream());
+          expect(collected.rawOutputs.answer).toBe(expected);
+        },
+      ),
+      { numRuns: 50 },
+    );
   });
 });
