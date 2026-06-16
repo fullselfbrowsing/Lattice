@@ -52,11 +52,11 @@
 
 ### Receipt Provenance and Signing (`REC-*`)
 
-- [ ] **REC-01**: Receipt schema gains an additive lineage merkle-root field that commits to the artifact lineage graph without embedding private artifact content.
-- [ ] **REC-02**: Receipt verification preserves backward compatibility for v1.1/v1.2 receipts while accepting the new v1.3 receipt shape.
-- [ ] **REC-03**: Runtime receipt issuance includes lineage merkle roots for normal runs, streaming runs after collection, and crew child receipts where lineage is available.
-- [ ] **REC-04**: KMS signer interfaces let production users adapt AWS KMS, Google Cloud KMS, or an equivalent remote signer to the existing `ReceiptSigner` contract without adding provider SDKs to core.
-- [ ] **REC-05**: KMS signer tests prove bytes sent to remote signers are the canonical DSSE/PAE bytes and that public-key metadata still verifies through existing `KeySet` logic.
+- [x] **REC-01**: Receipt schema gains an additive lineage merkle-root field that commits to the artifact lineage graph without embedding private artifact content.
+- [x] **REC-02**: Receipt verification preserves backward compatibility for v1.1/v1.2 receipts while accepting the new v1.3 receipt shape.
+- [x] **REC-03**: Runtime receipt issuance includes lineage merkle roots for normal runs, streaming runs after collection, and crew child receipts where lineage is available.
+- [x] **REC-04**: KMS signer interfaces let production users adapt AWS KMS, Google Cloud KMS, or an equivalent remote signer to the existing `ReceiptSigner` contract without adding provider SDKs to core.
+- [x] **REC-05**: KMS signer tests prove bytes sent to remote signers are the canonical DSSE/PAE bytes and that public-key metadata still verifies through existing `KeySet` logic.
 
 ### OpenTelemetry Export (`OTEL-*`)
 
@@ -128,11 +128,11 @@
 | MMRT-03 | Phase 45 | Complete |
 | MMRT-04 | Phase 45 | Complete |
 | MMRT-05 | Phase 45 | Complete |
-| REC-01 | Phase 46 | Pending |
-| REC-02 | Phase 46 | Pending |
-| REC-03 | Phase 46 | Pending |
-| REC-04 | Phase 46 | Pending |
-| REC-05 | Phase 46 | Pending |
+| REC-01 | Phase 46 | Complete |
+| REC-02 | Phase 46 | Complete |
+| REC-03 | Phase 46 | Complete |
+| REC-04 | Phase 46 | Complete |
+| REC-05 | Phase 46 | Complete |
 | OTEL-01 | Phase 47 | Pending |
 | OTEL-02 | Phase 47 | Pending |
 | OTEL-03 | Phase 47 | Pending |
