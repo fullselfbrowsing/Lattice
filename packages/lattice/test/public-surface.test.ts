@@ -8,6 +8,7 @@ import {
   createLiteLLMProvider,
   createMemoryKeySet,
   createOpenRouterProvider,
+  createRealtimeCheckpointContext,
   evaluateTripwires,
   generateEd25519KeyPairJwk,
   inv,
@@ -15,8 +16,10 @@ import {
   materializeReplayEnvelope,
   PROMPT_SCAFFOLD_VERSION,
   PROMPT_STRATEGIES,
+  REALTIME_DIRECTION_SUPPORT_LEVEL,
   getStructuredOutputContract,
   getToolUseContract,
+  realtimeStepName,
   stripChatTemplateArtifacts,
   stripOpenRouterVariant,
   stripReasoningTags,
@@ -62,6 +65,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "NegotiationAuthError",
   "PROMPT_SCAFFOLD_VERSION",
   "PROMPT_STRATEGIES",
+  "REALTIME_DIRECTION_SUPPORT_LEVEL",
   "SANITIZER_BY_FAILURE_MODE",
   "STEP_TRANSITION_EVENT_NAME",
   "STUCK_REASONS",
@@ -94,6 +98,8 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createPermissionContext",
   "createPermissionGuardHook",
   "createRateLimitGroup",
+  "createRealtimeCheckpointContext",
+  "createRealtimeReceiptDescriptors",
   "createReceipt",
   "createReplayEnvelope",
   "createTranscriptStore",
@@ -121,6 +127,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "output",
   "parseToolUseEnvelope",
   "permissionGuardRegisterOptions",
+  "realtimeStepName",
   "receiptCid",
   "redactArtifactRef",
   "redactPlan",
@@ -165,6 +172,25 @@ describe("Phase 42 public surface", () => {
 describe("Phase 43 public surface", () => {
   it("exports collectStream as the streaming collection helper", () => {
     expect(typeof collectStream).toBe("function");
+  });
+});
+
+describe("Phase 45 public surface", () => {
+  it("exports realtime direction helpers without socket side effects", () => {
+    expect(REALTIME_DIRECTION_SUPPORT_LEVEL).toBe("direction-only");
+    expect(realtimeStepName("openai-realtime", "session.start")).toBe(
+      "realtime.openai-realtime.session.start",
+    );
+    expect(createRealtimeCheckpointContext({
+      sessionId: "rt-session",
+      provider: "openai-realtime",
+      checkpoint: "session.start",
+      stepIndex: 0,
+      timestamp: "2026-06-16T00:00:00.000Z",
+    })).toMatchObject({
+      stepName: "realtime.openai-realtime.session.start",
+      stepIndex: 0,
+    });
   });
 });
 

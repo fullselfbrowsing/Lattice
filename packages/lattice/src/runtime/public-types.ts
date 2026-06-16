@@ -91,6 +91,22 @@ export type {
   ReplayEnvelope,
 } from "../replay/replay.js";
 export type {
+  GeminiLiveTarget,
+  OpenAIRealtimeTarget,
+  RealtimeCheckpointingSpec,
+  RealtimeCheckpointInput,
+  RealtimeCheckpointKind,
+  RealtimeInputModality,
+  RealtimeOutputModality,
+  RealtimeProviderKind,
+  RealtimeProviderTarget,
+  RealtimeReceiptDescriptors,
+  RealtimeSessionMode,
+  RealtimeSessionSpec,
+  RealtimeSupportLevel,
+  RealtimeTransportKind,
+} from "../realtime/realtime.js";
+export type {
   LatticeRunError,
   TripwireViolationError,
   ValidationIssue,

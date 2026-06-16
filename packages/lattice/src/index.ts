@@ -143,6 +143,12 @@ export type {
   RateLimitLease,
 } from "./agent/infra/rate-limit-group.js";
 export { receiptCid } from "./receipts/cid.js";
+export {
+  REALTIME_DIRECTION_SUPPORT_LEVEL,
+  createRealtimeCheckpointContext,
+  createRealtimeReceiptDescriptors,
+  realtimeStepName,
+} from "./realtime/realtime.js";
 // Agent eval helper (v1.2 Phase 22).
 export { evalAgentRun } from "./agent/eval.js";
 export type {
@@ -226,6 +232,20 @@ export type {
   ProviderStreamToolCallChunk,
   ProviderStreamUsageChunk,
   QualityFloorInvariant,
+  GeminiLiveTarget,
+  OpenAIRealtimeTarget,
+  RealtimeCheckpointInput,
+  RealtimeCheckpointKind,
+  RealtimeCheckpointingSpec,
+  RealtimeInputModality,
+  RealtimeOutputModality,
+  RealtimeProviderKind,
+  RealtimeProviderTarget,
+  RealtimeReceiptDescriptors,
+  RealtimeSessionMode,
+  RealtimeSessionSpec,
+  RealtimeSupportLevel,
+  RealtimeTransportKind,
   ReceiptEnvelope,
   ReceiptModel,
   ReceiptRedaction,

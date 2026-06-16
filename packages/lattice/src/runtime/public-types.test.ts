@@ -6,6 +6,7 @@ import type {
   ContractRejectReasonCode,
   InvariantDeclaration,
   QualityFloorInvariant,
+  RealtimeSessionSpec,
   Usage,
 } from "./public-types.js";
 
@@ -53,5 +54,10 @@ describe("Phase 7 public type exports", () => {
     expectTypeOf<InvariantDeclaration["kind"]>().toEqualTypeOf<
       "must-cite" | "field-from-table" | "no-pii" | "matches"
     >();
+  });
+
+  it("RealtimeSessionSpec is reachable as a direction-level public type", () => {
+    expectTypeOf<RealtimeSessionSpec["kind"]>().toEqualTypeOf<"realtime-session-spec">();
+    expectTypeOf<RealtimeSessionSpec["supportLevel"]>().toEqualTypeOf<"direction-only">();
   });
 });
