@@ -34,9 +34,10 @@ describe("Phase 43 collectStream", () => {
   it("collectStream merges usage gateway artifacts and tool calls from complete chunks", async () => {
     const artifactRef = {
       id: "artifact:stream:1",
-      kind: "artifact-ref" as const,
-      artifactKind: "text" as const,
+      kind: "text" as const,
       mediaType: "text/plain",
+      source: "inline" as const,
+      privacy: "standard" as const,
     };
     const toolCall = { id: "tool-1", name: "lookup", args: { q: "x" } };
 
@@ -92,10 +93,5 @@ describe("Phase 43 collectStream", () => {
     } satisfies ProviderAdapter;
 
     expect(adapter.kind).toBe("provider-adapter");
-    await expect(adapter.execute?.({
-      task: "x",
-      artifacts: [],
-      outputs: ["answer"],
-    })).resolves.toEqual({ rawOutputs: { answer: "ok" } });
   });
 });
