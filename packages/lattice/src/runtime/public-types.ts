@@ -64,6 +64,7 @@ export type {
   ModelCapability,
   ProviderAdapter,
   ProviderDataPolicyHints,
+  ProviderGatewayMetadata,
   ProviderLatencyClass,
   ProviderPricingHint,
   ProviderRef,

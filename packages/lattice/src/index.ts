@@ -211,6 +211,7 @@ export type {
   PiiDetectorResult,
   PolicySpec,
   ProviderAdapter,
+  ProviderGatewayMetadata,
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,

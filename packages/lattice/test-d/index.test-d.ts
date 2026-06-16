@@ -21,6 +21,7 @@ import type {
   LiteLLMProviderOptions,
   LiteLLMQuirks,
   OpenRouterProviderOptions,
+  ProviderGatewayMetadata,
   RateLimitGroup,
   ReceiptEnvelope,
 } from "..";
@@ -73,5 +74,12 @@ const openrouterOptions: OpenRouterProviderOptions = {
 };
 const openrouter = createOpenRouterProvider(openrouterOptions);
 expectType<"provider-adapter">(openrouter.kind);
+const gatewayObservation: ProviderGatewayMetadata = {
+  used: true,
+  requestedModel: "openai/gpt-oss-120b",
+  fallbackModels: ["anthropic/claude-sonnet-4.5"],
+  observedModel: "anthropic/claude-sonnet-4.5",
+};
+void gatewayObservation;
 const metadataValue: GatewayMetadataValue = { nested: ["ok", 1, false, null] };
 void metadataValue;
