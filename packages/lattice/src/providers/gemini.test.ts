@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { artifact } from "../artifacts/artifact.js";
+import type { ArtifactInput } from "../artifacts/artifact.js";
+import type { ProviderPackagingPlan, SelectedRoute } from "../plan/plan.js";
 import { createGeminiProvider } from "./gemini.js";
+import { packageArtifactsForProvider } from "./packaging.js";
 import { collectStream } from "./streaming.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
@@ -67,6 +71,28 @@ function makeStreamingFetch(chunks: readonly string[], status = 200): {
     );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
+}
+
+const GEMINI_ROUTE: SelectedRoute = {
+  providerId: "gemini",
+  modelId: "gemini-2.0-flash",
+  score: 0,
+  estimates: { inputTokens: 1, outputTokens: 1 },
+  inputModalities: ["text", "image", "audio", "video"],
+  outputModalities: ["text"],
+  fileTransport: ["inline", "json", "url", "base64", "file-id"],
+};
+
+function geminiPackaging(artifacts: readonly ArtifactInput[]): ProviderPackagingPlan {
+  return packageArtifactsForProvider({
+    artifacts,
+    route: GEMINI_ROUTE,
+  }).plan;
+}
+
+function geminiParts(body: Record<string, unknown>): readonly Record<string, unknown>[] {
+  const contents = body.contents as readonly { parts: readonly Record<string, unknown>[] }[];
+  return contents[0]?.parts ?? [];
 }
 
 /**
@@ -173,6 +199,96 @@ describe("Phase 4 Gemini adapter", () => {
     expect(body.generationConfig).toBeDefined();
     const cfg = body.generationConfig as Record<string, unknown>;
     expect(typeof cfg.maxOutputTokens).toBe("number");
+  });
+
+  it("Gemini packages image artifacts as inlineData parts", async () => {
+    const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
+      id: "gemini-image",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: geminiPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const parts = geminiParts(body);
+    expect(parts[0]).toEqual({ text: "describe" });
+    expect(parts[1]).toEqual({
+      inlineData: {
+        mimeType: "image/png",
+        data: "cG5n",
+      },
+    });
+  });
+
+  it("Gemini packages audio file references as fileData parts", async () => {
+    const audio = artifact.audio("local-audio.mp3", {
+      id: "gemini-audio",
+      mediaType: "audio/mpeg",
+      metadata: { geminiFileUri: "files/audio-123" },
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [audio],
+      outputs: ["text"],
+      providerPackaging: geminiPackaging([audio]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(geminiParts(body)[1]).toEqual({
+      fileData: {
+        mimeType: "audio/mpeg",
+        fileUri: "files/audio-123",
+      },
+    });
+  });
+
+  it("Gemini packages video URL artifacts as fileData parts", async () => {
+    const video = {
+      id: "gemini-video",
+      kind: "video",
+      source: "file",
+      value: "https://cdn.example.test/clip.mp4",
+      mediaType: "video/mp4",
+      privacy: "standard",
+    } satisfies ArtifactInput;
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [video],
+      outputs: ["text"],
+      providerPackaging: geminiPackaging([video]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(geminiParts(body)[1]).toEqual({
+      fileData: {
+        mimeType: "video/mp4",
+        fileUri: "https://cdn.example.test/clip.mp4",
+      },
+    });
   });
 
   it("Test 3 (D-09.3): response parsing -- extracts candidates[0].content.parts[0].text", async () => {
@@ -453,6 +569,37 @@ describe("Phase 44: Gemini streaming", () => {
     expect(capture.url).toContain("alt=sse");
     expect(Array.isArray(body.contents)).toBe(true);
     expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("Gemini streaming uses the multimodal request body", async () => {
+    const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
+      id: "stream-image",
+    });
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        candidates: [{ content: { parts: [{ text: "ok" }] } }],
+      }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: geminiPackaging([image]),
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(geminiParts(body)[1]).toEqual({
+      inlineData: {
+        mimeType: "image/png",
+        data: "cG5n",
+      },
+    });
   });
 
   it("streams Gemini functionCall parts into validated toolCalls", async () => {

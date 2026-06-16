@@ -27,6 +27,13 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import {
+  artifactBase64Data,
+  artifactHttpUrl,
+  geminiFileUri,
+  mediaTypeForArtifact,
+  packagedPlanForArtifact,
+} from "./multimodal.js";
 import { readSseEvents } from "./sse.js";
 
 /**
@@ -124,14 +131,16 @@ const GEMINI_QUIRKS: GeminiQuirks = {
   systemInstructionSupported: true,    // CITED: gemini-1.5+ supports system_instruction
 };
 
-function createGeminiGenerateContentBody(
+async function createGeminiGenerateContentBody(
   request: ProviderRunRequest,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
+  const parts = await createGeminiUserParts(request);
+
   return {
     contents: [
       {
         role: "user",
-        parts: [{ text: request.task }],
+        parts,
       },
     ],
     generationConfig: {
@@ -141,6 +150,81 @@ function createGeminiGenerateContentBody(
     },
     safetySettings: SAFETY_SETTINGS,
   };
+}
+
+async function createGeminiUserParts(
+  request: ProviderRunRequest,
+): Promise<readonly Record<string, unknown>[]> {
+  const parts: Record<string, unknown>[] = [{ text: request.task }];
+
+  for (const inputArtifact of request.artifacts) {
+    if (!isGeminiMediaArtifact(inputArtifact.kind)) {
+      continue;
+    }
+
+    const packaged = packagedPlanForArtifact(request, inputArtifact.id);
+    if (packaged === undefined) {
+      continue;
+    }
+
+    if (packaged.transport === "file-id") {
+      const fileUri = geminiFileUri(inputArtifact);
+      if (fileUri === undefined) {
+        continue;
+      }
+      parts.push({
+        fileData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          fileUri,
+        },
+      });
+      continue;
+    }
+
+    if (packaged.transport === "url") {
+      const fileUri = artifactHttpUrl(inputArtifact);
+      if (fileUri === undefined) {
+        continue;
+      }
+      parts.push({
+        fileData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          fileUri,
+        },
+      });
+      continue;
+    }
+
+    if (packaged.transport === "base64" || packaged.transport === "inline") {
+      const data = await artifactBase64Data(inputArtifact);
+      if (data === undefined) {
+        continue;
+      }
+      parts.push({
+        inlineData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          data,
+        },
+      });
+    }
+  }
+
+  return parts;
+}
+
+function isGeminiMediaArtifact(kind: string): kind is "image" | "audio" | "video" {
+  return kind === "image" || kind === "audio" || kind === "video";
+}
+
+function fallbackGeminiMimeType(kind: "image" | "audio" | "video"): string {
+  switch (kind) {
+    case "image":
+      return "image/jpeg";
+    case "audio":
+      return "audio/mpeg";
+    case "video":
+      return "video/mp4";
+  }
 }
 
 function geminiGenerateContentUrl(input: {
@@ -405,19 +489,20 @@ export function createGeminiProvider(
       {
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
-        fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
         streaming: true,
       },
     ],
     quirks: GEMINI_QUIRKS,
     negotiateCapabilities: negotiate,
     async execute(request) {
+      const requestBody = await createGeminiGenerateContentBody(request);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify(createGeminiGenerateContentBody(request)),
+        body: JSON.stringify(requestBody),
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
@@ -496,6 +581,7 @@ async function* streamGeminiResponse(input: {
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
+  const requestBody = await createGeminiGenerateContentBody(input.request);
   const response = await input.fetchImpl(
     geminiGenerateContentUrl({
       baseUrl: input.baseUrl,
@@ -508,7 +594,7 @@ async function* streamGeminiResponse(input: {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify(createGeminiGenerateContentBody(input.request)),
+      body: JSON.stringify(requestBody),
       ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
     },
   );
