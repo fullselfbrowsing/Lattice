@@ -47,7 +47,31 @@ export interface OtelRunEventSinkOptions extends OtelSanitizerOptions {
   readonly spanName?: string;
 }
 
+export interface OtelHttpTraceConfig {
+  readonly endpoint: string;
+  readonly headers: Record<string, string>;
+}
+
+export interface LangfuseOtlpConfigOptions {
+  readonly baseUrl?: string;
+  readonly publicKey?: string;
+  readonly secretKey?: string;
+  readonly authString?: string;
+  readonly ingestionVersion?: string;
+  readonly headers?: Record<string, string>;
+}
+
+export interface PhoenixOtlpConfigOptions {
+  readonly baseUrl?: string;
+  readonly endpoint?: string;
+  readonly apiKey?: string;
+  readonly projectName?: string;
+  readonly headers?: Record<string, string>;
+}
+
 const DEFAULT_SPAN_NAME = "lattice.run";
+const DEFAULT_LANGFUSE_BASE_URL = "https://cloud.langfuse.com";
+const DEFAULT_PHOENIX_BASE_URL = "http://localhost:6006";
 const OTEL_STATUS_OK = 1;
 const OTEL_STATUS_ERROR = 2;
 const SECRET_KEY_RE = /api[-_]?key|authorization|credentials?|headers?|password|secret|token/iu;
@@ -146,6 +170,33 @@ export async function createOtelReceiptAttributes(
     envelope.signatures[0]?.keyid,
   );
   return attributes;
+}
+
+export function createLangfuseOtlpConfig(
+  options: LangfuseOtlpConfigOptions = {},
+): OtelHttpTraceConfig {
+  const authString = langfuseAuthString(options);
+  return {
+    endpoint: langfuseTraceEndpoint(options.baseUrl ?? DEFAULT_LANGFUSE_BASE_URL),
+    headers: {
+      ...(authString !== undefined ? { Authorization: `Basic ${authString}` } : {}),
+      "x-langfuse-ingestion-version": options.ingestionVersion ?? "4",
+      ...(options.headers ?? {}),
+    },
+  };
+}
+
+export function createPhoenixOtlpConfig(
+  options: PhoenixOtlpConfigOptions = {},
+): OtelHttpTraceConfig {
+  return {
+    endpoint: options.endpoint ?? phoenixTraceEndpoint(options.baseUrl ?? DEFAULT_PHOENIX_BASE_URL),
+    headers: {
+      ...(options.apiKey !== undefined ? { Authorization: `Bearer ${options.apiKey}` } : {}),
+      ...(options.projectName !== undefined ? { "x-project-name": options.projectName } : {}),
+      ...(options.headers ?? {}),
+    },
+  };
 }
 
 function getOrCreateRunSpan(
@@ -437,4 +488,52 @@ function isReceiptEnvelope(value: unknown): value is ReceiptEnvelope {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function langfuseAuthString(options: LangfuseOtlpConfigOptions): string | undefined {
+  if (options.authString !== undefined) {
+    return options.authString;
+  }
+
+  if (options.publicKey === undefined && options.secretKey === undefined) {
+    return undefined;
+  }
+
+  if (options.publicKey === undefined || options.secretKey === undefined) {
+    throw new Error("Langfuse OTLP auth requires both publicKey and secretKey.");
+  }
+
+  return base64Utf8(`${options.publicKey}:${options.secretKey}`);
+}
+
+function langfuseTraceEndpoint(baseUrl: string): string {
+  const base = trimTrailingSlashes(baseUrl);
+  if (base.endsWith("/api/public/otel/v1/traces")) {
+    return base;
+  }
+  if (base.endsWith("/api/public/otel")) {
+    return `${base}/v1/traces`;
+  }
+  return `${base}/api/public/otel/v1/traces`;
+}
+
+function phoenixTraceEndpoint(baseUrl: string): string {
+  const base = trimTrailingSlashes(baseUrl);
+  if (base.endsWith("/v1/traces")) {
+    return base;
+  }
+  return `${base}/v1/traces`;
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/u, "");
+}
+
+function base64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 }

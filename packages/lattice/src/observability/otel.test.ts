@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createLangfuseOtlpConfig,
   createOtelReceiptAttributes,
   createOtelRunEventSink,
+  createPhoenixOtlpConfig,
   sanitizeRunEventAttributes,
   type OtelAttributes,
   type OtelSpanLike,
@@ -328,6 +330,86 @@ describe("createOtelReceiptAttributes", () => {
       "lattice.receipt.cid": expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
       "lattice.receipt.signature.count": 1,
       "lattice.receipt.signature.keyid": "receipt-attrs-key",
+    });
+  });
+});
+
+describe("createLangfuseOtlpConfig", () => {
+  it("builds the default Langfuse Cloud trace endpoint and ingestion header", () => {
+    expect(createLangfuseOtlpConfig()).toEqual({
+      endpoint: "https://cloud.langfuse.com/api/public/otel/v1/traces",
+      headers: {
+        "x-langfuse-ingestion-version": "4",
+      },
+    });
+  });
+
+  it("supports Basic auth from public and secret keys", () => {
+    expect(createLangfuseOtlpConfig({
+      baseUrl: "https://us.cloud.langfuse.com/api/public/otel",
+      publicKey: "pk-lf-test",
+      secretKey: "sk-lf-test",
+    })).toEqual({
+      endpoint: "https://us.cloud.langfuse.com/api/public/otel/v1/traces",
+      headers: {
+        Authorization: `Basic ${btoa("pk-lf-test:sk-lf-test")}`,
+        "x-langfuse-ingestion-version": "4",
+      },
+    });
+  });
+
+  it("allows precomputed auth strings and custom headers", () => {
+    expect(createLangfuseOtlpConfig({
+      baseUrl: "http://localhost:3000/",
+      authString: "precomputed",
+      ingestionVersion: "4",
+      headers: { "x-custom": "1" },
+    })).toEqual({
+      endpoint: "http://localhost:3000/api/public/otel/v1/traces",
+      headers: {
+        Authorization: "Basic precomputed",
+        "x-langfuse-ingestion-version": "4",
+        "x-custom": "1",
+      },
+    });
+  });
+
+  it("requires Langfuse public and secret keys together", () => {
+    expect(() => createLangfuseOtlpConfig({ publicKey: "pk-lf-test" })).toThrow(
+      /publicKey and secretKey/u,
+    );
+  });
+});
+
+describe("createPhoenixOtlpConfig", () => {
+  it("builds the local Phoenix OTLP HTTP trace endpoint by default", () => {
+    expect(createPhoenixOtlpConfig()).toEqual({
+      endpoint: "http://localhost:6006/v1/traces",
+      headers: {},
+    });
+  });
+
+  it("adds Bearer auth and project routing headers", () => {
+    expect(createPhoenixOtlpConfig({
+      baseUrl: "https://app.phoenix.arize.com/s/space-name",
+      apiKey: "px-key",
+      projectName: "lattice",
+    })).toEqual({
+      endpoint: "https://app.phoenix.arize.com/s/space-name/v1/traces",
+      headers: {
+        Authorization: "Bearer px-key",
+        "x-project-name": "lattice",
+      },
+    });
+  });
+
+  it("respects exact endpoints and custom headers", () => {
+    expect(createPhoenixOtlpConfig({
+      endpoint: "https://phoenix.example.com/custom/traces",
+      headers: { "x-env": "test" },
+    })).toEqual({
+      endpoint: "https://phoenix.example.com/custom/traces",
+      headers: { "x-env": "test" },
     });
   });
 });
