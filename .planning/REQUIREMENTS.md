@@ -60,11 +60,11 @@
 
 ### OpenTelemetry Export (`OTEL-*`)
 
-- [ ] **OTEL-01**: `createOtelRunEventSink` maps Lattice `RunEventKind` events into OpenTelemetry spans/span events without using the hook pipeline as the primary exporter boundary.
-- [ ] **OTEL-02**: The OTel exporter emits stable `gen_ai.*` and `lattice.*` attributes for provider, model, usage, route, plan, run id, and receipt CID.
-- [ ] **OTEL-03**: Span sanitization defaults to no raw prompt/output/artifact content and provides an explicit opt-in content capture mode.
-- [ ] **OTEL-04**: Langfuse and Phoenix setup helpers or docs show how to send Lattice traces through standard OTLP without making either SDK a core dependency.
-- [ ] **OTEL-05**: Exporter tests prove run, stage, provider attempt, fallback, validation, tool, recovery, streaming, and capability-negotiation events map predictably.
+- [x] **OTEL-01**: `createOtelRunEventSink` maps Lattice `RunEventKind` events into OpenTelemetry spans/span events without using the hook pipeline as the primary exporter boundary.
+- [x] **OTEL-02**: The OTel exporter emits stable `gen_ai.*` and `lattice.*` attributes for provider, model, usage, route, plan, run id, and receipt CID.
+- [x] **OTEL-03**: Span sanitization defaults to no raw prompt/output/artifact content and provides an explicit opt-in content capture mode.
+- [x] **OTEL-04**: Langfuse and Phoenix setup helpers or docs show how to send Lattice traces through standard OTLP without making either SDK a core dependency.
+- [x] **OTEL-05**: Exporter tests prove run, stage, provider attempt, fallback, validation, tool, recovery, streaming, and capability-negotiation events map predictably.
 
 ### Eval and Diagnostics CLI (`EVAL-*`)
 
@@ -133,11 +133,11 @@
 | REC-03 | Phase 46 | Complete |
 | REC-04 | Phase 46 | Complete |
 | REC-05 | Phase 46 | Complete |
-| OTEL-01 | Phase 47 | Pending |
-| OTEL-02 | Phase 47 | Pending |
-| OTEL-03 | Phase 47 | Pending |
-| OTEL-04 | Phase 47 | Pending |
-| OTEL-05 | Phase 47 | Pending |
+| OTEL-01 | Phase 47 | Complete |
+| OTEL-02 | Phase 47 | Complete |
+| OTEL-03 | Phase 47 | Complete |
+| OTEL-04 | Phase 47 | Complete |
+| OTEL-05 | Phase 47 | Complete |
 | EVAL-01 | Phase 48 | Pending |
 | EVAL-02 | Phase 48 | Pending |
 | EVAL-03 | Phase 48 | Pending |
