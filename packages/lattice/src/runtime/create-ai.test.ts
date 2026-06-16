@@ -9,6 +9,7 @@ import {
   createFakeProvider,
   type FakeProviderOptions,
 } from "../providers/fake.js";
+import { createOpenAICompatibleProvider } from "../providers/adapters.js";
 import { createOpenRouterProvider } from "../providers/openrouter.js";
 import type {
   ModelCapability,
@@ -529,6 +530,26 @@ describe("Phase 43 streaming runtime", () => {
     }
   }
 
+  function openAICompatibleSseData(payload: unknown): string {
+    return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+  }
+
+  function makeOpenAICompatibleStreamingFetch(chunks: readonly string[]): typeof fetch {
+    const encoder = new TextEncoder();
+    return (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (const chunk of chunks) {
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+  }
+
   it("uses executeStream only when policy.stream is true", async () => {
     let executeCalls = 0;
     let streamCalls = 0;
@@ -568,6 +589,40 @@ describe("Phase 43 streaming runtime", () => {
     }
     expect(executeCalls).toBe(1);
     expect(streamCalls).toBe(1);
+  });
+
+  it("runs policy.stream through a real OpenAI-compatible adapter factory", async () => {
+    const provider = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      fetch: makeOpenAICompatibleStreamingFetch([
+        openAICompatibleSseData({ choices: [{ delta: { content: "real " } }] }),
+        openAICompatibleSseData({
+          choices: [{ delta: { content: "stream" } }],
+          usage: { prompt_tokens: 2, completion_tokens: 3 },
+        }),
+        openAICompatibleSseData("[DONE]"),
+      ]),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.outputs.answer).toBe("real stream");
+      const eventKinds = (result.events ?? []).map((event) => event.kind);
+      expect(eventKinds).toContain("stream.start");
+      expect(eventKinds).toContain("stream.complete");
+      if (result.plan.kind === "execution-plan") {
+        expect(result.plan.attempts[0]?.status).toBe("succeeded");
+      }
+    }
   });
 
   it("emits stream start and complete without per-chunk events", async () => {
