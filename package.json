@@ -16,6 +16,7 @@
     "check:package-version": "node scripts/check-package-version-surfaces.mjs",
     "check:core-boundary": "node scripts/check-core-package-boundary.mjs",
     "example:work-inbox": "pnpm --filter @full-self-browsing/lattice build && node examples/work-inbox/index.mjs",
+    "example:v14-validation": "pnpm --filter @full-self-browsing/lattice build && node examples/v14-validation/index.mjs",
     "changeset": "changeset"
   },
   "devDependencies": {
