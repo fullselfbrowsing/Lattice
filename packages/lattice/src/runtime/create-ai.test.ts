@@ -972,9 +972,14 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
       expect(verifyResult.body.inputHashes).toHaveLength(2);
-      // Root now includes packaged artifact lineage in addition to raw input lineage,
-      // so we assert the root is a valid sha256 string rather than an exact value.
+      // The runtime folds provider-packaged artifacts (provider-packaging lineage)
+      // into the lineage root, so it must be a valid root AND must differ from the
+      // root computed over the raw input/output artifacts alone. The inequality
+      // guards the create-ai.ts wiring that includes attemptPackaging.packagedArtifacts
+      // (Codex PR #12 P2-3): reverting that fix makes the root equal inputOnlyRoot.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
       expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
@@ -1141,8 +1146,13 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      // Root now includes packaged artifact lineage in addition to raw artifact lineage.
+      // The runtime folds provider-packaged artifacts into the lineage root, so it
+      // must differ from the root computed over the raw input/output artifacts alone.
+      // This inequality guards the create-ai.ts packaged-artifact lineage wiring
+      // (Codex PR #12 P2-3) on the streaming success path.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
       expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
