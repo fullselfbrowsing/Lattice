@@ -6,6 +6,12 @@ import type {
   ContractRejectReasonCode,
   InvariantDeclaration,
   QualityFloorInvariant,
+  RealtimeSessionSpec,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
+  OtelHttpTraceConfig,
+  OtelRunEventSinkOptions,
+  OtelTracerLike,
   Usage,
 } from "./public-types.js";
 
@@ -53,5 +59,20 @@ describe("Phase 7 public type exports", () => {
     expectTypeOf<InvariantDeclaration["kind"]>().toEqualTypeOf<
       "must-cite" | "field-from-table" | "no-pii" | "matches"
     >();
+  });
+
+  it("RealtimeSessionSpec is reachable as a direction-level public type", () => {
+    expectTypeOf<RealtimeSessionSpec["kind"]>().toEqualTypeOf<"realtime-session-spec">();
+    expectTypeOf<RealtimeSessionSpec["supportLevel"]>().toEqualTypeOf<"direction-only">();
+  });
+
+  it("Remote receipt signer types are reachable from public-types", () => {
+    expectTypeOf<RemoteReceiptSignRequest["payloadFormat"]>().toEqualTypeOf<"dsse-pae">();
+    expectTypeOf<RemoteReceiptSignerOptions["kid"]>().toEqualTypeOf<string>();
+  });
+
+  it("OTel observability types are reachable from public-types", () => {
+    expectTypeOf<OtelHttpTraceConfig["endpoint"]>().toEqualTypeOf<string>();
+    expectTypeOf<OtelRunEventSinkOptions["tracer"]>().toEqualTypeOf<OtelTracerLike>();
   });
 });

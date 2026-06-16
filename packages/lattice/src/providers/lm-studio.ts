@@ -23,12 +23,13 @@ import { createOpenAICompatibleProvider, type OpenAICompatibleProviderOptions } 
  *     because source: "registry" is the documented happy path for LM Studio
  *     (no event for intentional no-endpoint per RESEARCH Open Question 5).
  *
+ * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ *
  * DEFERRED (D-16 carryforward):
  *   - latency-tail diagnostics  -- observability concern; LM Studio is
  *                                  the canary for latency tails (INV-03);
  *                                  diagnostics module deferred to a
  *                                  follow-on observability phase.
- *   - streaming                 -- deferred (single-shot per D-06).
  *   - resume-from-eviction      -- see Phase 5 (MV3-survivability adapter).
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03: thin wrapper; D-16: latency-tail deferred; CD-03 no-opt-out).

@@ -9,8 +9,16 @@ import {
   createFakeProvider,
   type FakeProviderOptions,
 } from "../providers/fake.js";
-import type { ModelCapability } from "../providers/provider.js";
+import { createOpenAICompatibleProvider } from "../providers/adapters.js";
+import { createOpenRouterProvider } from "../providers/openrouter.js";
+import type {
+  ModelCapability,
+  ProviderAdapter,
+  ProviderStream,
+  ProviderStreamChunk,
+} from "../providers/provider.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
+import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -18,6 +26,7 @@ import {
 import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { fc } from "../test-support/fast-check.js";
 import { createAI } from "./create-ai.js";
 
 function pricedFakeProvider(): ReturnType<typeof createFakeProvider> {
@@ -222,6 +231,16 @@ describe("Phase 7 end-to-end integration", () => {
     if (result.ok) {
       expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, costUsd: 0.0001 });
     }
+    const succeededAttemptEvent = result.events?.find(
+      (event) =>
+        event.kind === "provider.attempt" &&
+        event.metadata?.status === "succeeded",
+    );
+    expect(succeededAttemptEvent?.metadata?.normalizedUsage).toEqual({
+      promptTokens: 10,
+      completionTokens: 5,
+      costUsd: 0.0001,
+    });
   });
 
   it("E5: v1.0 backward compatibility — no contract field, default fake yields RunSuccess with present usage (costUsd null)", async () => {
@@ -491,6 +510,291 @@ describe("Phase 8 tripwire integration", () => {
   });
 });
 
+describe("Phase 43 streaming runtime", () => {
+  function streamingProvider(input: {
+    readonly execute?: ProviderAdapter["execute"];
+    readonly executeStream?: ProviderAdapter["executeStream"];
+  }): ProviderAdapter {
+    const providerId = "streaming-runtime";
+    const modelId = "streaming-runtime:model";
+    return {
+      id: providerId,
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider(providerId),
+          modelId,
+          outputModalities: ["text"],
+          streaming: true,
+        },
+      ],
+      ...(input.execute !== undefined ? { execute: input.execute } : {}),
+      ...(input.executeStream !== undefined ? { executeStream: input.executeStream } : {}),
+    };
+  }
+
+  async function* streamFrom(
+    chunks: readonly ProviderStreamChunk[],
+  ): ProviderStream {
+    for (const chunk of chunks) {
+      yield chunk;
+    }
+  }
+
+  function openAICompatibleSseData(payload: unknown): string {
+    return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+  }
+
+  function makeOpenAICompatibleStreamingFetch(chunks: readonly string[]): typeof fetch {
+    const encoder = new TextEncoder();
+    return (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (const chunk of chunks) {
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" } },
+      )) as unknown as typeof fetch;
+  }
+
+  it("uses executeStream only when policy.stream is true", async () => {
+    let executeCalls = 0;
+    let streamCalls = 0;
+    const provider = streamingProvider({
+      execute: async () => {
+        executeCalls += 1;
+        return { rawOutputs: { answer: "buffered" } };
+      },
+      executeStream: () => {
+        streamCalls += 1;
+        return streamFrom([
+          { kind: "text-delta", output: "answer", text: "streamed" },
+        ]);
+      },
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const buffered = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+    });
+    expect(buffered.ok).toBe(true);
+    if (buffered.ok) {
+      expect(buffered.outputs.answer).toBe("buffered");
+    }
+    expect(executeCalls).toBe(1);
+    expect(streamCalls).toBe(0);
+
+    const streamed = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+    expect(streamed.ok).toBe(true);
+    if (streamed.ok) {
+      expect(streamed.outputs.answer).toBe("streamed");
+    }
+    expect(executeCalls).toBe(1);
+    expect(streamCalls).toBe(1);
+  });
+
+  it("routes streaming runs only to streaming-capable candidates", async () => {
+    let bufferedExecuteCalls = 0;
+    let streamCalls = 0;
+    const bufferedProvider = {
+      id: "buffered-runtime",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("buffered-runtime"),
+          modelId: "buffered-runtime:model",
+          streaming: false,
+        },
+      ],
+      execute: async () => {
+        bufferedExecuteCalls += 1;
+        return { rawOutputs: { answer: "buffered" } };
+      },
+    } satisfies ProviderAdapter;
+    const streamProvider = {
+      id: "streaming-runtime-fallback",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("streaming-runtime-fallback"),
+          modelId: "streaming-runtime-fallback:model",
+          streaming: true,
+        },
+      ],
+      executeStream: () => {
+        streamCalls += 1;
+        return streamFrom([
+          { kind: "text-delta", output: "answer", text: "streamed" },
+        ]);
+      },
+    } satisfies ProviderAdapter;
+    const ai = createAI({ providers: [bufferedProvider, streamProvider] });
+
+    const plan = await ai.plan({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+    expect(plan.route.selected?.providerId).toBe("streaming-runtime-fallback");
+    const rejectedBuffered = plan.route.rejected.find(
+      (candidate) => candidate.providerId === "buffered-runtime",
+    );
+    expect(rejectedBuffered?.reasons.some((r) => r.code === "streaming-unsupported")).toBe(true);
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.outputs.answer).toBe("streamed");
+    }
+    expect(bufferedExecuteCalls).toBe(0);
+    expect(streamCalls).toBe(1);
+  });
+
+  it("runs policy.stream through a real OpenAI-compatible adapter factory", async () => {
+    const provider = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      fetch: makeOpenAICompatibleStreamingFetch([
+        openAICompatibleSseData({ choices: [{ delta: { content: "real " } }] }),
+        openAICompatibleSseData({
+          choices: [{ delta: { content: "stream" } }],
+          usage: { prompt_tokens: 2, completion_tokens: 3 },
+        }),
+        openAICompatibleSseData("[DONE]"),
+      ]),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.outputs.answer).toBe("real stream");
+      const eventKinds = (result.events ?? []).map((event) => event.kind);
+      expect(eventKinds).toContain("stream.start");
+      expect(eventKinds).toContain("stream.complete");
+      if (result.plan.kind === "execution-plan") {
+        expect(result.plan.attempts[0]?.status).toBe("succeeded");
+      }
+    }
+  });
+
+  it("emits stream start and complete without per-chunk events", async () => {
+    const provider = streamingProvider({
+      executeStream: () => streamFrom([
+        { kind: "text-delta", output: "answer", text: "a" },
+        { kind: "text-delta", output: "answer", text: "b" },
+        { kind: "text-delta", output: "answer", text: "c" },
+      ]),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    const eventKinds = (result.events ?? []).map((event) => event.kind);
+    expect(eventKinds.filter((kind) => kind === "stream.start")).toHaveLength(1);
+    expect(eventKinds.filter((kind) => kind === "stream.complete")).toHaveLength(1);
+    expect(eventKinds.some((kind) => kind.startsWith("stream.delta"))).toBe(false);
+    const completeEvent = result.events?.find((event) => event.kind === "stream.complete");
+    expect(completeEvent?.metadata?.outputNames).toEqual(["answer"]);
+  });
+
+  it("emits stream.failed and returns provider_execution when collection throws", async () => {
+    async function* failingStream(): ProviderStream {
+      yield { kind: "text-delta", output: "answer", text: "partial-secret" };
+      throw new Error("stream boom");
+    }
+    const provider = streamingProvider({
+      executeStream: () => failingStream(),
+    });
+    const ai = createAI({ providers: [provider] });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("provider_execution");
+    }
+    expect((result.events ?? []).some((event) => event.kind === "stream.failed")).toBe(true);
+    for (const event of result.events ?? []) {
+      expect(JSON.stringify(event.metadata ?? {})).not.toContain("partial-secret");
+    }
+  });
+
+  it("surfaces non-zero usage from streaming final chunk into result.usage and signed receipt", async () => {
+    // Local copy of makeSignerAndKeySet (defined in Phase 9 scope, not accessible here)
+    const kid = "phase-43-streaming-usage";
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([
+      { kid, publicKeyJwk, state: "active" },
+    ]);
+
+    // Use the OpenAI-compatible adapter with a final SSE chunk carrying usage,
+    // mirroring the existing test at line 595 but with usage assertions added.
+    const provider = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      fetch: makeOpenAICompatibleStreamingFetch([
+        openAICompatibleSseData({ choices: [{ delta: { content: "answer" } }] }),
+        openAICompatibleSseData({
+          choices: [{ delta: {} }],
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        }),
+        openAICompatibleSseData("[DONE]"),
+      ]),
+    });
+    const ai = createAI({ providers: [provider], signer });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.usage.promptTokens).toBeGreaterThan(0);
+    expect(result.usage.completionTokens).toBeGreaterThan(0);
+
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.usage.promptTokens).toBeGreaterThan(0);
+      expect(verifyResult.body.usage.completionTokens).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("Phase 9 receipts integration", () => {
   async function makeSignerAndKeySet(
     kid = "phase-9-test",
@@ -542,7 +846,7 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      expect(verifyResult.body.version).toBe("lattice-receipt/v1.2");
+      expect(verifyResult.body.version).toBe("lattice-receipt/v1.3");
       expect(verifyResult.body.contractVerdict).toBe("success");
       expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
@@ -610,6 +914,39 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.tripwireEvidence?.kind).toBe(
         result.error.evidence.kind,
       );
+    }
+  });
+
+  it("T4b: tripwire-violated receipt lineageMerkleRoot includes packaged artifacts", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = localTemplateProvider({
+      rawOutputs: { text: "Contact alice@example.com please" },
+      normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const source = artifact.text("source", {
+      id: "artifact:text:trip-lineage-source",
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [source],
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      // This inequality is the regression guard: it fails if lineageArtifacts is
+      // missing from the tripwire-violated maybeIssueReceipt call in create-ai.ts.
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
@@ -762,6 +1099,40 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
+  it("T10b: receipt body carries lineageMerkleRoot when artifacts have lineage", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const source = artifact.text("source artifact", {
+      id: "artifact:text:receipt-source",
+    });
+    const derived = artifact.derive({
+      id: "artifact:text:receipt-derived",
+      kind: "text",
+      value: "derived artifact",
+      parents: [source],
+      transform: { kind: "extraction", name: "quote" },
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [source, derived],
+    });
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.inputHashes).toHaveLength(2);
+      // The runtime folds provider-packaged artifacts (provider-packaging lineage)
+      // into the lineage root, so it must be a valid root AND must differ from the
+      // root computed over the raw input/output artifacts alone. The inequality
+      // guards the create-ai.ts wiring that includes attemptPackaging.packagedArtifacts
+      // (Codex PR #12 P2-3): reverting that fix makes the root equal inputOnlyRoot.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
+    }
+  });
+
   it("T11: receipt body carries outputHash on success but null on tripwire-violated", async () => {
     inv.__resetCounterForTests();
     const { signer, keySet } = await makeSignerAndKeySet();
@@ -797,6 +1168,141 @@ describe("Phase 9 receipts integration", () => {
     expect(tripVerify.ok).toBe(true);
     if (tripVerify.ok) {
       expect(tripVerify.body.outputHash).toBeNull();
+    }
+  });
+
+  it("streaming receipts hash assembled output independent of chunk boundaries", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet("phase-43-streaming");
+
+    function providerForParts(parts: readonly string[]): ProviderAdapter {
+      const providerId = "stream-receipt";
+      const modelId = "stream-receipt:model";
+      return {
+        id: providerId,
+        kind: "provider-adapter",
+        capabilities: [
+          {
+            ...defaultCapabilityForProvider(providerId),
+            modelId,
+            outputModalities: ["text"],
+            streaming: true,
+          },
+        ],
+        executeStream: async function* (): ProviderStream {
+          for (const part of parts) {
+            yield { kind: "text-delta", output: "answer", text: part };
+          }
+        },
+      };
+    }
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.string({ minLength: 1, maxLength: 8 }), {
+          minLength: 1,
+          maxLength: 8,
+        }),
+        async (parts) => {
+          const finalText = parts.join("");
+          const singleChunk = await createAI({
+            providers: [providerForParts([finalText])],
+            signer,
+          }).run({
+            task: "stream receipt hash",
+            outputs: { answer: "text" as const },
+            policy: { stream: true },
+          });
+          const splitChunks = await createAI({
+            providers: [providerForParts(parts)],
+            signer,
+          }).run({
+            task: "stream receipt hash",
+            outputs: { answer: "text" as const },
+            policy: { stream: true },
+          });
+
+          expect(singleChunk.ok).toBe(true);
+          expect(splitChunks.ok).toBe(true);
+          if (!singleChunk.ok || !splitChunks.ok) {
+            throw new Error("Streaming receipt property run failed.");
+          }
+
+          expect(singleChunk.outputs.answer).toBe(finalText);
+          expect(splitChunks.outputs.answer).toBe(finalText);
+          expect(singleChunk.receipt).toBeDefined();
+          expect(splitChunks.receipt).toBeDefined();
+
+          const singleVerify = await verifyReceipt(singleChunk.receipt!, keySet);
+          const splitVerify = await verifyReceipt(splitChunks.receipt!, keySet);
+          expect(singleVerify.ok).toBe(true);
+          expect(splitVerify.ok).toBe(true);
+          if (!singleVerify.ok || !splitVerify.ok) {
+            throw new Error("Streaming receipt verification failed.");
+          }
+
+          expect(singleVerify.body.contractVerdict).toBe("success");
+          expect(splitVerify.body.contractVerdict).toBe("success");
+          expect(singleVerify.body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+          expect(splitVerify.body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+          expect(singleVerify.body.outputHash).toBe(splitVerify.body.outputHash);
+        },
+      ),
+      { numRuns: 25 },
+    );
+  });
+
+  it("streaming receipts include lineageMerkleRoot after stream collection", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet("phase-46-streaming");
+    const source = artifact.text("stream source", {
+      id: "artifact:text:stream-source",
+    });
+    const derived = artifact.derive({
+      id: "artifact:text:stream-derived",
+      kind: "text",
+      value: "stream derived",
+      parents: [source],
+      transform: { kind: "model-output", name: "stream" },
+    });
+    const providerId = "stream-lineage";
+    const modelId = "stream-lineage:model";
+    const provider: ProviderAdapter = {
+      id: providerId,
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider(providerId),
+          modelId,
+          outputModalities: ["text"],
+          streaming: true,
+        },
+      ],
+      executeStream: async function* (): ProviderStream {
+        yield { kind: "text-delta", output: "answer", text: "ok" };
+        yield {
+          kind: "complete",
+          artifactRefs: [derived],
+        };
+      },
+    };
+
+    const result = await createAI({ providers: [provider], signer }).run({
+      task: "stream lineage",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+      artifacts: [source],
+    });
+
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      // The runtime folds provider-packaged artifacts into the lineage root, so it
+      // must differ from the root computed over the raw input/output artifacts alone.
+      // This inequality guards the create-ai.ts packaged-artifact lineage wiring
+      // (Codex PR #12 P2-3) on the streaming success path.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
@@ -865,5 +1371,60 @@ describe("Phase 9 receipts integration", () => {
     }
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(5000);
+  });
+
+  it("OpenRouter fallback receipts carry requested and observed model", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const fakeFetch = (async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "fallback ok" } }],
+          model: "anthropic/claude-sonnet-4.5",
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        }),
+        {
+          headers: { "content-type": "application/json" },
+        },
+      )) as unknown as typeof fetch;
+    const provider = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      fetch: fakeFetch,
+    });
+    const ai = createAI({ providers: [provider], signer });
+
+    const result = await ai.run({
+      task: "fallback",
+      outputs: { answer: "text" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
+    expect(result.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(result.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
+    expect(result.plan.kind).toBe("execution-plan");
+    if (result.plan.kind === "execution-plan") {
+      expect(result.plan.route.selected?.modelId).toBe("openai/gpt-oss-120b");
+    }
+    const succeededAttemptEvent = result.events?.find(
+      (event) =>
+        event.kind === "provider.attempt" &&
+        event.metadata?.status === "succeeded",
+    );
+    expect(succeededAttemptEvent?.metadata?.gateway).toMatchObject({
+      requestedModel: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      observedModel: "anthropic/claude-sonnet-4.5",
+    });
+
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.model.requested).toBe("openai/gpt-oss-120b");
+      expect(verifyResult.body.model.observed).toBe("anthropic/claude-sonnet-4.5");
+      expect(verifyResult.body.route.capabilityId).toBe("openai/gpt-oss-120b");
+      expect(verifyResult.body.modelClass).toBe("frontier_rlhf");
+    }
   });
 });

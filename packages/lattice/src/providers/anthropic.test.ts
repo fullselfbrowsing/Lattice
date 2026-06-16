@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { artifact } from "../artifacts/artifact.js";
+import type { ArtifactInput } from "../artifacts/artifact.js";
+import type { ProviderPackagingPlan, SelectedRoute } from "../plan/plan.js";
 import type { RunEvent } from "../tracing/tracing.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import { createAnthropicProvider } from "./anthropic.js";
+import { packageArtifactsForProvider } from "./packaging.js";
+import { collectStream } from "./streaming.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 import { defineTool } from "../tools/tools.js";
 
@@ -31,6 +36,38 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseEvent(event: string, payload: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[], status = 200): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {} };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      {
+        status,
+        headers: { "content-type": "text/event-stream" },
+      },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -99,6 +136,30 @@ const searchTool = defineTool({
   inputSchema: z.object({ query: z.string() }),
   execute: () => "ok",
 });
+
+const ANTHROPIC_ROUTE: SelectedRoute = {
+  providerId: "anthropic",
+  modelId: "claude-3-haiku",
+  score: 0,
+  estimates: { inputTokens: 1, outputTokens: 1 },
+  inputModalities: ["text", "image"],
+  outputModalities: ["text"],
+  fileTransport: ["inline", "json", "url", "base64", "file-id"],
+};
+
+function anthropicPackaging(artifacts: readonly ArtifactInput[]): ProviderPackagingPlan {
+  return packageArtifactsForProvider({
+    artifacts,
+    route: ANTHROPIC_ROUTE,
+  }).plan;
+}
+
+function userContent(body: Record<string, unknown>): readonly Record<string, unknown>[] {
+  const messages = body.messages as readonly { content: unknown }[];
+  const content = messages[0]?.content;
+  expect(Array.isArray(content)).toBe(true);
+  return content as readonly Record<string, unknown>[];
+}
 
 // Frozen fixture matching RESEARCH §Q1 verified shape (live 2026-06-08)
 const MODELS_OK_BODY = {
@@ -178,6 +239,127 @@ describe("Phase 4 Anthropic adapter", () => {
     expect(messages[0]?.role).toBe("user");
     expect(messages[0]?.content).toBe("task-text-here");
     expect(typeof body.max_tokens).toBe("number");
+  });
+
+  it("Anthropic packages image artifacts as base64 image blocks", async () => {
+    const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
+      id: "img-base64",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const content = userContent(body);
+    expect(content[0]).toEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "cG5n",
+      },
+    });
+    expect(content[1]).toEqual({ type: "text", text: "describe" });
+  });
+
+  it("Anthropic preserves media types from inline data URLs", async () => {
+    const image = artifact.image("data:image/png;base64,cG5n", {
+      id: "img-data-url",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(userContent(body)[0]).toEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "cG5n",
+      },
+    });
+  });
+
+  it("Anthropic packages image URL artifacts as url image blocks", async () => {
+    const image = artifact.image("https://cdn.example.test/photo.jpg", {
+      id: "img-url",
+      mediaType: "image/jpeg",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(userContent(body)[0]).toEqual({
+      type: "image",
+      source: {
+        type: "url",
+        url: "https://cdn.example.test/photo.jpg",
+      },
+    });
+  });
+
+  it("Anthropic packages image file-id artifacts with files beta header", async () => {
+    const image = artifact.image("local-name.png", {
+      id: "img-file",
+      mediaType: "image/png",
+      metadata: { anthropicFileId: "file_123" },
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const headers = capture.init.headers as Record<string, string>;
+    expect(headers["anthropic-beta"]).toBe("files-api-2025-04-14");
+    expect(userContent(body)[0]).toEqual({
+      type: "image",
+      source: {
+        type: "file",
+        file_id: "file_123",
+      },
+    });
   });
 
   it("Test 3 (D-09.3): response parsing -- extracts content[0].text", async () => {
@@ -403,6 +585,181 @@ describe("Phase 37: Anthropic tool-call validation", () => {
       toolName: "search_database",
       requestId: "bad-1",
     });
+  });
+});
+
+describe("Phase 44: Anthropic streaming", () => {
+  it("streams Anthropic text deltas through executeStream", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseEvent("ping", { type: "ping" }),
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "hel" },
+      }),
+      sseEvent("future_event", { type: "future_event", payload: true }),
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "lo" },
+      }),
+      sseEvent("message_stop", { type: "message_stop" }),
+    ]);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(capture.url).toMatch(/\/v1\/messages$/);
+    expect(body.stream).toBe(true);
+    expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("Anthropic streaming uses the multimodal request body", async () => {
+    const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
+      id: "stream-image",
+    });
+    const { fetch, capture } = makeStreamingFetch([
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "ok" },
+      }),
+      sseEvent("message_stop", { type: "message_stop" }),
+    ]);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.stream).toBe(true);
+    expect(userContent(body)[0]).toEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "cG5n",
+      },
+    });
+  });
+
+  it("streams Anthropic tool input deltas into validated toolCalls", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseEvent("content_block_start", {
+        type: "content_block_start",
+        index: 0,
+        content_block: {
+          type: "tool_use",
+          id: "toolu_1",
+          name: "search",
+          input: {},
+        },
+      }),
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: "{\"query\":\"" },
+      }),
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: "ok\"}" },
+      }),
+      sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }),
+      sseEvent("message_stop", { type: "message_stop" }),
+    ]);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.toolCalls).toEqual([
+      { id: "toolu_1", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("streams Anthropic usage into final complete chunk", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseEvent("message_start", {
+        type: "message_start",
+        message: { usage: { input_tokens: 5, output_tokens: 0 } },
+      }),
+      sseEvent("content_block_delta", {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "usage" },
+      }),
+      sseEvent("message_delta", {
+        type: "message_delta",
+        delta: { stop_reason: "end_turn" },
+        usage: { output_tokens: 3 },
+      }),
+      sseEvent("message_stop", { type: "message_stop" }),
+    ]);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.usage).toEqual({
+      inputTokens: 5,
+      outputTokens: 3,
+      totalTokens: 8,
+    });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 5,
+      completionTokens: 3,
+      costUsd: null,
+    });
+  });
+
+  it("Anthropic executeStream throws on non-OK response", async () => {
+    const { fetch } = makeStreamingFetch([], 429);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await expect(
+      collectStream(await adapter.executeStream!({
+        task: "t",
+        artifacts: [],
+        outputs: ["text"],
+      })),
+    ).rejects.toThrow("Anthropic provider failed with 429.");
   });
 });
 

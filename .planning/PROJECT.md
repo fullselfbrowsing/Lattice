@@ -12,41 +12,21 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ## Current State
 
-**v1.2 FSB Integration + Agent Capability shipped 2026-05-31.** All 46 v1.2 requirements wired end-to-end (zero blockers, one documented non-blocking limitation V1.2-LIMITATION-1: native tool-use deferred to v1.3). 733 / 733 workspace tests passing (589 lattice core + 144 lattice-cli). v1.2 branch merged to `main` via PR #1; tag `v1.2.0` cut and pushed.
+**v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
-**v1.3 in progress.** Phases 24, 25, 26, 27, 28, and 33-37 are complete. Phase 36 added opt-in output sanitizers across all 7 adapters, and Phase 37 added opt-in returned tool-call validation across all 7 adapters with normalized `ProviderRunResponse.toolCalls`, runtime preference for validated calls, all-seven parity tests, package type tests, security review, Nyquist validation, and UAT. `1.3.0-rc.0` is published with provenance for both packages; stable `1.3.0` is not published.
+**v1.4 Provider Breadth + Live Multimodal + Observability Export shipped 2026-06-16.** Phases 40-49 are complete and archived: package/version guardrails, gateway delegation, OpenRouter fallback/catalog refresh, streaming contract and adapters, multimodal request shaping, realtime direction, receipt provenance/KMS signer shapes, OpenTelemetry export, eval/diagnostics CLI, offline showcase validation, tarball checks, and FSB package-candidate dogfood. The milestone audit passed with 44 / 44 REQ-IDs satisfied.
 
-## Current Milestone: v1.3 Public Release + Canary Validation + Model-Aware SDK + Multi-Agent Surface
+## Current Milestone
 
-**Goal:** Cut Lattice's first public npm release under `@full-self-browsing/*` with OIDC Trusted Publisher + provenance attestations; prove correctness end-to-end via a separately-repo'd canary consumer; add model-aware contract negotiation; and ship the first opt-in multi-agent crew surface.
-
-**Target features:**
-- Rename publishable packages to the `@full-self-browsing` scope (`lattice` → `@full-self-browsing/lattice`, `lattice-cli` → `@full-self-browsing/lattice-cli`; CLI keeps user-facing `lattice` bin).
-- Release-quality hygiene: license fields, `repository` / `bugs` / `homepage` metadata, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` via changesets, publint + arethetypeswrong clean across both packages.
-- Full CI scaffolding from scratch: PR-time `ci.yml` (build + test + typecheck) and tag-driven `release.yml` (changesets → OIDC publish with provenance).
-- npm org + Trusted Publisher setup for `@full-self-browsing` completed via user-driven FSB steps; rc.0 OIDC publish verifies the path.
-- First stable publish: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` with GitHub Release object after Phases 30, 31, and 36-39 complete.
-- Separate public canary consumer repo `fullselfbrowsing/lattice-canary` installing from the registry, not the workspace.
-- Canary coverage layer 1: type-level + runtime assertions on every public export against the published tarball using fake providers (no API keys).
-- Canary coverage layer 2: real-provider integration (OpenAI + Anthropic + Gemini) covering receipts, hook bands, agent loop, survivability round-trip, CLI subprocess.
-- Canary CI: nightly + manual dispatch, per-run cost ceiling enforced via Lattice's own `CostTracker`, failure paging.
-
-**Key context:**
-- License: MIT (`LICENSE` and package `license` fields present).
-- Auth model: **OIDC Trusted Publisher**, not long-lived `NPM_TOKEN`. Provenance attestations enabled.
-- Release trigger: tag push (`v*.*.*` → workflow); changesets PR-driven version bumps.
-- Real-provider tests gated to manual dispatch + nightly cron, never PR-time.
-- npm scope `@full-self-browsing` is claimed; `1.3.0-rc.0` is published with SLSA provenance attestations for both packages.
-- `.github/workflows/ci.yml`, `.github/workflows/release.yml`, and `.github/workflows/registry-drift.yml` exist with SHA-pinned third-party actions.
-- Stable `1.3.0` is not published. npm currently exposes `0.0.0-bootstrap.0` and `1.3.0-rc.0`.
-- Phases 36-37 are implemented and verified. Phases 38-39 have no implementation yet in the checked git refs; their detailed REQ-IDs still need to be authored.
-- Tooling foundation already in place: changesets, publint, arethetypeswrong/cli, tsd.
+No active milestone. v1.4 is archived under `.planning/milestones/v1.4-*`; the next cycle should start with `/gsd-new-milestone`, which will create fresh requirements and expand the compact roadmap.
 
 ## Shipped Milestones
 
 - **v1.0 milestone** (2026-04-22) — Foundation: package/API spine, artifact lifecycle, deterministic planning, sessions+context+packaging, tools+replay+observability, work-inbox showcase.
 - **v1.1 Capability Receipts** (2026-05-12) — Contract-bound, signed, reproducible runs: contracts + pre-flight + cost, tripwire invariants, RFC 8785 + Ed25519 signed receipts with `kid`/`KeySet`, replay envelope integration, `lattice` CLI (`repro`/`verify`/`eval`), sidecar support, end-to-end showcase exercising all 36 REQ-IDs.
 - **v1.2 FSB Integration + Agent Capability** (2026-05-31) — Five FSB-integration extensions backfilled onto canonical Lattice (Phases 14-18): public surface index + packaging readiness, receipt v1.1 schema extension, tripwire band pipeline + lifecycle events, step-transition tracing + checkpoint hook, 5 new provider adapters (Anthropic, Gemini, xAI, OpenRouter, LM Studio) + INV-03 parity smoke across 7 providers, survivability adapter contract. Plus a runtime-agnostic single-agent capability (Phases 19-22): `ai.runAgent(intent)` with uniform tool-use across 7 providers + per-iteration signed receipts + SAFETY-band veto, pluggable `AgentHost` with scheduler / transport / storage seams + recovery markers closing v1.1 TRACE-EXT-01, five agent infrastructure primitives (cost / transcript / goal-progress / action-history / permission-context), `examples/agent-loop` showcase + `evalAgentRun` regression gate. Brand identity also shipped (mark + wordmark + app icon + favicons + social card + animated spin GIF, generated from a parametric 3D renderer).
+- **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface** (2026-06-15) — First public npm release under `@full-self-browsing/*` (OIDC Trusted Publisher + SLSA provenance, GitHub Release `v1.3.0`); model capability registry (~337 profiles from the OpenRouter feed + static supplements), adapter quirk flags + capability negotiation, prompt scaffolds, opt-in output sanitizers + tool-call validators across 7 adapters, receipt v1.2 + `modelClass`; first-class opt-in multi-agent crew surface (`defineAgent` / `runAgentCrew`, crew budgets, prompt-cache-prefix sharing, rate-limit groups, chained receipts). 64/87 REQ-IDs shipped; canary phases 30–32 superseded for FSB-via-npm dogfooding.
+- **v1.4 Provider Breadth + Live Multimodal + Observability Export** (2026-06-16) — Package identity guardrails, LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage + remote signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, agent eval/receipt diff/LM Studio diagnostics CLI, offline validation, tarball checks, and FSB package-candidate dogfood. 44/44 REQ-IDs shipped; audit passed.
 
 ## Requirements
 
@@ -69,23 +49,23 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] v1.2 Track A FSB Integration (Phases 14-18): public surface index + packaging readiness (PKG-01, INDEX-01..05); receipt v1.1 schema extension (RECEIPT-EXT-01..03) with six step-marker fields and auto-bumping `createReceipt` heuristic; tripwire band pipeline (BAND-01..05) with SAFETY / OBSERVABILITY / EXTENSION priority bands, per-handler `budgetMs` race-with-log, frozen contexts, irreversible freeze, matcher regex filter; HookLifecycleEvent vocabulary (LIFECYCLE-01); step-transition tracing additive literal (TRACE-01); checkpoint hook factory with one-event-and-one-receipt-per-invocation guarantee (CHECKPOINT-01..04); five new provider adapters (Anthropic Messages, Gemini generateContent, xAI, OpenRouter, LM Studio) (PROV-01..05); INV-03 7-provider parity smoke (PARITY-01); survivability adapter contract with `SerializedSnapshot` round-trip and `ResumePolicy` taxonomy (SURV-01..04); recovery / eviction-resume markers in `RunEventKind` paired with `SurvivabilityAdapter` (TRACE-EXT-01 v1.1 carryforward closed).
 - [x] v1.2 Track B Agent Capability (Phases 19-22): delegation surface policy flip from "multi-agent crews: Out of Scope" to "agent execution: First-class, runtime-agnostic" (DELEG-01); `ai.runAgent(intent)` on the runtime returned by `createAI` driving a uniform prompt-reencoded tool-use protocol across all 7 provider adapters, per-iteration step.transition emission for observability composition with `createCheckpointHook`, SAFETY-band hook veto before provider invocation (AGENT-01..04); `AgentHost` interface with three optional seams (scheduler, transport, storage) + `createNoopAgentHost` reference impl + storage composition with `SurvivabilityAdapter` for cross-process resume (HOST-01..03); five agent infrastructure primitives — cost tracker with `contract.budget` awareness, transcript store with filtered tail reads, goal-progress tracker with stuck-detection contract, action-history dedup with `STUCK_REASONS` vocabulary, permission context with per-tool / per-iteration / per-resource gating and SAFETY-band hook helper (AGENT-INFRA-01..04, PERM-01); `examples/agent-loop` showcase exercising every Track B surface with real Ed25519 signing and 3 per-iteration receipts verified, plus `evalAgentRun` regression-gate kernel for iterations-to-goal and total cost (SHOWCASE-AGENT-01..02).
 
+- [x] v1.3 Public Release infra (Phases 24-29): scope rename to `@full-self-browsing/*` (RENAME, PKG), release-hygiene docs + receipt-downgrade defense (DOC, CRYPTO), PR-time `ci.yml` (CI) + tag-driven `release.yml` (REL), npm org + OIDC Trusted Publisher (ORG), rc.0 → stable `1.3.0` publishes with provenance + GitHub Release (PUB). — v1.3
+- [x] v1.3 Model-aware SDK (Phases 33-37): capability registry seeded from the OpenRouter feed (~337 profiles) + static supplements (CAPS); adapter quirk flags + capability negotiation with live `/models` + registry fallback (QUIRK/NEG); deterministic prompt scaffolds (SCAFF); opt-in output sanitizers (SANITIZE) + returned tool-call validators (VALID) across all 7 adapters, default v1.2 behavior unchanged. — v1.3
+- [x] v1.3 Receipt v1.2 + multi-agent crew (Phases 38-39): receipt schema `lattice-receipt/v1.2` with optional signed `modelClass` + downgrade defense (RECEIPT12); opt-in delegation surface — `defineAgent`/`runAgentCrew`, CrewDispatcher, crew budgets, prompt-cache-prefix sharing, rate-limit groups, `parentReceiptCid` chained receipts, `examples/agent-crew/` (DELEG). — v1.3
+- [x] v1.4 Phase 40 package hygiene: `latticeVersion` and CLI banner are stamped from package-local manifests, root value exports are exact-inventory guarded, package-entrypoint `tsd` remains the type-only export path, packed tarballs verify version surfaces, and CI/release block optional v1.4 integrations from leaking into the core runtime package. (PKG-01..03)
+- [x] v1.4 Phase 41 gateway delegation: `createLiteLLMProvider` delegates to the OpenAI-compatible provider path, typed `GatewayPolicy` carries gateway hints/metadata, plans and run events preserve the Lattice-selected route separately from gateway observations, and public-surface/type/parity/package gates cover the new API. (GATE-01..03)
+- [x] v1.4 Phases 42-49 provider breadth/live multimodal/observability closure: OpenRouter fallback + deterministic catalog refresh (ORCAT), streaming contract + five adapter implementations (STRM/SADAPT), Anthropic/Gemini multimodal shaping + realtime direction (MMRT), receipt lineage + remote signer shapes (REC), OpenTelemetry export + Langfuse/Phoenix OTLP helpers (OTEL), eval/receipt-diff/LM Studio diagnostics CLI (EVAL), and package/showcase/FSB dogfood validation (VAL). 44/44 v1.4 requirements are mapped in `49-MILESTONE-EVIDENCE.md`.
+
 ### Active
 
-v1.3 is active. Phases 24, 25, 26, 27, 28, and 33-37 are complete. Next step is Phase 38: receipt v1.2 schema plus `modelClass` tag, including authoring the `RECEIPT12` REQ-IDs before implementation. Stable `1.3.0` publish remains deferred until canary validation and Phases 38-39 complete.
+No active milestone requirements. The next cycle starts by running `/gsd-new-milestone`, which will create a fresh `.planning/REQUIREMENTS.md` and expand `.planning/ROADMAP.md`.
 
-**Deferred to v1.4** (carryforward themes still outside the expanded v1.3 scope):
+Carryforward considerations for the next milestone:
 
+- Full production implementation of OpenAI Realtime and Gemini Live bidirectional sessions beyond the v1.4 interface-level design.
 - Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
-- `lattice eval --agent` CLI subcommand wrapping the existing `evalAgentRun` kernel.
-- Multi-scenario agent-loop showcase (tripwire / stall / budget-exceeded variants).
-- KMS adapter shapes for `ReceiptSigner`.
-- Lineage merkle root signed inside receipts.
-- `lattice receipt diff` subcommand.
-- OpenTelemetry exporter for `RunEventKind`.
-- Streaming for the 5 new Phase 17 provider adapters (Anthropic / Gemini / xAI / OpenRouter / LM Studio).
-- OpenRouter multi-model routing / fallback array.
-- LM Studio latency-tail diagnostics module.
-- Anthropic / Gemini multimodal request shaping.
+- Multi-scenario agent-loop showcase variants for tripwire, stall, and budget-exceeded behavior.
+- Lightweight deploy-adapter framing (`lattice serve`, serverless wrappers, Dockerfile) remains parked; hosted control plane remains out of scope.
 
 ### v1.1-to-v1.2 carryforward outcomes (closed)
 
@@ -151,8 +131,11 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | Keep model-aware adapter hardening opt-in in v1.3 | Output sanitizers and tool-call validators reduce model-shape failure without changing default v1.2 consumer behavior. | Validated in Phases 36-37 across all 7 adapters with parity tests, public-surface/type tests, security review, validation audit, and UAT. |
 | v1.3 publishes under `@full-self-browsing` scope, not unscoped `lattice` | Unscoped `lattice` on npm is contested; the FSB scope ties Lattice's identity to its origin org and unlocks `@full-self-browsing/lattice-cli` as a sibling. | Validated by `1.3.0-rc.0` publish for both packages. |
 | v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | Validated by npm rc.0 provenance attestations for both packages. |
-| v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | Pending: Phases 30-32. |
-| Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | Pending: Phase 31. |
+| v1.3 canary is a separate public repo, not an `examples/` directory | The whole point is "what does it feel like to be an external consumer of the published tarball." A workspace-internal example silently uses pnpm symlinks and misses packaging bugs. | **Superseded 2026-06-15** — synthetic canary descoped; FSB consumes the published package via npm (real-world dogfooding) instead. |
+| Canary real-provider CI is nightly + manual dispatch only, never PR-time | PR-time real-provider calls are flaky + expensive; nightly cadence catches real regressions without burning budget per push. Cost ceiling enforced via Lattice's own `CostTracker`. | **Superseded 2026-06-15** — canary descoped; see above. |
+| v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closed the three library-native competitive gaps from the June 2026 analysis while avoiding a platform/control-plane commitment. Lightweight deploy adapters remain parked. | Shipped 2026-06-16 with 44/44 REQ-IDs complete and passed milestone audit. |
+| Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
+| v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40 and rechecked in Phase 49 package-candidate FSB dogfood. |
 
 ## Evolution
 
@@ -172,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 — Phase 37 (Tool-Call Validation Layer) UAT complete*
+*Last updated: 2026-06-16 after v1.4 milestone archive.*

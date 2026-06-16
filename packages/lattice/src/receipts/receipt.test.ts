@@ -66,11 +66,11 @@ describe("receipt.ts — createReceipt envelope shape", () => {
 });
 
 describe("receipt.ts — defaults", () => {
-  it("mints v1.2 by default and omits modelClass when none is supplied", async () => {
+  it("mints v1.3 by default and omits modelClass when none is supplied", async () => {
     const { signer } = await makeSigner();
     const env = await createReceipt(minimalInput(), signer);
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.2");
+    expect(body.version).toBe("lattice-receipt/v1.3");
     expect(body.modelClass).toBeUndefined();
   });
 
@@ -285,13 +285,13 @@ describe("receipt.ts — modelClass", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.2");
+    expect(body.version).toBe("lattice-receipt/v1.3");
     expect(body.modelClass).toBe("local_quantized");
   });
 });
 
 describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
-  it("mints a v1.2 body containing parentReceiptCid when supplied", async () => {
+  it("mints a v1.3 body containing parentReceiptCid when supplied", async () => {
     const { signer } = await makeSigner();
     const parentCid = `sha256:${"ab".repeat(32)}`;
     const env = await createReceipt(
@@ -299,7 +299,7 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.2");
+    expect(body.version).toBe("lattice-receipt/v1.3");
     expect(body.parentReceiptCid).toBe(parentCid);
   });
 
@@ -346,12 +346,35 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
     const result = await verifyReceipt(revived, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.parentReceiptCid).toBe(rootCid);
     }
 
     // CID of the revived envelope equals CID of the original (byte-stable).
     expect(await receiptCid(revived)).toBe(await receiptCid(childEnv));
+  });
+});
+
+describe("receipt.ts — lineageMerkleRoot (Phase 46 / REC-01)", () => {
+  it("embeds lineageMerkleRoot when supplied", async () => {
+    const { signer } = await makeSigner();
+    const lineageMerkleRoot = `sha256:${"cd".repeat(32)}`;
+    const env = await createReceipt(
+      minimalInput({ lineageMerkleRoot }),
+      signer,
+    );
+    const body = decodeBody(env.payload);
+    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.lineageMerkleRoot).toBe(lineageMerkleRoot);
+  });
+
+  it("omits lineageMerkleRoot entirely from the canonical JSON when not supplied", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(minimalInput(), signer);
+    const body = decodeBody(env.payload);
+    expect("lineageMerkleRoot" in body).toBe(false);
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain("lineageMerkleRoot");
   });
 });
 
@@ -403,7 +426,7 @@ describe("receipt.ts — determinism", () => {
 });
 
 describe("receipt.ts — v1.2 step-marker fields", () => {
-  it("mints v1.2 receipt when step-marker fields are set", async () => {
+  it("mints v1.3 receipt when step-marker fields are set", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -437,7 +460,7 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.stepName).toBe("click-link");
       expect(result.body.stepIndex).toBe(3);
       expect(result.body.sessionId).toBe("session-1");
@@ -445,7 +468,7 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     }
   });
 
-  it("mints v1.2 receipt by default even when no step-marker fields are set", async () => {
+  it("mints v1.3 receipt by default even when no step-marker fields are set", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -475,14 +498,14 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.stepName).toBeUndefined();
       expect(result.body.stepIndex).toBeUndefined();
       expect(result.body.sessionId).toBeUndefined();
     }
   });
 
-  it("mints v1.2 receipt with a single stepName field", async () => {
+  it("mints v1.3 receipt with a single stepName field", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -513,7 +536,7 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.stepName).toBe("single-field-bump");
     }
   });

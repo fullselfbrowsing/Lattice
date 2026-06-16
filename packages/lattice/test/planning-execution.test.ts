@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { artifact } from "../src/artifacts/artifact.js";
 import { createFakeProvider } from "../src/providers/fake.js";
+import { createLiteLLMProvider } from "../src/providers/litellm.js";
+import { createOpenRouterProvider } from "../src/providers/openrouter.js";
 import type { ProviderAdapter } from "../src/providers/provider.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
 import { createAI } from "../src/runtime/create-ai.js";
@@ -66,6 +68,61 @@ describe("deterministic planning and execution spine", () => {
     expect(plan.route.noRouteReasons).toEqual([
       expect.objectContaining({ code: "privacy-unsupported" }),
     ]);
+  });
+
+  it("keeps gateway fallback hints out of the Lattice fallback chain", async () => {
+    const ai = createAI({
+      providers: [
+        createLiteLLMProvider({
+          model: "gpt-4o",
+        }),
+      ],
+    });
+
+    const plan = await ai.plan({
+      task: "Gateway planning case",
+      outputs: { answer: "text" },
+      policy: {
+        gateway: {
+          allowFallbacks: true,
+        },
+      },
+    });
+
+    expect(plan.route.selected).toMatchObject({
+      providerId: "litellm",
+      modelId: "gpt-4o",
+    });
+    expect(plan.route.fallbackChain).toEqual([]);
+    expect(plan.metadata?.gateway).toMatchObject({
+      providerId: "litellm",
+      requestedModel: "gpt-4o",
+      policy: {
+        allowFallbacks: true,
+      },
+    });
+  });
+
+  it("keeps OpenRouter fallback models out of Lattice fallback chain", async () => {
+    const ai = createAI({
+      providers: [
+        createOpenRouterProvider({
+          model: "openai/gpt-oss-120b",
+          fallbackModels: ["anthropic/claude-sonnet-4.5"],
+        }),
+      ],
+    });
+
+    const plan = await ai.plan({
+      task: "OpenRouter fallback planning case",
+      outputs: { answer: "text" },
+    });
+
+    expect(plan.route.selected).toMatchObject({
+      providerId: "openrouter",
+      modelId: "openai/gpt-oss-120b",
+    });
+    expect(plan.route.fallbackChain).toEqual([]);
   });
 
   it("executes a planned fake-provider run and emits inspectable events", async () => {

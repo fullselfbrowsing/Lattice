@@ -7,6 +7,9 @@ import {
   createLocalArtifactStore,
   createMemoryArtifactStore,
   output,
+  createRealtimeCheckpointContext,
+  createRealtimeReceiptDescriptors,
+  createRemoteReceiptSigner,
 } from "@full-self-browsing/lattice";
 import type {
   ArtifactFingerprint,
@@ -19,6 +22,11 @@ import type {
   ArtifactStore,
   ArtifactTransformDescriptor,
   RunSuccess,
+  ProviderStream,
+  RealtimeSessionSpec,
+  ReceiptSigner,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
   SessionRef,
   StorageLike,
   StoredArtifactEnvelope,
@@ -117,6 +125,50 @@ async function verifyPackageTypes(): Promise<void> {
     expectType<string>(result.outputs.action.reason);
     expectType<readonly ArtifactRef[]>(result.outputs.generated);
   }
+
+  const realtimeSpec: RealtimeSessionSpec = {
+    kind: "realtime-session-spec",
+    supportLevel: "direction-only",
+    sessionId: "rt-session-1",
+    target: {
+      provider: "openai-realtime",
+      model: "gpt-realtime-2",
+      transport: "websocket",
+      endpoint: "/v1/realtime",
+    },
+    mode: "voice-agent",
+    inputModalities: ["audio", "text"],
+    outputModalities: ["audio", "text", "tool"],
+  };
+  expectType<RealtimeSessionSpec>(realtimeSpec);
+  // Realtime sessions are stateful bidirectional specs, not one-shot streams.
+  expectType<ProviderStream extends RealtimeSessionSpec ? never : RealtimeSessionSpec>(
+    realtimeSpec,
+  );
+
+  const checkpoint = createRealtimeCheckpointContext({
+    sessionId: realtimeSpec.sessionId,
+    provider: "openai-realtime",
+    checkpoint: "session.start",
+    stepIndex: 0,
+  });
+  expectType<string>(checkpoint.stepName);
+
+  const descriptors = createRealtimeReceiptDescriptors(realtimeSpec);
+  expectType<string>(descriptors.route.providerId);
+
+  const remoteOptions: RemoteReceiptSignerOptions = {
+    kid: "remote",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "x" },
+    provider: "external-kms",
+    sign(request: RemoteReceiptSignRequest) {
+      expectType<"dsse-pae">(request.payloadFormat);
+      expectType<"Ed25519">(request.algorithm);
+      expectType<Uint8Array>(request.bytes);
+      return Promise.resolve(new Uint8Array(64));
+    },
+  };
+  expectType<ReceiptSigner>(createRemoteReceiptSigner(remoteOptions));
 }
 
 void verifyPackageTypes;

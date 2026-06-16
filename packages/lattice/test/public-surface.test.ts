@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectStream,
   contract,
   createAI,
   createInMemorySigner,
+  createLangfuseOtlpConfig,
+  createLiteLLMProvider,
   createMemoryKeySet,
+  createOpenRouterProvider,
+  createOtelRunEventSink,
+  createPhoenixOtlpConfig,
+  createRealtimeCheckpointContext,
+  createRemoteReceiptSigner,
   evaluateTripwires,
   generateEd25519KeyPairJwk,
   inv,
@@ -12,9 +20,13 @@ import {
   materializeReplayEnvelope,
   PROMPT_SCAFFOLD_VERSION,
   PROMPT_STRATEGIES,
+  REALTIME_DIRECTION_SUPPORT_LEVEL,
   getStructuredOutputContract,
   getToolUseContract,
+  realtimeStepName,
+  sanitizeRunEventAttributes,
   stripChatTemplateArtifacts,
+  stripOpenRouterVariant,
   stripReasoningTags,
   ToolCallValidationError,
   unwrapInternalEnvelope,
@@ -39,7 +51,10 @@ import type {
   QualityFloorInvariant,
   ReceiptEnvelope,
   ReceiptSigner,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignerOptions,
   ReplayEnvelope,
+  OtelTracerLike,
   TrainingClass,
   TripwireEvidence,
   TripwireResult,
@@ -48,6 +63,175 @@ import type {
   VerifyError,
   VerifyResult,
 } from "../src/index.js";
+
+const EXPECTED_PUBLIC_VALUE_EXPORTS = [
+  "ALL_KNOWN_FAILURE_MODES",
+  "ALL_TRAINING_CLASSES",
+  "AgentDeniedError",
+  "BAND",
+  "DEFAULT_CHECKPOINT_BAND",
+  "NegotiationAuthError",
+  "NoPublicUrlEgressError",
+  "PROMPT_SCAFFOLD_VERSION",
+  "PROMPT_STRATEGIES",
+  "REALTIME_DIRECTION_SUPPORT_LEVEL",
+  "SANITIZER_BY_FAILURE_MODE",
+  "STEP_TRANSITION_EVENT_NAME",
+  "STUCK_REASONS",
+  "ToolCallValidationError",
+  "artifact",
+  "collectStream",
+  "contract",
+  "createAI",
+  "createAISdkProvider",
+  "createActionHistory",
+  "createAnthropicProvider",
+  "createCheckpointHook",
+  "createCostTracker",
+  "createFakeProvider",
+  "createGeminiProvider",
+  "createGoalProgressTracker",
+  "createHookPipeline",
+  "createInMemorySigner",
+  "createLangfuseOtlpConfig",
+  "createLiteLLMProvider",
+  "createLmStudioProvider",
+  "createLocalArtifactStore",
+  "createMemoryArtifactStore",
+  "createMemoryKeySet",
+  "createMemorySessionStore",
+  "createNoopAgentHost",
+  "createNoopSurvivabilityAdapter",
+  "createOpenAICompatibleProvider",
+  "createOpenAIProvider",
+  "createOpenRouterProvider",
+  "createOtelReceiptAttributes",
+  "createOtelRunEventSink",
+  "createPermissionContext",
+  "createPermissionGuardHook",
+  "createPhoenixOtlpConfig",
+  "createRateLimitGroup",
+  "createRealtimeCheckpointContext",
+  "createRealtimeReceiptDescriptors",
+  "createReceipt",
+  "createRemoteReceiptSigner",
+  "createReplayEnvelope",
+  "createTranscriptStore",
+  "createXaiProvider",
+  "defaultPiiDetectors",
+  "defineAgent",
+  "defineTool",
+  "estimateRouteCost",
+  "evalAgentRun",
+  "evaluateContractAgainstRoute",
+  "evaluateTripwires",
+  "findCapabilityProfile",
+  "formatToolsForProvider",
+  "generateEd25519KeyPairJwk",
+  "getCapabilityProfile",
+  "getRecommendedSanitizers",
+  "getStructuredOutputContract",
+  "getToolUseContract",
+  "importMcpTools",
+  "inv",
+  "isTerminal",
+  "latticeVersion",
+  "materializeReplayEnvelope",
+  "negotiateCapabilities",
+  "output",
+  "parseToolUseEnvelope",
+  "permissionGuardRegisterOptions",
+  "realtimeStepName",
+  "receiptCid",
+  "redactArtifactRef",
+  "redactPlan",
+  "redactReplayEnvelope",
+  "replayOffline",
+  "rerunLive",
+  "runAgent",
+  "runAgentCrew",
+  "runTool",
+  "sanitizeRunEventAttributes",
+  "stripChatTemplateArtifacts",
+  "stripOpenRouterVariant",
+  "stripReasoningTags",
+  "synthesizeNegotiatedCapabilitiesFromRegistry",
+  "toolArtifactRef",
+  "toolSchemaToJsonSchema",
+  "unwrapInternalEnvelope",
+  "verifyReceipt",
+  "withRateLimit",
+] as const;
+
+describe("public-surface inventory", () => {
+  it("exports exactly the intentional package-root runtime values", async () => {
+    const mod = await import("../src/index.js");
+    expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
+    expect("default" in mod).toBe(false);
+  });
+});
+
+describe("Phase 41 public surface", () => {
+  it("exports createLiteLLMProvider as a first-class helper", () => {
+    expect(typeof createLiteLLMProvider).toBe("function");
+  });
+});
+
+describe("Phase 42 public surface", () => {
+  it("preserves OpenRouter runtime exports while catalog metadata remains type-only", () => {
+    expect(typeof createOpenRouterProvider).toBe("function");
+    expect(stripOpenRouterVariant("openai/gpt-oss-120b:free")).toBe("openai/gpt-oss-120b");
+  });
+});
+
+describe("Phase 43 public surface", () => {
+  it("exports collectStream as the streaming collection helper", () => {
+    expect(typeof collectStream).toBe("function");
+  });
+});
+
+describe("Phase 45 public surface", () => {
+  it("exports realtime direction helpers without socket side effects", () => {
+    expect(REALTIME_DIRECTION_SUPPORT_LEVEL).toBe("direction-only");
+    expect(realtimeStepName("openai-realtime", "session.start")).toBe(
+      "realtime.openai-realtime.session.start",
+    );
+    expect(createRealtimeCheckpointContext({
+      sessionId: "rt-session",
+      provider: "openai-realtime",
+      checkpoint: "session.start",
+      stepIndex: 0,
+      timestamp: "2026-06-16T00:00:00.000Z",
+    })).toMatchObject({
+      stepName: "realtime.openai-realtime.session.start",
+      stepIndex: 0,
+    });
+  });
+});
+
+describe("Phase 47 public surface", () => {
+  it("exports OTel sink and OTLP config helpers without SDK side effects", () => {
+    const tracer: OtelTracerLike = {
+      startSpan() {
+        return {};
+      },
+    };
+    expect(typeof createOtelRunEventSink({ tracer })).toBe("function");
+    expect(createLangfuseOtlpConfig().endpoint).toBe(
+      "https://cloud.langfuse.com/api/public/otel/v1/traces",
+    );
+    expect(createPhoenixOtlpConfig().endpoint).toBe(
+      "http://localhost:6006/v1/traces",
+    );
+    expect(sanitizeRunEventAttributes({
+      kind: "run.start",
+      timestamp: "2026-06-16T00:00:00.000Z",
+      runId: "run:public",
+    })).toMatchObject({
+      "lattice.run.id": "run:public",
+    });
+  });
+});
 
 describe("Phase 7 public surface", () => {
   it("contract is exported as a function from the package root", () => {
@@ -220,6 +404,23 @@ describe("Phase 9 public surface", () => {
     expect((signer.publicKeyJwk as { kty?: string }).kty).toBe("OKP");
   });
 
+  it("createRemoteReceiptSigner returns a ReceiptSigner shape", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const delegate = createInMemorySigner(privateKeyJwk, {
+      kid: "remote-public",
+      publicKeyJwk,
+    });
+    const signer: ReceiptSigner = createRemoteReceiptSigner({
+      kid: "remote-public",
+      publicKeyJwk,
+      provider: "external-kms",
+      sign: (request) => delegate.sign(request.bytes),
+    });
+    expect(signer.kid).toBe("remote-public");
+    expect(typeof signer.sign).toBe("function");
+    expect(signer.publicKeyJwk).toBe(publicKeyJwk);
+  });
+
   it("createMemoryKeySet returns a KeySet with lookup", async () => {
     const { publicKeyJwk } = await generateEd25519KeyPairJwk();
     const entry: KeyEntry = {
@@ -271,6 +472,8 @@ describe("Phase 9 public surface", () => {
       _class;
     const _envelope: ReceiptEnvelope | undefined = undefined;
     const _signer: ReceiptSigner | undefined = undefined;
+    const _remoteRequest: RemoteReceiptSignRequest | undefined = undefined;
+    const _remoteOptions: RemoteReceiptSignerOptions | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
     const _verifyResult: VerifyResult | undefined = undefined;
     const _verifyError: VerifyError | undefined = undefined;
@@ -280,6 +483,8 @@ describe("Phase 9 public surface", () => {
     void _bodyModelClass;
     void _envelope;
     void _signer;
+    void _remoteRequest;
+    void _remoteOptions;
     void _keyState;
     void _verifyResult;
     void _verifyError;

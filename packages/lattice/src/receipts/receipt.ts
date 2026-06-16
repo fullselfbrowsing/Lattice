@@ -22,7 +22,7 @@ import type {
 
 /**
  * Public input to createReceipt. Mirrors CapabilityReceiptBody minus:
- *   - `version` (forced to "lattice-receipt/v1.2" per Phase 38)
+ *   - `version` (forced to "lattice-receipt/v1.3" per Phase 46)
  *   - `kid` (forced from signer.kid — caller cannot mismatch)
  *   - `redactions[]` (populated by redactReceiptBody)
  *   - `usage.costUsd` (converted to canonical string by usageToCanonical)
@@ -41,6 +41,7 @@ export interface CreateReceiptInput {
   // (`sha256:<hex>` of the parent envelope's canonical payload bytes,
   // derived via receipts/cid.ts receiptCid). Omit for root/non-crew receipts.
   readonly parentReceiptCid?: string;
+  readonly lineageMerkleRoot?: string;
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -89,10 +90,9 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
-  // Phase 38: always emit v1.2. Phase 26 already retired newly minted v1
-  // receipts; v1.1 remains verifier-compatible, but new receipts carry the
-  // optional modelClass audit field introduced by the v1.2 schema.
-  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.2";
+  // Phase 46: always emit v1.3. v1.1/v1.2 remain verifier-compatible, but
+  // new receipts can carry the optional lineageMerkleRoot provenance field.
+  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.3";
 
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).
@@ -106,6 +106,7 @@ export async function createReceipt(
     route: input.route,
     ...(input.modelClass !== undefined ? { modelClass: input.modelClass } : {}),
     ...(input.parentReceiptCid !== undefined ? { parentReceiptCid: input.parentReceiptCid } : {}),
+    ...(input.lineageMerkleRoot !== undefined ? { lineageMerkleRoot: input.lineageMerkleRoot } : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,

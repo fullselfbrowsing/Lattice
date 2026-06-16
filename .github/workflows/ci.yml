@@ -63,6 +63,12 @@ jobs:
       - name: Audit tarballs for stale names
         run: node scripts/check-tarball-leak.mjs
 
+      - name: Audit package version surfaces
+        run: node scripts/check-package-version-surfaces.mjs
+
+      - name: Audit core package boundary
+        run: node scripts/check-core-package-boundary.mjs
+
       - name: Audit source imports for stale rename
         run: node scripts/verify-rename.mjs
 

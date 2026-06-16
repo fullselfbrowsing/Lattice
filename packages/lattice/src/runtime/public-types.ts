@@ -37,6 +37,19 @@ export type {
   InferOutputMap,
 } from "../outputs/infer.js";
 export type {
+  LangfuseOtlpConfigOptions,
+  OtelAttributeValue,
+  OtelAttributes,
+  OtelContentCaptureMode,
+  OtelHttpTraceConfig,
+  OtelRunEventSinkOptions,
+  OtelSanitizerOptions,
+  OtelSpanLike,
+  OtelSpanStatus,
+  OtelTracerLike,
+  PhoenixOtlpConfigOptions,
+} from "../observability/otel.js";
+export type {
   OutputContract,
   OutputContractMap,
 } from "../outputs/contracts.js";
@@ -64,14 +77,24 @@ export type {
   ModelCapability,
   ProviderAdapter,
   ProviderDataPolicyHints,
+  ProviderGatewayMetadata,
   ProviderLatencyClass,
   ProviderPricingHint,
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderStream,
+  ProviderStreamChunk,
+  ProviderStreamCompleteChunk,
+  ProviderStreamGatewayChunk,
+  ProviderStreamOutputChunk,
+  ProviderStreamTextDeltaChunk,
+  ProviderStreamToolCallChunk,
+  ProviderStreamUsageChunk,
   ProviderTransportMode,
   Usage,
 } from "../providers/provider.js";
+export type { CollectStreamOptions } from "../providers/streaming.js";
 export type {
   ArtifactLoader,
   MaterializationError,
@@ -80,6 +103,22 @@ export type {
 export type {
   ReplayEnvelope,
 } from "../replay/replay.js";
+export type {
+  GeminiLiveTarget,
+  OpenAIRealtimeTarget,
+  RealtimeCheckpointingSpec,
+  RealtimeCheckpointInput,
+  RealtimeCheckpointKind,
+  RealtimeInputModality,
+  RealtimeOutputModality,
+  RealtimeProviderKind,
+  RealtimeProviderTarget,
+  RealtimeReceiptDescriptors,
+  RealtimeSessionMode,
+  RealtimeSessionSpec,
+  RealtimeSupportLevel,
+  RealtimeTransportKind,
+} from "../realtime/realtime.js";
 export type {
   LatticeRunError,
   TripwireViolationError,
@@ -120,6 +159,13 @@ export type {
   VerifyOk,
   VerifyResult,
 } from "../receipts/types.js";
+export type {
+  RemoteReceiptPayloadFormat,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignResult,
+  RemoteReceiptSignerOptions,
+  RemoteReceiptSignerProvider,
+} from "../receipts/remote-signer.js";
 export type {
   RunEvent,
   RunEventKind,

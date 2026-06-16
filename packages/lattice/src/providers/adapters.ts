@@ -1,5 +1,12 @@
 import type { UsageRecord } from "../plan/plan.js";
-import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
+import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  ProviderStream,
+  Usage,
+} from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import type { OpenAIQuirks, OpenAICompatQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -12,6 +19,7 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import type { ToolUseRequest } from "../agent/types.js";
 import { parseToolUseEnvelope } from "../agent/format-tools.js";
 import {
   validateToolCallRequests,
@@ -21,12 +29,16 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import { readSseEvents } from "./sse.js";
+import { isHttpUrl } from "./multimodal.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
   readonly model: string;
   readonly baseUrl: string;
   readonly apiKey?: string;
+  readonly gateway?: GatewayPolicy;
   readonly fetch?: typeof fetch;
   /**
    * Phase 7 addition: caller-supplied per-1k pricing. When provided, the
@@ -91,6 +103,271 @@ export interface SdkLikeProviderOptions {
   }) => Promise<ProviderRunResponse> | ProviderRunResponse;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isGatewayMetadataValue);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every(isGatewayMetadataValue);
+  }
+
+  return false;
+}
+
+function isSecretMetadataKey(key: string): boolean {
+  return /api[-_]?key|authorization|headers?|secret|token|password/iu.test(key);
+}
+
+function isSecretMetadataValue(value: GatewayMetadataValue): boolean {
+  if (typeof value === "string") {
+    return /^sk-[\w-]+/u.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(isSecretMetadataValue);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).some(([key, nested]) => (
+      isSecretMetadataKey(key) || isSecretMetadataValue(nested)
+    ));
+  }
+
+  return false;
+}
+
+function sanitizeGatewayMetadata(
+  metadata: Record<string, GatewayMetadataValue> | undefined,
+): Record<string, GatewayMetadataValue> | undefined {
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  const sanitized = Object.fromEntries(
+    Object.entries(metadata).filter(([key, value]) => (
+      !isSecretMetadataKey(key) && !isSecretMetadataValue(value)
+    )),
+  );
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
+function normalizeGatewayPolicy(value: unknown): GatewayPolicy {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const routeTags = Array.isArray(value.routeTags)
+    ? value.routeTags.filter((tag): tag is string => typeof tag === "string")
+    : undefined;
+  const providerPreferences = Array.isArray(value.providerPreferences)
+    ? value.providerPreferences.filter((provider): provider is string => typeof provider === "string")
+    : undefined;
+  const gatewayMetadata: Record<string, GatewayMetadataValue> = {};
+  if (isRecord(value.metadata)) {
+    for (const [key, metadataValue] of Object.entries(value.metadata)) {
+      if (isGatewayMetadataValue(metadataValue)) {
+        gatewayMetadata[key] = metadataValue;
+      }
+    }
+  }
+  const metadata = Object.keys(gatewayMetadata).length > 0
+    ? sanitizeGatewayMetadata(gatewayMetadata)
+    : undefined;
+  const allowFallbacks = typeof value.allowFallbacks === "boolean"
+    ? value.allowFallbacks
+    : undefined;
+
+  return {
+    ...(routeTags !== undefined ? { routeTags } : {}),
+    ...(providerPreferences !== undefined ? { providerPreferences } : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    ...(allowFallbacks !== undefined ? { allowFallbacks } : {}),
+  };
+}
+
+function readGatewayPolicy(policy: unknown): GatewayPolicy | undefined {
+  if (!isRecord(policy) || !isRecord(policy.gateway)) {
+    return undefined;
+  }
+
+  return normalizeGatewayPolicy(policy.gateway);
+}
+
+function mergeGatewayPolicy(
+  providerGateway: GatewayPolicy | undefined,
+  requestGateway: GatewayPolicy | undefined,
+): GatewayPolicy | undefined {
+  if (providerGateway === undefined && requestGateway === undefined) {
+    return undefined;
+  }
+
+  const providerMetadata = sanitizeGatewayMetadata(providerGateway?.metadata);
+  const requestMetadata = sanitizeGatewayMetadata(requestGateway?.metadata);
+  const metadata = {
+    ...(providerMetadata ?? {}),
+    ...(requestMetadata ?? {}),
+  };
+
+  return {
+    routeTags: [
+      ...(providerGateway?.routeTags ?? []),
+      ...(requestGateway?.routeTags ?? []),
+    ],
+    providerPreferences: [
+      ...(providerGateway?.providerPreferences ?? []),
+      ...(requestGateway?.providerPreferences ?? []),
+    ],
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+    ...(requestGateway?.allowFallbacks !== undefined
+      ? { allowFallbacks: requestGateway.allowFallbacks }
+      : providerGateway?.allowFallbacks !== undefined
+        ? { allowFallbacks: providerGateway.allowFallbacks }
+        : {}),
+  };
+}
+
+function gatewayPolicyToMetadata(
+  policy: GatewayPolicy | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const metadata: Record<string, unknown> = {
+    ...(sanitizeGatewayMetadata(policy.metadata) ?? {}),
+  };
+  const latticeGateway: Record<string, unknown> = {};
+
+  if (policy.routeTags !== undefined && policy.routeTags.length > 0) {
+    latticeGateway.route_tags = [...policy.routeTags];
+  }
+  if (policy.providerPreferences !== undefined && policy.providerPreferences.length > 0) {
+    latticeGateway.provider_preferences = [...policy.providerPreferences];
+  }
+  if (policy.allowFallbacks !== undefined) {
+    latticeGateway.allow_fallbacks = policy.allowFallbacks;
+  }
+  if (Object.keys(latticeGateway).length > 0) {
+    metadata.lattice_gateway = latticeGateway;
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+function sanitizedGatewayPolicyForPlan(
+  policy: GatewayPolicy | undefined,
+): Record<string, unknown> | undefined {
+  if (policy === undefined) {
+    return undefined;
+  }
+
+  const metadata = sanitizeGatewayMetadata(policy.metadata);
+
+  return {
+    ...(policy.routeTags !== undefined && policy.routeTags.length > 0
+      ? { routeTags: [...policy.routeTags] }
+      : {}),
+    ...(policy.providerPreferences !== undefined && policy.providerPreferences.length > 0
+      ? { providerPreferences: [...policy.providerPreferences] }
+      : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    ...(policy.allowFallbacks !== undefined ? { allowFallbacks: policy.allowFallbacks } : {}),
+  };
+}
+
+function observedModelFromResponse(body: unknown): string | undefined {
+  if (!isRecord(body)) {
+    return undefined;
+  }
+  const model = body.model;
+
+  return typeof model === "string" ? model : undefined;
+}
+
+function createOpenAICompatibleRequestBody(input: {
+  readonly model: string;
+  readonly request: ProviderRunRequest;
+  readonly metadata?: Record<string, unknown>;
+  readonly stream?: boolean;
+}): Record<string, unknown> {
+  return {
+    model: input.model,
+    ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: input.request.task,
+          },
+          {
+            type: "text",
+            text: JSON.stringify({
+              contextPack: input.request.contextPack === undefined
+                ? undefined
+                : {
+                    id: input.request.contextPack.id,
+                    tokenBudget: input.request.contextPack.tokenBudget,
+                    estimatedTokens: input.request.contextPack.estimatedTokens,
+                    included: input.request.contextPack.included,
+                    summarized: input.request.contextPack.summarized,
+                    archived: input.request.contextPack.archived,
+                    omitted: input.request.contextPack.omitted,
+                    warnings: input.request.contextPack.warnings,
+                  },
+            }),
+          },
+          ...input.request.artifacts.map((inputArtifact) => {
+            const resolvedTransport =
+              input.request.providerPackaging?.artifacts.find(
+                (item) => item.artifactId === inputArtifact.id,
+              )?.transport ??
+              input.request.plan?.providerPackaging?.artifacts.find(
+                (item) => item.artifactId === inputArtifact.id,
+              )?.transport;
+
+            return {
+              type: "text",
+              text: JSON.stringify({
+                artifactId: inputArtifact.id,
+                kind: inputArtifact.kind,
+                mediaType: inputArtifact.mediaType,
+                privacy: inputArtifact.privacy,
+                transport: resolvedTransport,
+                value:
+                  typeof inputArtifact.value === "string" &&
+                  inputArtifact.kind !== "url" &&
+                  !(isHttpUrl(inputArtifact.value) && resolvedTransport !== "url")
+                    ? inputArtifact.value
+                    : undefined,
+                url:
+                  inputArtifact.kind === "url" &&
+                  typeof inputArtifact.value === "string" &&
+                  resolvedTransport === "url"
+                    ? inputArtifact.value
+                    : undefined,
+              }),
+            };
+          }),
+        ],
+      },
+    ],
+    ...(input.stream === true ? { stream: true, stream_options: { include_usage: true } } : {}),
+  };
+}
+
 /**
  * Phase 34 — D-04 / QUIRK-02 — OpenAI-compatible provider factory.
  *
@@ -116,6 +393,7 @@ export function createOpenAICompatibleProvider(
 } {
   const id = options.id ?? "openai-compatible";
   const fetchImpl = options.fetch ?? fetch;
+  const baseUrl = options.baseUrl.replace(/\/$/u, "");
 
   // Phase 34 — D-04 — OpenAI-compat negotiate() is registry-only (no fetch,
   // no cache, no inflight). Source: "registry" signals intentional no-endpoint.
@@ -148,71 +426,31 @@ export function createOpenAICompatibleProvider(
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        streaming: true,
       },
     ],
     async execute(request) {
+      const mergedGatewayPolicy = mergeGatewayPolicy(
+        options.gateway,
+        readGatewayPolicy(request.policy),
+      );
+      const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+      const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+        model: options.model,
+        request,
+        ...(metadata !== undefined ? { metadata } : {}),
+      }));
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
           ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
         },
-        body: JSON.stringify({
-          model: options.model,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: request.task,
-                },
-                {
-                  type: "text",
-                  text: JSON.stringify({
-                    contextPack: request.contextPack === undefined
-                      ? undefined
-                      : {
-                          id: request.contextPack.id,
-                          tokenBudget: request.contextPack.tokenBudget,
-                          estimatedTokens: request.contextPack.estimatedTokens,
-                          included: request.contextPack.included,
-                          summarized: request.contextPack.summarized,
-                          archived: request.contextPack.archived,
-                          omitted: request.contextPack.omitted,
-                          warnings: request.contextPack.warnings,
-                        },
-                  }),
-                },
-                ...request.artifacts.map((inputArtifact) => ({
-                  type: "text",
-                  text: JSON.stringify({
-                    artifactId: inputArtifact.id,
-                    kind: inputArtifact.kind,
-                    mediaType: inputArtifact.mediaType,
-                    privacy: inputArtifact.privacy,
-                    transport: request.providerPackaging?.artifacts.find(
-                      (item) => item.artifactId === inputArtifact.id,
-                    )?.transport ?? request.plan?.providerPackaging?.artifacts.find(
-                      (item) => item.artifactId === inputArtifact.id,
-                    )?.transport,
-                    value:
-                      typeof inputArtifact.value === "string" && inputArtifact.kind !== "url"
-                        ? inputArtifact.value
-                        : undefined,
-                    url:
-                      inputArtifact.kind === "url" && typeof inputArtifact.value === "string"
-                        ? inputArtifact.value
-                        : undefined,
-                  }),
-                })),
-              ],
-            },
-          ],
-        }),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
-      const response = await fetchImpl(`${options.baseUrl.replace(/\/$/u, "")}/chat/completions`, init);
+      const response = await fetchImpl(`${baseUrl}/chat/completions`, init);
 
       if (!response.ok) {
         throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
@@ -220,8 +458,10 @@ export function createOpenAICompatibleProvider(
 
       const body = await response.json() as {
         choices?: readonly { message?: { content?: unknown } }[];
+        model?: unknown;
         usage?: unknown;
       };
+      const observedModel = observedModelFromResponse(body);
       const text = String(body.choices?.[0]?.message?.content ?? "");
       const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
@@ -234,16 +474,248 @@ export function createOpenAICompatibleProvider(
         : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
       const usage = normalizeUsage(body.usage);
       const normalizedUsage = normalizeUsageToRunUsage(body.usage, options.pricing);
+      const sanitizedGatewayPolicy = sanitizedGatewayPolicyForPlan(mergedGatewayPolicy);
+      const gateway = id === "litellm" || mergedGatewayPolicy !== undefined
+        ? {
+            used: true,
+            requestedModel: options.model,
+            ...(observedModel !== undefined ? { observedModel } : {}),
+            ...(sanitizedGatewayPolicy !== undefined ? { policy: sanitizedGatewayPolicy } : {}),
+          }
+        : undefined;
 
       return {
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
         ...(toolCalls !== undefined ? { toolCalls } : {}),
+        ...(gateway !== undefined ? { gateway } : {}),
         rawResponse: body,
       };
     },
+    executeStream(request) {
+      return streamOpenAICompatibleResponse({
+        id,
+        model: options.model,
+        baseUrl,
+        fetchImpl,
+        request,
+        ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
+        ...(options.gateway !== undefined ? { providerGateway: options.gateway } : {}),
+        ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+        ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
+        ...(options.validateToolCalls !== undefined
+          ? { validateToolCalls: options.validateToolCalls }
+          : {}),
+      });
+    },
   };
+}
+
+async function* streamOpenAICompatibleResponse(input: {
+  readonly id: string;
+  readonly model: string;
+  readonly baseUrl: string;
+  readonly apiKey?: string;
+  readonly fetchImpl: typeof fetch;
+  readonly request: ProviderRunRequest;
+  readonly providerGateway?: GatewayPolicy;
+  readonly pricing?: {
+    readonly inputPer1kTokens?: number;
+    readonly outputPer1kTokens?: number;
+  };
+  readonly sanitizeOutput?: SanitizeOutputOption;
+  readonly validateToolCalls?: ValidateToolCallsOption;
+}): ProviderStream {
+  const mergedGatewayPolicy = mergeGatewayPolicy(
+    input.providerGateway,
+    readGatewayPolicy(input.request.policy),
+  );
+  const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+  const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+    model: input.model,
+    request: input.request,
+    ...(metadata !== undefined ? { metadata } : {}),
+    stream: true,
+  }));
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
+  const response = await input.fetchImpl(`${input.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(input.apiKey !== undefined ? { authorization: `Bearer ${input.apiKey}` } : {}),
+    },
+    body: streamBodyStr,
+    ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
+  }
+
+  const textParts: string[] = [];
+  const rawChunks: unknown[] = [];
+  const nativeToolCalls = new Map<number, AccumulatedOpenAIToolCall>();
+  let usagePayload: unknown;
+  let observedModel: string | undefined;
+
+  for await (const event of readSseEvents(response)) {
+    const data = event.data.trim();
+    if (data.length === 0) {
+      continue;
+    }
+    if (data === "[DONE]") {
+      break;
+    }
+
+    const chunk = parseJsonObject(data);
+    rawChunks.push(chunk);
+    const chunkObservedModel = observedModelFromResponse(chunk);
+    if (chunkObservedModel !== undefined) {
+      observedModel = chunkObservedModel;
+    }
+    if (isRecord(chunk) && chunk.usage !== undefined) {
+      usagePayload = chunk.usage;
+    }
+
+    for (const choice of streamChoices(chunk)) {
+      const delta = isRecord(choice.delta) ? choice.delta : {};
+      const content = typeof delta.content === "string" ? delta.content : undefined;
+      if (content !== undefined && content.length > 0) {
+        textParts.push(content);
+        for (const output of input.request.outputs) {
+          yield { kind: "text-delta", output, text: content };
+        }
+      }
+      accumulateOpenAIToolCalls(nativeToolCalls, delta.tool_calls);
+    }
+  }
+
+  const text = textParts.join("");
+  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
+    providerId: input.id,
+    modelId: input.model,
+  });
+  const parsedToolCalls = parseToolUseEnvelope(text);
+  const promptToolCalls = parsedToolCalls === null
+    ? undefined
+    : await validateToolCallRequests(parsedToolCalls, input.validateToolCalls);
+  const nativeToolRequests = openAIToolUseRequests(nativeToolCalls);
+  const nativeValidatedToolCalls = nativeToolRequests.length === 0
+    ? undefined
+    : await validateToolCallRequests(nativeToolRequests, input.validateToolCalls);
+  const toolCalls = [
+    ...(promptToolCalls ?? []),
+    ...(nativeValidatedToolCalls ?? []),
+  ];
+  const usage = normalizeUsage(usagePayload);
+  const normalizedUsage = normalizeUsageToRunUsage(usagePayload, input.pricing);
+  const sanitizedGatewayPolicy = sanitizedGatewayPolicyForPlan(mergedGatewayPolicy);
+  const gateway = input.id === "litellm" ||
+    input.id === "openrouter" ||
+    mergedGatewayPolicy !== undefined
+    ? {
+        used: true,
+        requestedModel: input.model,
+        ...(observedModel !== undefined ? { observedModel } : {}),
+        ...(sanitizedGatewayPolicy !== undefined ? { policy: sanitizedGatewayPolicy } : {}),
+      }
+    : undefined;
+
+  yield {
+    kind: "complete",
+    rawOutputs: sanitizedOutputs,
+    ...(usage !== undefined ? { usage } : {}),
+    normalizedUsage,
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(gateway !== undefined ? { gateway } : {}),
+    rawResponse: {
+      kind: "openai-compatible-stream",
+      chunks: rawChunks,
+    },
+  };
+}
+
+interface AccumulatedOpenAIToolCall {
+  id?: string;
+  name?: string;
+  arguments: string;
+}
+
+function parseJsonObject(data: string): unknown {
+  try {
+    return JSON.parse(data) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`OpenAI-compatible stream returned invalid JSON: ${message}`);
+  }
+}
+
+function streamChoices(chunk: unknown): readonly Record<string, unknown>[] {
+  if (!isRecord(chunk) || !Array.isArray(chunk.choices)) {
+    return [];
+  }
+
+  return chunk.choices.filter(isRecord);
+}
+
+function accumulateOpenAIToolCalls(
+  calls: Map<number, AccumulatedOpenAIToolCall>,
+  deltas: unknown,
+): void {
+  if (!Array.isArray(deltas)) {
+    return;
+  }
+
+  for (const delta of deltas) {
+    if (!isRecord(delta) || typeof delta.index !== "number") {
+      continue;
+    }
+    const current = calls.get(delta.index) ?? { arguments: "" };
+    if (typeof delta.id === "string") {
+      current.id = delta.id;
+    }
+    if (isRecord(delta.function)) {
+      if (typeof delta.function.name === "string") {
+        current.name = `${current.name ?? ""}${delta.function.name}`;
+      }
+      if (typeof delta.function.arguments === "string") {
+        current.arguments += delta.function.arguments;
+      }
+    }
+    calls.set(delta.index, current);
+  }
+}
+
+function openAIToolUseRequests(
+  calls: ReadonlyMap<number, AccumulatedOpenAIToolCall>,
+): readonly ToolUseRequest[] {
+  return [...calls.entries()]
+    .sort(([left], [right]) => left - right)
+    .flatMap(([index, call]) => {
+      if (call.name === undefined) {
+        return [];
+      }
+      return [{
+        id: call.id ?? `tool-call-${index}`,
+        name: call.name,
+        args: parseToolArguments(call.arguments),
+      }];
+    });
+}
+
+function parseToolArguments(value: string): unknown {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`OpenAI-compatible stream returned invalid tool arguments: ${message}`);
+  }
 }
 
 /**

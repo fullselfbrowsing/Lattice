@@ -122,7 +122,26 @@ export interface ProviderPackagedArtifactPlan {
   readonly transport: ProviderTransportMode;
   readonly mediaType?: string;
   readonly lineageTransform: "provider-packaging";
+  readonly providerRequest?: ProviderPackagedArtifactRequestPlan;
   readonly warnings: readonly string[];
+}
+
+export type ProviderPackagedArtifactSourceType =
+  | ProviderTransportMode
+  | "file-reference";
+
+export interface ProviderPackagedArtifactRequestPlan {
+  readonly shape: string;
+  readonly sourceType: ProviderPackagedArtifactSourceType;
+  readonly reason: string;
+  readonly mediaType?: string;
+  readonly sizeBytes?: number;
+  readonly reference?: ProviderPackagedArtifactReferencePlan;
+}
+
+export interface ProviderPackagedArtifactReferencePlan {
+  readonly kind: "url" | "file-id" | "file-uri" | "storage";
+  readonly metadataKey?: string;
 }
 
 export interface ProviderAttemptRecord {
@@ -133,6 +152,7 @@ export interface ProviderAttemptRecord {
   readonly completedAt?: string;
   readonly error?: string;
   readonly usage?: UsageRecord;
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface UsageRecord {

@@ -23,6 +23,7 @@ import type {
   AnthropicQuirks,
   GeminiQuirks,
   KnownFailureMode,
+  LiteLLMQuirks,
   LmStudioQuirks,
   NegotiatedCapabilities,
   OpenAICompatQuirks,
@@ -87,7 +88,7 @@ expectType<boolean>(anthropicQuirks.promptCachingSupported);
 expectType<boolean>(anthropicQuirks.extendedThinkingSupported);
 expectType<boolean>(anthropicQuirks.toolUseInputSchemaStrict);
 
-// All 7 narrowed interfaces are assignable to AdapterQuirks
+// All first-party narrowed interfaces are assignable to AdapterQuirks
 declare const openaiQuirks: OpenAIQuirks;
 expectAssignable<AdapterQuirks>(openaiQuirks);
 declare const openaiCompatQuirks: OpenAICompatQuirks;
@@ -100,6 +101,8 @@ declare const openrouterQuirks: OpenRouterQuirks;
 expectAssignable<AdapterQuirks>(openrouterQuirks);
 declare const lmStudioQuirks: LmStudioQuirks;
 expectAssignable<AdapterQuirks>(lmStudioQuirks);
+declare const litellmQuirks: LiteLLMQuirks;
+expectAssignable<AdapterQuirks>(litellmQuirks);
 
 // AnthropicQuirks literal satisfies the interface (all required fields)
 const anthropicQuirksLiteral = {

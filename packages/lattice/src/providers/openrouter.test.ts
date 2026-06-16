@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createOpenRouterProvider } from "./openrouter.js";
+import { collectStream } from "./streaming.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { RunEvent } from "../tracing/tracing.js";
@@ -30,6 +31,35 @@ function makeFakeFetch(body: unknown, status = 200): {
       status,
       headers: { "content-type": "application/json" },
     });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capture };
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(chunks: readonly string[]): {
+  fetch: typeof fetch;
+  capture: FakeFetchCapture;
+} {
+  const capture: FakeFetchCapture = { url: "", init: {} };
+  const fakeFetch = (async (url: string, init: RequestInit) => {
+    capture.url = url;
+    capture.init = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    );
   }) as unknown as typeof fetch;
   return { fetch: fakeFetch, capture };
 }
@@ -195,6 +225,100 @@ describe("Phase 4 OpenRouter adapter", () => {
       signal: controller.signal,
     });
     expect(capture.init.signal).toBe(controller.signal);
+  });
+});
+
+describe("Phase 42: OpenRouter fallback models", () => {
+  it("serializes fallbackModels as OpenRouter models while preserving primary model", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5", "google/gemini-3-flash-preview"],
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.model).toBe("openai/gpt-oss-120b");
+    expect(body.models).toEqual([
+      "anthropic/claude-sonnet-4.5",
+      "google/gemini-3-flash-preview",
+    ]);
+  });
+
+  it("omits models when fallbackModels is absent", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(body, "models")).toBe(false);
+  });
+
+  it("returns gateway metadata with requested, fallback, and observed models", async () => {
+    const { fetch } = makeFakeFetch({
+      choices: [{ message: { content: "fallback response" } }],
+      model: "anthropic/claude-sonnet-4.5",
+      usage: { prompt_tokens: 1, completion_tokens: 2 },
+    });
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      fetch,
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+
+    expect(response.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
+    expect(response.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(response.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
+  });
+
+  it("preserves fallback model metadata through executeStream", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({
+        model: "anthropic/claude-sonnet-4.5",
+        choices: [{ delta: { content: "fallback response" } }],
+        usage: { prompt_tokens: 1, completion_tokens: 2 },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenRouterProvider({
+      model: "openai/gpt-oss-120b",
+      fallbackModels: ["anthropic/claude-sonnet-4.5"],
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.stream).toBe(true);
+    expect(body.models).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(response.rawOutputs.text).toBe("fallback response");
+    expect(response.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
+    expect(response.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
+    expect(response.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
   });
 });
 

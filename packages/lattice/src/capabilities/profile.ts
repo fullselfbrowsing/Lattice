@@ -10,7 +10,7 @@
 // queried at run construction time but answer orthogonal questions.
 
 /**
- * Closed enum of the 7 Lattice transport adapters (D-06). Adding a new
+ * Closed enum of the 8 Lattice transport adapters (D-06). Adding a new
  * adapter is a typed breaking change. Phase 34 quirk dispatch reads this
  * field.
  */
@@ -21,7 +21,8 @@ export type CapabilityAdapter =
   | "openai-compat"
   | "xai"
   | "gemini"
-  | "lm-studio";
+  | "lm-studio"
+  | "litellm";
 
 /**
  * Runtime list of the closed `CapabilityAdapter` union. MUST stay in sync with
@@ -37,11 +38,12 @@ export const CAPABILITY_ADAPTERS: readonly CapabilityAdapter[] = [
   "xai",
   "gemini",
   "lm-studio",
+  "litellm",
 ] as const;
 
 /**
  * Runtime type guard for the closed `CapabilityAdapter` union (IN-04). Returns
- * true iff `id` is one of the 7 first-party adapter identifiers. Consumers passing
+ * true iff `id` is one of the 8 first-party adapter identifiers. Consumers passing
  * a third-party adapter id (e.g., `"openrouter-prod"` typo) get `false` and the
  * caller can route to the graceful-degradation empty-stub path without performing
  * a registry lookup that would silently miss.
@@ -116,6 +118,28 @@ export type ToolCallSurface =
   | "json_only"
   | "text_only";
 
+export type ModelCapabilityProfilePricingKey =
+  | "prompt"
+  | "completion"
+  | "image"
+  | "audio"
+  | "web_search"
+  | "internal_reasoning"
+  | "input_cache_read"
+  | "input_cache_write";
+
+export type ModelCapabilityProfilePricing = Partial<
+  Record<ModelCapabilityProfilePricingKey, string>
+>;
+
+export type ModelCapabilityProfileModality =
+  | "text"
+  | "image"
+  | "audio"
+  | "video"
+  | "file"
+  | "embeddings";
+
 /**
  * Phase 33 — D-05 / D-08 — Capability profile for one (adapter, model)
  * pair. Sibling to `ModelCapability`, not a replacement. Built-time baked
@@ -137,7 +161,7 @@ export interface ModelCapabilityProfile {
   /**
    * The Lattice transport adapter that ships this profile (D-05 /
    * D-06). Phase 34 adapter-quirk dispatch reads this field. Closed
-   * union of 7 values.
+   * union of 8 values.
    */
   readonly adapter: CapabilityAdapter;
   /**
@@ -171,6 +195,10 @@ export interface ModelCapabilityProfile {
    * the model card's aspirational maximum.
    */
   readonly contextWindow: number;
+  readonly pricing?: ModelCapabilityProfilePricing;
+  readonly inputModalities?: readonly ModelCapabilityProfileModality[];
+  readonly outputModalities?: readonly ModelCapabilityProfileModality[];
+  readonly supportedParameters?: readonly string[];
   /**
    * Failure modes this model class is known to exhibit (D-14). Class-
    * derived defaults plus per-family overrides. Phase 36 sanitizer

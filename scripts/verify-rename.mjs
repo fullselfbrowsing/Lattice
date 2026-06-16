@@ -64,6 +64,12 @@ const ALLOWLIST_FILES = new Set([
   // This script documents the anti-patterns it scans for in its own JSDoc
   // header; allowlisting it prevents a self-match false positive.
   "scripts/verify-rename.mjs",
+  // The FSB dogfood runner generates a downstream smoke test that imports the
+  // bare "lattice" name. That name resolves through a node_modules/lattice ->
+  // @full-self-browsing/lattice symlink the runner creates on purpose to
+  // emulate FSB's import convention, so the bare import is deliberate alias
+  // usage in generated test code, not a rename regression.
+  "scripts/dogfood-fsb-candidate.mjs",
 ]);
 
 const PATTERNS = [

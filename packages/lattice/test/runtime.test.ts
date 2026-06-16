@@ -4,8 +4,24 @@ import { z } from "zod";
 import { artifact } from "../src/artifacts/artifact.js";
 import { output } from "../src/outputs/contracts.js";
 import type { PolicySpec } from "../src/policy/policy.js";
+import { createLiteLLMProvider } from "../src/providers/litellm.js";
 import type { ProviderAdapter } from "../src/providers/provider.js";
 import { createAI } from "../src/runtime/create-ai.js";
+import type { RunEvent } from "../src/tracing/tracing.js";
+
+function makeGatewayFetch(): typeof fetch {
+  return (async () =>
+    new Response(JSON.stringify({
+      id: "chatcmpl-litellm",
+      object: "chat.completion",
+      model: "azure/gpt-4o",
+      choices: [{ message: { content: "Gateway answer" } }],
+      usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 },
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })) as unknown as typeof fetch;
+}
 
 describe("createAI runtime facade", () => {
   it("creates phase 1 session references without persistence behavior", () => {
@@ -199,6 +215,65 @@ describe("createAI runtime facade", () => {
       }
       expect(result.plan.kind).toBe("execution-plan");
     }
+  });
+
+  it("records gateway policy without changing the selected Lattice route", async () => {
+    const events: RunEvent[] = [];
+    const provider = createLiteLLMProvider({
+      model: "gpt-4o",
+      apiKey: "sk-litellm-test",
+      fetch: makeGatewayFetch(),
+    });
+
+    const result = await createAI({
+      providers: [provider],
+      events: (event) => {
+        events.push(event);
+      },
+    }).run({
+      task: "Gateway case",
+      outputs: { answer: "text" },
+      policy: {
+        gateway: {
+          routeTags: ["prod"],
+          providerPreferences: ["azure"],
+          metadata: { trace_id: "trace-41" },
+          allowFallbacks: true,
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.plan.kind).toBe("execution-plan");
+    if (result.plan.kind !== "execution-plan") {
+      return;
+    }
+
+    expect(result.plan.route.selected).toMatchObject({
+      providerId: "litellm",
+      modelId: "gpt-4o",
+    });
+    expect(result.plan.route.fallbackChain).toEqual([]);
+    expect(result.plan.metadata?.gateway).toMatchObject({
+      providerId: "litellm",
+      requestedModel: "gpt-4o",
+      policy: {
+        routeTags: ["prod"],
+        providerPreferences: ["azure"],
+        metadata: { trace_id: "trace-41" },
+        allowFallbacks: true,
+      },
+    });
+    expect(events.some((event) => (
+      event.kind === "provider.attempt" &&
+      (event.metadata?.gateway as { readonly observedModel?: string } | undefined)
+        ?.observedModel === "azure/gpt-4o"
+    ))).toBe(true);
+    expect(JSON.stringify(result.plan.metadata)).not.toContain("sk-");
+    expect(JSON.stringify(result.events)).not.toContain("sk-");
   });
 
   it("returns validation failures instead of throwing", async () => {

@@ -1,636 +1,366 @@
-# Pitfalls Research — v1.3 Public Release + Canary Validation
+# Pitfalls Research — v1.4 Provider Breadth + Live Multimodal + Observability Export
 
-**Domain:** First public npm release of a TypeScript-first, ESM-only, strict-TS pnpm monorepo that ships cryptographic primitives, plus an external canary consumer with real-provider nightly integration
-**Researched:** 2026-06-03
-**Confidence:** HIGH for OIDC / provenance / changesets / canary patterns (multiple official + incident sources). MEDIUM for crypto-shipping pitfalls (extrapolated from documented Ed25519 misuse lists and Radicle replay disclosure; no direct Lattice precedent yet).
+**Domain:** Adding streaming/multimodal, gateway delegation, and OTel observability to a shipped TypeScript SDK with Ed25519-signed receipts and deterministic routing
+**Researched:** 2026-06-15
+**Confidence:** HIGH for streaming-receipt and OTel-PII risks (sourced from OTel GenAI semconv docs, LiteLLM issues, and internal code inspection). MEDIUM for gateway catalog-feed trust (extrapolated from supply-chain research; no Lattice-specific incident yet). HIGH for FSB-validation gap (confirmed by inspection of v1.3 dogfooding decision and public-surface test scope).
 
 ---
 
 ## Reading Guide
 
-Pitfalls are grouped by the eight v1.3 work-streams from the milestone question, then a consolidated "looks safe but isn't" checklist + phase-mapping table at the end.
+Pitfalls are grouped into four tracks matching the v1.4 themes.
 
-| Code | Stream |
-|------|--------|
-| RENAME | Scope rename `lattice` -> `@fullselfbrowsing/lattice` |
-| OIDC | OIDC Trusted Publisher first-time setup |
-| PROV | npm provenance attestations |
-| CHGSET | Tag-driven changesets release workflow |
-| CANARY | External public canary consumer repo |
-| REAL | Real-provider nightly tests |
-| COST | Cost ceiling guards via Lattice's own CostTracker |
-| CRYPTO | Shipping Ed25519 / DSSE / JCS primitives publicly |
+| Code | Track |
+|------|-------|
+| STRM | Streaming vs. signed-receipt determinism |
+| GW | Gateway delegation (LiteLLM / OpenRouter) |
+| OTEL | OpenTelemetry exporter + GenAI semconv |
+| VAL | FSB-via-npm validation gap |
 
-Each pitfall lists: failure mode, root cause, prevention, warning sign, phase mapping.
+Each pitfall lists: failure mode, root cause, prevention, warning sign, phase ownership.
 
 ---
 
 ## Critical Pitfalls
 
-### RENAME-1: workspace:* dep in `lattice-cli/package.json` not updated to the new scoped name
+### STRM-1: Receipt signed before stream drains — outputHash commits to partial content
 
 **What goes wrong:**
-`packages/lattice-cli/package.json` currently declares `"lattice": "workspace:*"`. After the scope rename, only the *consumer-facing name* in `packages/lattice/package.json` changes to `@fullselfbrowsing/lattice`. The CLI's declaration still says `"lattice"`. pnpm cannot resolve `lattice` from the workspace any more (the workspace no longer publishes a package called `lattice`), so the CLI either (a) links to a phantom registry copy of unscoped `lattice` (if anyone ever publishes that name), or (b) fails to install with `ERR_PNPM_NO_MATCHING_VERSION`. On publish, the dep rewrite from `workspace:*` to a concrete version produces `"lattice": "1.3.0"` in the tarball — which means external consumers `npm install`ing `@fullselfbrowsing/lattice-cli` pull a completely different (or non-existent) package called `lattice` from the registry.
+`maybeIssueReceipt` in `create-ai.ts` fingerprints `input.outputs` to produce `outputHash`. For non-streaming runs this is the complete, deterministic output. For a streaming adapter, if the receipt creation point is reached before the stream is fully consumed (e.g., the receipt is issued at `stage.complete` while the consumer is still reading chunks), `outputHash` will commit to whatever partial buffer exists at that moment. The signature is cryptographically valid but semantically wrong: the receipt attests to a partial output. `lattice repro` and `lattice eval` will fail to reproduce because the re-run produces the full output, whose hash differs.
 
 **Why it happens:**
-The rename is a search-replace on the `name` field, but the *dependency* field of the sibling package is a separate identifier that must change in lockstep. Workspace:* rewriting at publish time silently propagates the stale name into the published tarball — there is no error, just a wrong manifest. Reference: pnpm rewrites `workspace:` deps to the corresponding workspace version at publish time, so the rewrite happens on a stale name with no warning ([pnpm Workspaces docs](https://pnpm.io/workspaces)).
+The current receipt pipeline assumes a fully-materialized `RunSuccess.outputs` object exists at signing time (the non-streaming contract). Streaming adapters will return a `ReadableStream` or async iterator; nothing in the type system forces the caller to drain and buffer the stream before calling `fingerprintArtifactValue`. A naive streaming adapter that hands back an open stream reference will silently sign a partial hash.
 
-**Warning sign (pre-publish):**
-- `pnpm pack` the CLI tarball and run `tar -xOf <tarball> package/package.json | jq .dependencies` — any unscoped name in the deps map after rename is a smoking gun.
-- `attw --pack` from a clean directory (not the workspace) — resolution failures for the dep surface here too.
+**How to avoid:**
+Structural enforcement: streaming adapters must buffer-then-sign, not stream-then-sign. Define a `StreamedProviderRunResponse` shape that holds a `streamDone: Promise<ProviderRunResponse>` alongside the `ReadableStream`. The receipt is issued only after `await streamDone`. The `ReadableStream` is surfaced to the consumer independently. This is a two-channel pattern: one channel for the user-visible token flow, one channel for the finalized output used to sign.
 
-**Prevention:**
-- Phase plan must include an *atomic* rename step: rename both packages' `name`, the inter-package `dependencies` block, the `tsd.compilerOptions.paths` map, the root `pnpm-workspace.yaml` if it pins, and every `examples/` import in the same commit. Add a `scripts/verify-rename.mjs` gate that greps for `"lattice"` (un-scoped, exact-token) anywhere outside (a) the CLI bin name in `bin: { lattice: ... }`, and (b) historical CHANGELOG entries.
-- Land the rename behind one PR, with a CI job that runs `pnpm pack --pack-destination /tmp/pack && tar -xOf /tmp/pack/*.tgz package/package.json | grep -q '"@fullselfbrowsing/lattice"'` for both tarballs.
+**Warning signs:**
+- `lattice eval` pass rate drops after streaming adapters ship — eval compares `outputHash` across runs.
+- `verifyReceipt` returns `ok: true` but `lattice repro` exits with code 1 (hash mismatch).
+- Receipt `outputHash` is different on two runs of the same prompt with a streaming adapter.
 
-**Phase to address:** v1.3 Phase 23 (Scope rename + manifest hygiene) — first phase, before any CI work.
+**Phase to address:** Streaming adapter implementation phase (whichever introduces the first streaming adapter). The sign-after-drain contract must be the acceptance criterion for merging any streaming PR.
 
 ---
 
-### RENAME-2: CLI bin name `lattice` collides with the conceptual package name and confuses everyone
+### STRM-2: Non-deterministic chunk boundaries produce different `outputHash` on replay
 
 **What goes wrong:**
-The user-facing binary stays `lattice` (per milestone constraint). The package name is `@fullselfbrowsing/lattice-cli`. README copy that says "install `lattice`" is now ambiguous (does the user `npm install -g lattice`? `npm install -g @fullselfbrowsing/lattice-cli`?). Worse, an unscoped `lattice` package on npm may exist or be squatted *after* v1.3 publishes — and any consumer following the old docs `npm install -g lattice` could install an attacker's package.
+Even if the stream is fully drained before signing, if `outputHash` is computed as a hash of the incremental chunk sequence rather than a hash of the fully-concatenated final text, two runs that produce identical text but different chunk splits (which is routine — LLM streaming chunk sizes are implementation-defined and vary per call) will produce different hashes. `lattice eval` will see every streaming run as a determinism failure.
 
 **Why it happens:**
-Bin name and package name are independent. CLI ecosystem convention is "they match," and humans reading docs assume they do. Lattice intentionally keeps the *bin* name short while scoping the *package* — a sensible choice that creates a documentation trap.
+`fingerprintArtifactValue` fingerprints whatever structure it receives. If a streaming adapter hands it a list of chunks rather than a single assembled output, the hash is over the chunk list, not the output. This is a silent semantic error — the code path is correct for lists of structured objects but wrong for streaming text assembled in variable-sized pieces.
 
-**Warning sign (pre-publish):**
-- Recon: `npm view lattice` — if the name is taken by someone else, every "install lattice" instruction in the docs is now a supply-chain liability. (Per PROJECT.md, the unscoped `lattice` name is contested — this is already a confirmed risk.)
-- `grep -rn "npm install.*lattice" --include="*.md"` returning any line without `@fullselfbrowsing/` prefix.
+**How to avoid:**
+The receipt pipeline must hash the canonical assembled output, never the chunk sequence. For text: concatenate all chunks into a single UTF-8 string, normalize line endings, then fingerprint. For structured outputs (JSON, tool calls): reassemble to a canonical object before fingerprinting. Add a property-based test: for the same prompt, two streaming runs must produce the same `outputHash` regardless of chunk split.
 
-**Prevention:**
-- Documentation invariant: every install instruction MUST use `@fullselfbrowsing/lattice-cli` (the package) even though the bin is `lattice`. Add a markdownlint or grep-based CI rule.
-- Consider claiming the unscoped `lattice` name *as a stub* (publish a tiny 1.0.0 that does `console.error('This package moved to @fullselfbrowsing/lattice-cli'); process.exit(1)`) only if recon shows it is available. If contested, drop the idea — don't fight a name fight on launch day.
-- README install example: `npm install -g @fullselfbrowsing/lattice-cli && lattice --version` — show that the *bin* is what runs, the *package* is what installs.
+**Warning signs:**
+- `outputHash` differs between streaming runs of the same prompt.
+- `evalAgentRun` regression gate reports instability on semantic-cheap evaluator despite identical responses.
 
-**Phase to address:** v1.3 Phase 23 (rename) for the manifest, v1.3 Phase 30 (README + CONTRIBUTING + SECURITY content) for docs.
+**Phase to address:** Streaming adapter implementation phase. This is a correctness invariant that must be stated in the streaming adapter contract and validated by a fast-check property test.
 
 ---
 
-### RENAME-3: `tsd.compilerOptions.paths` still maps `lattice` -> `./dist/index.d.ts`, type tests pass against stale name
+### STRM-3: Cost accounting returns `null` on cancelled or interrupted streams
 
 **What goes wrong:**
-`packages/lattice/package.json` has `tsd.compilerOptions.paths: { "lattice": ["./dist/index.d.ts"] }`. Type tests under `test-d/` (or wherever tsd reads) `import type {...} from 'lattice'`. After rename, the runtime package is `@fullselfbrowsing/lattice`, but tsd is told to resolve `lattice` to the local dts. So tsd *passes* against `import 'lattice'` — but the published package no longer exports under that name. Worse: a consumer who runs `attw --pack` will see the export-condition tree as correct, and the only thing failing is *integration* by name.
+When a consumer cancels a stream mid-way (via `AbortSignal`, network drop, or backpressure), many provider APIs return a partial or no usage block. The `Usage` object may have `promptTokens` but not `completionTokens`, or may not arrive at all. The receipt then signs `costUsd: null` (unknown) when the run actually incurred real cost. Worse, `CostTracker` misses the in-flight cost from the cancelled call entirely, so `budget.maxCostUsd` enforcement is wrong for the rest of the session.
 
 **Why it happens:**
-`tsd.paths` is a TS resolver alias, not a name binding. It's easy to forget that the alias and the published name must move together because tsd quietly succeeds either way.
+Provider streaming endpoints deliver usage in the final SSE frame (e.g., `data: [DONE]` with `usage`). If the stream is cancelled before that frame, the usage is lost. Some providers (LM Studio is documented to have this issue per GitHub issue #557) do not include usage at all in streaming responses.
 
-**Warning sign (pre-publish):**
-- Type test file imports that still say `from 'lattice'` after the rename PR.
-- `grep -rn "from 'lattice'" packages/lattice packages/lattice-cli` returning anything other than CHANGELOG history.
+**How to avoid:**
+1. Streaming adapters must catch `AbortError` or stream-cancel and attempt a best-effort usage estimate using the adapter's tokenizer or a `USAGE_UNAVAILABLE` sentinel — never silently drop the cost record.
+2. The `CostTracker` `reservedUsd` pattern (budget pre-reservation before call) from v1.3 PITFALLS COST-1 must extend to streaming: reserve the estimated cost before the stream starts, reconcile on drain-complete or cancel.
+3. For providers that support `stream_options: { include_usage: true }` (OpenAI, OpenRouter), always pass it. For providers that do not, fallback to tokenizer estimate.
 
-**Prevention:**
-- Rename PR must update `tsd.compilerOptions.paths` -> `{ "@fullselfbrowsing/lattice": ["./dist/index.d.ts"] }` AND every `from 'lattice'` in test-d, examples, and any internal docs.
-- Add `scripts/verify-rename.mjs` (mentioned in RENAME-1) to fail CI on any un-scoped `'lattice'` import string.
+**Warning signs:**
+- `receipt.body.usage.costUsd` is `null` on streaming runs but non-null on equivalent non-streaming runs.
+- `CostTracker.used()` is lower than billing dashboard after a session with cancelled streams.
+- LM Studio streaming adapter never emits a cost.
 
-**Phase to address:** v1.3 Phase 23 (rename) — included in atomic rename gate.
+**Phase to address:** Streaming adapter implementation phase. Each adapter must declare its `usageOnCancel` behavior in the adapter's quirks block (`LmStudioQuirks`, `AnthropicQuirks`, etc.).
 
 ---
 
-### RENAME-4: `examples/work-inbox` and `examples/agent-loop` keep `import { ai } from 'lattice'`
+### STRM-4: Partial-output sanitizers run on incomplete buffers, producing wrong sanitizer decisions
 
 **What goes wrong:**
-Examples are the highest-traffic documentation surface. If they `import 'lattice'` instead of `@fullselfbrowsing/lattice`, every copy-paste reader writes broken code. Worse, in the workspace these examples resolve via the workspace symlink, so `node examples/work-inbox/index.mjs` keeps working locally — the bug is invisible until a user tries it from a clean checkout against the published tarball. This is the *exact* canary-consumer scenario this milestone exists to catch, but examples need to be fixed before the canary is built.
+v1.3 shipped opt-in output sanitizers (`stripReasoningTags`, `stripChatTemplateArtifacts`, `unwrapInternalEnvelope`). These operate on the full completed output. If a streaming adapter applies sanitizers incrementally as chunks arrive, a tag like `<think>` that spans two chunks may not be detected: chunk 1 ends at `<th`, chunk 2 starts at `ink>...`. The sanitizer on chunk 1 sees incomplete content and passes it through; the tag leaks into the consumer output and — if this output is later hashed for a receipt — the `outputHash` commits to unsanitized content, violating the `redact-then-sign` invariant.
 
 **Why it happens:**
-pnpm workspaces silently symlink workspace packages so internal imports keep resolving even when the published name diverges. Renaming the package doesn't rename the symlink target (pnpm has known issues with symlink updates on rename; see [pnpm issue #10081](https://github.com/pnpm/pnpm/issues/10081)).
+Sanitizers were designed for buffer-complete outputs. The v1.3 API contract (`applyOutputSanitizers(output, options)`) takes a complete string. Streaming introduces a temptation to apply them incrementally to reduce latency, but this is structurally incompatible with tag-boundary detection.
 
-**Warning sign (pre-publish):**
-- Same grep as RENAME-3, scoped to `examples/`.
-- Run `node examples/work-inbox/index.mjs` after `rm -rf node_modules && pnpm install` — if it still works against an un-renamed import string, pnpm's workspace alias is masking the problem.
+**How to avoid:**
+Structural rule: sanitizers are applied once, to the fully-buffered output, before the hash is computed and before the result is handed to the consumer. The streaming path is: stream to consumer (raw) → buffer in parallel → drain → sanitize → fingerprint → sign → emit receipt. The consumer sees the raw stream; the receipt attests to the sanitized output. This is the same two-channel model as STRM-1 and must be made explicit in the streaming contract.
 
-**Prevention:**
-- Atomic rename PR updates every example import.
-- Add a "publish dry-run" job: `pnpm pack` both packages into `/tmp/pack`, then in a *separate* sibling directory run `npm init -y && npm install /tmp/pack/*.tgz && node -e "import('@fullselfbrowsing/lattice').then(m => console.log(Object.keys(m)))"`. If this fails, the published tarball is wrong regardless of what the workspace says.
+**Warning signs:**
+- `<think>` or `<|eot_id|>` present in `receipt.body.outputHash` pre-image that is absent in non-streaming runs.
+- `stripReasoningTags` test coverage gaps on partial-buffer inputs.
 
-**Phase to address:** v1.3 Phase 23 (rename) atomic step.
+**Phase to address:** Streaming adapter implementation phase. Document the "stream-to-consumer, sanitize-before-sign" invariant as a named architectural rule in the streaming design doc.
 
 ---
 
-### RENAME-5: CHANGELOG.md history pre-rename is unreachable to readers searching for `@fullselfbrowsing/lattice`
+### STRM-5: Backpressure from slow consumer holds the provider connection open, blocking the receipt
 
 **What goes wrong:**
-Changesets writes `CHANGELOG.md` per package, keyed by the *current* package name. If v1.3.0 is the first changeset entry, the v1.0.0 / v1.1.0 / v1.2.0 history (which exists in commits and tags but not in changesets) is lost to anyone browsing the published package page. Readers landing on the npm page see "1.3.0 — initial public release" and assume Lattice is brand new — defeating the credibility the v1.0-v1.2 work bought.
+If the consumer of a streaming response applies backpressure (reads slowly, or has a slow downstream socket), the streaming adapter may be blocked waiting for the consumer to read all chunks before it can drain and sign. During this time, the provider connection is held open. If the consumer aborts, the provider connection drops mid-stream (STRM-3). If the provider's idle-connection timeout fires first, the stream closes with a partial response. The receipt is never issued, or is issued with wrong data.
 
 **Why it happens:**
-Lattice has shipped three internal milestones without changesets generating user-facing CHANGELOG entries (changesets was installed but never executed on a public-facing publish). The first changeset *creates* the CHANGELOG file; nothing back-fills history.
+Web Streams API backpressure is bidirectional: a slow `ReadableStreamDefaultReader` will cause the underlying fetch stream to buffer chunks in memory, but if the buffer fills (or the provider has a server-side idle timeout), the connection is forcibly closed. The two-channel model (STRM-1) partially mitigates this by decoupling consumer-facing stream from the receipt pipeline, but only if the internal buffer is bounded.
 
-**Warning sign (pre-publish):**
-- `ls packages/lattice/CHANGELOG.md` — if empty / nonexistent before v1.3 changeset, the published package's "Versions" tab will show only 1.3.0.
+**How to avoid:**
+1. The internal receipt-pipeline buffer (used to reassemble output for signing) must be independent of the consumer-facing `ReadableStream`. Use a `TransformStream` to tee the provider response: one branch for the consumer, one for the buffered-for-signing pipeline.
+2. Set explicit per-adapter idle-stream timeouts (e.g., 30s no-new-chunk = abort) and surface this as a `stream.timeout` option on `ProviderRunRequest`.
+3. The receipt-pipeline buffer must be bounded (e.g., 10MB) to prevent OOM on runaway streams; exceed the bound → emit `run.failed` with `reason: 'stream-buffer-overflow'`.
 
-**Prevention:**
-- Before the first changeset, hand-author `packages/lattice/CHANGELOG.md` and `packages/lattice-cli/CHANGELOG.md` with the v1.0/v1.1/v1.2 history (summarized from PROJECT.md "Shipped Milestones"), under the *new* package name. Mark these entries as "pre-public" so readers understand the version line.
-- Add a header note: "Versions prior to 1.3.0 were not published to npm; this section reflects internal release history."
-- Changesets will append v1.3.0 on top; the file remains continuous from a reader's perspective.
+**Warning signs:**
+- Receipts not emitted on runs where the consumer reads slowly.
+- Provider connections held open for unusually long periods in network inspection.
+- OOM errors on large output runs.
 
-**Phase to address:** v1.3 Phase 30 (release-hygiene docs).
+**Phase to address:** Streaming adapter implementation phase. The `TransformStream` tee pattern must be in the reference streaming adapter used as the template for all five new adapters.
 
 ---
 
-### OIDC-1: workflow-level `permissions: id-token: write` grants OIDC mint to every job (TanStack blast radius)
+### GW-1: Gateway (LiteLLM/OpenRouter) masks capability mismatch, silently routes to wrong provider
 
 **What goes wrong:**
-A workflow that declares `permissions: id-token: write` at the top scope lets *any* job in that workflow (including third-party actions, restored caches, or fork-PR-triggered jobs in the `pull_request_target` pattern) mint an OIDC token and exchange it for an npm publish session. The TanStack postmortem (2026-05-11) documents exactly this: attackers achieved publish without ever stealing an npm token, by hijacking the runner mid-workflow and using the legitimate OIDC identity. 42 packages, 84 malicious versions, 12.7M weekly downloads of one affected package.
+Lattice's deterministic router selects a provider/model based on the capability catalog (modalities, context window, structured output, tool use). When a LiteLLM or OpenRouter gateway sits between Lattice and the actual model, the gateway may silently reroute the request to a different backend provider that does not match the selected capability profile. For example, Lattice routes to `openrouter:anthropic/claude-opus-4.8` because the catalog says it supports vision and 200K context. OpenRouter's upstream load-balancer routes to a different provider's copy of the model that does not support vision in the current region, or swaps to a different model entirely if the primary is overloaded. The response arrives as if the selected model executed it, but the actual execution used different capabilities.
 
 **Why it happens:**
-Workflow-level permissions are convenient. Most starter templates show them at the top. The blast radius — every job gets the keys — is invisible until a malicious step runs in any job. Combined with `pull_request_target` "Pwn Request" pattern or GHA cache poisoning across fork boundaries, the OIDC token becomes a publish credential for the attacker.
+OpenRouter's provider-routing layer (the `provider.order/only/ignore` arrays in OPENROUTER_QUIRKS) is opt-in and underdocumented. Without explicitly constraining provider routing, OpenRouter may substitute providers for cost/availability reasons. LiteLLM has the same behavior — its `allowed_fails` and fallback lists can reroute without signaling the caller. The receipt will reflect the requested model, not the actual executing model.
 
-**Warning sign (pre-publish):**
-- `grep -A2 "^permissions:" .github/workflows/*.yml` — any `id-token: write` not directly under a single `publish:` job is the symptom.
-- Any workflow file using `pull_request_target` AND containing `id-token: write` AND running checkout of PR HEAD is critical-severity by itself.
+**How to avoid:**
+1. For capability-critical runs (vision, audio, structured output, long context), emit explicit provider constraints via the OpenRouter `provider.only` array when routing through OpenRouter. This should be a first-class option in `OpenRouterProviderOptions`.
+2. The receipt's `model.observed` field (already in the schema) must be populated from the gateway's response headers (`x-openrouter-model`, `openrouter-model`, etc.) — not just the requested model. If `model.observed != model.requested`, emit a `router.mismatch` `RunEvent` and set the receipt route `attemptNumber` to reflect the substitution.
+3. Add a parity smoke test: for each capability that drove the route selection, verify it in the observed response (e.g., if the route required vision, verify the response processed the image).
 
-**Prevention:**
-- `permissions: id-token: write` ONLY on the dedicated `publish:` job in `release.yml`. No PR-triggered workflow has it. The `ci.yml` workflow runs *zero* OIDC-capable jobs.
-- The `publish:` job runs on a fresh runner, no restored caches, no third-party actions other than `actions/checkout@<pinned-sha>`, `actions/setup-node@<pinned-sha>`, `pnpm/action-setup@<pinned-sha>`, and `changesets/action@<pinned-sha>` — all pinned by commit SHA, never by tag (which can be re-pointed).
-- Never use `pull_request_target` in this repo. If you ever need it, gate by `if: github.event.pull_request.head.repo.full_name == github.repository` (no forks).
-- Add a CI-time gate: a self-check script that fails if any non-publish job in any workflow has `id-token: write`.
+**Warning signs:**
+- `receipt.body.model.observed` differs from `receipt.body.model.requested` in production logs.
+- Structured output failures on runs that the catalog said the model supported.
+- LM Studio / OpenRouter returning 200 but with a different `model` field in the response body.
 
-**Phase to address:** v1.3 Phase 26 (release workflow scaffolding). This is the single highest-severity pitfall in the milestone.
-
-**Real incident:** [TanStack postmortem](https://tanstack.com/blog/npm-supply-chain-compromise-postmortem), [Mini Shai-Hulud Wiz writeup](https://www.wiz.io/blog/mini-shai-hulud-strikes-again-tanstack-more-npm-packages-compromised), [Endor Labs analysis](https://www.endorlabs.com/learn/how-a-misconfigured-ci-workflow-became-an-npm-supply-chain-compromise).
+**Phase to address:** Gateway delegation phase (LiteLLM/OpenRouter integration). The `model.observed` population and `router.mismatch` event must be acceptance criteria.
 
 ---
 
-### OIDC-2: `NODE_AUTH_TOKEN` env var set to empty string disables OIDC fallback silently
+### GW-2: Deterministic plan broken — gateway introduces fallback chain that is opaque to Lattice's router
 
 **What goes wrong:**
-The npm CLI uses OIDC only when `NODE_AUTH_TOKEN` is *completely unset*. If the env var exists but is empty (e.g. from a stale `setup-node` action with an unset `NPM_TOKEN` secret), npm tries to authenticate with the empty token, gets "Access token expired or revoked", and falls back to nothing — the publish fails with a misleading error. Per [philna.sh trusted publishing writeup](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/): "An empty string is still a value—npm will attempt to use it rather than falling back to OIDC."
+Lattice's deterministic router produces a stable, inspectable execution plan. INV-03 requires parity across all 7 provider adapters. When a gateway (LiteLLM or OpenRouter) applies its own internal fallback logic (e.g., primary model fails, gateway falls back to a different model silently), Lattice's plan remains unchanged — it still shows the original route — but the actual execution took a different path. The plan is now misleading: `lattice repro` will replay the original plan, not the gateway's fallback path. Receipt chain integrity is broken because the receipt attests to a plan that did not execute.
 
 **Why it happens:**
-GHA `setup-node` accepts an `auth-token` input and exports `NODE_AUTH_TOKEN` even when the input expression resolves to empty (e.g. `${{ secrets.NPM_TOKEN }}` when the secret doesn't exist).
+Gateways are designed to hide provider complexity from clients. LiteLLM's `fallbacks` config and OpenRouter's `allow_fallbacks` (an explicit quirk in `OPENROUTER_QUIRKS`) both operate below the Lattice router's visibility. The Lattice router sees a single successful response and has no signal that a fallback occurred.
 
-**Warning sign (pre-publish):**
-- Publish job error "Access token expired or revoked" while no `NPM_TOKEN` secret should be in play.
-- `env:` block of the publish job containing `NODE_AUTH_TOKEN` at all.
+**How to avoid:**
+1. Disable silent gateway fallback for capability-routed runs: pass `provider.allow_fallbacks: false` when Lattice has made a capability-specific routing decision. Only allow gateway fallback for runs where the Lattice contract does not require a specific capability tier.
+2. Read gateway-provided fallback/routing headers from the response and emit them as `RunEvent` metadata under `provider.attempt`. This surfaces the actual execution path to Lattice's observability layer.
+3. The `ReceiptRoute.attemptNumber` must increment when a gateway signals it used a fallback. This prevents the plan from lying about the execution path.
 
-**Prevention:**
-- Publish job MUST NOT export `NODE_AUTH_TOKEN` and MUST NOT pass `auth-token` to setup-node. The only auth surface is OIDC.
-- Use npm CLI 11.5.1+ and Node 22.14+ (we're already on Node 24 — fine). Pin npm version explicitly: `corepack prepare npm@latest-11 --activate` in the publish job, then check `npm --version` in a step.
-- Run a dry-publish gate: `npm publish --dry-run --provenance` from the publish job before the real publish — surfaces auth misconfig with the same code path.
+**Warning signs:**
+- `lattice repro` produces different results than the original run despite identical inputs.
+- OpenRouter response headers include a model that differs from the request.
+- CostTracker shows costs inconsistent with the selected model's pricing.
 
-**Phase to address:** v1.3 Phase 26 (release workflow).
+**Phase to address:** Gateway delegation phase. The gateway-fallback-opacity problem must be addressed before INV-03 parity is extended to gateway adapters.
 
 ---
 
-### OIDC-3: `repository.url` in package.json does not match the GitHub URL exactly (case + protocol)
+### GW-3: Catalog auto-refresh feed is a supply-chain trust boundary with no integrity check
 
 **What goes wrong:**
-npm provenance verification compares the `repository.url` field in the published `package.json` against the OIDC `Source Repository URI` extension on the Sigstore certificate. Any difference — case, `git+` prefix, `.git` suffix, trailing slash — causes `422 Unprocessable Entity` at publish time, AFTER changesets has already bumped versions and committed. Concrete example from [npm/cli#8036](https://github.com/npm/cli/issues/8036): "frontenddev-org" vs "FrontEndDev-org" was enough to break provenance.
+v1.4 adds auto-refresh of the capability catalog from the OpenRouter `/models` feed. This feed is fetched over HTTPS, but nothing in the current design pins, signs, or validates the schema of the fetched JSON. A compromised CDN, a MITM on misconfigured TLS, or a supply-chain attack on OpenRouter's model listing infrastructure could inject a malicious capability profile — for example, marking a model as supporting `supportsNoTraining: true` or `supportsNoLogging: true` when it does not, causing Lattice to route sensitive data to a model that logs it. This is structurally similar to the supply-chain attacks documented against AI skill ecosystems in 2026.
 
 **Why it happens:**
-Package authors write `repository.url` by hand or copy from old templates. GitHub URLs are case-insensitive in the browser but case-sensitive in the Source Repository URI claim. OIDC verification is strict.
+Auto-refresh replaces the static Phase 33 registry (baked at build time, reviewed by the maintainer) with a runtime-fetched JSON. The trust model changes from "maintainer vetted at publish time" to "network endpoint at runtime." The existing `negotiateCapabilities` path uses TLS but does not apply additional integrity checks to the fetched model data.
 
-**Warning sign (pre-publish):**
-- `npm publish --dry-run --provenance` failing with 422.
-- `git remote -v` showing different case than `package.json#repository.url`.
+**How to avoid:**
+1. Define a schema (Zod) for the accepted shape of the OpenRouter `/models` response. Reject any feed that does not parse against this schema — do not merge unexpected fields into the capability catalog.
+2. Apply whitelist-based capability floor checks: if the feed marks a known model as having capabilities that the static registry does not attribute to it, log a warning and use the more conservative static values (capability floor, not feed-claimed ceiling).
+3. Consider a local feed snapshot approach: cache the validated feed on disk with a `lastValidated` timestamp. If the feed is unresolvable or invalid, fall back to the snapshot rather than to unconstrained fetched data.
+4. For data-policy-sensitive capabilities (`supportsNoLogging`, `supportsNoTraining`), never trust the feed alone — require static registry confirmation.
 
-**Prevention:**
-- Set `repository.url` to exactly `https://github.com/fullselfbrowsing/lattice.git` (no `git+`, no trailing slash) and verify the org/repo casing matches `git remote get-url origin` case-exactly. Add `directory` sub-field for each scoped package: `"repository": { "type": "git", "url": "https://github.com/fullselfbrowsing/lattice.git", "directory": "packages/lattice" }`.
-- Add a CI gate (in `ci.yml`): `node -e "const p=require('./packages/lattice/package.json'); if (p.repository.url !== 'https://github.com/fullselfbrowsing/lattice.git') process.exit(1)"` — fails fast on drift.
+**Warning signs:**
+- Feed-refreshed catalog marks a model with data policy claims that differ from the static registry.
+- Feed parse fails silently (no warning emitted), and the router falls through to stale or default capabilities.
+- A model newly appears in the feed with claimed vision or long-context capabilities that are not documented by the provider.
 
-**Phase to address:** v1.3 Phase 24 (release-hygiene metadata) + v1.3 Phase 26 (release workflow includes dry-run gate).
+**Phase to address:** Catalog auto-refresh phase. Schema validation of the fetched feed must be in the acceptance criteria before enabling auto-refresh.
 
 ---
 
-### OIDC-4: First-time Trusted Publisher config on npmjs.com locks to the wrong workflow filename
+### GW-4: Auth credentials and cost tracking are duplicated between Lattice and gateway layer
 
 **What goes wrong:**
-The first-time npmjs.com Trusted Publisher form asks for: GitHub org, repository, workflow filename, environment (optional). After May 20, 2026, it also requires explicit selection of allowed actions (publish, etc.) per [npm docs](https://docs.npmjs.com/trusted-publishers/). If the filename is `release.yml` in the form but the workflow file ships as `publish.yml`, OIDC exchange fails with 403 — and the first publish attempt is the moment you discover it, AFTER versions are bumped and tagged.
+LiteLLM and OpenRouter both provide their own cost tracking and virtual key management. When Lattice's `CostTracker` is used alongside a gateway that also tracks cost, two separate budget systems run in parallel with no coordination. The practical failure is that the Lattice contract's `maxCostUsd` may allow a run that the gateway's virtual key budget has already exhausted, resulting in a 429 or error that propagates as a routing failure rather than a budget failure. The receipt then records `contractVerdict: 'execution-failed'` when the true verdict is `'budget-exceeded'`.
 
-**Why it happens:**
-The form requires the filename including extension, with exact case. Easy to typo or get out of sync with rename refactors.
+Additionally, if the gateway uses a different pricing model (e.g., LiteLLM charges a gateway markup), Lattice's CostTracker computes cost from the provider's per-token pricing, while the actual bill includes the markup. The receipt's `costUsd` is systematically understated.
 
-**Warning sign (pre-publish):**
-- First publish 403 with "trusted publisher configuration not found."
-- Mismatch between `.github/workflows/release.yml` (filename) and the value entered on npmjs.com.
+**How to avoid:**
+1. For runs routed through a gateway, prefer provider-reported cost from the gateway's response headers (`x-litellm-response-cost`) over Lattice's internal tokenizer estimate. Update `normalizedUsage.costUsd` from the gateway's cost header if present.
+2. Document clearly that `contract.budget.maxCostUsd` enforces Lattice's estimate, not the gateway's bill. Gateway markups are not accounted for.
+3. Treat gateway 429s with `x-ratelimit-policy: budget` as `'budget-exceeded'` failures, not routing failures. Map gateway error codes to Lattice's `ContractVerdict` taxonomy.
 
-**Prevention:**
-- Lock the workflow filename in the rename PR (`release.yml`) and document it in CONTRIBUTING.md as "do not rename — it is referenced in npm Trusted Publisher config."
-- Do a *test publish* of a deliberately-empty version (e.g. a `@fullselfbrowsing/lattice@1.3.0-rc.0` prerelease via `npm publish --tag rc`) before the real v1.3.0 publish, to surface 403s on a throwaway tag.
-- Configure with the post-May-2026 explicit action list: "publish" only. Do not check "manage" or "admin" if presented.
+**Warning signs:**
+- Receipt `costUsd` consistently lower than the gateway's dashboard cost for the same runs.
+- Gateway 429s appearing as `execution-failed` receipts instead of `no-contract-match`.
+- Provider key exhausted at the gateway level while Lattice's CostTracker shows budget remaining.
 
-**Phase to address:** v1.3 Phase 25 (npm org + Trusted Publisher claim — user-driven by FSB during execution) followed by Phase 27 (dry-run / rc publish gate).
+**Phase to address:** Gateway delegation phase. Document the cost accounting limitations in JSDoc on `OpenRouterProviderOptions` and `LiteLLMProviderOptions`.
 
 ---
 
-### PROV-1: Provenance enabled but registry URL in publishConfig points to a mirror
+### GW-5: Data residency policy violated when gateway silently routes to a provider in a different region
 
 **What goes wrong:**
-`publishConfig.registry` set to anything other than `https://registry.npmjs.org` (e.g. a corporate mirror or `https://npm.pkg.github.com`) means provenance attestations either fail outright (Sigstore Rekor entries reference the wrong registry) or — worse — the publish succeeds without provenance silently. The package ships unsigned even though the workflow claims `--provenance`.
+Lattice's `CapabilityContract` and `ModelCapability.dataPolicy` allow expressing data-privacy constraints (`supportsNoLogging`, `supportsNoTraining`). When routing through OpenRouter or LiteLLM, the gateway may satisfy these constraints at the Lattice level — the selected model has the right data policy — but the gateway itself routes to a provider backend in a different jurisdiction. Sensitive user data crosses a data-residency boundary without the Lattice policy layer being aware of it.
 
 **Why it happens:**
-`publishConfig.registry` is sometimes added to scoped packages "to make publish target explicit." If copied from a private-package template, it points to GH Packages. Provenance is wired to npmjs.org specifically.
+Lattice enforces data policy against the capability catalog, which describes the API endpoint (e.g., `openrouter:anthropic/claude-opus-4.8`) not the underlying infrastructure routing. The gateway's provider selection is opaque to Lattice.
 
-**Warning sign (pre-publish):**
-- `npm view @fullselfbrowsing/lattice` post-publish missing the "Provenance" badge.
-- Any `publishConfig.registry` value other than `https://registry.npmjs.org`.
+**How to avoid:**
+1. Document this limitation prominently in the gateway adapter JSDoc: "Data residency constraints expressed in `ModelCapability.dataPolicy` apply to the Lattice-visible endpoint only. Gateway-internal routing may cross jurisdictions. Do not rely on Lattice policy enforcement for GDPR residency requirements when using a gateway adapter."
+2. For data-residency-sensitive workloads, recommend direct provider adapters (Anthropic, Gemini, etc.) rather than gateway delegation.
 
-**Prevention:**
-- `publishConfig` must be exactly: `{ "access": "public", "registry": "https://registry.npmjs.org", "provenance": true }` on both publishable packages.
-- Add a CI gate: `node -e "const p=require('./packages/lattice/package.json'); if (p.publishConfig.registry !== 'https://registry.npmjs.org' || p.publishConfig.provenance !== true) process.exit(1)"`.
-- After publish, query `https://registry.npmjs.org/@fullselfbrowsing/lattice/1.3.0` and assert the response includes `dist.attestations` — a separate post-publish job in `release.yml` after the publish step.
+**Warning signs:**
+- A team using LiteLLM for EU data residency while relying on Lattice's `dataPolicy` enforcement.
 
-**Phase to address:** v1.3 Phase 24 (metadata) + Phase 26 (release workflow post-publish verification).
+**Phase to address:** Gateway delegation phase. Must be documented before the gateway adapters are released.
 
 ---
 
-### PROV-2: Sigstore Rekor outage during release causes provenance failure; build re-runs duplicate versions
+### OTEL-1: GenAI semantic convention churn breaks downstream dashboards on minor version bumps
 
 **What goes wrong:**
-Sigstore Rekor has had documented outages. When Rekor returns 5xx, `npm publish --provenance` fails AFTER the tarball is uploaded but BEFORE the version is marked published. Reruns of the workflow then either (a) succeed and attach provenance, leaving an orphan unsigned tarball reference, or (b) hit "version already exists" and the team escalates to `npm unpublish` (which has its own 72-hour window) or `--force` with surprising results.
+As of June 2026, all OpenTelemetry GenAI semantic conventions remain in **Development** (experimental) status. Every release from v1.37 to v1.41 has modified attribute names: `gen_ai.prompt` and `gen_ai.completion` were deprecated and removed in v1.38; `gen_ai.input.messages` and `gen_ai.output.messages` replaced them; agent span conventions are being added in parallel. If Lattice's OTel exporter emits attributes under the current experimental names, a `@opentelemetry/semantic-conventions` patch release can silently change attribute names, breaking Langfuse/Phoenix dashboards that filter on specific attribute keys.
 
 **Why it happens:**
-Sigstore is a free public-good service. It has occasional outages. The npm CLI's failure mode straddles the tarball-upload/version-publish boundary.
+The `OTEL_SEMCONV_STABILITY_OPT_IN` transition plan explicitly requires instrumentation to freeze at v1.36.0 by default and opt into newer names via an env var. Implementing a custom exporter without following this transition plan means the exporter emits whatever the installed version of `@opentelemetry/semantic-conventions` provides — which changes across minor releases.
 
-**Warning sign (pre-publish):**
-- Sigstore status page reporting incidents at release time.
-- `npm publish` failing with "rekor" or "fulcio" in the error message.
+**How to avoid:**
+1. Pin the attribute name strings as constants in Lattice's exporter, do not import them dynamically from `@opentelemetry/semantic-conventions` (which may be the user's installed version). This gives Lattice explicit control over which attribute names it emits.
+2. Expose a `semconvVersion: 'v1.36' | 'latest-experimental'` option on the OTel exporter (mirroring the `OTEL_SEMCONV_STABILITY_OPT_IN` pattern). Default to `'v1.36'` for compatibility; users opt into `'latest-experimental'` at their own risk.
+3. Add a CI job that pins to a specific `@opentelemetry/semantic-conventions` version and fails if the emitted attribute names change without a deliberate version bump in Lattice.
 
-**Prevention:**
-- The release workflow must be re-runnable on the same tag. Use changesets' default of bumping to a new version on every release PR, so a failed publish at v1.3.0 means the next attempt is v1.3.1 (not a retry of v1.3.0 with `--force`). This is the conservative posture.
-- If a retry of the same version is truly necessary, the workflow MUST require manual approval (`environment: production` with required reviewers) before any second publish attempt. No automatic retry of provenance failures.
-- Status-page pre-check: a step early in the workflow that hits `https://status.sigstore.dev/api/v2/summary.json` and fails fast if Sigstore is degraded. Conservative; saves the team from racing the outage.
+**Warning signs:**
+- Langfuse/Phoenix dashboards show empty data after a `@opentelemetry/semantic-conventions` update.
+- Attribute names in traces differ between Lattice SDK versions despite no Lattice source changes.
+- `gen_ai.prompt` in spans after v1.38 of semconv (deprecated and removed).
 
-**Phase to address:** v1.3 Phase 26 (release workflow).
+**Phase to address:** OTel exporter implementation phase. The pinned-constants approach must be the design decision before writing any attribute-emission code.
 
 ---
 
-### CHGSET-1: Multiple tags pushed in one git push silently does not trigger `on.push.tags`
+### OTEL-2: PII leakage into spans — receipts are redaction-aware; OTel spans must be too
 
 **What goes wrong:**
-Per [community findings](https://medium.com/@anandkumar.code/how-a-monorepo-pnpm-and-changesets-transformed-my-multi-package-workflow-7c1771bba898): "If you push >3 tags at once, workflows will not trigger. Unfortunately, this is a relatively common scenario in a monorepo." A monorepo release that bumps both `@fullselfbrowsing/lattice@1.3.0` and `@fullselfbrowsing/lattice-cli@1.3.0` creates two tags. If a CHANGELOG fix produces a third tag in the same push, `on.push.tags` may not fire at all — and the release silently does not happen.
+Lattice's receipt pipeline enforces `redact-then-sign` ordering: PII is redacted before the receipt body is canonicalized and signed. OTel spans are a separate channel. If the `RunEventKind` exporter naively serializes `RunEvent.metadata` into span attributes, it may include content that the receipt pipeline would have redacted: user prompts, tool call arguments, PII-containing model outputs, or tripwire-detected PII evidence. The receipt shows the redacted version; the OTel span shows the raw version. The span is then exported to Langfuse/Phoenix, which may have weaker access controls than the Lattice receipt store.
 
 **Why it happens:**
-GitHub's `on.push.tags` event is best-effort; pushes with many refs can race or be dropped. Documented but easily forgotten.
+`RunEvent.metadata` is a `Record<string, unknown>` — it accepts arbitrary content. When events are emitted (e.g., `provider.attempt`, `tool.call`, `validation.complete`), the metadata may include request bodies or output fragments. The receipt pipeline has an explicit redaction hook; the OTel export path currently has none.
 
-**Warning sign (pre-publish):**
-- Tag pushed, no workflow run appears in Actions tab within 60 seconds.
+**How to avoid:**
+1. Define a `SpanSanitizer` interface parallel to `redactReceiptBody`: `(event: RunEvent) => RunEvent` that is applied before any attribute is written to a span. Ship a default implementation that strips keys matching PII detector patterns from `metadata`.
+2. Span attributes for `gen_ai.input.messages` and `gen_ai.output.messages` (if emitted at all) must go through the same default redaction policy as receipts. Apply `defaultPiiDetectors` before emitting.
+3. Content capture must be **opt-in**, defaulting to off, mirroring the OTel GenAI spec's recommendation that "no prompt content or tool arguments are captured with GenAI telemetry by default."
+4. The `redactionPolicyId` from the receipt must appear as a span attribute so Langfuse/Phoenix consumers can cross-reference which policy was applied to both the receipt and the trace.
 
-**Prevention:**
-- Use changesets-action's "Version Packages" PR flow: merging the PR triggers `on.push` to `main`, and the action publishes from there. The tag is created *by the publish step*, not the trigger. This avoids `on.push.tags` entirely.
-- If tag-driven is required (per milestone: "tag-driven release workflow"), push tags one-at-a-time with `git push origin v1.3.0 && git push origin <next>`. Document in CONTRIBUTING.md.
-- Add a `workflow_dispatch` trigger to `release.yml` so a stuck release can be manually re-fired.
+**Warning signs:**
+- User prompt content appearing in Langfuse trace attribute inspector.
+- PII-detector patterns (email, SSN, phone) found in exported span attribute values.
+- `tool.call` events exporting tool arguments that include user-supplied credentials or PII.
 
-**Phase to address:** v1.3 Phase 26 (release workflow design).
-
-**Decision flag for roadmap:** the milestone says "tag-driven release workflow (changesets)." Clarify with the operator: tag-driven *as the visible artifact*, but driven internally by the changesets Version-PR pattern (which produces tags as a side-effect)? Or genuinely tag-on-push triggered? The former is more reliable; the latter matches a literal reading.
+**Phase to address:** OTel exporter implementation phase. The `SpanSanitizer` default must be in place before any export to Langfuse/Phoenix is enabled. This is the highest-severity pitfall in the OTel track — a PII leak to an observability platform is a data breach, not a bug.
 
 ---
 
-### CHGSET-2: Changesets bot opens a "Version Packages" PR that loops because branch protection blocks the bot
+### OTEL-3: Double instrumentation — Vercel AI SDK and Lattice both emit OTel spans for the same provider call
 
 **What goes wrong:**
-Changesets action pushes a `changeset-release/main` branch and opens a PR with version bumps + CHANGELOG. If `main` has branch protection requiring signed commits, required reviews, or status checks, the bot's PR cannot be merged automatically and — worse — the bot may keep force-pushing to its own branch on every run, generating noise. If the bot's GH token lacks `contents: write` + `pull-requests: write`, the PR is never opened at all.
+The v1.3 stack uses Vercel AI SDK internally for some adapter paths (`createAISdkProvider`, `createOpenAICompatibleProvider` wraps AI SDK). Vercel AI SDK 6 ships built-in OTel instrumentation that emits `gen_ai.*` spans for every provider call. If Lattice's own OTel exporter also emits spans for the same calls (mapped from `RunEventKind`), the same provider invocation appears twice in the trace: once from AI SDK and once from Lattice. Langfuse/Phoenix will show duplicate root spans, making cost and latency analysis incorrect.
 
 **Why it happens:**
-Default branch protection rules are tightened post-launch. The changesets action runs under the default `GITHUB_TOKEN` which has limited scope, and protections compound.
+When a user installs Lattice in a Node.js app that already has an OTel SDK configured, the AI SDK's auto-instrumentation activates. Lattice then also emits spans. Neither library is aware of the other's instrumentation.
 
-**Warning sign (pre-publish):**
-- Changesets action logs show "permission denied" or "could not create PR."
-- The `changeset-release/main` branch keeps getting force-pushed but no PR opens.
+**How to avoid:**
+1. Lattice's exporter must be a **bridge**, not a parallel instrumentor. It should attach Lattice-specific attributes to the existing AI SDK span context when one is active, rather than creating a new root span. Use `opentelemetry.trace.getActiveSpan()` to detect an existing span before creating a new one.
+2. Provide a `disableAiSdkAutoInstrumentation` option on the Lattice OTel exporter for users who want Lattice spans only.
+3. Document in the OTel exporter README: "If you use Vercel AI SDK adapters, the AI SDK will emit its own gen_ai spans. Use Lattice's span bridge mode to annotate those spans rather than creating parallel spans."
 
-**Prevention:**
-- `release.yml` job-level `permissions: { contents: write, pull-requests: write, id-token: write }` (with `id-token: write` ONLY on the publish job, not the version-PR job — split into two jobs).
-- Branch protection: allow the changesets bot (and only it) to push to `changeset-release/*` and merge PRs from that branch via GH ruleset bypass. Document the rule.
-- The version-PR job and the publish job MUST be separate jobs with separate permissions. The version-PR job has no `id-token: write`.
+**Warning signs:**
+- Duplicate root spans in Langfuse trace view for the same provider call.
+- Token counts doubled in Langfuse's cost calculation dashboard.
+- OTel span count 2x higher than expected after enabling Lattice exporter.
 
-**Phase to address:** v1.3 Phase 26 (release workflow).
+**Phase to address:** OTel exporter implementation phase. The bridge-vs-parallel decision must be made before any span creation code is written.
 
 ---
 
-### CHGSET-3: A changeset file is missing for a PR that should bump versions, so v1.3.0 ships incomplete
+### OTEL-4: Exporter backpressure causes `RunEventSink` to block the `ai.run` hot path
 
 **What goes wrong:**
-A contributor merges a feature without `pnpm changeset`. The next release ships without that feature in the CHANGELOG, and consumers think it doesn't exist — they file issues that already-fixed. For Lattice's first public release this is especially damaging because user expectations are calibrated by the CHANGELOG.
+`RunEventSink` is typed as `(event: RunEvent) => void | Promise<void>`. If the OTel exporter's `BatchSpanProcessor` queue fills up (the default max queue size in `@opentelemetry/sdk-node` is 2048 spans; at high run volume this fills quickly), the OTel SDK drops spans silently. However, if the Lattice exporter `await`s the OTel export and the export is blocked by a full queue or a slow OTLP endpoint, the `await` in `RunEventSink` propagates latency back into the `ai.run` call — adding OTel export latency to the user's perceived model latency.
 
 **Why it happens:**
-The most common changesets contributor mistake (per [changesets docs](https://github.com/changesets/changesets)).
+`BatchSpanProcessor.onEnd()` is nominally non-blocking, but the span queue can back up when the OTLP exporter is slow. If the Lattice exporter uses `SimpleSpanProcessor` instead of `BatchSpanProcessor`, every span export is synchronous, making it far worse.
 
-**Warning sign (pre-publish):**
-- PRs merged after the `.changeset/` directory was created with no `.changeset/*.md` files added.
+**How to avoid:**
+1. The Lattice OTel exporter must use `BatchSpanProcessor` (not `SimpleSpanProcessor`) and configure it with explicit queue limits and a non-blocking `onEnd` path.
+2. The `RunEventSink` implementation for OTel must be fire-and-forget: emit spans synchronously to the `BatchSpanProcessor.onEnd()`, never `await` the export. The export happens asynchronously in the background.
+3. Expose `maxQueueSize` and `maxExportBatchSize` as configurable options on the Lattice OTel exporter.
+4. Test: under artificial OTLP endpoint latency (100ms response time), assert that `ai.run` p99 latency is unaffected.
 
-**Prevention:**
-- Add `changesets/action`'s "check for changeset" mode as a required PR check in `ci.yml`. PRs without a changeset must declare `--empty` explicitly.
-- README badge or CONTRIBUTING.md section: "Every PR that touches `packages/lattice/src/**` or `packages/lattice-cli/src/**` must include a changeset. Run `pnpm changeset` to add one."
+**Warning signs:**
+- `ai.run` p99 latency increases after enabling the OTel exporter.
+- OTel SDK logs "Dropping span because max queue size reached."
+- OTLP endpoint error rate causes visible latency regression in Lattice.
 
-**Phase to address:** v1.3 Phase 26 (CI).
+**Phase to address:** OTel exporter implementation phase. The `BatchSpanProcessor` with fire-and-forget `onEnd` must be the only supported configuration.
 
 ---
 
-### CANARY-1: Canary repo accidentally uses workspace symlink instead of registry tarball
+### VAL-1: FSB-via-npm dogfooding covers only the API slice FSB uses — new exports regress silently
 
 **What goes wrong:**
-The canary repo (`fullselfbrowsing/lattice-canary`) is supposed to install `@fullselfbrowsing/lattice` from npm — that is the whole point of having a separate repo per Decision row 9 of PROJECT.md. If the canary's `package.json` lists `"@fullselfbrowsing/lattice": "workspace:*"` (e.g. because the author tested locally via `pnpm link --global`), or if a contributor adds the canary as a workspace package of the Lattice monorepo, it silently uses local source. Packaging bugs (exports map wrong, files-array missing files, ESM-import surprises) are invisible — exactly the bugs the canary exists to catch.
+v1.3 superseded the synthetic canary (Phases 30–32) in favor of FSB consuming Lattice via the published npm package. This is a credible real-world integration test, but it is not a full-surface test. FSB exercises only the capabilities it uses: `createAI`, `runAgent`, the receipt verification path, and the adapters it has wired. Exports added in v1.4 — the OTel exporter, streaming adapters, gateway delegation, `lattice eval --agent` — may have type errors, missing exports, or runtime failures that FSB never exercises because FSB does not use those features. A broken `createOpenRouterGatewayProvider` or a mis-exported OTel exporter type can survive multiple npm releases before anyone notices.
+
+This is structurally confirmed by inspecting `test/public-surface.test.ts`: it covers the v1.1/v1.2/v1.3 surface explicitly (contract, tripwires, receipts, sanitizers, scaffold) but will not automatically cover v1.4 additions unless the test is extended.
 
 **Why it happens:**
-pnpm workspaces silently link any package whose name matches a workspace package. `pnpm link --global` from the Lattice repo causes resolution to go through the link even from the canary repo. ESM-only packages can develop subtle ESM/CJS boundary issues that only show up when installed from a real tarball.
+FSB is a real application with a specific feature set. It cannot be expected to exercise every Lattice export. The canary strategy works for the features FSB uses; it is blind to features FSB does not use.
 
-**Warning sign (pre-publish):**
-- `ls -la node_modules/@fullselfbrowsing/lattice` in the canary repo showing a symlink instead of a normal directory.
-- `pnpm why @fullselfbrowsing/lattice` showing `(local)` or `link:`.
+**How to avoid:**
+1. For every v1.4 public export, add at minimum a smoke test in `test/public-surface.test.ts` that imports and type-checks the export. This is the "can it be imported" gate that runs on every CI push.
+2. Run `publint` and `@arethetypeswrong/cli` against the tarball after every build, specifically checking all new export paths.
+3. For the OTel exporter: add a canary integration test in the FSB codebase that wires up the exporter — even if it exports to a no-op OTLP endpoint — so the wiring is exercised per release.
+4. Track the "coverage ratio": for each v1.4 REQ-ID that adds a public export, confirm a corresponding entry in `public-surface.test.ts` or a FSB integration test.
 
-**Prevention:**
-- Canary `package.json` MUST pin to a concrete published version: `"@fullselfbrowsing/lattice": "1.3.0"` — no `^`, no `~`, no `workspace:*`, no `link:`.
-- Canary CI uses `npm install` (not `pnpm install`) — explicitly different package manager from the source repo, removes any chance of workspace linking. Document this choice in canary README ("we use npm here because we *want* the registry resolution path").
-- First step of canary CI: `node -e "const r=require('module').createRequire(import.meta.url); const path=r.resolve('@fullselfbrowsing/lattice'); if (!path.includes('node_modules')) { console.error('canary is linked to local source: ' + path); process.exit(1); }"`.
-- Lattice monorepo's `pnpm-workspace.yaml` MUST NOT include `lattice-canary` even if it lives in a sibling directory.
+**Warning signs:**
+- A v1.4 release ships and the first GitHub issue is "TypeError: createOtelExporter is not a function" from an external consumer.
+- `@arethetypeswrong/cli` reports an error on a new export path that was not caught in CI.
+- `public-surface.test.ts` last modified date predates the v1.4 release date.
 
-**Phase to address:** v1.3 Phase 28 (canary repo bootstrap).
+**Phase to address:** Every v1.4 implementation phase. The `public-surface.test.ts` update must be in the acceptance criteria for every phase that adds a public export. This is an ongoing discipline, not a one-time gate.
 
 ---
 
-### CANARY-2: Stale version pin in canary masks regressions because canary never updates
+### VAL-2: Streaming adapters shipping with `streaming: false` in capability catalog break INV-03 parity
 
 **What goes wrong:**
-Canary pins `@fullselfbrowsing/lattice@1.3.0` exactly. v1.3.1 ships with a regression. Canary CI keeps passing because it still uses 1.3.0. The regression reaches consumers before anyone notices.
+The existing capability catalog (`catalog.ts`) has `streaming: false` as the default for all providers. v1.4 adds streaming to five adapters. If the streaming implementation ships but the catalog entry still says `streaming: false`, the deterministic router will never select those adapters for streaming-capable runs (the capability filter will exclude them). Worse, if a user manually specifies a streaming-capable model and the adapter's execute path returns a stream, but `NegotiatedCapabilities.supports.streaming` is `false` (from a stale registry entry), the receipt will attest to a non-streaming run when a streaming run occurred. INV-03 parity tests may pass on the individual adapter tests but fail at the integration level where the router's capability filter is involved.
 
-**Why it happens:**
-The same pin that prevents CANARY-1 (workspace leak) creates a bump-discipline burden. Without an automated bump process, the canary becomes a museum.
+**How to avoid:**
+Streaming support must be added atomically: adapter code + capability catalog entry + `NegotiatedCapabilities.supports.streaming: true` + INV-03 parity smoke extended to streaming mode. Treat the parity smoke as the merge gate.
 
-**Warning sign (pre-publish, ongoing):**
-- Canary `package.json` last-modified > 7 days after last Lattice release.
-- Canary `npm outdated` showing `@fullselfbrowsing/lattice` behind current.
+**Warning signs:**
+- Streaming adapter works in isolation tests but is never selected by the router in integration.
+- `receipt.body.model.observed` shows a non-streaming model even though the adapter returned a stream.
+- `negotiateCapabilities` returns `streaming: false` for a model that is documented as streaming-capable.
 
-**Prevention:**
-- Renovate / dependabot configured in the canary repo to bump `@fullselfbrowsing/lattice*` immediately on every release.
-- Lattice release workflow has a *post-publish* step that opens a PR in `fullselfbrowsing/lattice-canary` to bump pinned versions (using a separate GH App or PAT scoped only to that repo). This couples the release loop end-to-end.
-- Canary nightly CI does *one* run against `latest` (resolved at install time) in addition to runs against the pinned version, so a missing bump shows up as a delta within 24 hours.
-
-**Phase to address:** v1.3 Phase 28 (canary bootstrap) + Phase 29 (nightly schedule design).
-
----
-
-### CANARY-3: Peer-dep trap — canary doesn't declare the same Node 24 / TS 6 expectation, drifts silently
-
-**What goes wrong:**
-Lattice declares `engines.node: >=24`. Canary CI runs on Node 22 (because the canary repo author copy-pasted a Node 22 setup-node action). The canary "passes" against a Node version the actual library does not support, hiding both real bugs and engine-violation bugs.
-
-**Why it happens:**
-Node version drift between repos is the most common kind of integration test invalidation. setup-node defaults to Node 22 today; the operator may not notice.
-
-**Warning sign (pre-publish):**
-- Canary CI runs on a Node version different from `packages/lattice/package.json#engines.node` floor.
-- Canary `package.json#engines.node` missing or different from Lattice's.
-
-**Prevention:**
-- Canary CI uses `actions/setup-node@<sha>` with `node-version-file: '.nvmrc'`, and the canary repo's `.nvmrc` is `24` (mirrors Lattice).
-- Canary matrix tests Node 24 AND Node-latest (so future LTS bumps surface immediately).
-- Canary `package.json#engines.node` mirrors Lattice's. Add a CI step in the canary that diffs the two strings (fetch Lattice's published `package.json` from the registry and compare).
-
-**Phase to address:** v1.3 Phase 28 (canary).
-
----
-
-### CANARY-4: ESM-only import surprises — canary uses `require()` somewhere, fails at runtime not type-check
-
-**What goes wrong:**
-Lattice is `"type": "module"` ESM-only. A canary test author writes `const { ai } = require('@fullselfbrowsing/lattice')` in a `.cjs` setup file, or a CJS test helper transitively does. `attw --profile esm-only` is fine; `tsc` is fine (under `module: NodeNext`); but the test fails at runtime with "ERR_REQUIRE_ESM" — and the failure mode looks like a Lattice bug, not a canary misconfig.
-
-**Why it happens:**
-ESM-only packages collide with the long tail of CJS test runners, mock loaders, and config-loader libraries (e.g. `lilconfig`, `cosmiconfig` historical versions). The canary author may not have hit this before.
-
-**Warning sign (pre-publish):**
-- ERR_REQUIRE_ESM in canary CI logs.
-- Canary has `.cjs` files or `"type": "commonjs"` anywhere.
-
-**Prevention:**
-- Canary `package.json` is `"type": "module"`. No `.cjs` files anywhere.
-- Canary uses vitest (already known-good with Lattice's setup) — not jest with default config (which has ESM rough edges).
-- Document in canary README: "This package validates Lattice's ESM-only contract. It is intentionally ESM-only."
-- `attw --pack` of the Lattice tarball runs INSIDE the canary CI too, not just inside the Lattice CI. Different cache, different node_modules layout, different result.
-
-**Phase to address:** v1.3 Phase 28 (canary).
-
----
-
-### REAL-1: Nightly cron burns through provider budget by running on a holiday-shifted schedule
-
-**What goes wrong:**
-A `cron: "0 2 * * *"` runs every day at 02:00 UTC. Multiplied by three providers (OpenAI + Anthropic + Gemini) and N test scenarios, this is N*3 paid API calls per day. If the matrix is also configured to run on PRs to the canary repo, the cost multiplies by every PR. If a flaky test causes a retry storm, daily cost can spike 5-10x without anyone noticing for a week. This is the "forgotten background job" pattern documented in OpenAI cost runaway writeups — a cron eval job left enabled after benchmarking that runs nightly forever ([Grafient: OpenAI removed hard budget limits](https://grafient.ai/blog/openai-removed-hard-budget-limits)).
-
-**Why it happens:**
-Cron jobs are fire-and-forget. Real-provider tests are the most expensive kind of test. Lattice removed its own hard limit (CostTracker) — but if CostTracker itself has a bug, there is no second line of defense unless the platform layer also gates.
-
-**Warning sign (early detection):**
-- Daily provider billing dashboard >2x baseline.
-- Workflow logs showing test re-runs >3 per night.
-- CostTracker emitting `budget-exceeded` events that the workflow does not surface as failure.
-
-**Prevention (quantitative):**
-- **Per-run cost ceiling: $5 USD** enforced by Lattice CostTracker as a hard stop (abort signal propagated to the next provider call). The ceiling is set in canary config, signed-receipt-auditable.
-- **Per-month cost ceiling: $100 USD** enforced by an outer wrapper (GH Actions step that queries provider billing API at workflow start; aborts if month-to-date >$100). Independent of CostTracker so a CostTracker bug cannot defeat it.
-- **Per-provider key budget alerts** at the provider portal: OpenAI Hard limit equivalent via budget API where supported; Anthropic billing alert at $50 / month / key; Gemini billing alert at $30 / month / key. Different thresholds catch a single-provider runaway.
-- **Workflow-level concurrency:** `concurrency: { group: lattice-nightly, cancel-in-progress: true }` so two nightlies cannot stack.
-- **No retries on real-provider job failure.** Failure pages a human; the human decides whether to re-run. Auto-retry on a 429 cascade is the classic cost-runaway pattern.
-- **Cron at off-peak only:** one run per 24h at 04:00 UTC. No PR triggers ever. `workflow_dispatch` for manual runs requires `environment: nightly-real-provider` with reviewer approval.
-- **Test scenarios capped:** ~10 scenarios * 3 providers = 30 paid calls per nightly. At ~$0.05/call average, ~$1.50/night, ~$45/month per provider. $100/mo ceiling is 2x headroom.
-
-**Phase to address:** v1.3 Phase 29 (nightly canary CI design) — the cost-ceiling design is the long pole.
-
----
-
-### REAL-2: Rate-limit cascade — one provider 429s, fallback hammers the next, all three trip simultaneously
-
-**What goes wrong:**
-A nightly run hits OpenAI 429 (TPM exceeded). The test re-routes to Anthropic via Lattice's fallback chain. Anthropic also 429s (because nightly load aligns with other teams' crons). Test re-routes to Gemini. Gemini 429s. The test then retries the whole chain with exponential backoff. Backoff exhausts the workflow timeout (default 6h) without producing a useful failure, and the cost meter ran the whole time.
-
-**Why it happens:**
-Anthropic / OpenAI / Gemini all use spend-based rate-limit tiers with dynamic adjustment; static backoff strategies break under burst traffic ([devtk.ai AI API rate limits 2026](https://devtk.ai/en/blog/ai-api-rate-limits-comparison-2026/)). Fallback chains amplify the problem instead of containing it.
-
-**Warning sign (early detection):**
-- Workflow run-time >30 minutes for a single nightly.
-- Logs showing 429 from multiple providers in the same run.
-
-**Prevention:**
-- Nightly tests use **fixed provider per scenario**, not the fallback chain. Each scenario asserts: "this scenario MUST run on provider X." If X 429s, the test FAILS (it does not cascade). Fallback chain is itself a separate scenario tested explicitly with fake providers.
-- Per-scenario timeout: 60 seconds. After 60s the scenario fails and moves on; no global retry.
-- Workflow timeout: 15 minutes (not the default 6h). Hard stop is cheaper than diagnosing a cascade.
-- Concurrency limit per provider: at most one nightly per provider runs at a time across the entire org (use a shared workflow concurrency group).
-
-**Phase to address:** v1.3 Phase 29 (nightly design).
-
----
-
-### REAL-3: Model drift surfaces as test flake; team begins to ignore real-provider failures
-
-**What goes wrong:**
-Tests assert that `gpt-4o` returns a structured JSON with specific fields. OpenAI ships an update; the model occasionally adds a new field or paraphrases an output. Test fails ~3% of nights. Team marks it "flaky" and disables. Two weeks later a real regression in Lattice's prompt-encoding ships unnoticed.
-
-**Why it happens:**
-Real-provider responses are nondeterministic. Naive exact-match assertions catch model drift as false positives, eroding trust in the suite.
-
-**Warning sign (early detection):**
-- Same test failing 2-5 times per month with different error messages.
-- CODEOWNERS or PR template suggesting "marking as flaky" as a remediation path.
-
-**Prevention:**
-- Tests assert *structural* properties (Zod schema parse succeeds; cost <$0.10; receipt verifies cryptographically; tripwire bands fire as expected) — never exact string equality. Lattice's own contract / tripwire surface is the assertion vocabulary.
-- Tests pin model versions explicitly (`gpt-4o-2024-08-06` not `gpt-4o`). When the pinned version is deprecated by the provider, the test FAILS LOUDLY (provider deprecation is a known event class — see [OpenAI Deprecations](https://developers.openai.com/api/docs/deprecations)) — and a human bumps the pin intentionally.
-- Track flake rate per scenario. A scenario that has flaked twice in 30 days is automatically opened as a GH issue with the "investigate" label, not silently disabled.
-
-**Phase to address:** v1.3 Phase 29 (nightly design + assertion patterns).
-
----
-
-### REAL-4: Provider API key rotation breaks nightly silently; canary green for weeks despite zero coverage
-
-**What goes wrong:**
-Provider key is rotated (compliance policy, breach response, or expiration). The new key is added as a GH Actions secret with a different name (typo, or "new" suffix). Workflow still references the old secret name — which resolves to empty. Provider returns 401. Workflow fails. Team mutes the alert ("we'll fix it tomorrow"). Two weeks later the canary is silently providing zero real-provider coverage.
-
-**Why it happens:**
-GH Actions secrets are mutable but their references are stringly-typed. Empty-secret-as-empty-string is the same trap as OIDC-2.
-
-**Warning sign (early detection):**
-- Workflow exit code 1 with 401 in logs > 3 consecutive runs.
-- GH Actions secret `OPENAI_API_KEY_NEW` existing while workflow references `OPENAI_API_KEY`.
-
-**Prevention:**
-- Workflow first step asserts each provider key is non-empty: `for k in OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY; do test -n "${!k}" || { echo "Missing $k"; exit 1; }; done`. Fail fast.
-- Failure paging: 3 consecutive nightly failures escalates via repository-dispatch to a paging channel (Slack webhook, email). No mute-as-fix.
-- Quarterly "key rotation drill" — rotate one key, expect workflow to fail within 24h, fix within 4h. Documented runbook.
-
-**Phase to address:** v1.3 Phase 29 (nightly + failure paging).
-
----
-
-### REAL-5: Partial-provider availability — Gemini is down regionally, test fails everywhere
-
-**What goes wrong:**
-Gemini has a regional outage. GitHub-hosted runners route from random regions. Some nights the test passes; some nights it fails. Statistical noise hides whether Lattice's adapter has a bug.
-
-**Why it happens:**
-Provider availability is regional. CI runners are not.
-
-**Prevention:**
-- Status-page pre-check (same pattern as PROV-2): early step queries each provider's status page. If degraded, skip the scenario with a soft-fail (workflow status: `neutral`, not `failure`).
-- Maintain a 7-day rolling-window pass-rate per scenario. Below 90% triggers investigation. Above 99% is healthy. 90-99% means "the provider had an outage."
-
-**Phase to address:** v1.3 Phase 29.
-
----
-
-### COST-1: CostTracker checks budget BEFORE provider call but provider call completes anyway, in-flight leakage
-
-**What goes wrong:**
-CostTracker checks `usedUsd < budgetUsd` before issuing a provider call. The check passes. The call goes out. The call returns 30 seconds later with usage that pushes `usedUsd` past `budgetUsd`. The NEXT call is correctly blocked, but the *current* call already burned money. If 5 calls are in-flight concurrently when budget is near-exhausted, 5 over-budget calls land — none individually blocked.
-
-**Why it happens:**
-Budget gating in a pre-flight kernel only knows projected cost (from contract pricing) or observed cost (from completed receipts). In-flight calls are neither projected nor observed.
-
-**Warning sign:**
-- Actual nightly cost > budget ceiling.
-- Receipts showing `costUsd` cumulative > `contract.budget.maxUsd`.
-
-**Prevention:**
-- CostTracker tracks `reservedUsd` (sum of projected cost of in-flight calls) in addition to `usedUsd`. Budget check is `usedUsd + reservedUsd + projectedCallCost <= budgetUsd`. On call completion, `reservedUsd -=projected; usedUsd += actual`.
-- For nightly canary: serialize scenarios (no concurrency). Cost-ceiling enforcement is easier when only one call is ever in flight. Concurrency is a v1.4 problem.
-- Hard outer ceiling at the workflow level (REAL-1) is the second line of defense — if CostTracker has a bug, workflow timeout + workflow-level budget guard saves the day.
-
-**Phase to address:** v1.3 Phase 29 (cost ceiling implementation).
-
----
-
-### COST-2: AbortSignal not propagated to fetch — provider call continues after CostTracker says "stop"
-
-**What goes wrong:**
-CostTracker decides budget exhausted, calls `controller.abort()`. Lattice's provider adapter does not forward `signal` to the underlying `fetch()`. The HTTP call completes; the user is billed; the receipt records the cost AFTER abort.
-
-**Why it happens:**
-AbortSignal threading is easy to miss when a provider adapter has many fetch sites (streaming, retries, fallbacks). Each fetch call must explicitly pass `{ signal }`.
-
-**Warning sign:**
-- Receipts with `kind: 'success'` and `costUsd > 0` that arrive after an abort event was logged.
-- Unit tests for abort behavior pass but real-provider integration shows cost-after-abort.
-
-**Prevention:**
-- Adapter test pattern: mock fetch to record `signal.aborted` AT THE MOMENT of the fetch call. Abort the signal, then assert no further fetch calls happen.
-- Real-provider test: deliberately set `contract.budget.maxUsd: 0.001` (below one call's cost), run, assert receipt is `kind: 'failure'` with `reason: 'budget-exhausted'` BEFORE any HTTP call lands.
-- Code review checklist: every `fetch(` site in `packages/lattice/src/providers/*` must pass `signal`. Enforce with a custom ESLint rule or a grep gate (`grep -n "fetch(" packages/lattice/src/providers/ | grep -v "signal"` must return empty).
-
-**Phase to address:** v1.3 Phase 29 (cost ceiling) — touches Lattice runtime, not just the canary.
-
----
-
-### COST-3: Timing window — concurrent CostTracker reads/writes lose budget updates
-
-**What goes wrong:**
-Two providers complete simultaneously. Each handler does `tracker.usedUsd += this.cost`. Without synchronization, one update is lost. Budget shows `$X` when truly `$X + Y`. Either the budget overruns silently or — if `usedUsd` overshoots `budgetUsd` from the lost update — a future call is blocked when it shouldn't be.
-
-**Why it happens:**
-JavaScript single-threaded execution makes this less common than in threaded languages, but `await` boundaries between read and write are exactly the same race window.
-
-**Prevention:**
-- CostTracker updates use a single synchronous critical section: read+write in one tick, no `await` between them.
-- For v1.3 canary: serialize provider calls (one at a time), removing the race entirely. Concurrency is v1.4.
-- Property test: 100 concurrent fake provider calls each declaring $0.01 cost; assert `tracker.usedUsd` equals `$1.00` exactly, not $0.99 or $1.01.
-
-**Phase to address:** v1.3 Phase 29.
-
----
-
-### CRYPTO-1: Receipt downgrade — old (v1.0) receipt format presented to v1.3 verifier, signature valid, semantics weakened
-
-**What goes wrong:**
-v1.2 introduced receipt schema v1.1 with step-marker fields. v1.3 will be the first version published publicly. A future attacker (or naive verifier) can present a v1.0-shape receipt signed by a still-valid key. The signature is cryptographically valid (Ed25519 over the canonical bytes). The receipt lacks the v1.1 step-markers — so SAFETY-band tripwire context is absent — yet `verifyReceipt` returns `{ ok: true }`. The downstream caller acts on weaker semantics than v1.3 implies. This is the canonical "downgrade attack" from [Radicle disclosure 2026](https://radicle.xyz/2026/03/30/disclosure-of-vulnerability-in-signed-references) translated to Lattice's domain.
-
-**Why it happens:**
-Schema evolution + lenient verification + the JCS canonical form being well-defined for any subset of fields = a valid signature on a weaker shape.
-
-**Warning sign (pre-publish):**
-- `verifyReceipt` returns `{ ok: true }` for any receipt without a `schemaVersion` field, or with `schemaVersion < "1.1"`.
-- No public documentation of which schema versions are accepted.
-
-**Prevention:**
-- `verifyReceipt` MUST require a minimum `schemaVersion` field in the canonical receipt. Default minimum for v1.3: `1.1`. Older versions return `VerifyResult` kind `schema-version-too-old` (new error kind).
-- `schemaVersion` is part of the canonical bytes (signed-over), so an attacker cannot tamper without invalidating the signature.
-- SECURITY.md documents the policy: "Lattice v1.3 accepts receipts with schemaVersion >= 1.1. Earlier receipts are rejected by default. To re-verify legacy receipts, pin to Lattice v1.2."
-
-**Phase to address:** v1.3 Phase 24 (SECURITY.md content) + a new small phase (call it 24.5) for verifier hardening + a regression test in the canary that asserts downgrade rejection.
-
-**This is the highest-severity crypto pitfall.** Cite Radicle disclosure as the precedent in SECURITY.md.
-
----
-
-### CRYPTO-2: Examples and README show key generation patterns that look secure but reuse one key across runs
-
-**What goes wrong:**
-The `examples/work-inbox` showcase generates an ephemeral Ed25519 keypair per run (good). But the README's quick-start snippet might show `const key = crypto.subtle.generateKey(...)` outside an async function, or show a hard-coded base64 secret "for demo purposes." Copy-paste into a user's prod code = stable per-deployment secret in source.
-
-**Why it happens:**
-Demo simplicity pressure: real key management (KMS adapter shapes are deferred to v1.4 per PROJECT.md) is verbose; one-line demos are tempting.
-
-**Warning sign (pre-publish):**
-- Any `secret`, `private`, `kid`, or `key` literal in README / docs / examples with a value longer than 8 chars.
-- Examples that don't generate a fresh key per run.
-
-**Prevention:**
-- README crypto section uses a clear disclaimer: "For production, use a KMS-backed signer (see SECURITY.md). The examples below generate ephemeral keys for demonstration."
-- A CI grep gate: any base64-looking string of length >= 32 in `README.md` / `docs/**` / `examples/**` fails CI. Whitelist via comment annotation if intentional.
-- SECURITY.md includes a "Key Management" section listing: ephemeral (demo only), file-backed (single-developer), KMS-backed (production, v1.4-deferred — until then, document the interface to roll your own).
-
-**Phase to address:** v1.3 Phase 30 (release-hygiene docs) + Phase 24 (SECURITY.md).
-
----
-
-### CRYPTO-3: Entropy source assumption — Node 24 WebCrypto Ed25519 KeyGen on environments that don't have it
-
-**What goes wrong:**
-Lattice uses Node 24 WebCrypto Ed25519 for signing. A canary or downstream consumer pinned to Node 24 still hits an unexpected entropy or platform difference (e.g. Alpine container, WSL, Firecracker microVM with shallow `/dev/urandom`). KeyGen succeeds but is biased; or `subtle.generateKey({ name: 'Ed25519' })` throws on a runtime where it isn't actually implemented.
-
-**Why it happens:**
-WebCrypto Ed25519 support is recent; library code typically assumes "if Node >= 24, it works." Edge runtimes lag.
-
-**Warning sign (pre-publish):**
-- `subtle.generateKey` throws `NotSupportedError` on any tested runtime.
-- Receipts generated in CI cannot be verified on a different runtime.
-
-**Prevention:**
-- Lattice already has `@noble/ed25519@3.1.0` as a parity oracle dev-dependency. Promote it to an *optional runtime fallback* gated by a feature detection at module load: `if (!await canEd25519(crypto.subtle)) { /* use noble */ }`. Document the fallback behavior.
-- Canary tests on Node 24 AND on a minimal Alpine container (`node:24-alpine`) — different entropy provider, different libc.
-- SECURITY.md documents the entropy assumption: "Lattice's signing requires a CSPRNG. On supported runtimes (Node >=24, modern browsers) this is satisfied by WebCrypto."
-
-**Phase to address:** v1.3 Phase 28 (canary tests cross-runtime) + Phase 24 (SECURITY.md).
+**Phase to address:** Streaming adapter implementation phase. The atomic update rule (adapter + catalog + negotiation + parity) must be in the PR checklist.
 
 ---
 
@@ -638,147 +368,128 @@ WebCrypto Ed25519 support is recent; library code typically assumes "if Node >= 
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Skip `publint` / `attw` because "build passes" | Faster CI | Tarball ships broken exports map; first-day GH issue storm | Never for a publishable package |
-| Run real-provider tests on every PR for "faster feedback" | Catches bugs sooner | Burns budget; rate-limit cascades; flake noise | Never; nightly + manual only (already locked in milestone) |
-| Reuse `NPM_TOKEN` from another team / personal account for the first publish | Skip Trusted Publisher setup | Token theft = supply-chain compromise; no provenance | Never for a public publish |
-| Pin canary to `^1.3.0` instead of exact `1.3.0` | Auto-pulls patches | Workspace symlink can sneak in via overrides; harder to bisect | Never; pin exactly + bot bumps |
-| One workflow file for both PR-CI and release | Less YAML | OIDC blast radius (OIDC-1) | Never; split into `ci.yml` and `release.yml` |
-| Hand-author CHANGELOG instead of changesets | Easy v1.3.0 entry | Drift; merge conflicts; no enforcement | One-time only: pre-public history seed (RENAME-5) |
-| Skip `repository.directory` sub-field per package | Simpler manifest | Provenance verification fragile if monorepo path matters; bug reports point to wrong file | Never for monorepos |
-| Use the Lattice CostTracker as the *only* budget guard | One source of truth | Bug in CostTracker = no second line; runaway possible | Never; layer workflow-level guard on top |
+| Sign stream mid-flight instead of post-drain | Slightly lower time-to-receipt | Partial `outputHash`; `lattice repro` and `lattice eval` permanently broken for streaming runs | Never |
+| Emit raw `RunEvent.metadata` as span attributes | Zero extra code | PII leaks to Langfuse/Phoenix; data breach | Never |
+| Import gen_ai attribute names from `@opentelemetry/semantic-conventions` at runtime | Smaller exporter code | Dashboard breakage on semconv minor version bump | Never for stable exporters |
+| Allow gateway silent fallback | Resilience out-of-box | Plan lies about execution path; receipts attest to wrong route | Never when determinism or data policy matters |
+| Skip `public-surface.test.ts` update for new exports | Faster PR | New exports regress silently; first signal is a user GitHub issue | Never for v1.x public API |
+| Trust OpenRouter feed capabilities for data-policy fields at face value | Simpler catalog code | Sensitive data routed to logging provider | Never |
+| Use `SimpleSpanProcessor` for OTel exporter | Simpler setup | OTel export latency added to every `ai.run` call | Never in production paths |
+
+---
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| GitHub Actions OIDC | `permissions: id-token: write` at workflow scope | Scope to a single `publish:` job only |
-| npm Trusted Publisher | Workflow filename typo on npmjs.com form | Lock filename in CONTRIBUTING.md; do a `rc.0` publish first |
-| Sigstore Rekor | Treat 5xx as transient, auto-retry | Manual approval gate; conservative version-bump on retry |
-| pnpm workspaces | Canary added to workspace yml accidentally | Canary in a different repo with `npm install` |
-| Renovate | Default config bumps Lattice via `^` | Pin exact; use Renovate `rangeStrategy: replace` for `@fullselfbrowsing/*` |
-| GitHub `on.push.tags` | Push multiple tags at once | Push one tag at a time; add `workflow_dispatch` fallback |
-| `actions/setup-node` | `auth-token: ${{ secrets.MISSING }}` exports empty `NODE_AUTH_TOKEN` | Don't pass `auth-token` at all in OIDC publish job |
-| Provider key rotation | Add new secret, forget to update workflow reference | First workflow step asserts non-empty for each key |
-| Provider model deprecation | Pin to `gpt-4o` (alias) | Pin to dated revision `gpt-4o-2024-08-06`; expect explicit deprecation failure |
+| OpenRouter streaming | Assuming `streamingDiverges: false` means chunk-sequence determinism | Chunks are always non-deterministic in split; only the assembled output is deterministic |
+| LiteLLM cost tracking | Relying on Lattice's per-token pricing when LiteLLM adds a markup | Read `x-litellm-response-cost` header; document the gap |
+| OTel + AI SDK | Creating parallel spans for the same provider call | Use bridge mode: attach to existing AI SDK span if active |
+| OpenRouter `/models` feed | Using feed-claimed `supportsNoLogging` for GDPR routing | Require static registry confirmation for data-policy fields |
+| LM Studio streaming | Expecting streaming usage block in final frame | LM Studio does not include usage in streaming responses; use tokenizer estimate |
+| Langfuse OTLP ingestion | Sending raw prompt content as span attributes | Apply `SpanSanitizer` before any content attribute is emitted |
+| Gen_ai semconv v1.38+ | Using `gen_ai.prompt` / `gen_ai.completion` attribute names | Deprecated and removed; use `gen_ai.input.messages` / `gen_ai.output.messages` |
+| Catalog auto-refresh | Merging all feed fields including unexpected ones | Parse against strict Zod schema; reject or warn on unknown fields |
+
+---
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Fallback chain in nightly tests | 20+ min workflow runs, multi-provider 429s | Fixed provider per scenario; test fallback with fake providers only | Day 1 if a provider has a TPM blip |
-| Concurrent provider calls in canary | Budget overshoot from in-flight leakage (COST-1) | Serialize scenarios in canary CI | At 3+ concurrent calls near budget |
-| `npm install` cache poisoning in publish job | Stale tarball or attacker-injected dep | No restored caches in publish job; fresh runner | TanStack-pattern attack |
-| Provenance verification on every publish call | Slow CI | Cache verification result post-publish; only verify on dist-tag promotion | At >10 publishes/week |
+| Sanitizer applied per-chunk on streaming output | Tag boundaries missed; race between consumer and sanitizer pipeline | Sanitize only on fully-buffered post-drain output | Day 1 of streaming with reasoning-tag models |
+| `await`-ing OTel export in RunEventSink | `ai.run` latency spikes on OTLP backend slowdown | Fire-and-forget; `BatchSpanProcessor` only | When OTLP backend latency > 10ms |
+| Unbounded stream buffer for receipt signing | OOM on long-context streaming runs | Bound the internal buffer (e.g., 10MB); emit `stream-buffer-overflow` failure on exceed | Runs with output > buffer limit |
+| Full catalog re-fetch on every run | 200ms+ added to every `ai.run` cold-start | TTL cache per instance (default: 5 minutes) — already exists in `OpenRouterProviderOptions.modelsCacheTtlMs` | Without TTL: any sustained load |
+
+---
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Workflow-scope `id-token: write` | OIDC token mintable from any job; TanStack-level blast radius | Job-scope only on publish |
-| Third-party actions pinned by tag, not SHA | Tag re-pointed by attacker = arbitrary code on publish runner | All actions pinned by 40-char commit SHA |
-| `pull_request_target` with checkout of PR HEAD | Pwn Request pattern; runs fork code with org permissions | Don't use `pull_request_target` in this repo |
-| Hard-coded demo key in README | Users copy-paste into prod | Disclaimer + CI grep gate (CRYPTO-2) |
-| Verifier accepts any schema version | Downgrade attack (CRYPTO-1) | Minimum schema version enforced and signed-over |
-| Empty `NODE_AUTH_TOKEN` falls through silently | Misleading auth failure; obscures OIDC misconfig | Don't export the env at all in OIDC publish |
-| `repository.url` mismatch | Provenance 422; or worse, silently publishes unsigned | CI gate on exact-string match (OIDC-3) |
-| Ed25519 library with separate pubkey/privkey input | Private-key extraction via double-public-key oracle ([Mysten unsafe-libs list](https://github.com/MystenLabs/ed25519-unsafe-libs)) | Node WebCrypto only (no separate-pubkey APIs); `@noble/ed25519` v3 as fallback |
+| OTel spans emit raw prompt/output content by default | PII data breach via observability platform | Content capture off by default; opt-in with explicit `SpanSanitizer` |
+| Trust catalog feed's data-policy claims without static verification | Sensitive data routed to logging provider | Static registry overrides feed for data-policy fields |
+| Gateway fallback to an unknown provider silently | Data policy violated; receipts attest wrong model | `provider.allow_fallbacks: false` for capability-critical runs; validate `model.observed` |
+| Stream-then-sign instead of drain-then-sign | Receipt attests to partial output; replay determinism broken | Structural enforcement: sign only after `streamDone` resolves |
+| Export KMS signer private key material in span attributes | Key compromise | KMS adapter shapes (v1.4 carried scope) must never log key material; redact `kid`-adjacent attributes |
+
+---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Scope rename:** Often missing `workspace:*` dep update in `lattice-cli/package.json` — verify via `pnpm pack` + `tar -xOf` (RENAME-1)
-- [ ] **Scope rename:** Often missing `tsd.paths` update — verify via `grep "lattice" packages/lattice/package.json | grep -v "@fullselfbrowsing"` returns empty (RENAME-3)
-- [ ] **Scope rename:** Often missing `examples/` import updates — verify by `rm -rf node_modules && pnpm install && node examples/work-inbox/index.mjs` from clean state (RENAME-4)
-- [ ] **OIDC config:** Often missing job-scope permissions — verify `grep -A3 "id-token: write" .github/workflows/*.yml` shows it only on publish job (OIDC-1)
-- [ ] **OIDC config:** Often missing the rc.0 dry-run publish before v1.3.0 — verify a `@fullselfbrowsing/lattice@1.3.0-rc.0` exists on npm before bumping to 1.3.0 (OIDC-4)
-- [ ] **Provenance:** Often missing post-publish verification — verify `npm view @fullselfbrowsing/lattice@1.3.0` shows "Provenance" badge AND `dist.attestations` (PROV-1)
-- [ ] **Provenance:** Often missing exact-match `repository.url` — verify exact string match via CI gate (OIDC-3)
-- [ ] **Changesets:** Often missing pre-public CHANGELOG seed — verify file contains v1.0/v1.1/v1.2 headers before first release PR opens (RENAME-5)
-- [ ] **Changesets:** Often missing `changesets/action` "require changeset" PR check — verify the check runs on every PR (CHGSET-3)
-- [ ] **Canary:** Often missing the "no symlink" runtime assertion — verify `require.resolve('@fullselfbrowsing/lattice')` path contains `node_modules` in canary CI (CANARY-1)
-- [ ] **Canary:** Often missing the Node version pinning to match Lattice — verify `.nvmrc` exists and matches Lattice (CANARY-3)
-- [ ] **Canary:** Often missing the cross-runtime test — verify Alpine container test exists (CRYPTO-3)
-- [ ] **Cost ceiling:** Often missing the *outer* workflow-level guard — verify a non-CostTracker step caps month-to-date spend independently (REAL-1)
-- [ ] **Cost ceiling:** Often missing AbortSignal propagation through every fetch — verify grep-gate on `packages/lattice/src/providers/` (COST-2)
-- [ ] **Crypto:** Often missing minimum `schemaVersion` check — verify `verifyReceipt` rejects a hand-crafted v1.0 receipt (CRYPTO-1)
-- [ ] **Crypto:** Often missing demo-key disclaimer in README — verify SECURITY.md links from README crypto section (CRYPTO-2)
+- [ ] **Streaming adapters:** Receipt issued before stream drains — verify `outputHash` matches between two runs of the same prompt using a streaming adapter (STRM-1)
+- [ ] **Streaming adapters:** Chunk-sequence hashing instead of assembled-output hashing — run fast-check property test asserting `outputHash` stability across chunk-boundary variations (STRM-2)
+- [ ] **Streaming adapters:** `CostTracker` not updated on stream cancel — verify `usage.completionTokens` is non-zero or `null` (never zero) on cancelled streams (STRM-3)
+- [ ] **Streaming adapters:** Sanitizers applied pre-drain — verify `<think>` tags absent in `outputHash` pre-image on xAI/Anthropic extended-thinking streaming runs (STRM-4)
+- [ ] **Gateway delegation:** `model.observed` field populated from gateway response headers — verify receipt `model.observed != model.requested` logs a `router.mismatch` event (GW-1)
+- [ ] **Gateway delegation:** Silent gateway fallback enabled for capability-critical runs — verify `provider.allow_fallbacks: false` is the default when capability constraints exist (GW-2)
+- [ ] **Catalog auto-refresh:** Feed parsed against strict Zod schema — verify a malformed feed entry is rejected with a warning, not silently merged (GW-3)
+- [ ] **OTel exporter:** Raw metadata emitted to spans — verify default `SpanSanitizer` strips PII-matching patterns from all `metadata` values (OTEL-2)
+- [ ] **OTel exporter:** AI SDK double-instrumentation — verify no duplicate root spans in a trace when AI SDK adapters are used with Lattice OTel exporter (OTEL-3)
+- [ ] **OTel exporter:** `ai.run` latency unaffected by OTel export — verify p99 latency unchanged under slow OTLP backend with `BatchSpanProcessor` (OTEL-4)
+- [ ] **Public surface:** New v1.4 exports have corresponding `public-surface.test.ts` entries — verify test file modified date is same PR as the export addition (VAL-1)
+- [ ] **Streaming + catalog:** `streaming: true` in capability catalog updated atomically with adapter code — verify INV-03 parity smoke includes streaming mode (VAL-2)
+
+---
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| RENAME-1 (workspace dep stale) | LOW | Catch in `pnpm pack` gate before publish; fix manifest; re-pack |
-| OIDC-1 (token blast radius) compromise post-publish | HIGH | Treat as TanStack-class: rotate npm Trusted Publisher config, deprecate all versions published in the window, publish hotfix from a clean fork, file npm Trust & Safety report |
-| OIDC-4 (Trusted Publisher form typo) | MEDIUM | Bump version to e.g. 1.3.1, fix form, re-publish; the 1.3.0 attempt is unrecoverable |
-| PROV-2 (Rekor outage mid-publish) | MEDIUM | Treat the failed version as poisoned; bump to next patch; communicate via release notes |
-| CHGSET-1 (multi-tag drop) | LOW | `workflow_dispatch` re-fire of release.yml on the dropped tag |
-| CANARY-1 (workspace symlink leak) | LOW | Audit canary `pnpm why` output; rebuild canary node_modules; add the runtime-resolve gate |
-| REAL-1 (cost runaway) | MEDIUM-HIGH | Disable nightly cron immediately; audit billing; identify root cause (which scenario blew budget); reduce scenario count; re-enable with stricter ceiling |
-| REAL-4 (key rotation silence) | MEDIUM | Workflow alert escalation; rotate key + update secret; reverify with manual workflow_dispatch |
-| COST-1 (in-flight leakage) | LOW-MEDIUM | Serialize scenarios in canary CI immediately; track issue for `reservedUsd` impl in Lattice runtime; bump CostTracker test coverage |
-| CRYPTO-1 (downgrade accepted) | HIGH | Issue security advisory (GHSA); ship `verifyReceipt` patch in 1.3.x rejecting old schema; communicate via SECURITY.md |
-| CRYPTO-2 (demo key in README copied to prod) | HIGH (downstream) | Cannot recover others' deployments; publish security advisory; add CI gate prevention going forward |
+| STRM-1 (partial outputHash shipped) | HIGH | Receipt schema is locked; `outputHash` commitments in existing receipts are wrong. Patch the adapter; issue a new receipt schema version (v1.3?) with a `streamMode` flag; document that streaming receipts issued before the patch are not replayable |
+| STRM-3 (cost loss on cancel) | LOW | Add `usageOnCancel: 'estimate' | 'unavailable'` to adapter quirks; patch CostTracker to use estimate; no receipt schema change needed |
+| GW-1 (gateway masks capability mismatch) | MEDIUM | Add `model.observed` population from response headers; patch all gateway adapters; re-run INV-03 parity smoke |
+| GW-3 (malicious catalog feed entry) | HIGH | Incident response: freeze auto-refresh, revert to static registry, audit receipts issued using the compromised capability data, rotate catalog cache |
+| OTEL-2 (PII leaked to spans) | HIGH | Disable content capture immediately (flip default to off); notify affected users; assess whether the OTLP backend (Langfuse/Phoenix) can delete the affected traces |
+| OTEL-1 (semconv churn breaks dashboards) | MEDIUM | Pin attribute name constants in exporter source; ship a patch release; document the breaking change in CHANGELOG |
+| VAL-1 (export regression not caught by FSB) | LOW-MEDIUM | Extend `public-surface.test.ts` for the broken export; patch the export; publish a patch release |
+
+---
 
 ## Pitfall-to-Phase Mapping
 
-Phase numbers are placeholders for the v1.3 roadmap to assign; the mapping reflects which work-stream should *prevent* each pitfall.
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| RENAME-1 workspace:* stale | Phase 23 (atomic scope rename) | `pnpm pack` tarball inspection in CI |
-| RENAME-2 bin vs package confusion | Phase 23 + Phase 30 (docs) | Markdownlint / grep rule on install instructions |
-| RENAME-3 tsd paths stale | Phase 23 | grep gate; tsd run from clean checkout |
-| RENAME-4 examples imports stale | Phase 23 | clean-checkout example run; tarball install dry-run |
-| RENAME-5 CHANGELOG history loss | Phase 30 | Pre-seed CHANGELOG before first changeset run |
-| OIDC-1 token blast radius | Phase 26 (release workflow) | Self-check: no non-publish job has `id-token: write` |
-| OIDC-2 NODE_AUTH_TOKEN empty | Phase 26 | `npm publish --dry-run --provenance` in CI |
-| OIDC-3 repository.url mismatch | Phase 24 (metadata) + Phase 26 | CI gate on exact string |
-| OIDC-4 Trusted Publisher form typo | Phase 25 (npm org setup) + Phase 27 (rc.0 publish) | rc.0 prerelease publish first |
-| PROV-1 wrong publishConfig.registry | Phase 24 | CI gate on exact `publishConfig` shape |
-| PROV-2 Rekor outage | Phase 26 | Status-page pre-check; manual approval on retry |
-| CHGSET-1 multi-tag drop | Phase 26 | Use Version-PR pattern; `workflow_dispatch` fallback |
-| CHGSET-2 bot PR loop | Phase 26 | Permissions split between version-PR and publish jobs |
-| CHGSET-3 missing changeset | Phase 26 (CI) | `changesets/action` check as required PR gate |
-| CANARY-1 workspace symlink leak | Phase 28 (canary bootstrap) | Runtime resolve gate in canary CI |
-| CANARY-2 stale pin | Phase 28 + Phase 29 | Renovate bot; weekly `latest` resolve check |
-| CANARY-3 Node version drift | Phase 28 | `.nvmrc` mirroring + engine string diff |
-| CANARY-4 ESM-only surprise | Phase 28 | `attw --pack` inside canary CI |
-| REAL-1 cost runaway | Phase 29 (nightly) | Layered guard: CostTracker + workflow-level + per-key billing alert |
-| REAL-2 rate-limit cascade | Phase 29 | Fixed provider per scenario; 60s per-scenario timeout |
-| REAL-3 model drift flake | Phase 29 | Structural assertions; dated model pins |
-| REAL-4 key rotation silence | Phase 29 | Non-empty assertion at workflow start; pager on 3-fail |
-| REAL-5 partial provider availability | Phase 29 | Status-page pre-check; rolling pass-rate tracking |
-| COST-1 in-flight leakage | Phase 29 (cost ceiling impl) | Serialize canary scenarios; `reservedUsd` tracking |
-| COST-2 AbortSignal not propagated | Phase 29 | grep-gate on fetch sites; budget=0 integration test |
-| COST-3 budget update race | Phase 29 | Property test (100 concurrent fakes); serialize canary |
-| CRYPTO-1 receipt downgrade | Phase 24 (SECURITY.md) + verifier hardening | Hand-crafted v1.0 receipt rejection test |
-| CRYPTO-2 demo key in README | Phase 24 + Phase 30 | CI grep gate on secret-shaped strings in docs |
-| CRYPTO-3 entropy assumption | Phase 28 (cross-runtime canary) + Phase 24 | Alpine container test; SECURITY.md note |
+| STRM-1 partial outputHash | Streaming adapter implementation | fast-check: two streaming runs produce same outputHash |
+| STRM-2 chunk-sequence hashing | Streaming adapter implementation | fast-check: outputHash stable across chunk-boundary variations |
+| STRM-3 cost on cancel | Streaming adapter implementation per adapter | budget=0 cancel test; CostTracker reconciliation test |
+| STRM-4 sanitizer pre-drain | Streaming adapter implementation | reasoning-tag model streaming test; hash pre-image inspection |
+| STRM-5 backpressure blocks receipt | Streaming adapter implementation | slow-reader integration test; OOM guard test |
+| GW-1 capability mismatch via gateway | Gateway delegation phase | model.observed population test; router.mismatch event test |
+| GW-2 gateway opaque fallback | Gateway delegation phase | lattice repro round-trip on a gateway-fallback scenario |
+| GW-3 catalog feed supply-chain | Catalog auto-refresh phase | malformed feed rejection test; data-policy override test |
+| GW-4 cost duplication between layers | Gateway delegation phase | cost header override test; 429-as-budget-exceeded mapping test |
+| GW-5 data residency via gateway | Gateway delegation phase | JSDoc + SECURITY.md documentation; no test (architectural limitation) |
+| OTEL-1 semconv churn | OTel exporter implementation | pinned-constants CI diff test |
+| OTEL-2 PII in spans | OTel exporter implementation | SpanSanitizer unit test + PII detector integration test |
+| OTEL-3 double instrumentation | OTel exporter implementation | Duplicate span detection integration test with AI SDK |
+| OTEL-4 exporter backpressure | OTel exporter implementation | Slow-OTLP latency regression test; BatchSpanProcessor config test |
+| VAL-1 FSB coverage gap | Every v1.4 phase | public-surface.test.ts updated per PR; publint + attw in CI |
+| VAL-2 streaming capability in catalog | Streaming adapter implementation | INV-03 parity smoke extended to streaming mode |
+
+---
 
 ## Sources
 
-- [TanStack npm supply-chain compromise postmortem (TanStack Blog, 2026-05-11)](https://tanstack.com/blog/npm-supply-chain-compromise-postmortem)
-- [Mini Shai-Hulud strikes again: TanStack + more npm Packages Compromised (Wiz Blog, 2026)](https://www.wiz.io/blog/mini-shai-hulud-strikes-again-tanstack-more-npm-packages-compromised)
-- [How a Misconfigured CI Workflow Became an npm Supply-Chain Compromise (Endor Labs, 2026)](https://www.endorlabs.com/learn/how-a-misconfigured-ci-workflow-became-an-npm-supply-chain-compromise)
-- [Trusted publishing for npm packages — official docs](https://docs.npmjs.com/trusted-publishers/)
-- [Things you need to do for npm trusted publishing to work (philna.sh, 2026-01-28)](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/)
-- [Generating provenance statements — npm Docs](https://docs.npmjs.com/generating-provenance-statements/)
-- [npm provenance details (GitHub: npm/provenance)](https://github.com/npm/provenance)
-- [`npm publish --provenance` conflicts with `repository.url` (npm/cli #8036)](https://github.com/npm/cli/issues/8036)
-- [Changesets official docs (GitHub: changesets/changesets)](https://github.com/changesets/changesets)
-- [How a Monorepo, pnpm, and Changesets Transformed My Multi-Package Workflow (Anand Kumar, Medium)](https://medium.com/@anandkumar.code/how-a-monorepo-pnpm-and-changesets-transformed-my-multi-package-workflow-7c1771bba898)
-- [Using Changesets with pnpm (pnpm docs)](https://pnpm.io/using-changesets)
-- [pnpm Workspaces docs](https://pnpm.io/workspaces)
-- [pnpm Workspaces: renaming or moving packages leaves dangling symlinks (pnpm #10081)](https://github.com/pnpm/pnpm/issues/10081)
-- [Rules — publint](https://publint.dev/rules)
-- [arethetypeswrong/cli (npm)](https://www.npmjs.com/package/@arethetypeswrong/cli)
-- [Disclosure of Replay Attack Vulnerability in Signed References (Radicle, 2026-03-30)](https://radicle.xyz/2026/03/30/disclosure-of-vulnerability-in-signed-references)
-- [List of unsafe ed25519 signature libs (MystenLabs)](https://github.com/MystenLabs/ed25519-unsafe-libs)
-- [Double Public Key Signing Function Oracle Attack on EdDSA (arXiv:2308.15009)](https://arxiv.org/pdf/2308.15009)
-- [OpenAI Removed Hard Budget Limits — Here's What to Do (Grafient)](https://grafient.ai/blog/openai-removed-hard-budget-limits)
-- [AI API Rate Limits 2026: OpenAI, Anthropic, Gemini RPM, TPM & 429 Fixes (devtk.ai)](https://devtk.ai/en/blog/ai-api-rate-limits-comparison-2026/)
-- [OpenAI Deprecations](https://developers.openai.com/api/docs/deprecations)
-- [How to Stop Your OpenAI API Bill from Spiraling Out of Control (dev.to)](https://dev.to/ali-raza-arain/how-to-stop-your-openai-api-bill-from-spiraling-out-of-control-222m)
+- [OpenTelemetry GenAI Semantic Conventions — Inside the LLM Call (OTel Blog, 2026)](https://opentelemetry.io/blog/2026/genai-observability/)
+- [How OpenTelemetry Traces LLM Calls, Agent Reasoning, and MCP Tools (Greptime, 2026-05-09)](https://greptime.com/blogs/2026-05-09-opentelemetry-genai-semantic-conventions)
+- [Semantic conventions for generative client AI spans (OTel official spec)](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/)
+- [gen_ai.prompt and gen_ai.completion deprecated in latest semconv — openllmetry issue #3515](https://github.com/traceloop/openllmetry/issues/3515)
+- [OTel semantic-conventions v1.37.0 gen-ai directory](https://github.com/open-telemetry/semantic-conventions/tree/v1.37.0/docs/gen-ai)
+- [How to Fix Span Batch Export Error in OpenTelemetry SDKs (OneUptime, 2026)](https://oneuptime.com/blog/post/2026-02-06-fix-span-batch-export-error-opentelemetry-sdks/view)
+- [How to Implement Backpressure Handling in OpenTelemetry Pipelines (OneUptime, 2026)](https://oneuptime.com/blog/post/2026-02-06-backpressure-handling-opentelemetry-pipelines/view)
+- [Langfuse OpenTelemetry Tracing Support (Langfuse Changelog, 2025-02-14)](https://langfuse.com/changelog/2025-02-14-opentelemetry-tracing)
+- [LM Studio SDK: streaming responses don't include token usage — GitHub issue #557](https://github.com/lmstudio-ai/lmstudio-js/issues/557)
+- [LiteLLM: x-litellm-response-cost not returned when streaming with include_usage — GitHub issue #12689](https://github.com/BerriAI/litellm/issues/12689)
+- [Diagnosing Errors — Provider vs Gateway (LiteLLM docs)](https://docs.litellm.ai/docs/proxy/error_diagnosis)
+- [How We Handle LLM Provider Failover at Scale (LLM Gateway, 2026)](https://llmgateway.io/blog/how-we-handle-llm-provider-failover)
+- [Your Agent Is Mine: Measuring Malicious Intermediary Attacks on the LLM Supply Chain (arXiv, 2026)](https://arxiv.org/html/2604.08407)
+- [OpenRouter June 2026: New Models, Pricing and Rankings (Digital Applied, 2026)](https://www.digitalapplied.com/blog/openrouter-new-models-june-2026-roundup-pricing-rankings)
+- [Resume tokens and last-event IDs for LLM streaming (DEV.to / Ably, 2026)](https://dev.to/ablyblog/resume-tokens-and-last-event-ids-for-llm-streaming-how-they-work-what-they-cost-to-build-4l7e)
+- [How to track LLM token usage (2026) (Braintrust)](https://www.braintrust.dev/articles/how-to-track-llm-token-usage-2026)
+- Lattice v1.3 source inspection: `packages/lattice/src/receipts/`, `packages/lattice/src/runtime/create-ai.ts`, `packages/lattice/src/providers/`, `packages/lattice/src/tracing/tracing.ts`, `packages/lattice/test/public-surface.test.ts`
 
 ---
-*Pitfalls research for: v1.3 First public npm release + canary consumer of Lattice (capability-runtime SDK shipping cryptographic primitives)*
-*Researched: 2026-06-03*
+*Pitfalls research for: v1.4 Provider Breadth + Live Multimodal + Observability Export (Lattice — Ed25519-signed capability-runtime SDK)*
+*Researched: 2026-06-15*

@@ -32,6 +32,7 @@
  */
 
 import type { ArtifactRef } from "../artifacts/artifact.js";
+import { toArtifactRef } from "../artifacts/artifact.js";
 import { BAND, type HookPipeline, createHookPipeline } from "../contract/bands.js";
 import { createCheckpointHook } from "../contract/checkpoint.js";
 import type { LatticeConfig } from "./../runtime/config.js";
@@ -336,9 +337,14 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Outp
       // OutputContractMap-aware materialization (Standard Schema
       // round-trip, structured output fields) lives in a follow-on phase
       // alongside the agent showcase (Phase 22).
+      const artifactRefs =
+        response.artifactRefs !== undefined
+          ? response.artifactRefs.map(toArtifactRef)
+          : [];
       return {
         kind: "success",
         output: { answer: responseText } as never,
+        ...(artifactRefs.length > 0 ? { artifacts: artifactRefs } : {}),
         usage: snapshotUsage(cumulativeUsage),
         iterations: Object.freeze([...iterations]),
       };

@@ -225,6 +225,13 @@ function addPolicyRejectReasons(
     });
   }
 
+  if (policy.stream === true && capability.streaming !== true) {
+    reasons.push({
+      code: "streaming-unsupported",
+      message: `${capability.modelId} does not support streaming.`,
+    });
+  }
+
   if (
     policy.noUpload === true &&
     capability.fileTransport.length > 0 &&

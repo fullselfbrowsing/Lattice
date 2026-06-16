@@ -15,8 +15,16 @@ export {
   evaluateContractAgainstRoute,
 } from "./contract/preflight.js";
 export { evaluateTripwires } from "./contract/tripwire.js";
+export {
+  createLangfuseOtlpConfig,
+  createOtelReceiptAttributes,
+  createOtelRunEventSink,
+  createPhoenixOtlpConfig,
+  sanitizeRunEventAttributes,
+} from "./observability/otel.js";
 export { output } from "./outputs/contracts.js";
 export { createMemoryKeySet } from "./receipts/keyset.js";
+export { createRemoteReceiptSigner } from "./receipts/remote-signer.js";
 export {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -24,6 +32,7 @@ export {
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
 export { isTerminal } from "./results/errors.js";
+export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
 export {
   createAISdkProvider,
   createOpenAICompatibleProvider,
@@ -34,12 +43,15 @@ export type { AnthropicProviderOptions } from "./providers/anthropic.js";
 export { createFakeProvider } from "./providers/fake.js";
 export { createGeminiProvider } from "./providers/gemini.js";
 export type { GeminiProviderOptions } from "./providers/gemini.js";
+export { createLiteLLMProvider } from "./providers/litellm.js";
+export type { LiteLLMProviderOptions } from "./providers/litellm.js";
 export { createLmStudioProvider } from "./providers/lm-studio.js";
 export type { LmStudioProviderOptions } from "./providers/lm-studio.js";
 export { createOpenRouterProvider } from "./providers/openrouter.js";
 export type { OpenRouterProviderOptions } from "./providers/openrouter.js";
 export { createXaiProvider } from "./providers/xai.js";
 export type { XaiProviderOptions } from "./providers/xai.js";
+export { collectStream } from "./providers/streaming.js";
 export { materializeReplayEnvelope } from "./replay/materialize.js";
 export {
   createReplayEnvelope,
@@ -140,6 +152,12 @@ export type {
   RateLimitLease,
 } from "./agent/infra/rate-limit-group.js";
 export { receiptCid } from "./receipts/cid.js";
+export {
+  REALTIME_DIRECTION_SUPPORT_LEVEL,
+  createRealtimeCheckpointContext,
+  createRealtimeReceiptDescriptors,
+  realtimeStepName,
+} from "./realtime/realtime.js";
 // Agent eval helper (v1.2 Phase 22).
 export { evalAgentRun } from "./agent/eval.js";
 export type {
@@ -164,6 +182,7 @@ export type {
 export { latticeVersion } from "./version.js";
 
 export type { AI, RunIntent } from "./runtime/create-ai.js";
+export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
   ArtifactInput,
@@ -183,6 +202,7 @@ export type {
   CapabilityContract,
   CapabilityContractInput,
   CapabilityReceiptBody,
+  CollectStreamOptions,
   ContractRejectReasonCode,
   ContractVerdict,
   ExecutionPlanStub,
@@ -202,16 +222,50 @@ export type {
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
+  LangfuseOtlpConfigOptions,
+  OtelAttributeValue,
+  OtelAttributes,
+  OtelContentCaptureMode,
+  OtelHttpTraceConfig,
+  OtelRunEventSinkOptions,
+  OtelSanitizerOptions,
+  OtelSpanLike,
+  OtelSpanStatus,
+  OtelTracerLike,
   OutputContract,
   OutputContractMap,
+  PhoenixOtlpConfigOptions,
   PiiDetector,
   PiiDetectorResult,
   PolicySpec,
   ProviderAdapter,
+  ProviderGatewayMetadata,
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderStream,
+  ProviderStreamChunk,
+  ProviderStreamCompleteChunk,
+  ProviderStreamGatewayChunk,
+  ProviderStreamOutputChunk,
+  ProviderStreamTextDeltaChunk,
+  ProviderStreamToolCallChunk,
+  ProviderStreamUsageChunk,
   QualityFloorInvariant,
+  GeminiLiveTarget,
+  OpenAIRealtimeTarget,
+  RealtimeCheckpointInput,
+  RealtimeCheckpointKind,
+  RealtimeCheckpointingSpec,
+  RealtimeInputModality,
+  RealtimeOutputModality,
+  RealtimeProviderKind,
+  RealtimeProviderTarget,
+  RealtimeReceiptDescriptors,
+  RealtimeSessionMode,
+  RealtimeSessionSpec,
+  RealtimeSupportLevel,
+  RealtimeTransportKind,
   ReceiptEnvelope,
   ReceiptModel,
   ReceiptRedaction,
@@ -219,6 +273,11 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  RemoteReceiptPayloadFormat,
+  RemoteReceiptSignRequest,
+  RemoteReceiptSignResult,
+  RemoteReceiptSignerOptions,
+  RemoteReceiptSignerProvider,
   ReplayEnvelope,
   RunEvent,
   RunEventKind,
@@ -261,6 +320,9 @@ export type {
   CapabilityAdapter,
   KnownFailureMode,
   ModelCapabilityProfile,
+  ModelCapabilityProfileModality,
+  ModelCapabilityProfilePricing,
+  ModelCapabilityProfilePricingKey,
   ReasoningSurface,
   RecommendedPromptStrategy,
   ToolCallSurface,
@@ -288,11 +350,12 @@ export {
   negotiateCapabilities,
   synthesizeNegotiatedCapabilitiesFromRegistry,
 } from "./capabilities/index.js";
-// Phase 34 — AdapterQuirks base + 7 per-adapter narrowed sub-interfaces (D-03)
+// Phase 34 — AdapterQuirks base + per-adapter narrowed sub-interfaces (D-03)
 export type {
   AdapterQuirks,
   AnthropicQuirks,
   GeminiQuirks,
+  LiteLLMQuirks,
   LmStudioQuirks,
   OpenAICompatQuirks,
   OpenAIQuirks,

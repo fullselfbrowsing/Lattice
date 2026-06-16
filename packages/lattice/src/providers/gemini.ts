@@ -1,5 +1,11 @@
 import type { UsageRecord } from "../plan/plan.js";
-import type { ProviderAdapter, ProviderRunResponse, Usage } from "./provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  ProviderStream,
+  Usage,
+} from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import type { GeminiQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -11,6 +17,7 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
+import type { ToolUseRequest } from "../agent/types.js";
 import { parseToolUseEnvelope } from "../agent/format-tools.js";
 import {
   validateToolCallRequests,
@@ -20,6 +27,15 @@ import {
   applyOutputSanitizers,
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
+import {
+  artifactBase64Data,
+  artifactHttpUrl,
+  geminiFileUri,
+  mediaTypeForArtifact,
+  packagedPlanForArtifact,
+} from "./multimodal.js";
+import { readSseEvents } from "./sse.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 /**
  * Options for {@link createGeminiProvider}.
@@ -34,10 +50,10 @@ import {
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
+ * STREAMING (Phase 44): supported through native `streamGenerateContent` SSE events.
+ *
  * DEFERRED (Phase 4 carryforward notes):
  *   - multimodal (vision) -- deferred
- *   - streaming           -- deferred (single-shot Promise per CONTEXT.md D-06)
- *   - tool use            -- deferred
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
  *
  * NOTE (Phase 34): negotiate() uses x-goog-api-key HEADER (preferred per RESEARCH §Q3).
@@ -115,6 +131,118 @@ const GEMINI_QUIRKS: GeminiQuirks = {
   safetySettingsConfigurable: true,    // VERIFIED: gemini.ts:50-55 4-category BLOCK_NONE
   systemInstructionSupported: true,    // CITED: gemini-1.5+ supports system_instruction
 };
+
+async function createGeminiGenerateContentBody(
+  request: ProviderRunRequest,
+): Promise<Record<string, unknown>> {
+  const parts = await createGeminiUserParts(request);
+
+  return {
+    contents: [
+      {
+        role: "user",
+        parts,
+      },
+    ],
+    generationConfig: {
+      temperature: DEFAULT_TEMPERATURE,
+      topP: DEFAULT_TOP_P,
+      maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+    },
+    safetySettings: SAFETY_SETTINGS,
+  };
+}
+
+async function createGeminiUserParts(
+  request: ProviderRunRequest,
+): Promise<readonly Record<string, unknown>[]> {
+  const parts: Record<string, unknown>[] = [{ text: request.task }];
+
+  for (const inputArtifact of request.artifacts) {
+    if (!isGeminiMediaArtifact(inputArtifact.kind)) {
+      continue;
+    }
+
+    const packaged = packagedPlanForArtifact(request, inputArtifact.id);
+    if (packaged === undefined) {
+      continue;
+    }
+
+    if (packaged.transport === "file-id") {
+      const fileUri = geminiFileUri(inputArtifact);
+      if (fileUri === undefined) {
+        continue;
+      }
+      parts.push({
+        fileData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          fileUri,
+        },
+      });
+      continue;
+    }
+
+    if (packaged.transport === "url") {
+      const fileUri = artifactHttpUrl(inputArtifact);
+      if (fileUri === undefined) {
+        continue;
+      }
+      parts.push({
+        fileData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          fileUri,
+        },
+      });
+      continue;
+    }
+
+    if (packaged.transport === "base64" || packaged.transport === "inline") {
+      const data = await artifactBase64Data(inputArtifact);
+      if (data === undefined) {
+        continue;
+      }
+      parts.push({
+        inlineData: {
+          mimeType: mediaTypeForArtifact(inputArtifact, fallbackGeminiMimeType(inputArtifact.kind)),
+          data,
+        },
+      });
+    }
+  }
+
+  return parts;
+}
+
+function isGeminiMediaArtifact(kind: string): kind is "image" | "audio" | "video" {
+  return kind === "image" || kind === "audio" || kind === "video";
+}
+
+function fallbackGeminiMimeType(kind: "image" | "audio" | "video"): string {
+  switch (kind) {
+    case "image":
+      return "image/jpeg";
+    case "audio":
+      return "audio/mpeg";
+    case "video":
+      return "video/mp4";
+  }
+}
+
+function geminiGenerateContentUrl(input: {
+  readonly baseUrl: string;
+  readonly model: string;
+  readonly apiKey: string;
+  readonly stream?: boolean;
+}): string {
+  const method = input.stream === true ? "streamGenerateContent" : "generateContent";
+  const params = new URLSearchParams({ key: input.apiKey });
+  if (input.stream === true) {
+    params.set("alt", "sse");
+  }
+
+  const encodedModel = encodeURIComponent(input.model);
+  return `${input.baseUrl}/v1beta/models/${encodedModel}:${method}?${params.toString()}`;
+}
 
 /**
  * Phase 34 — D-03 / D-05..D-12 — Extended Gemini provider factory.
@@ -362,35 +490,30 @@ export function createGeminiProvider(
       {
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
-        fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
+        fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
+        streaming: true,
       },
     ],
     quirks: GEMINI_QUIRKS,
     negotiateCapabilities: negotiate,
     async execute(request) {
+      const requestBody = await createGeminiGenerateContentBody(request);
+      const bodyStr = JSON.stringify(requestBody);
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: request.task }],
-            },
-          ],
-          generationConfig: {
-            temperature: DEFAULT_TEMPERATURE,
-            topP: DEFAULT_TOP_P,
-            maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
-          },
-          safetySettings: SAFETY_SETTINGS,
-        }),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
-      const url = `${baseUrl}/v1beta/models/${encodeURIComponent(options.model)}:generateContent?key=${encodeURIComponent(options.apiKey)}`;
+      const url = geminiGenerateContentUrl({
+        baseUrl,
+        model: options.model,
+        apiKey: options.apiKey,
+      });
       const response = await fetchImpl(url, init);
 
       if (!response.ok) {
@@ -429,7 +552,191 @@ export function createGeminiProvider(
         rawResponse: body,
       };
     },
+    executeStream(request) {
+      return streamGeminiResponse({
+        id,
+        model: options.model,
+        baseUrl,
+        apiKey: options.apiKey,
+        fetchImpl,
+        request,
+        ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+        ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
+        ...(options.validateToolCalls !== undefined
+          ? { validateToolCalls: options.validateToolCalls }
+          : {}),
+      });
+    },
   };
+}
+
+async function* streamGeminiResponse(input: {
+  readonly id: string;
+  readonly model: string;
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly fetchImpl: typeof fetch;
+  readonly request: ProviderRunRequest;
+  readonly pricing?: {
+    readonly inputPer1kTokens?: number;
+    readonly outputPer1kTokens?: number;
+  };
+  readonly sanitizeOutput?: SanitizeOutputOption;
+  readonly validateToolCalls?: ValidateToolCallsOption;
+}): ProviderStream {
+  const requestBody = await createGeminiGenerateContentBody(input.request);
+  const streamBodyStr = JSON.stringify(requestBody);
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
+  const response = await input.fetchImpl(
+    geminiGenerateContentUrl({
+      baseUrl: input.baseUrl,
+      model: input.model,
+      apiKey: input.apiKey,
+      stream: true,
+    }),
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: streamBodyStr,
+      ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini provider failed with ${response.status}.`);
+  }
+
+  const textParts: string[] = [];
+  const rawChunks: unknown[] = [];
+  const nativeToolRequests: ToolUseRequest[] = [];
+  let usagePayload: unknown;
+
+  for await (const event of readSseEvents(response)) {
+    const data = event.data.trim();
+    if (data.length === 0) {
+      continue;
+    }
+    if (data === "[DONE]") {
+      break;
+    }
+
+    const chunk = parseJsonObject(data, "Gemini");
+    rawChunks.push(chunk);
+    const usage = geminiUsageMetadata(chunk);
+    if (usage !== undefined) {
+      usagePayload = usage;
+    }
+
+    for (const { part, candidateIndex, partIndex } of geminiParts(chunk)) {
+      if (typeof part.text === "string" && part.text.length > 0) {
+        textParts.push(part.text);
+        for (const output of input.request.outputs) {
+          yield { kind: "text-delta", output, text: part.text };
+        }
+      }
+
+      const toolRequest = geminiFunctionCallRequest(part, candidateIndex, partIndex);
+      if (toolRequest !== undefined) {
+        nativeToolRequests.push(toolRequest);
+      }
+    }
+  }
+
+  const text = textParts.join("");
+  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
+    providerId: input.id,
+    modelId: input.model,
+  });
+  const parsedToolCalls = parseToolUseEnvelope(text);
+  const promptToolCalls = parsedToolCalls === null
+    ? undefined
+    : await validateToolCallRequests(parsedToolCalls, input.validateToolCalls);
+  const nativeToolCalls = nativeToolRequests.length === 0
+    ? undefined
+    : await validateToolCallRequests(nativeToolRequests, input.validateToolCalls);
+  const toolCalls = [
+    ...(promptToolCalls ?? []),
+    ...(nativeToolCalls ?? []),
+  ];
+  const usage = normalizeGeminiUsage(usagePayload);
+  const normalizedUsage = normalizeGeminiUsageToRunUsage(usagePayload, input.pricing);
+
+  yield {
+    kind: "complete",
+    rawOutputs: sanitizedOutputs,
+    ...(usage !== undefined ? { usage } : {}),
+    normalizedUsage,
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    rawResponse: {
+      kind: "gemini-stream",
+      chunks: rawChunks,
+    },
+  };
+}
+
+function parseJsonObject(data: string, providerName: string): unknown {
+  try {
+    return JSON.parse(data) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`${providerName} stream returned invalid JSON: ${message}`);
+  }
+}
+
+function geminiUsageMetadata(chunk: unknown): unknown {
+  return isRecord(chunk) ? chunk.usageMetadata : undefined;
+}
+
+function geminiParts(chunk: unknown): Array<{
+  readonly part: Record<string, unknown>;
+  readonly candidateIndex: number;
+  readonly partIndex: number;
+}> {
+  if (!isRecord(chunk) || !Array.isArray(chunk.candidates)) {
+    return [];
+  }
+
+  return chunk.candidates.flatMap((candidate, candidateIndex) => {
+    if (!isRecord(candidate) || !isRecord(candidate.content)) {
+      return [];
+    }
+    const parts = candidate.content.parts;
+    if (!Array.isArray(parts)) {
+      return [];
+    }
+
+    return parts.flatMap((part, partIndex) =>
+      isRecord(part) ? [{ part, candidateIndex, partIndex }] : [],
+    );
+  });
+}
+
+function geminiFunctionCallRequest(
+  part: Record<string, unknown>,
+  candidateIndex: number,
+  partIndex: number,
+): ToolUseRequest | undefined {
+  if (!isRecord(part.functionCall)) {
+    return undefined;
+  }
+
+  const name = part.functionCall.name;
+  if (typeof name !== "string") {
+    return undefined;
+  }
+
+  return {
+    id: `gemini-function-call-${candidateIndex}-${partIndex}`,
+    name,
+    args: part.functionCall.args ?? {},
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

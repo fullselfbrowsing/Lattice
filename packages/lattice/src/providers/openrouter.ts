@@ -1,4 +1,4 @@
-import type { ProviderAdapter } from "./provider.js";
+import type { ProviderAdapter, ProviderStream } from "./provider.js";
 import { createOpenAICompatibleProvider, type OpenAICompatibleProviderOptions } from "./adapters.js";
 import type { OpenRouterQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -21,14 +21,11 @@ import { createRunEvent } from "../tracing/tracing.js";
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
+ * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ *
  * DEFERRED (D-17 carryforward; Phase 4 ships the named adapter as a
  * first-class OpenAI-compat wrapper):
- *   - model-routing array  -- caller supplies `model` (single id); OpenRouter's
- *                             `models: [primary, fallback, ...]` array
- *                             feature is deferred to a follow-on phase.
- *   - fallback-array       -- deferred (same phase as model-routing).
  *   - per-message routing  -- deferred.
- *   - streaming            -- deferred (single-shot per CONTEXT.md D-06).
  *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter).
  *
  * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03: thin wrapper; D-17: model-routing deferred).
@@ -55,9 +52,29 @@ export interface OpenRouterProviderOptions
    * If absent, no event is emitted (silent fallback).
    */
   readonly runEventSink?: RunEventSink;
+  /**
+   * Ordered OpenRouter model fallback candidates. The primary `model` remains
+   * the Lattice-selected route; these candidates serialize as OpenRouter's
+   * top-level `models` request field when non-empty.
+   */
+  readonly fallbackModels?: readonly string[];
 }
 
 const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+function normalizeFallbackModels(models: readonly string[] | undefined): readonly string[] | undefined {
+  if (models === undefined) return undefined;
+  const normalized = models.map((model) => model.trim()).filter((model) => model.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function observedModelFromRawResponse(rawResponse: unknown): string | undefined {
+  if (typeof rawResponse !== "object" || rawResponse === null || Array.isArray(rawResponse)) {
+    return undefined;
+  }
+  const model = (rawResponse as Record<string, unknown>).model;
+  return typeof model === "string" ? model : undefined;
+}
 
 /**
  * Phase 34 — D-03 — OpenRouter quirks block. Values verified against
@@ -112,6 +129,7 @@ export function createOpenRouterProvider(
 } {
   const baseUrl = (options.baseUrl ?? DEFAULT_OPENROUTER_BASE_URL).replace(/\/$/u, "");
   const fetchImpl = options.fetch ?? fetch;
+  const fallbackModels = normalizeFallbackModels(options.fallbackModels);
 
   // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
   // each createOpenRouterProvider({}) call gets its own Map (no cross-contamination).
@@ -367,18 +385,81 @@ export function createOpenRouterProvider(
     void options.runEventSink(event);
   }
 
+  const executeFetch: typeof fetch = fallbackModels === undefined
+    ? fetchImpl
+    : (async (url, init) => {
+        if (typeof init?.body !== "string") {
+          return fetchImpl(url, init);
+        }
+        const body = JSON.parse(init.body) as Record<string, unknown>;
+        return fetchImpl(url, {
+          ...init,
+          body: JSON.stringify({
+            ...body,
+            models: [...fallbackModels],
+          }),
+        });
+      }) as typeof fetch;
+
   // Create the underlying OpenAI-compat execute() adapter for chat completions
   const baseAdapter = createOpenAICompatibleProvider({
     ...options,
     id: options.id ?? "openrouter",
     baseUrl,
+    fetch: executeFetch,
   });
+  const baseExecuteStream = baseAdapter.executeStream;
 
   return {
     ...baseAdapter,
+    async execute(request) {
+      const response = await baseAdapter.execute!(request);
+      const observedModel =
+        response.gateway?.observedModel ?? observedModelFromRawResponse(response.rawResponse);
+      return {
+        ...response,
+        gateway: {
+          ...(response.gateway ?? { used: true }),
+          used: true,
+          requestedModel: options.model,
+          ...(fallbackModels !== undefined ? { fallbackModels } : {}),
+          ...(observedModel !== undefined ? { observedModel } : {}),
+        },
+      };
+    },
+    ...(baseExecuteStream !== undefined
+      ? {
+          executeStream: async (request: Parameters<typeof baseExecuteStream>[0]) => {
+            const stream = await baseExecuteStream(request);
+            return withOpenRouterStreamGateway(stream);
+          },
+        }
+      : {}),
     quirks: OPENROUTER_QUIRKS,
     negotiateCapabilities: negotiate,
   };
+
+  async function* withOpenRouterStreamGateway(stream: ProviderStream): ProviderStream {
+    for await (const chunk of stream) {
+      if (chunk.kind !== "complete") {
+        yield chunk;
+        continue;
+      }
+
+      const observedModel =
+        chunk.gateway?.observedModel ?? observedModelFromRawResponse(chunk.rawResponse);
+      yield {
+        ...chunk,
+        gateway: {
+          ...(chunk.gateway ?? { used: true }),
+          used: true,
+          requestedModel: options.model,
+          ...(fallbackModels !== undefined ? { fallbackModels } : {}),
+          ...(observedModel !== undefined ? { observedModel } : {}),
+        },
+      };
+    }
+  }
 }
 
 /**

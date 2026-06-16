@@ -1,7 +1,7 @@
 {
   "name": "@full-self-browsing/lattice-cli",
   "version": "1.3.0",
-  "description": "Lattice CLI — repro and verify signed capability receipts",
+  "description": "Lattice CLI — replay, verify, eval, diff, and diagnose capability runs",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -35,8 +35,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "stamp:version": "node ../../scripts/stamp-package-version.mjs --package package.json --out src/version.ts --export latticeCliVersion",
+    "build": "pnpm stamp:version && tsdown",
+    "typecheck": "pnpm stamp:version && tsc -p tsconfig.json --noEmit",
     "test": "pnpm build && vitest run",
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
   },

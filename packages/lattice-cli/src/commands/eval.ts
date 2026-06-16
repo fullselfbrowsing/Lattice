@@ -40,6 +40,17 @@
 import { defineCommand } from "citty";
 
 import {
+  isAgentEvalLoadError,
+  runAgentEvalSession,
+  writeAgentEvalBaseline as defaultWriteAgentBaseline,
+  type AgentEvalRunnerDeps,
+} from "../eval/agent-runner.js";
+import type {
+  AgentEvalBaselineFile,
+  AgentEvalConfig,
+  AgentEvalRunReport,
+} from "../eval/agent-types.js";
+import {
   isBaselineLoadError,
   writeBaseline as defaultWriteBaseline,
   type Baseline,
@@ -64,10 +75,22 @@ export interface EvalDeps {
   ) => Promise<EvalRunReport>;
   /** Test injection: override the baseline writer. Defaults to `writeBaseline`. */
   readonly writeBaseline?: (path: string, baseline: Baseline) => Promise<void>;
+  /** Test injection: override the agent baseline writer. */
+  readonly writeAgentBaseline?: (
+    path: string,
+    baseline: AgentEvalBaselineFile,
+  ) => Promise<void>;
   /** Test injection: lock `recordedAt` for snapshots. Defaults to `Date.now()`. */
   readonly now?: () => string;
   /** Test injection: forwarded to the runner. */
   readonly runnerDeps?: EvalRunnerDeps;
+  /** Test injection: override the agent-eval runner. Defaults to `runAgentEvalSession`. */
+  readonly runAgentSession?: (
+    config: AgentEvalConfig,
+    runnerDeps?: AgentEvalRunnerDeps,
+  ) => Promise<AgentEvalRunReport>;
+  /** Test injection: forwarded to the agent-eval runner. */
+  readonly agentRunnerDeps?: AgentEvalRunnerDeps;
 }
 
 const defaultDeps: EvalDeps = {
@@ -79,6 +102,7 @@ const defaultDeps: EvalDeps = {
 };
 
 export interface RunEvalArgs {
+  readonly agent?: boolean;
   readonly fixtures?: string;
   readonly baseline?: string;
   readonly key?: string;
@@ -95,6 +119,7 @@ export interface RunEvalArgs {
   readonly initBaseline?: boolean;
   readonly costTolerance?: number;
   readonly qualityTolerance?: number;
+  readonly iterationsTolerance?: number;
   readonly judgeN?: number;
   readonly judgePrompt?: string;
 }
@@ -119,6 +144,16 @@ export function buildEvalConfig(args: RunEvalArgs): EvalConfig {
       args.judgePrompt ?? "Rate the quality of this output from 0 to 1.",
   };
   return config;
+}
+
+export function buildAgentEvalConfig(args: RunEvalArgs): AgentEvalConfig {
+  return {
+    fixturesDir: args.fixtures ?? ".lattice/agent-eval",
+    baselinePath: args.baseline ?? ".lattice/agent-baseline.json",
+    iterationsToGoalRegressionLimit: args.iterationsTolerance ?? 1,
+    costUsdRegressionLimit: args.costTolerance ?? 0.1,
+    initBaseline: args.initBaseline ?? false,
+  };
 }
 
 function readErrorMessage(value: unknown): string {
@@ -164,6 +199,91 @@ function emitReport(report: EvalRunReport, deps: EvalDeps): void {
   deps.stdout(JSON.stringify(report));
 }
 
+function emitAgentReport(
+  report: AgentEvalRunReport,
+  deps: EvalDeps,
+): void {
+  for (const f of report.fixtures) {
+    const deltaIterations =
+      f.iterationsToGoal.delta === null
+        ? "null"
+        : String(f.iterationsToGoal.delta);
+    const deltaCost =
+      f.costUsd.deltaPct === null ? "null" : String(f.costUsd.deltaPct);
+    const regressionKinds =
+      f.regressions.length === 0
+        ? "none"
+        : f.regressions.map((r) => r.kind).join(",");
+    deps.stderr(
+      `${f.fixtureId} verdict=${f.verdict} regressions=${regressionKinds} deltaIterations=${deltaIterations} deltaCostPct=${deltaCost}`,
+    );
+  }
+  deps.stderr(
+    `SUMMARY total=${report.summary.total} passed=${report.summary.passed} regressed=${report.summary.regressed} newFixtures=${report.summary.newFixtures}`,
+  );
+  deps.stdout(JSON.stringify(report));
+}
+
+async function runAgentEval(
+  args: RunEvalArgs,
+  deps: EvalDeps,
+): Promise<void> {
+  const config = buildAgentEvalConfig(args);
+  const runSession = deps.runAgentSession ?? runAgentEvalSession;
+  const writeAgentBaselineFn = deps.writeAgentBaseline ?? defaultWriteAgentBaseline;
+  const now = deps.now ?? (() => new Date().toISOString());
+
+  let report: AgentEvalRunReport;
+  try {
+    const runnerDeps: AgentEvalRunnerDeps = {
+      ...(deps.agentRunnerDeps ?? {}),
+      ...(deps.now !== undefined ? { now: deps.now } : {}),
+    };
+    report = await runSession(config, runnerDeps);
+  } catch (err) {
+    if (isAgentEvalLoadError(err)) {
+      return fail(
+        deps,
+        `agent-eval-${err.kind}`,
+        `${err.path}: ${err.message}`,
+        2,
+      );
+    }
+    return fail(deps, "agent-eval-session-failed", readErrorMessage(err), 2);
+  }
+
+  if (config.initBaseline === true) {
+    const baseline: AgentEvalBaselineFile = {
+      version: "lattice-agent-eval-baseline/v1",
+      recordedAt: now(),
+      fixtures: Object.fromEntries(
+        report.fixtures.map((fixture) => [fixture.fixtureId, fixture.current]),
+      ),
+    };
+
+    try {
+      await writeAgentBaselineFn(config.baselinePath, baseline);
+    } catch (err) {
+      return fail(
+        deps,
+        "agent-baseline-write-failed",
+        readErrorMessage(err),
+        2,
+      );
+    }
+
+    const finalReport: AgentEvalRunReport = { ...report, exitCode: 0 };
+    emitAgentReport(finalReport, deps);
+    deps.exit(0);
+    return;
+  }
+
+  const exitCode: 0 | 1 = report.summary.regressed > 0 ? 1 : 0;
+  const finalReport: AgentEvalRunReport = { ...report, exitCode };
+  emitAgentReport(finalReport, deps);
+  deps.exit(exitCode);
+}
+
 /**
  * Testable handler. Pure with respect to `deps`. All output flows through
  * `deps.stdout`/`deps.stderr`/`deps.exit`; the function returns `void` after
@@ -173,6 +293,11 @@ export async function runEval(
   args: RunEvalArgs,
   deps: EvalDeps = defaultDeps,
 ): Promise<void> {
+  if (args.agent === true) {
+    await runAgentEval(args, deps);
+    return;
+  }
+
   const config = buildEvalConfig(args);
   const runSession = deps.runSession ?? runEvalSession;
   const writeBaselineFn = deps.writeBaseline ?? defaultWriteBaseline;
@@ -289,18 +414,23 @@ export default defineCommand({
   meta: {
     name: "eval",
     description:
-      "Walk a fixtures directory of receipts, replay each, and gate baseline-relative cost/quality regressions for CI.",
+      "Gate receipt replay or agent-run regressions for CI.",
   },
   args: {
+    agent: {
+      type: "boolean",
+      description:
+        "Run agent snapshot eval instead of receipt replay eval.",
+    },
     fixtures: {
       type: "string",
       description:
-        "Directory of receipts to evaluate (default: .lattice/receipts/).",
+        "Directory of receipts or agent fixtures to evaluate.",
     },
     baseline: {
       type: "string",
       description:
-        "Baseline JSON path for cost/quality gating (default: .lattice/baseline.json).",
+        "Baseline JSON path for receipt or agent eval.",
     },
     key: {
       type: "string",
@@ -335,6 +465,11 @@ export default defineCommand({
       type: "string",
       description: "Quality regression tolerance (default 0.05).",
     },
+    "iterations-tolerance": {
+      type: "string",
+      description:
+        "Agent iterations-to-goal regression tolerance (default 1).",
+    },
     "judge-n": {
       type: "string",
       description:
@@ -351,6 +486,7 @@ export default defineCommand({
     // `string | undefined` parsed args don't reach RunEvalArgs's `?:` slots
     // as explicit `undefined`.
     const callArgs: RunEvalArgs = {
+      ...(args.agent === true ? { agent: true } : {}),
       ...(args.fixtures !== undefined ? { fixtures: args.fixtures } : {}),
       ...(args.baseline !== undefined ? { baseline: args.baseline } : {}),
       ...(args.key !== undefined ? { key: args.key } : {}),
@@ -367,6 +503,9 @@ export default defineCommand({
         : {}),
       ...(args["quality-tolerance"] !== undefined
         ? { qualityTolerance: Number(args["quality-tolerance"]) }
+        : {}),
+      ...(args["iterations-tolerance"] !== undefined
+        ? { iterationsTolerance: Number(args["iterations-tolerance"]) }
         : {}),
       ...(args["judge-n"] !== undefined
         ? { judgeN: Number(args["judge-n"]) }

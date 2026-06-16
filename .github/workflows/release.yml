@@ -113,6 +113,12 @@ jobs:
         # Same lint pass as CI; cheap insurance the release tarball is clean.
         run: pnpm -r lint:packages
 
+      - name: Audit package version surfaces
+        run: node scripts/check-package-version-surfaces.mjs
+
+      - name: Audit core package boundary
+        run: node scripts/check-core-package-boundary.mjs
+
       - name: Publish to npm with provenance
         # pnpm publish picks up the OIDC token from
         # ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN that

@@ -5,7 +5,11 @@ import {
   createOpenAICompatibleProvider,
   createOpenAIProvider,
 } from "./adapters.js";
+import { createAnthropicProvider } from "./anthropic.js";
+import { createGeminiProvider } from "./gemini.js";
 import { createFakeProvider } from "./fake.js";
+import { collectStream } from "./streaming.js";
+import { artifact } from "../artifacts/artifact.js";
 import type { ModelCapability } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
@@ -18,6 +22,40 @@ function makeFakeFetch(body: unknown, status = 200): typeof fetch {
       status,
       headers: { "content-type": "application/json" },
     })) as unknown as typeof fetch;
+}
+
+const encoder = new TextEncoder();
+
+function sseData(payload: unknown): string {
+  return `data: ${typeof payload === "string" ? payload : JSON.stringify(payload)}\n\n`;
+}
+
+function makeStreamingFetch(
+  chunks: readonly string[],
+  status = 200,
+): {
+  fetch: typeof fetch;
+  requests: Array<{ url: string; init: RequestInit }>;
+} {
+  const requests: Array<{ url: string; init: RequestInit }> = [];
+  const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    requests.push({ url: String(url), init: init ?? {} });
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      {
+        status,
+        headers: { "content-type": "text/event-stream" },
+      },
+    );
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, requests };
 }
 
 /**
@@ -333,6 +371,196 @@ describe("Phase 37: OpenAI-compatible tool-call validation", () => {
     expect(response.toolCalls).toEqual([
       { id: "c3", name: "search", args: { query: "ok" } },
     ]);
+  });
+});
+
+describe("Phase 44: OpenAI-compatible streaming adapter", () => {
+  it("advertises streaming capability", () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({ choices: [{ message: { content: "hi" } }], usage: {} }),
+    });
+
+    expect(adapter.capabilities?.[0]?.streaming).toBe(true);
+  });
+
+  it("streaming request body includes stream true", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "ok" } }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake/",
+      fetch,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    expect(first.url).toBe("http://fake/chat/completions");
+    const body = JSON.parse(first.init.body as string) as Record<string, unknown>;
+    expect(body.model).toBe("test");
+    expect(body.stream).toBe(true);
+    expect(body.stream_options).toEqual({ include_usage: true });
+  });
+
+  it("streaming request body includes stream_options include_usage and captures usage from final chunk", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "hi" } }] }),
+      sseData({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 4 } }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake/",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    const reqBody = JSON.parse(first.init.body as string) as Record<string, unknown>;
+    expect(reqBody.stream_options).toEqual({ include_usage: true });
+    expect(response.normalizedUsage?.promptTokens).toBeGreaterThan(0);
+    expect(response.normalizedUsage?.completionTokens).toBeGreaterThan(0);
+  });
+
+  it("text chunks collect to final output", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({ model: "observed-model", choices: [{ delta: { content: "hel" } }] }),
+      sseData({
+        choices: [{ delta: { content: "lo" } }],
+        usage: { prompt_tokens: 2, completion_tokens: 3 },
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.rawOutputs).toEqual({ text: "hello" });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 2,
+      completionTokens: 3,
+      costUsd: null,
+    });
+    expect(response.rawResponse).toMatchObject({
+      kind: "openai-compatible-stream",
+      chunks: expect.any(Array),
+    });
+  });
+
+  it("split SSE frames parse correctly", async () => {
+    const { fetch } = makeStreamingFetch([
+      "data: {\"choices\":[{\"delta\":{\"content\":\"hel",
+      "lo\"}}]}\n\n",
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("native tool-call deltas validate into toolCalls", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: "call-1",
+                  function: { name: "search", arguments: "{\"query\":\"" },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      sseData({
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  function: { arguments: "ok\"}" },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.toolCalls).toEqual([
+      { id: "call-1", name: "search", args: { query: "ok" } },
+    ]);
+  });
+
+  it("non-OK streaming response throws", async () => {
+    const { fetch } = makeStreamingFetch([], 503);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await expect(
+      collectStream(await adapter.executeStream!({
+        task: "t",
+        artifacts: [],
+        outputs: ["text"],
+      })),
+    ).rejects.toThrow("OpenAI-compatible provider failed with 503.");
   });
 });
 
@@ -720,5 +948,250 @@ describe("Phase 36: OpenAI-compatible output sanitizers", () => {
     });
 
     expect(response.rawOutputs.text).toBe("Greeted the user.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// h31: noPublicUrl cross-adapter parity
+// ---------------------------------------------------------------------------
+// Tests A and B are RED before adapters.ts is patched (Task 2).
+// Tests C, D, E must be GREEN immediately (positive path + Anthropic/Gemini parity lock).
+// ---------------------------------------------------------------------------
+
+describe("noPublicUrl cross-adapter parity", () => {
+  const ARTIFACT_ID = "img-1";
+  const PUBLIC_URL = "https://example.com/img.png";
+
+  // Minimal SSE response to drive executeStream to completion.
+  const minimalSseChunks = [
+    sseData({ choices: [{ delta: { content: "ok" } }] }),
+    sseData("[DONE]"),
+  ];
+
+  // Test A: url-kind artifact with transport "inline" (noPublicUrl blocks url field).
+  it("Test A: OpenAI-compat omits url field when transport is not 'url' (noPublicUrl blocked)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          artifact.url(PUBLIC_URL, { id: ARTIFACT_ID }),
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "inline",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test B: image-kind artifact whose value is a public URL with transport "base64"
+  // (noPublicUrl fallback — value-borne URL must not leak).
+  it("Test B: OpenAI-compat omits value-borne public URL when transport is not 'url' (noPublicUrl blocked)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "base64",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test C: positive / no over-blocking — url-kind artifact with transport "url"
+  // must still emit the url field (noPublicUrl is NOT set for this case).
+  it("Test C: OpenAI-compat emits url field when transport is 'url' (no over-blocking)", async () => {
+    const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await collectStream(
+      await adapter.executeStream!({
+        task: "describe this image",
+        artifacts: [
+          artifact.url(PUBLIC_URL, { id: ARTIFACT_ID }),
+        ],
+        outputs: ["text"],
+        providerPackaging: {
+          providerId: "test",
+          modelId: "test",
+          artifacts: [
+            {
+              artifactId: ARTIFACT_ID,
+              transport: "url",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    );
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a streaming request.");
+    const bodyStr = first.init.body as string;
+    expect(bodyStr).toContain(PUBLIC_URL);
+  });
+
+  // Test D: Anthropic parity lock — image artifact with transport "base64" must not
+  // include a public URL in the request body (Anthropic already compliant; regression lock).
+  it("Test D: Anthropic omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = [];
+    const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push({ url: String(url), init: init ?? {} });
+      return new Response(
+        JSON.stringify({
+          id: "msg-1",
+          type: "message",
+          role: "assistant",
+          content: [{ type: "text", text: "ok" }],
+          model: "claude-3-opus-20240229",
+          stop_reason: "end_turn",
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const adapter = createAnthropicProvider({
+      model: "claude-3-opus-20240229",
+      apiKey: "sk-test",
+      fetch: fakeFetch,
+    });
+
+    await adapter.execute!({
+      task: "describe this image",
+      artifacts: [
+        artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
+      ],
+      outputs: ["text"],
+      providerPackaging: {
+        providerId: "anthropic",
+        modelId: "claude-3-opus-20240229",
+        artifacts: [
+          {
+            artifactId: ARTIFACT_ID,
+            transport: "base64",
+            lineageTransform: "provider-packaging",
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    });
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a request.");
+    const bodyStr = first.init.body as string;
+    // Anthropic is already compliant: image with base64 transport must not emit the public URL
+    expect(bodyStr).not.toContain(PUBLIC_URL);
+  });
+
+  // Test E: Gemini parity lock — image artifact with transport "base64" must not
+  // include a public URL in the request body (Gemini already compliant; regression lock).
+  it("Test E: Gemini omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = [];
+    const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push({ url: String(url), init: init ?? {} });
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                role: "model",
+                parts: [{ text: "ok" }],
+              },
+              finishReason: "STOP",
+            },
+          ],
+          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-pro",
+      apiKey: "test-key",
+      fetch: fakeFetch,
+    });
+
+    await adapter.execute!({
+      task: "describe this image",
+      artifacts: [
+        artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
+      ],
+      outputs: ["text"],
+      providerPackaging: {
+        providerId: "gemini",
+        modelId: "gemini-1.5-pro",
+        artifacts: [
+          {
+            artifactId: ARTIFACT_ID,
+            transport: "base64",
+            lineageTransform: "provider-packaging",
+            warnings: [],
+          },
+        ],
+        warnings: [],
+      },
+    });
+
+    const first = requests[0];
+    if (first === undefined) throw new Error("Expected a request.");
+    const bodyStr = first.init.body as string;
+    // Gemini is already compliant: image with base64 transport must not emit the public URL
+    expect(bodyStr).not.toContain(PUBLIC_URL);
   });
 });

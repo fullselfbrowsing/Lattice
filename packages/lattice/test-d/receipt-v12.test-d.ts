@@ -24,9 +24,18 @@ expectAssignable<CapabilityReceiptBody["parentReceiptCid"]>(
 expectAssignable<CapabilityReceiptBody["parentReceiptCid"]>(undefined);
 expectError<CapabilityReceiptBody["parentReceiptCid"]>(42);
 
+// Phase 46 (REC-01): lineageMerkleRoot is additive-optional on the v1.3 body.
+expectType<string | undefined>(body.lineageMerkleRoot);
+expectAssignable<CapabilityReceiptBody["lineageMerkleRoot"]>(
+  "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+);
+expectAssignable<CapabilityReceiptBody["lineageMerkleRoot"]>(undefined);
+expectError<CapabilityReceiptBody["lineageMerkleRoot"]>(42);
+
 // CreateReceiptInput accepts the optional member.
 declare const input: CreateReceiptInput;
 expectType<string | undefined>(input.parentReceiptCid);
+expectType<string | undefined>(input.lineageMerkleRoot);
 expectAssignable<CreateReceiptInput>({
   runId: "run-x",
   model: { requested: "m", observed: null },
@@ -38,4 +47,6 @@ expectAssignable<CreateReceiptInput>({
   outputHash: null,
   parentReceiptCid:
     "sha256:abababababababababababababababababababababababababababababababab",
+  lineageMerkleRoot:
+    "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
 });

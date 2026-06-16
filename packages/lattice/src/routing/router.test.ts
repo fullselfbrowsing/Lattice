@@ -146,4 +146,34 @@ describe("Phase 7 contract preflight integration", () => {
     );
     expect(budgetReasons).toHaveLength(1);
   });
+
+  it("rejects non-streaming candidates when streaming is requested", () => {
+    const buffered: ModelCapability = {
+      ...defaultCapabilityForProvider("buffered"),
+      modelId: "buffered:model",
+      streaming: false,
+    };
+    const streaming: ModelCapability = {
+      ...defaultCapabilityForProvider("streaming"),
+      modelId: "streaming:model",
+      streaming: true,
+    };
+    const catalog = createCapabilityCatalog([
+      adapter("buffered", buffered),
+      adapter("streaming", streaming),
+    ]);
+
+    const decision = routeDeterministically(catalog, {
+      task: "t",
+      artifacts: [],
+      outputs: { text: "text" },
+      policy: { stream: true },
+    });
+
+    expect(decision.selected?.providerId).toBe("streaming");
+    const rejectedBuffered = decision.rejected.find(
+      (candidate) => candidate.providerId === "buffered",
+    );
+    expect(rejectedBuffered?.reasons.some((r) => r.code === "streaming-unsupported")).toBe(true);
+  });
 });

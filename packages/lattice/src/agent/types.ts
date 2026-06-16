@@ -20,6 +20,7 @@
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+import type { ArtifactRef } from "../artifacts/artifact.js";
 import type { HookPipeline } from "../contract/bands.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
@@ -120,6 +121,7 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
 export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContractMap> {
   readonly kind: "success";
   readonly output: InferOutputMap<TOutputs>;
+  readonly artifacts?: readonly ArtifactRef[];
   readonly usage: Usage;
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly receipt?: ReceiptEnvelope;

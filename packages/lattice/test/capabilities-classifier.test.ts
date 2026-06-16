@@ -26,6 +26,9 @@ const classifierModule = await import("../../../scripts/capabilities/classifier.
 type ClassifierEntry = {
   id: string;
   supported_parameters?: string[];
+  pricing?: Record<string, string | number | null>;
+  input_modalities?: string[];
+  output_modalities?: string[];
   context_length?: number;
   top_provider?: { context_length?: number };
 };
@@ -47,6 +50,10 @@ const transformFeed = refreshModule.transformFeed as (raw: { data: ClassifierEnt
   id: string;
   adapter: string;
   contextWindow: number;
+  pricing?: Record<string, string>;
+  inputModalities?: string[];
+  outputModalities?: string[];
+  supportedParameters?: string[];
 }>;
 const render = refreshModule.render as (profiles: Array<Record<string, unknown>>) => string;
 
@@ -185,7 +192,8 @@ describe("Phase 33 classifier — anchor cases (CAPS-03)", () => {
           id: "openai/gpt-oss-120b:free",
           context_length: 131072,
           top_provider: { context_length: 65536 },
-          supported_parameters: ["tools"],
+          pricing: { prompt: "0.0", completion: "0.0", ignored_number: 1 },
+          supported_parameters: ["tools", "response_format", "tools"],
         },
         {
           id: "qwen/qwen-2.5-72b-instruct",
@@ -198,6 +206,9 @@ describe("Phase 33 classifier — anchor cases (CAPS-03)", () => {
     const byId = Object.fromEntries(profiles.map((p) => [p.id, p.contextWindow]));
     expect(byId["openai/gpt-oss-120b:free"]).toBe(65536);
     expect(byId["qwen/qwen-2.5-72b-instruct"]).toBe(32768);
+    const openai = profiles.find((p) => p.id === "openai/gpt-oss-120b:free");
+    expect(openai?.pricing).toEqual({ prompt: "0.0", completion: "0.0" });
+    expect(openai?.supportedParameters).toEqual(["response_format", "tools"]);
   });
 });
 
@@ -277,6 +288,58 @@ describe("Phase 33 refresh-model-registry — deterministic rendering (D-17)", (
       const drifted = render(transformFeed(perturbed));
       expect(drifted === baseline).toBe(false);
       expect(drifted.length).toBeGreaterThan(baseline.length);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("captures OpenRouter feed metadata without losing deterministic rendering", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const profiles = transformFeed({
+        data: [
+          {
+            id: "anthropic/claude-3.5-sonnet",
+            context_length: 200000,
+            top_provider: { context_length: 200000 },
+            pricing: {
+              prompt: "0.000003",
+              completion: "0.000015",
+              image: "0",
+              audio: "-1",
+              ignored: "not-rendered",
+            },
+            input_modalities: ["text", "image"],
+            output_modalities: ["text"],
+            supported_parameters: ["tools", "response_format", "tools", ""],
+          },
+        ],
+      });
+
+      expect(profiles).toHaveLength(1);
+      expect(profiles[0]?.pricing).toEqual({
+        prompt: "0.000003",
+        completion: "0.000015",
+        image: "0",
+        audio: "-1",
+      });
+      expect(profiles[0]?.inputModalities).toEqual(["text", "image"]);
+      expect(profiles[0]?.outputModalities).toEqual(["text"]);
+      expect(profiles[0]?.supportedParameters).toEqual(["response_format", "tools"]);
+
+      const renderedA = render(profiles);
+      const renderedB = render(profiles);
+      expect(renderedA).toBe(renderedB);
+      expect(renderedA).toContain(
+        'pricing: { prompt: "0.000003", completion: "0.000015", image: "0", audio: "-1" }',
+      );
+      expect(renderedA).toContain('inputModalities: ["text", "image"]');
+      expect(renderedA).toContain('outputModalities: ["text"]');
+      expect(renderedA).toContain('supportedParameters: ["response_format", "tools"]');
+      expect(renderedA.indexOf("contextWindow")).toBeLessThan(renderedA.indexOf("pricing"));
+      expect(renderedA.indexOf("supportedParameters")).toBeLessThan(
+        renderedA.indexOf("knownFailureModes"),
+      );
     } finally {
       warnSpy.mockRestore();
     }

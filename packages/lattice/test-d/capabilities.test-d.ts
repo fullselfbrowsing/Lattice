@@ -24,6 +24,9 @@ import type {
   CapabilityAdapter,
   KnownFailureMode,
   ModelCapabilityProfile,
+  ModelCapabilityProfileModality,
+  ModelCapabilityProfilePricing,
+  ModelCapabilityProfilePricingKey,
   ReasoningSurface,
   RecommendedPromptStrategy,
   ToolCallSurface,
@@ -45,6 +48,7 @@ const sample: ModelCapabilityProfile = {
 
 expectType<string>(sample.id);
 expectType<CapabilityAdapter>(sample.adapter);
+expectAssignable<CapabilityAdapter>("litellm");
 expectType<string>(sample.originFamily);
 expectType<TrainingClass>(sample.trainingClass);
 expectType<ReasoningSurface>(sample.reasoningSurface);
@@ -52,6 +56,25 @@ expectType<ToolCallSurface>(sample.toolCallSurface);
 expectType<number>(sample.contextWindow);
 expectType<readonly KnownFailureMode[]>(sample.knownFailureModes);
 expectType<RecommendedPromptStrategy>(sample.recommendedPromptStrategy);
+
+const richProfile: ModelCapabilityProfile = {
+  ...sample,
+  pricing: { prompt: "0.000000039", completion: "0.00000018" },
+  inputModalities: ["text"],
+  outputModalities: ["text"],
+  supportedParameters: ["tools", "response_format"],
+};
+
+const pricingKey: ModelCapabilityProfilePricingKey = "prompt";
+const pricing: ModelCapabilityProfilePricing = richProfile.pricing!;
+const inputModalities: readonly ModelCapabilityProfileModality[] = richProfile.inputModalities!;
+expectAssignable<ModelCapabilityProfilePricingKey>(pricingKey);
+expectType<ModelCapabilityProfilePricing>(pricing);
+expectType<readonly ModelCapabilityProfileModality[]>(inputModalities);
+expectType<ModelCapabilityProfilePricing | undefined>(richProfile.pricing);
+expectType<readonly ModelCapabilityProfileModality[] | undefined>(richProfile.inputModalities);
+expectType<readonly ModelCapabilityProfileModality[] | undefined>(richProfile.outputModalities);
+expectType<readonly string[] | undefined>(richProfile.supportedParameters);
 
 // CAPS-01 — closed adapter enum: invalid adapter must fail to type-check.
 expectError<ModelCapabilityProfile>({
