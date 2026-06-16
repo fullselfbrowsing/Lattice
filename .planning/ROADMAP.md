@@ -53,7 +53,7 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 
 - [x] **Phase 40: Package Version Stamping + Public-Surface Guardrails** — Fix the known `0.0.0` version-stamping defect and harden package/public-surface checks before adding new v1.4 exports. (completed 2026-06-15)
 - [x] **Phase 41: Gateway Delegation — LiteLLM + Gateway Policy** — Add a first-class LiteLLM provider helper and gateway policy passthrough while preserving deterministic Lattice route accounting. (completed 2026-06-15)
-- [ ] **Phase 42: OpenRouter Fallback + Capability Catalog Refresh** — Add OpenRouter fallback model arrays, resolved-model accounting, and deterministic catalog refresh/diff behavior.
+- [x] **Phase 42: OpenRouter Fallback + Capability Catalog Refresh** — Add OpenRouter fallback model arrays, resolved-model accounting, and deterministic catalog refresh/diff behavior. (completed 2026-06-16)
 - [ ] **Phase 43: Streaming Contract + collectStream** — Freeze the additive streaming adapter contract and prove sign-after-drain receipt semantics before any streaming adapter ships.
 - [ ] **Phase 44: Streaming Adapter Implementations** — Implement normalized streaming across Anthropic, Gemini, xAI, OpenRouter, and LM Studio with all-provider parity coverage.
 - [ ] **Phase 45: Multimodal Request Shaping + Realtime Direction** — Map Lattice artifacts into Anthropic/Gemini multimodal request shapes and define realtime session/checkpoint interfaces.

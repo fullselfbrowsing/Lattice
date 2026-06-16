@@ -20,12 +20,12 @@
 
 ### OpenRouter Fallback and Catalog Refresh (`ORCAT-*`)
 
-- [ ] **ORCAT-01**: Developer can configure OpenRouter model fallback arrays through the existing OpenRouter adapter without adding `@openrouter/sdk` as a runtime dependency.
-- [ ] **ORCAT-02**: Lattice records the resolved model returned by OpenRouter in the run result, execution plan, and terminal receipt when the gateway serves a fallback model.
-- [ ] **ORCAT-03**: Capability catalog refresh consumes OpenRouter model metadata deterministically and produces a diffable registry update rather than mutating routing data silently at runtime.
-- [ ] **ORCAT-04**: Catalog refresh captures model context window, pricing, supported modalities, and supported parameters where the OpenRouter feed provides them.
-- [ ] **ORCAT-05**: Catalog refresh failures never make PR-time CI flaky; scheduled or manual refresh jobs report skip/fallback status explicitly.
-- [ ] **ORCAT-06**: Router tests prove gateway fallback metadata does not make Lattice route selection opaque or non-replayable.
+- [x] **ORCAT-01**: Developer can configure OpenRouter model fallback arrays through the existing OpenRouter adapter without adding `@openrouter/sdk` as a runtime dependency.
+- [x] **ORCAT-02**: Lattice records the resolved model returned by OpenRouter in the run result, execution plan, and terminal receipt when the gateway serves a fallback model.
+- [x] **ORCAT-03**: Capability catalog refresh consumes OpenRouter model metadata deterministically and produces a diffable registry update rather than mutating routing data silently at runtime.
+- [x] **ORCAT-04**: Catalog refresh captures model context window, pricing, supported modalities, and supported parameters where the OpenRouter feed provides them.
+- [x] **ORCAT-05**: Catalog refresh failures never make PR-time CI flaky; scheduled or manual refresh jobs report skip/fallback status explicitly.
+- [x] **ORCAT-06**: Router tests prove gateway fallback metadata does not make Lattice route selection opaque or non-replayable.
 
 ### Streaming Contract (`STRM-*`)
 
@@ -108,12 +108,12 @@
 | GATE-01 | Phase 41 | Complete |
 | GATE-02 | Phase 41 | Complete |
 | GATE-03 | Phase 41 | Complete |
-| ORCAT-01 | Phase 42 | Pending |
-| ORCAT-02 | Phase 42 | Pending |
-| ORCAT-03 | Phase 42 | Pending |
-| ORCAT-04 | Phase 42 | Pending |
-| ORCAT-05 | Phase 42 | Pending |
-| ORCAT-06 | Phase 42 | Pending |
+| ORCAT-01 | Phase 42 | Complete |
+| ORCAT-02 | Phase 42 | Complete |
+| ORCAT-03 | Phase 42 | Complete |
+| ORCAT-04 | Phase 42 | Complete |
+| ORCAT-05 | Phase 42 | Complete |
+| ORCAT-06 | Phase 42 | Complete |
 | STRM-01 | Phase 43 | Pending |
 | STRM-02 | Phase 43 | Pending |
 | STRM-03 | Phase 43 | Pending |
