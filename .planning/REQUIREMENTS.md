@@ -39,8 +39,8 @@
 
 - [ ] **SADAPT-01**: Anthropic adapter implements `executeStream?` with normalized text and tool-input deltas.
 - [ ] **SADAPT-02**: Gemini adapter implements `executeStream?` with normalized text and function-call deltas.
-- [ ] **SADAPT-03**: xAI, OpenRouter, and LM Studio adapters implement `executeStream?` through their OpenAI-compatible stream paths where available.
-- [ ] **SADAPT-04**: Streaming parity tests cover all seven logical providers, including non-streaming fallback behavior for adapters or models that do not support streaming.
+- [x] **SADAPT-03**: xAI, OpenRouter, and LM Studio adapters implement `executeStream?` through their OpenAI-compatible stream paths where available.
+- [x] **SADAPT-04**: Streaming parity tests cover all seven logical providers, including non-streaming fallback behavior for adapters or models that do not support streaming.
 
 ### Multimodal and Realtime Direction (`MMRT-*`)
 
@@ -121,8 +121,8 @@
 | STRM-05 | Phase 43 | Complete |
 | SADAPT-01 | Phase 44 | Pending |
 | SADAPT-02 | Phase 44 | Pending |
-| SADAPT-03 | Phase 44 | Pending |
-| SADAPT-04 | Phase 44 | Pending |
+| SADAPT-03 | Phase 44 | Complete |
+| SADAPT-04 | Phase 44 | Complete |
 | MMRT-01 | Phase 45 | Pending |
 | MMRT-02 | Phase 45 | Pending |
 | MMRT-03 | Phase 45 | Pending |
