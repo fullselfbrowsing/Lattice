@@ -62,6 +62,7 @@
   "devDependencies": {
     "@noble/ed25519": "3.1.0",
     "@types/node": "24.12.2",
+    "fast-check": "catalog:",
     "zod": "4.3.6"
   }
 }
