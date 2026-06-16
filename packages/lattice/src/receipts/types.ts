@@ -44,7 +44,8 @@ export interface CapabilityReceiptBody {
   readonly version:
     | "lattice-receipt/v1"
     | "lattice-receipt/v1.1"
-    | "lattice-receipt/v1.2";
+    | "lattice-receipt/v1.2"
+    | "lattice-receipt/v1.3";
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
@@ -62,6 +63,9 @@ export interface CapabilityReceiptBody {
   // rationale above; never put free-form crew names in receipt identifier
   // fields. Absent on root/non-crew receipts.
   readonly parentReceiptCid?: string;
+  // Phase 46 v1.3 provenance root. Commits to descriptor-only artifact
+  // lineage graphs as `sha256:<hex>` without embedding artifact payloads.
+  readonly lineageMerkleRoot?: string;
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;

@@ -36,7 +36,7 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const v = value as Record<string, unknown>;
-  // CRYPTO-01: accept undefined / v1 / v1.1 / v1.2 so too-low versions all
+  // CRYPTO-01: accept undefined / v1 / v1.1 / v1.2 / v1.3 so too-low versions all
   // reach Step 4 (the schema-version-too-low chokepoint). An unknown
   // non-undefined literal (e.g. lattice-receipt/v2 or "garbage") is still a
   // structural shape failure and falls through to the version-mismatch path.
@@ -44,7 +44,8 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
     v.version !== undefined &&
     v.version !== "lattice-receipt/v1" &&
     v.version !== "lattice-receipt/v1.1" &&
-    v.version !== "lattice-receipt/v1.2"
+    v.version !== "lattice-receipt/v1.2" &&
+    v.version !== "lattice-receipt/v1.3"
   ) {
     return undefined;
   }
@@ -111,7 +112,7 @@ export async function verifyReceipt(
   if (body === undefined) {
     return fail(
       "version-mismatch",
-      "receipt body is not a lattice-receipt/v1.1 or lattice-receipt/v1.2 shape",
+      "receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, or lattice-receipt/v1.3 shape",
     );
   }
 
@@ -126,7 +127,7 @@ export async function verifyReceipt(
   if (body.version === undefined || body.version === "lattice-receipt/v1") {
     return fail(
       "schema-version-too-low",
-      "Receipt body.version must be 'lattice-receipt/v1.1' or 'lattice-receipt/v1.2' — v1 receipts are not accepted (CRYPTO-01).",
+      "Receipt body.version must be 'lattice-receipt/v1.1', 'lattice-receipt/v1.2', or 'lattice-receipt/v1.3' — v1 receipts are not accepted (CRYPTO-01).",
     );
   }
 

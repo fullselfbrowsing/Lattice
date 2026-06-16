@@ -81,9 +81,9 @@ describe("verify.ts — happy path", () => {
     const env = await createReceipt(minimalInput(), signer);
     const keySet = createMemoryKeySet([entryWith("k1", publicKeyJwk, "active")]);
     const result = await verifyReceipt(env, keySet);
-    expect(result.ok).toBe(true);
+      expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.modelClass).toBeUndefined();
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
@@ -366,7 +366,7 @@ describe("verify.ts — purity", () => {
   });
 });
 
-describe("verify.ts — v1.1/v1.2 schema compatibility", () => {
+describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
   it("accepts a hand-crafted signed v1.1 receipt envelope", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-2-verify-key");
     const keySet = createMemoryKeySet([
@@ -402,13 +402,24 @@ describe("verify.ts — v1.1/v1.2 schema compatibility", () => {
 
   it("accepts a signed v1.2 receipt with modelClass", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-38-verify-key");
-    const env = await createReceipt(
-      minimalInput({
-        modelClass: "frontier_rlhf",
-        runId: "phase-38-verify-run",
-      }),
-      signer,
-    );
+    const body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.2",
+      receiptId: "00000000-0000-4000-8000-000000000012",
+      runId: "phase-38-verify-run",
+      issuedAt: "2026-06-16T00:00:00.000Z",
+      kid: "phase-38-verify-key",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+      modelClass: "frontier_rlhf",
+    };
+    const env = await signBody(body, signer);
     const keySet = createMemoryKeySet([
       entryWith("phase-38-verify-key", publicKeyJwk, "active"),
     ]);
@@ -420,7 +431,27 @@ describe("verify.ts — v1.1/v1.2 schema compatibility", () => {
     }
   });
 
-  it("emits version-mismatch when body.version is not v1, v1.1, or v1.2", async () => {
+  it("accepts a normally-minted v1.3 receipt with lineageMerkleRoot", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("phase-46-verify-key");
+    const env = await createReceipt(
+      minimalInput({
+        runId: "phase-46-verify-run",
+        lineageMerkleRoot: `sha256:${"cd".repeat(32)}`,
+      }),
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("phase-46-verify-key", publicKeyJwk, "active"),
+    ]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.lineageMerkleRoot).toBe(`sha256:${"cd".repeat(32)}`);
+    }
+  });
+
+  it("emits version-mismatch when body.version is not v1, v1.1, v1.2, or v1.3", async () => {
     // Construct a synthetic envelope with a payload encoding version
     // "lattice-receipt/v9". The structural check at Step 3 of the decision
     // tree fires before keyset lookup and signature verification, so the
@@ -722,7 +753,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     }
   });
 
-  it("accepts a normally-minted v1.2 receipt (positive control regression guard)", async () => {
+  it("accepts a normally-minted v1.3 receipt (positive control regression guard)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
     const env = await createReceipt(
       {
@@ -739,7 +770,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.2");
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
       expect(result.body.stepName).toBe("crypto-01-positive");
     }
   });
