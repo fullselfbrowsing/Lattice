@@ -30,6 +30,7 @@ import {
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
 import { readSseEvents } from "./sse.js";
+import { isHttpUrl } from "./multimodal.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
@@ -327,28 +328,38 @@ function createOpenAICompatibleRequestBody(input: {
                   },
             }),
           },
-          ...input.request.artifacts.map((inputArtifact) => ({
-            type: "text",
-            text: JSON.stringify({
-              artifactId: inputArtifact.id,
-              kind: inputArtifact.kind,
-              mediaType: inputArtifact.mediaType,
-              privacy: inputArtifact.privacy,
-              transport: input.request.providerPackaging?.artifacts.find(
+          ...input.request.artifacts.map((inputArtifact) => {
+            const resolvedTransport =
+              input.request.providerPackaging?.artifacts.find(
                 (item) => item.artifactId === inputArtifact.id,
-              )?.transport ?? input.request.plan?.providerPackaging?.artifacts.find(
+              )?.transport ??
+              input.request.plan?.providerPackaging?.artifacts.find(
                 (item) => item.artifactId === inputArtifact.id,
-              )?.transport,
-              value:
-                typeof inputArtifact.value === "string" && inputArtifact.kind !== "url"
-                  ? inputArtifact.value
-                  : undefined,
-              url:
-                inputArtifact.kind === "url" && typeof inputArtifact.value === "string"
-                  ? inputArtifact.value
-                  : undefined,
-            }),
-          })),
+              )?.transport;
+
+            return {
+              type: "text",
+              text: JSON.stringify({
+                artifactId: inputArtifact.id,
+                kind: inputArtifact.kind,
+                mediaType: inputArtifact.mediaType,
+                privacy: inputArtifact.privacy,
+                transport: resolvedTransport,
+                value:
+                  typeof inputArtifact.value === "string" &&
+                  inputArtifact.kind !== "url" &&
+                  !(isHttpUrl(inputArtifact.value) && resolvedTransport !== "url")
+                    ? inputArtifact.value
+                    : undefined,
+                url:
+                  inputArtifact.kind === "url" &&
+                  typeof inputArtifact.value === "string" &&
+                  resolvedTransport === "url"
+                    ? inputArtifact.value
+                    : undefined,
+              }),
+            };
+          }),
         ],
       },
     ],

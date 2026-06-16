@@ -110,7 +110,7 @@ function bufferToBase64(value: ArrayBuffer): string {
   return Buffer.from(value).toString("base64");
 }
 
-function isHttpUrl(value: unknown): value is string {
+export function isHttpUrl(value: unknown): value is string {
   if (typeof value !== "string") {
     return false;
   }
