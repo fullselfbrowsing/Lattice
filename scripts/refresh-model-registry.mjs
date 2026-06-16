@@ -36,6 +36,16 @@ const repoRoot = resolve(here, "..");
 const REGISTRY_PATH = join(repoRoot, "packages/lattice/src/capabilities/registry.generated.ts");
 const UPSTREAM_URL = "https://openrouter.ai/api/v1/models";
 const FETCH_TIMEOUT_MS = 30000;
+const PRICING_KEYS = [
+  "prompt",
+  "completion",
+  "image",
+  "audio",
+  "web_search",
+  "internal_reasoning",
+  "input_cache_read",
+  "input_cache_write",
+];
 
 const HEADER = `// AUTO-GENERATED FILE — DO NOT EDIT.
 // Source: scripts/refresh-model-registry.mjs
@@ -62,9 +72,13 @@ async function fetchWithRetry(url, attempts = 3) {
   for (let i = 0; i < attempts; i += 1) {
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(new Error("timeout")), FETCH_TIMEOUT_MS);
+    const headers = { Accept: "application/json" };
+    if (process.env.OPENROUTER_API_KEY) {
+      headers.Authorization = `Bearer ${process.env.OPENROUTER_API_KEY}`;
+    }
     try {
       const resp = await fetch(url, {
-        headers: { Accept: "application/json" },
+        headers,
         signal: ctrl.signal,
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -80,6 +94,47 @@ async function fetchWithRetry(url, attempts = 3) {
     }
   }
   throw lastErr;
+}
+
+function normalizePricing(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
+  const pricing = {};
+  for (const key of PRICING_KEYS) {
+    const value = raw[key];
+    if (typeof value === "string") pricing[key] = value;
+  }
+  return Object.keys(pricing).length > 0 ? pricing : undefined;
+}
+
+function normalizeModalities(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  const values = raw.map((value) => (typeof value === "string" ? value.trim() : ""));
+  if (values.length === 0 || values.some((value) => value.length === 0)) return undefined;
+  return values;
+}
+
+function normalizeSupportedParameters(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  const values = raw
+    .filter((value) => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const unique = [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  return unique.length > 0 ? unique : undefined;
+}
+
+function renderPricingField(pricing) {
+  if (pricing === undefined) return "";
+  const entries = PRICING_KEYS
+    .filter((key) => typeof pricing[key] === "string")
+    .map((key) => `${key}: ${JSON.stringify(pricing[key])}`);
+  if (entries.length === 0) return "";
+  return `    pricing: { ${entries.join(", ")} },\n`;
+}
+
+function renderStringArrayField(name, values) {
+  if (values === undefined) return "";
+  return `    ${name}: [${values.map((value) => JSON.stringify(value)).join(", ")}],\n`;
 }
 
 /**
@@ -100,6 +155,10 @@ function renderRow(profile) {
     `    reasoningSurface: ${JSON.stringify(profile.reasoningSurface)},\n` +
     `    toolCallSurface: ${JSON.stringify(profile.toolCallSurface)},\n` +
     `    contextWindow: ${profile.contextWindow},\n` +
+    renderPricingField(profile.pricing) +
+    renderStringArrayField("inputModalities", profile.inputModalities) +
+    renderStringArrayField("outputModalities", profile.outputModalities) +
+    renderStringArrayField("supportedParameters", profile.supportedParameters) +
     `    knownFailureModes: [${profile.knownFailureModes.map((m) => JSON.stringify(m)).join(", ")}],\n` +
     `    recommendedPromptStrategy: ${JSON.stringify(profile.recommendedPromptStrategy)},\n` +
     "  },\n"
@@ -134,6 +193,10 @@ export function transformFeed(rawFeed) {
       console.warn(`[refresh-model-registry] WARN — skipping row with missing id`);
       continue;
     }
+    const pricing = normalizePricing(raw.pricing);
+    const inputModalities = normalizeModalities(raw.input_modalities);
+    const outputModalities = normalizeModalities(raw.output_modalities);
+    const supportedParameters = normalizeSupportedParameters(raw.supported_parameters);
     profiles.push({
       id: raw.id,
       adapter: "openrouter",
@@ -143,6 +206,10 @@ export function transformFeed(rawFeed) {
       toolCallSurface: classified.toolCallSurface,
       // Pitfall 2 / A1: top_provider.context_length is the routing-tier truth.
       contextWindow: raw.top_provider?.context_length ?? raw.context_length ?? 0,
+      ...(pricing !== undefined ? { pricing } : {}),
+      ...(inputModalities !== undefined ? { inputModalities } : {}),
+      ...(outputModalities !== undefined ? { outputModalities } : {}),
+      ...(supportedParameters !== undefined ? { supportedParameters } : {}),
       knownFailureModes: classified.knownFailureModes,
       recommendedPromptStrategy: classified.recommendedPromptStrategy,
     });
