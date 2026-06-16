@@ -800,6 +800,39 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
+  it("T4b: tripwire-violated receipt lineageMerkleRoot includes packaged artifacts", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = localTemplateProvider({
+      rawOutputs: { text: "Contact alice@example.com please" },
+      normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const source = artifact.text("source", {
+      id: "artifact:text:trip-lineage-source",
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [source],
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      // This inequality is the regression guard: it fails if lineageArtifacts is
+      // missing from the tripwire-violated maybeIssueReceipt call in create-ai.ts.
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
+    }
+  });
+
   it("T5: validation-failed emits a receipt with verdict 'validation-failed'", async () => {
     const { signer, keySet } = await makeSignerAndKeySet();
     const provider = localTemplateProvider({
