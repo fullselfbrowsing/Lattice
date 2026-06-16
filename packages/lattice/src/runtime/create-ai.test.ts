@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import canonicalize from "canonicalize";
+import fc from "fast-check";
 
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
@@ -928,6 +929,86 @@ describe("Phase 9 receipts integration", () => {
     if (tripVerify.ok) {
       expect(tripVerify.body.outputHash).toBeNull();
     }
+  });
+
+  it("streaming receipts hash assembled output independent of chunk boundaries", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet("phase-43-streaming");
+
+    function providerForParts(parts: readonly string[]): ProviderAdapter {
+      const providerId = "stream-receipt";
+      const modelId = "stream-receipt:model";
+      return {
+        id: providerId,
+        kind: "provider-adapter",
+        capabilities: [
+          {
+            ...defaultCapabilityForProvider(providerId),
+            modelId,
+            outputModalities: ["text"],
+            streaming: true,
+          },
+        ],
+        executeStream: async function* (): ProviderStream {
+          for (const part of parts) {
+            yield { kind: "text-delta", output: "answer", text: part };
+          }
+        },
+      };
+    }
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.string({ minLength: 1, maxLength: 8 }), {
+          minLength: 1,
+          maxLength: 8,
+        }),
+        async (parts) => {
+          const finalText = parts.join("");
+          const singleChunk = await createAI({
+            providers: [providerForParts([finalText])],
+            signer,
+          }).run({
+            task: "stream receipt hash",
+            outputs: { answer: "text" as const },
+            policy: { stream: true },
+          });
+          const splitChunks = await createAI({
+            providers: [providerForParts(parts)],
+            signer,
+          }).run({
+            task: "stream receipt hash",
+            outputs: { answer: "text" as const },
+            policy: { stream: true },
+          });
+
+          expect(singleChunk.ok).toBe(true);
+          expect(splitChunks.ok).toBe(true);
+          if (!singleChunk.ok || !splitChunks.ok) {
+            throw new Error("Streaming receipt property run failed.");
+          }
+
+          expect(singleChunk.outputs.answer).toBe(finalText);
+          expect(splitChunks.outputs.answer).toBe(finalText);
+          expect(singleChunk.receipt).toBeDefined();
+          expect(splitChunks.receipt).toBeDefined();
+
+          const singleVerify = await verifyReceipt(singleChunk.receipt!, keySet);
+          const splitVerify = await verifyReceipt(splitChunks.receipt!, keySet);
+          expect(singleVerify.ok).toBe(true);
+          expect(splitVerify.ok).toBe(true);
+          if (!singleVerify.ok || !splitVerify.ok) {
+            throw new Error("Streaming receipt verification failed.");
+          }
+
+          expect(singleVerify.body.contractVerdict).toBe("success");
+          expect(splitVerify.body.contractVerdict).toBe("success");
+          expect(singleVerify.body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+          expect(splitVerify.body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+          expect(singleVerify.body.outputHash).toBe(splitVerify.body.outputHash);
+        },
+      ),
+      { numRuns: 25 },
+    );
   });
 
   it("T12: receipt body carries contractHash matching canonicalize(contract)", async () => {
