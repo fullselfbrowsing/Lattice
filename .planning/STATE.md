@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Provider Breadth + Live Multimodal + Observability Export
 status: planning
 stopped_at: Phase 44 complete; ready for Phase 45
-last_updated: "2026-06-16T06:53:00.577Z"
+last_updated: "2026-06-16T07:24:38.693Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
-  percent: 50
+  completed_phases: 6
+  total_plans: 20
+  completed_plans: 20
+  percent: 60
 ---
 
 # Project State
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-15)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 45 — multimodal request shaping + realtime direction
+**Current focus:** Phase 46 — receipt provenance + kms signer shapes
 
 ## Current Position
 
-Phase: 45
+Phase: 46
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-16

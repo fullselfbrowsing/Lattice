@@ -44,11 +44,11 @@
 
 ### Multimodal and Realtime Direction (`MMRT-*`)
 
-- [ ] **MMRT-01**: Anthropic request shaping maps Lattice image artifacts to Anthropic Messages content blocks using inline, URL, or file-id transport according to artifact metadata.
-- [ ] **MMRT-02**: Gemini request shaping maps image, audio, and video artifacts to Gemini `parts[]` using inline data or file references according to artifact metadata.
-- [ ] **MMRT-03**: Provider packaging records multimodal transformations so execution plans explain every inline/base64/upload/file-reference choice.
-- [ ] **MMRT-04**: Lattice exposes an interface-level realtime session design that separates bidirectional WebSocket sessions from single-shot `ai.run()` calls.
-- [ ] **MMRT-05**: Realtime direction defines how OpenAI Realtime and Gemini Live session summaries/checkpoints would be signed without claiming full realtime production support in v1.4.
+- [x] **MMRT-01**: Anthropic request shaping maps Lattice image artifacts to Anthropic Messages content blocks using inline, URL, or file-id transport according to artifact metadata.
+- [x] **MMRT-02**: Gemini request shaping maps image, audio, and video artifacts to Gemini `parts[]` using inline data or file references according to artifact metadata.
+- [x] **MMRT-03**: Provider packaging records multimodal transformations so execution plans explain every inline/base64/upload/file-reference choice.
+- [x] **MMRT-04**: Lattice exposes an interface-level realtime session design that separates bidirectional WebSocket sessions from single-shot `ai.run()` calls.
+- [x] **MMRT-05**: Realtime direction defines how OpenAI Realtime and Gemini Live session summaries/checkpoints would be signed without claiming full realtime production support in v1.4.
 
 ### Receipt Provenance and Signing (`REC-*`)
 
@@ -123,11 +123,11 @@
 | SADAPT-02 | Phase 44 | Complete |
 | SADAPT-03 | Phase 44 | Complete |
 | SADAPT-04 | Phase 44 | Complete |
-| MMRT-01 | Phase 45 | Pending |
-| MMRT-02 | Phase 45 | Pending |
-| MMRT-03 | Phase 45 | Pending |
-| MMRT-04 | Phase 45 | Pending |
-| MMRT-05 | Phase 45 | Pending |
+| MMRT-01 | Phase 45 | Complete |
+| MMRT-02 | Phase 45 | Complete |
+| MMRT-03 | Phase 45 | Complete |
+| MMRT-04 | Phase 45 | Complete |
+| MMRT-05 | Phase 45 | Complete |
 | REC-01 | Phase 46 | Pending |
 | REC-02 | Phase 46 | Pending |
 | REC-03 | Phase 46 | Pending |

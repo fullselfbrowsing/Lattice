@@ -56,7 +56,7 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 - [x] **Phase 42: OpenRouter Fallback + Capability Catalog Refresh** — Add OpenRouter fallback model arrays, resolved-model accounting, and deterministic catalog refresh/diff behavior. (completed 2026-06-16)
 - [x] **Phase 43: Streaming Contract + collectStream** — Freeze the additive streaming adapter contract and prove sign-after-drain receipt semantics before any streaming adapter ships. (completed 2026-06-16)
 - [x] **Phase 44: Streaming Adapter Implementations** — Implement normalized streaming across Anthropic, Gemini, xAI, OpenRouter, and LM Studio with all-provider parity coverage. (completed 2026-06-16)
-- [ ] **Phase 45: Multimodal Request Shaping + Realtime Direction** — Map Lattice artifacts into Anthropic/Gemini multimodal request shapes and define realtime session/checkpoint interfaces.
+- [x] **Phase 45: Multimodal Request Shaping + Realtime Direction** — Map Lattice artifacts into Anthropic/Gemini multimodal request shapes and define realtime session/checkpoint interfaces. (completed 2026-06-16)
 - [ ] **Phase 46: Receipt Provenance + KMS Signer Shapes** — Extend receipts with lineage merkle roots and define production signer adapter shapes without pulling KMS SDKs into core.
 - [ ] **Phase 47: OpenTelemetry Exporter + Langfuse/Phoenix Paths** — Export Lattice run events to OTel spans with safe defaults, receipt links, and documented OTLP setup for Langfuse/Phoenix.
 - [ ] **Phase 48: Eval + Diagnostics CLI Expansion** — Add agent eval CLI support, receipt diffing, and LM Studio latency-tail diagnostics.
