@@ -898,7 +898,10 @@ describe("Phase 9 receipts integration", () => {
     expect(result.gateway?.requestedModel).toBe("openai/gpt-oss-120b");
     expect(result.gateway?.fallbackModels).toEqual(["anthropic/claude-sonnet-4.5"]);
     expect(result.gateway?.observedModel).toBe("anthropic/claude-sonnet-4.5");
-    expect(result.plan.route.selected?.modelId).toBe("openai/gpt-oss-120b");
+    expect(result.plan.kind).toBe("execution-plan");
+    if (result.plan.kind === "execution-plan") {
+      expect(result.plan.route.selected?.modelId).toBe("openai/gpt-oss-120b");
+    }
     const succeededAttemptEvent = result.events?.find(
       (event) =>
         event.kind === "provider.attempt" &&
