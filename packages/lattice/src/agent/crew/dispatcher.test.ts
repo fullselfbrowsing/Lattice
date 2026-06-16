@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+import { artifact } from "../../artifacts/artifact.js";
+import type { ArtifactInput, ArtifactRef } from "../../artifacts/artifact.js";
 import { createHookPipeline } from "../../contract/bands.js";
 import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
+import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import {
   createInMemorySigner,
@@ -73,6 +76,7 @@ function makeTool(
 function makeScriptedFake(
   responses: readonly string[],
   usage: Usage = { promptTokens: 5, completionTokens: 3, costUsd: null },
+  artifactRefs?: readonly (ArtifactInput | ArtifactRef)[],
 ) {
   const queue = [...responses];
   const tasks: string[] = [];
@@ -85,6 +89,7 @@ function makeScriptedFake(
       return {
         rawOutputs: { answer: queue.shift() ?? "" },
         normalizedUsage: { ...usage },
+        ...(artifactRefs !== undefined ? { artifactRefs } : {}),
       };
     },
   });
@@ -770,6 +775,74 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     // The child's summary receipts array contains the completion CID.
     const summary = JSON.parse(dispatched?.content ?? "{}") as { receipts: string[] };
     expect(summary.receipts).toEqual([await receiptCid(childEnvelope)]);
+  });
+
+  it("mints a child completion receipt with lineageMerkleRoot when child artifacts carry lineage", async () => {
+    const { signer, publicKeyJwk, kid } = await makeSigner("kid:crew-lineage");
+    const keySet = createMemoryKeySet([{ kid, state: "active", publicKeyJwk }]);
+    const rootEnvelope = await createReceipt(
+      {
+        runId: "crew-run-lineage",
+        model: { requested: "lattice-crew/run", observed: null },
+        route: { providerId: "lattice-crew", capabilityId: "lattice-crew/run", attemptNumber: 1 },
+        usage: ZERO_USAGE,
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+      },
+      signer,
+    );
+    const crewRootCid = await receiptCid(rootEnvelope);
+    const source = artifact.text("source", { id: "artifact:text:crew-source" });
+    const derived = artifact.derive({
+      id: "artifact:text:crew-derived",
+      kind: "text",
+      value: "derived",
+      parents: [source],
+      transform: { kind: "model-output", name: "child" },
+    });
+
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(
+      ["lineage summary"],
+      { promptTokens: 1, completionTokens: 1, costUsd: null },
+      [derived],
+    );
+    const minted: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+      }),
+    );
+
+    const dispatched = await dispatcher.dispatchToolUse(
+      { id: "rc-lineage", name: "researcher", args: { task: "mint lineage" } },
+      makeLoopCtx(),
+    );
+
+    expect(minted.length).toBe(1);
+    const childEnvelope = minted[0];
+    expect(childEnvelope).toBeDefined();
+    if (childEnvelope === undefined) return;
+    const body = JSON.parse(atob(childEnvelope.payload)) as CapabilityReceiptBody;
+    expect(body.parentReceiptCid).toBe(crewRootCid);
+    expect(body.lineageMerkleRoot).toBe(
+      await computeArtifactLineageMerkleRoot([derived]),
+    );
+    expect(await verifyReceipt(childEnvelope, keySet)).toMatchObject({ ok: true });
+
+    const summary = JSON.parse(dispatched?.content ?? "{}") as {
+      artifacts: Array<{ id: string }>;
+    };
+    expect(summary.artifacts.map((entry) => entry.id)).toEqual([derived.id]);
   });
 
   it("does not mint when no signer is configured; summary receipts is [] and the run still succeeds", async () => {

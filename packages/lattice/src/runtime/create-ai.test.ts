@@ -18,6 +18,7 @@ import type {
   ProviderStreamChunk,
 } from "../providers/provider.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
+import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -948,6 +949,35 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
+  it("T10b: receipt body carries lineageMerkleRoot when artifacts have lineage", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const source = artifact.text("source artifact", {
+      id: "artifact:text:receipt-source",
+    });
+    const derived = artifact.derive({
+      id: "artifact:text:receipt-derived",
+      kind: "text",
+      value: "derived artifact",
+      parents: [source],
+      transform: { kind: "extraction", name: "quote" },
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [source, derived],
+    });
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.inputHashes).toHaveLength(2);
+      expect(verifyResult.body.lineageMerkleRoot).toBe(
+        await computeArtifactLineageMerkleRoot([source, derived]),
+      );
+    }
+  });
+
   it("T11: receipt body carries outputHash on success but null on tripwire-violated", async () => {
     inv.__resetCounterForTests();
     const { signer, keySet } = await makeSignerAndKeySet();
@@ -1064,6 +1094,57 @@ describe("Phase 9 receipts integration", () => {
       ),
       { numRuns: 25 },
     );
+  });
+
+  it("streaming receipts include lineageMerkleRoot after stream collection", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet("phase-46-streaming");
+    const source = artifact.text("stream source", {
+      id: "artifact:text:stream-source",
+    });
+    const derived = artifact.derive({
+      id: "artifact:text:stream-derived",
+      kind: "text",
+      value: "stream derived",
+      parents: [source],
+      transform: { kind: "model-output", name: "stream" },
+    });
+    const providerId = "stream-lineage";
+    const modelId = "stream-lineage:model";
+    const provider: ProviderAdapter = {
+      id: providerId,
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider(providerId),
+          modelId,
+          outputModalities: ["text"],
+          streaming: true,
+        },
+      ],
+      executeStream: async function* (): ProviderStream {
+        yield { kind: "text-delta", output: "answer", text: "ok" };
+        yield {
+          kind: "complete",
+          artifactRefs: [derived],
+        };
+      },
+    };
+
+    const result = await createAI({ providers: [provider], signer }).run({
+      task: "stream lineage",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+      artifacts: [source],
+    });
+
+    expect(result.ok).toBe(true);
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.lineageMerkleRoot).toBe(
+        await computeArtifactLineageMerkleRoot([source, derived]),
+      );
+    }
   });
 
   it("T12: receipt body carries contractHash matching canonicalize(contract)", async () => {

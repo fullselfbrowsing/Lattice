@@ -15,6 +15,7 @@
  * all wrapping for consumers who already coordinate quota externally.
  */
 
+import type { ArtifactRef } from "../../artifacts/artifact.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
@@ -24,6 +25,7 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
+import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
 import type { LatticeConfig } from "../../runtime/config.js";
@@ -195,6 +197,7 @@ export async function runAgentCrew(
       signer: options.signer,
       parentReceiptCid: crewRoot.cid,
       success: parentResult.kind === "success",
+      artifacts: parentResult.kind === "success" ? parentResult.artifacts ?? [] : [],
     });
     receipts.push(parentEnvelope);
   }
@@ -437,7 +440,11 @@ async function createAgentCompletionReceipt(input: {
   readonly signer: ReceiptSigner;
   readonly parentReceiptCid: string;
   readonly success: boolean;
+  readonly artifacts?: readonly ArtifactRef[];
 }): Promise<ReceiptEnvelope> {
+  const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
+    input.artifacts ?? [],
+  );
   return createReceipt(
     {
       runId: input.runId,
@@ -448,6 +455,7 @@ async function createAgentCompletionReceipt(input: {
         attemptNumber: 1,
       },
       parentReceiptCid: input.parentReceiptCid,
+      ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
       usage: input.usage,
       contractVerdict: input.success ? "success" : "execution-failed",
       contractHash: null,

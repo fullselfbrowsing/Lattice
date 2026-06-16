@@ -41,6 +41,8 @@
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+import type { ArtifactRef } from "../../artifacts/artifact.js";
+import { isArtifactRef, toArtifactRef } from "../../artifacts/artifact.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { validateSchemaOutput } from "../../outputs/validate.js";
 import type {
@@ -49,6 +51,7 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
+import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
 import type { LatticeConfig } from "../../runtime/config.js";
@@ -337,8 +340,11 @@ function createDispatcherNode(
     // chained to the crew root. Best-effort (checkpoint.ts D-07 precedent) —
     // a mint failure never destroys the child's completed work.
     const receipts: string[] = [];
+    const childArtifacts = extractArtifacts(childResult);
     if (ctx.signer !== undefined) {
       try {
+        const lineageMerkleRoot =
+          await computeArtifactLineageMerkleRoot(childArtifacts);
         const envelope = await createReceipt(
           {
             runId: shared.runId,
@@ -352,6 +358,7 @@ function createDispatcherNode(
               ? { parentReceiptCid: ctx.crewRootCid }
               : {}),
             usage: childResult.usage,
+            ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
             contractVerdict: "success",
             contractHash: null,
             inputHashes: [],
@@ -371,7 +378,7 @@ function createDispatcherNode(
     // root agent's return is NOT schema-validated; research Open Q2).
     const envelope = {
       summary: extractSummary(childResult.output),
-      artifacts: extractArtifacts(childResult),
+      artifacts: childArtifacts,
       receipts,
     };
     const validation = await validateSchemaOutput(
@@ -612,9 +619,11 @@ function extractSummary(output: unknown): string {
   }
 }
 
-function extractArtifacts(result: unknown): unknown[] {
+function extractArtifacts(result: unknown): ArtifactRef[] {
   const artifacts = (result as { readonly artifacts?: unknown }).artifacts;
-  return Array.isArray(artifacts) ? [...artifacts] : [];
+  return Array.isArray(artifacts)
+    ? artifacts.filter(isArtifactRef).map(toArtifactRef)
+    : [];
 }
 
 /**

@@ -32,6 +32,7 @@ import type {
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
+import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
 import type {
   ContractVerdict,
@@ -670,6 +671,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: built.artifacts,
+        lineageArtifacts: [...built.artifacts, ...artifactRefs],
         contractVerdict: "success",
         model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {
@@ -1195,6 +1197,7 @@ interface MaybeIssueReceiptInput {
   readonly runId: string;
   readonly contract?: CapabilityContract;
   readonly artifacts: readonly ArtifactInput[];
+  readonly lineageArtifacts?: readonly (ArtifactInput | ArtifactRef)[];
   readonly contractVerdict: ContractVerdict;
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
@@ -1226,6 +1229,9 @@ async function maybeIssueReceipt(
   if (normalized.signer === undefined) return undefined;
   try {
     const inputHashes = await hashInputArtifacts(input.artifacts);
+    const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
+      input.lineageArtifacts ?? input.artifacts,
+    );
     const outputHash =
       input.outputs === undefined
         ? null
@@ -1238,6 +1244,7 @@ async function maybeIssueReceipt(
         model: input.model,
         route: input.route,
         ...(modelClass !== undefined ? { modelClass } : {}),
+        ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
         usage: input.usage,
         contractVerdict: input.contractVerdict,
         contractHash,
