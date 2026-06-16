@@ -96,6 +96,32 @@ describe("computeArtifactLineageMerkleRoot", () => {
     );
   });
 
+  it("root differs when packaged artifact with provider-packaging lineage is included", async () => {
+    const inputArtifact = artifact.text("audio data", { id: "artifact:audio:input" });
+    const rawRoot = await computeArtifactLineageMerkleRoot([inputArtifact]);
+
+    const packagedArtifact = artifact.derive({
+      id: `${inputArtifact.id}:packaged:openai:file-id`,
+      kind: "text",
+      value: "packaged",
+      parents: [inputArtifact],
+      transform: {
+        kind: "provider-packaging",
+        name: "openai:file-id",
+        metadata: { providerId: "openai", modelId: "gpt-4o-audio-preview", transport: "file-id" },
+      },
+    });
+
+    const rootWithPackaged = await computeArtifactLineageMerkleRoot([
+      inputArtifact,
+      packagedArtifact,
+    ]);
+
+    expect(rootWithPackaged).toBeDefined();
+    expect(typeof rootWithPackaged).toBe("string");
+    expect(rootWithPackaged).not.toBe(rawRoot);
+  });
+
   it("normalizes parent order inside nested lineage", async () => {
     const left = artifact.text("left", { id: "artifact:text:left" });
     const right = artifact.text("right", { id: "artifact:text:right" });

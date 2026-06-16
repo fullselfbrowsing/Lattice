@@ -671,7 +671,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: built.artifacts,
-        lineageArtifacts: [...built.artifacts, ...artifactRefs],
+        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
         contractVerdict: "success",
         model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {
