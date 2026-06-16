@@ -51,6 +51,7 @@ completed: 2026-06-16
 
 1. **Task 1: Implement sanitizer and metadata mapping** - `f9634ea` (feat)
 2. **Task 2: Add receipt reference attributes** - `f9634ea` (feat)
+3. **Review follow-up: Avoid raw error text in OTel attributes** - `81a41c7` (fix)
 
 ## Files Created/Modified
 
@@ -65,11 +66,24 @@ completed: 2026-06-16
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 2 - Security] Arbitrary provider error text could reach default span attributes**
+- **Found during:** Phase-level code review after Plan 47-04
+- **Issue:** `metadata.error` strings can contain provider response/request excerpts, so exporting them by default could violate OTEL-03's no raw content default.
+- **Fix:** Replaced default `lattice.error.message` / mint-error text with presence booleans and kept only safe `reason` strings for failed span status messages.
+- **Files modified:** `packages/lattice/src/observability/otel.ts`, `packages/lattice/src/observability/otel.test.ts`
+- **Verification:** `pnpm --filter @full-self-browsing/lattice test -- otel`; `pnpm --filter @full-self-browsing/lattice typecheck`
+- **Committed in:** `81a41c7`
+
+---
+
+**Total deviations:** 1 auto-fixed (security hardening).
+**Impact on plan:** Tightens the planned sanitizer default without expanding scope.
 
 ## Issues Encountered
 
-None.
+None beyond the auto-fixed review finding above.
 
 ## User Setup Required
 
