@@ -281,7 +281,7 @@ function projectReceipt(
   body: CapabilityReceiptBody,
   envelope: ReceiptEnvelope,
 ): ReceiptProjection {
-  const b = body as Record<string, unknown>;
+  const b = body as unknown as Record<string, unknown>;
   return {
     receipt: {
       version: body.version,
