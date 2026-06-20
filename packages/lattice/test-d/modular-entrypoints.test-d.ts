@@ -2,7 +2,9 @@ import { expectType } from "tsd";
 
 import { artifact, type ArtifactInput } from "@full-self-browsing/lattice/artifacts";
 import {
+  createExternalExecutionAudit,
   createMemoryKeySet,
+  type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
 } from "@full-self-browsing/lattice/audit";
@@ -50,6 +52,7 @@ const keySet = createMemoryKeySet([]);
 expectType<KeySet>(keySet);
 const maybeReceipt = undefined as ReceiptEnvelope | undefined;
 expectType<ReceiptEnvelope | undefined>(maybeReceipt);
+expectType<typeof createExternalExecutionAudit>(createExternalExecutionAudit);
 
 const input = artifact.text("case body");
 expectType<ArtifactInput>(input);
@@ -93,3 +96,14 @@ const intent = {
   tools: [],
 } satisfies AgentIntent;
 void intent;
+
+const externalAuditInput = {
+  task: "Audit an external call",
+  policy: {},
+  contract: contract(),
+  model: { requested: "external-model", observed: null },
+  route: { providerId: "external", capabilityId: "external-model", attemptNumber: 1 },
+  usage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+  outputs: { answer: "ok" },
+} satisfies ExternalExecutionAuditInput;
+void externalAuditInput;
