@@ -1,5 +1,14 @@
 export { createReceipt } from "./receipts/receipt.js";
 export type { CreateReceiptInput } from "./receipts/receipt.js";
+export { createExternalExecutionAudit } from "./audit/external-execution.js";
+export type {
+  ExternalExecutionAuditInput,
+  ExternalExecutionAuditResult,
+  ExternalExecutionMetadata,
+  ExternalExecutionSidecar,
+  ExternalExecutionSidecarOutputSpec,
+  ExternalExecutionUsage,
+} from "./audit/external-execution.js";
 export { createMemoryKeySet } from "./receipts/keyset.js";
 export { createRemoteReceiptSigner } from "./receipts/remote-signer.js";
 export type {

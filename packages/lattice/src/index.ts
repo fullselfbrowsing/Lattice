@@ -31,6 +31,15 @@ export {
 } from "./receipts/sign.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
+export { createExternalExecutionAudit } from "./audit/external-execution.js";
+export type {
+  ExternalExecutionAuditInput,
+  ExternalExecutionAuditResult,
+  ExternalExecutionMetadata,
+  ExternalExecutionSidecar,
+  ExternalExecutionSidecarOutputSpec,
+  ExternalExecutionUsage,
+} from "./audit/external-execution.js";
 export { isTerminal } from "./results/errors.js";
 export {
   createAISdkProvider,
