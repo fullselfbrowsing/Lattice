@@ -47,7 +47,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 ### v1.5.0 Modular Adoption + Execution Parity
 
-**Status:** In progress — Phase 50 complete; Phase 51 ready to plan.
+**Status:** In progress — Phases 50-51 complete; Phase 52 ready to plan.
 
 **Goal:** Make Lattice adoptable module-by-module in real apps like GitFly without forcing consumers into Lattice's agent runtime.
 
@@ -56,7 +56,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 | Phase | Name | Goal | Requirements |
 |-------|------|------|--------------|
 | 50 | Module Boundary Contract | Complete 2026-06-20: modular entrypoints, compatibility metadata, and boundary checks shipped. | MOD-01, MOD-02, MOD-03, MOD-04 |
-| 51 | Provider Execution Parity | Close provider-only execution gaps for native tools, structured outputs, streaming step insight, and model IDs. | PROV-01, PROV-02, PROV-03, PROV-04, PROV-05 |
+| 51 | 1/1 | Complete    | 2026-06-20 |
 | 52 | External Execution Audit Layer | Let apps keep their existing AI executor while using Lattice receipts, replay, eval, and diffing. | AUD-01, AUD-02, AUD-03, AUD-04, AUD-05 |
 | 53 | Standalone Core Modules | Make context packing, artifact transport, routing, and storage independently usable and inspectable. | CORE-01, CORE-02, CORE-03, CORE-04, CORE-05 |
 | 54 | Tools/MCP and Agent Optionality | Decouple MCP/tool helpers from agents and close the typed agent-output gap for callers who opt into agents. | TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02 |
@@ -65,7 +65,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 **Progress checklist:**
 
 - [x] **Phase 50: Module Boundary Contract** — completed 2026-06-20.
-- [ ] **Phase 51: Provider Execution Parity**
+- [x] **Phase 51: Provider Execution Parity** — completed 2026-06-20.
 - [ ] **Phase 52: External Execution Audit Layer**
 - [ ] **Phase 53: Standalone Core Modules**
 - [ ] **Phase 54: Tools/MCP and Agent Optionality**
@@ -86,6 +86,8 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 **Depends on:** None.
 
 ### Phase 51: Provider Execution Parity
+
+**Status:** Complete 2026-06-20.
 
 **Goal:** Make provider-only use strong enough for GitFly-style execution flows.
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: ready_to_plan
-stopped_at: Phase 50 complete (1/1) — ready to discuss Phase 51
-last_updated: 2026-06-20T02:29:20.257Z
-last_activity: 2026-06-20 -- Phase 50 complete; Phase 51 ready to plan
+stopped_at: Phase 51 complete (1/1) — ready to discuss Phase 52
+last_updated: 2026-06-20T02:48:47.266Z
+last_activity: 2026-06-20 -- Phase 51 complete; Phase 52 ready to plan
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 1
-  completed_plans: 1
+  completed_plans: 2
   percent: 17
 ---
 
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 51 — provider execution parity
+**Current focus:** Phase 52 — external execution audit layer
 
 ## Current Position
 
-Phase: 51
+Phase: 52
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-20
@@ -61,6 +61,7 @@ v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carr
 - [v1.5.0 scope]: Modular adoption + execution parity. Provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, storage, eval, and full-runtime adoption paths must be independently usable.
 - [Compatibility]: Node 20 compatibility is in scope for modular layers where feasible; Node 24 remains acceptable for the full runtime or APIs that require Node 24-only primitives.
 - [Dogfood]: GitFly-style flows and a generic external-consumer example define milestone success before implementation is considered complete.
+- [Provider parity]: Provider-only native execution is opt-in through `ProviderRunRequest.nativeTools`, `nativeToolChoice`, and `nativeStructuredOutput`; `ai.run()` and `ai.runAgent()` keep existing behavior unless callers use those fields directly.
 
 ### Pending Todos
 
@@ -140,8 +141,8 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 ## Session Continuity
 
 Last session: 2026-06-20T02:29:20Z
-Stopped at: Phase 50 complete (1/1) — ready to discuss Phase 51
-Resume: `/gsd-autonomous --from 51`
+Stopped at: Phase 51 complete (1/1) — ready to discuss Phase 52
+Resume: `/gsd-autonomous --from 52`
 
 ## Operator Next Steps
 

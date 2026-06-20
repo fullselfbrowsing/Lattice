@@ -14,11 +14,11 @@
 
 ### Provider Execution Parity
 
-- [ ] **PROV-01**: Developer can call provider adapters directly with native tool definitions and provider-native `toolChoice` semantics where the provider supports them.
-- [ ] **PROV-02**: Developer can request native structured outputs through provider adapters without forcing object schemas through raw text validation.
-- [ ] **PROV-03**: Developer can preserve provider-specific model IDs, including xAI/GitFly-style `grok-4-1-fast-*` IDs, without capability negotiation degrading to an unusable stub.
-- [ ] **PROV-04**: Developer can observe streaming/tool-step finish details from provider-only execution paths without using the Lattice agent loop.
-- [ ] **PROV-05**: Existing `ai.run()` and `ai.runAgent()` behavior remains backward compatible unless the caller opts into the new native provider execution surface.
+- [x] **PROV-01**: Developer can call provider adapters directly with native tool definitions and provider-native `toolChoice` semantics where the provider supports them.
+- [x] **PROV-02**: Developer can request native structured outputs through provider adapters without forcing object schemas through raw text validation.
+- [x] **PROV-03**: Developer can preserve provider-specific model IDs, including xAI/GitFly-style `grok-4-1-fast-*` IDs, without capability negotiation degrading to an unusable stub.
+- [x] **PROV-04**: Developer can observe streaming/tool-step finish details from provider-only execution paths without using the Lattice agent loop.
+- [x] **PROV-05**: Existing `ai.run()` and `ai.runAgent()` behavior remains backward compatible unless the caller opts into the new native provider execution surface.
 
 ### External Execution Audit
 
@@ -88,11 +88,11 @@
 | MOD-02 | Phase 50 | Complete |
 | MOD-03 | Phase 50 | Complete |
 | MOD-04 | Phase 50 | Complete |
-| PROV-01 | Phase 51 | Pending |
-| PROV-02 | Phase 51 | Pending |
-| PROV-03 | Phase 51 | Pending |
-| PROV-04 | Phase 51 | Pending |
-| PROV-05 | Phase 51 | Pending |
+| PROV-01 | Phase 51 | Complete |
+| PROV-02 | Phase 51 | Complete |
+| PROV-03 | Phase 51 | Complete |
+| PROV-04 | Phase 51 | Complete |
+| PROV-05 | Phase 51 | Complete |
 | AUD-01 | Phase 52 | Pending |
 | AUD-02 | Phase 52 | Pending |
 | AUD-03 | Phase 52 | Pending |
