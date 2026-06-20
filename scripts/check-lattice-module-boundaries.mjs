@@ -42,6 +42,11 @@ const REQUIRED_BOUNDARIES = [
     forbidden: [join(srcDir, "agent")],
   },
   {
+    name: "eval",
+    entry: join(srcDir, "eval.ts"),
+    forbidden: [join(srcDir, "agent")],
+  },
+  {
     name: "core",
     entry: join(srcDir, "core.ts"),
     forbidden: [join(srcDir, "agent")],

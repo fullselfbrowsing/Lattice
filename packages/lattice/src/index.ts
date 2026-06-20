@@ -167,14 +167,14 @@ export {
   realtimeStepName,
 } from "./realtime/realtime.js";
 // Agent eval helper (v1.2 Phase 22).
-export { evalAgentRun } from "./agent/eval.js";
+export { evalAgentRun } from "./eval/agent-run.js";
 export type {
   AgentEvalResult,
   AgentRunSnapshot,
   EvalOptions,
   EvalRegression,
   EvalRegressionKind,
-} from "./agent/eval.js";
+} from "./eval/agent-run.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";

@@ -250,7 +250,7 @@ This path does not require Lattice routing, provider adapters, or agent executio
 
 ## Agent Opt-In
 
-Agent and crew APIs live under `@full-self-browsing/lattice/agents`. Importing providers, audit, context, artifacts, routing, tools, storage, eval, or core should not transitively import `src/agent/**`. The `check:module-boundaries` script enforces that separation for provider-only, audit-only, tools-only, and core-only entrypoints.
+Agent and crew APIs live under `@full-self-browsing/lattice/agents`. Importing providers, audit, context, artifacts, routing, tools, storage, eval, or core should not transitively import `src/agent/**`. The `check:module-boundaries` script enforces that separation for provider-only, audit-only, tools-only, eval-only, and core-only entrypoints.
 
 When callers intentionally opt into the agent surface, `runAgent` can return typed final outputs from declared output contracts.
 
