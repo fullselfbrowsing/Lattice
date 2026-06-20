@@ -142,6 +142,9 @@
       "paths": {
         "@full-self-browsing/lattice": [
           "./dist/index.d.ts"
+        ],
+        "@full-self-browsing/lattice/*": [
+          "./dist/*.d.ts"
         ]
       },
       "strict": true,
