@@ -30,11 +30,11 @@
 
 ### Context, Artifacts, Routing, and Storage
 
-- [ ] **CORE-01**: Developer can run context packing as a standalone module over artifacts and optional session turns.
-- [ ] **CORE-02**: Developer can use artifact constructors, refs, metadata, fingerprints, lineage, and transport packaging without provider execution.
-- [ ] **CORE-03**: Developer can use deterministic routing and capability negotiation as a standalone advisory layer.
-- [ ] **CORE-04**: Developer can use memory, local filesystem, and optional storage adapters independently of `createAI()`.
-- [ ] **CORE-05**: Standalone context/artifact/routing/storage modules emit inspectable plans or records suitable for receipts and debugging.
+- [x] **CORE-01**: Developer can run context packing as a standalone module over artifacts and optional session turns.
+- [x] **CORE-02**: Developer can use artifact constructors, refs, metadata, fingerprints, lineage, and transport packaging without provider execution.
+- [x] **CORE-03**: Developer can use deterministic routing and capability negotiation as a standalone advisory layer.
+- [x] **CORE-04**: Developer can use memory, local filesystem, and optional storage adapters independently of `createAI()`.
+- [x] **CORE-05**: Standalone context/artifact/routing/storage modules emit inspectable plans or records suitable for receipts and debugging.
 
 ### MCP, Tools, and Agent Optionality
 
@@ -98,11 +98,11 @@
 | AUD-03 | Phase 52 | Complete |
 | AUD-04 | Phase 52 | Complete |
 | AUD-05 | Phase 52 | Complete |
-| CORE-01 | Phase 53 | Pending |
-| CORE-02 | Phase 53 | Pending |
-| CORE-03 | Phase 53 | Pending |
-| CORE-04 | Phase 53 | Pending |
-| CORE-05 | Phase 53 | Pending |
+| CORE-01 | Phase 53 | Complete |
+| CORE-02 | Phase 53 | Complete |
+| CORE-03 | Phase 53 | Complete |
+| CORE-04 | Phase 53 | Complete |
+| CORE-05 | Phase 53 | Complete |
 | TOOL-01 | Phase 54 | Pending |
 | TOOL-02 | Phase 54 | Pending |
 | TOOL-03 | Phase 54 | Pending |
@@ -122,4 +122,4 @@
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after Phase 52 completion*
+*Last updated: 2026-06-20 after Phase 53 completion*

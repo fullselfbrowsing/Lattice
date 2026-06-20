@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
-status: verifying
-stopped_at: Completed 53-01-PLAN.md
-last_updated: "2026-06-20T03:09:20.848Z"
+status: ready_to_plan
+stopped_at: Phase 53 complete (1/1) — ready to discuss Phase 54
+last_updated: 2026-06-20T03:14:01.742Z
 last_activity: 2026-06-20
 progress:
   total_phases: 6
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 53 — Standalone Core Modules
+**Current focus:** Phase 54 — tools/mcp and agent optionality
 
 ## Current Position
 
-Phase: 53 (Standalone Core Modules) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
+Phase: 54
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-20
 
 ## Performance Metrics
@@ -63,6 +63,7 @@ v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carr
 - [Dogfood]: GitFly-style flows and a generic external-consumer example define milestone success before implementation is considered complete.
 - [Provider parity]: Provider-only native execution is opt-in through `ProviderRunRequest.nativeTools`, `nativeToolChoice`, and `nativeStructuredOutput`; `ai.run()` and `ai.runAgent()` keep existing behavior unless callers use those fields directly.
 - [External audit]: External executors can call `createExternalExecutionAudit` to mint signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes without adopting Lattice provider adapters or agent runtime.
+- [Standalone core]: External runtimes can call `prepareCoreRun` from the core subpath to get artifact refs, optional storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider or agent execution.
 
 ### Pending Todos
 
@@ -142,9 +143,9 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 ## Session Continuity
 
-Last session: 2026-06-20T03:09:20.616Z
-Stopped at: Completed 53-01-PLAN.md
-Resume: `/gsd-autonomous --from 53`
+Last session: 2026-06-20T03:13:04Z
+Stopped at: Phase 53 complete (1/1) — ready to discuss Phase 54
+Resume: `/gsd-autonomous --from 54`
 
 ## Operator Next Steps
 
