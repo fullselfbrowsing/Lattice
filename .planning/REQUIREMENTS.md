@@ -38,11 +38,11 @@
 
 ### MCP, Tools, and Agent Optionality
 
-- [ ] **TOOL-01**: Developer can import MCP/tool helpers as standalone utilities without enabling the Lattice agent loop.
-- [ ] **TOOL-02**: Developer can validate tool inputs and returned tool calls independently of provider execution.
-- [ ] **TOOL-03**: Developer can turn MCP resources, prompts, and tool results into artifacts that can be packed, replayed, and signed.
-- [ ] **AGNT-01**: Developer can opt out of all agent and crew surfaces while still using every non-agent Lattice module.
-- [ ] **AGNT-02**: Developer can request typed agent final outputs when they do use `runAgent`, closing the BuildConfig-style object-return gap.
+- [x] **TOOL-01**: Developer can import MCP/tool helpers as standalone utilities without enabling the Lattice agent loop.
+- [x] **TOOL-02**: Developer can validate tool inputs and returned tool calls independently of provider execution.
+- [x] **TOOL-03**: Developer can turn MCP resources, prompts, and tool results into artifacts that can be packed, replayed, and signed.
+- [x] **AGNT-01**: Developer can opt out of all agent and crew surfaces while still using every non-agent Lattice module.
+- [x] **AGNT-02**: Developer can request typed agent final outputs when they do use `runAgent`, closing the BuildConfig-style object-return gap.
 
 ### Compatibility and Dogfood
 
@@ -103,11 +103,11 @@
 | CORE-03 | Phase 53 | Complete |
 | CORE-04 | Phase 53 | Complete |
 | CORE-05 | Phase 53 | Complete |
-| TOOL-01 | Phase 54 | Pending |
-| TOOL-02 | Phase 54 | Pending |
-| TOOL-03 | Phase 54 | Pending |
-| AGNT-01 | Phase 54 | Pending |
-| AGNT-02 | Phase 54 | Pending |
+| TOOL-01 | Phase 54 | Complete |
+| TOOL-02 | Phase 54 | Complete |
+| TOOL-03 | Phase 54 | Complete |
+| AGNT-01 | Phase 54 | Complete |
+| AGNT-02 | Phase 54 | Complete |
 | COMP-01 | Phase 55 | Pending |
 | COMP-02 | Phase 55 | Pending |
 | DOG-01 | Phase 55 | Pending |
@@ -122,4 +122,4 @@
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after Phase 53 completion*
+*Last updated: 2026-06-20 after Phase 54 completion*

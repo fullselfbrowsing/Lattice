@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: ready_to_plan
-stopped_at: Phase 53 complete (1/1) — ready to discuss Phase 54
-last_updated: 2026-06-20T03:14:01.742Z
+stopped_at: Phase 54 complete (1/1) — ready to discuss Phase 55
+last_updated: 2026-06-20T03:28:54.153Z
 last_activity: 2026-06-20
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 67
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 54 — tools/mcp and agent optionality
+**Current focus:** Phase 55 — compatibility and dogfood validation
 
 ## Current Position
 
-Phase: 54
+Phase: 55
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-20
@@ -64,6 +64,7 @@ v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carr
 - [Provider parity]: Provider-only native execution is opt-in through `ProviderRunRequest.nativeTools`, `nativeToolChoice`, and `nativeStructuredOutput`; `ai.run()` and `ai.runAgent()` keep existing behavior unless callers use those fields directly.
 - [External audit]: External executors can call `createExternalExecutionAudit` to mint signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes without adopting Lattice provider adapters or agent runtime.
 - [Standalone core]: External runtimes can call `prepareCoreRun` from the core subpath to get artifact refs, optional storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider or agent execution.
+- [Tools/MCP optionality]: Tools-only consumers can import MCP artifact helpers and returned tool-call validation from the tools subpath without agent imports; `runAgent` callers who opt in can request typed final outputs.
 
 ### Pending Todos
 
@@ -116,6 +117,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | Phase 44 P03 | 4min | 2 tasks | 2 files |
 | Phase 44 P04 | 3min | 3 tasks | 3 files |
 | Phase 53 P01 | 12min | 3 tasks | 5 files |
+| Phase 54 P01 | 22min | 4 tasks | 12 files |
 
 ## Quick Tasks Completed
 
@@ -143,10 +145,10 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 ## Session Continuity
 
-Last session: 2026-06-20T03:13:04Z
-Stopped at: Phase 53 complete (1/1) — ready to discuss Phase 54
-Resume: `/gsd-autonomous --from 54`
+Last session: 2026-06-20T03:28:54Z
+Stopped at: Phase 54 complete (1/1) — ready to discuss Phase 55
+Resume: `/gsd-autonomous --from 55`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Continue v1.5.0 with Phase 55 compatibility and dogfood validation.

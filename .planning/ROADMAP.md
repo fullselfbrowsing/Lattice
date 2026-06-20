@@ -47,7 +47,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 ### v1.5.0 Modular Adoption + Execution Parity
 
-**Status:** In progress — Phases 50-53 complete; Phase 54 ready to plan.
+**Status:** In progress — Phases 50-54 complete; Phase 55 ready to plan.
 
 **Goal:** Make Lattice adoptable module-by-module in real apps like GitFly without forcing consumers into Lattice's agent runtime.
 
@@ -59,7 +59,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 | 51 | Provider Execution Parity | Complete 2026-06-20: provider-only native tools, structured outputs, finish metadata, and model-ID preservation shipped. | PROV-01, PROV-02, PROV-03, PROV-04, PROV-05 |
 | 52 | External Execution Audit Layer | Complete 2026-06-20: external execution audit helper emits signed receipts, compatible sidecars, replay envelopes, and hashes. | AUD-01, AUD-02, AUD-03, AUD-04, AUD-05 |
 | 53 | Standalone Core Modules | Complete 2026-06-20: standalone core preparation emits artifact refs, storage refs, context packs, advisory routes, hashes, warnings, and execution plans. | CORE-01, CORE-02, CORE-03, CORE-04, CORE-05 |
-| 54 | Tools/MCP and Agent Optionality | Decouple MCP/tool helpers from agents and close the typed agent-output gap for callers who opt into agents. | TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02 |
+| 54 | Tools/MCP and Agent Optionality | Complete 2026-06-20: tools-only MCP artifact helpers, standalone returned tool-call validation, tools boundary enforcement, and typed agent final outputs shipped. | TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02 |
 | 55 | Compatibility and Dogfood Validation | Prove Node 20 modular compatibility, Node 24 full-runtime boundaries, GitFly-style dogfood, external examples, and adoption docs. | COMP-01, COMP-02, DOG-01, DOG-02, DOG-03, DOG-04 |
 
 **Progress checklist:**
@@ -68,7 +68,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 - [x] **Phase 51: Provider Execution Parity** — completed 2026-06-20.
 - [x] **Phase 52: External Execution Audit Layer** — completed 2026-06-20.
 - [x] **Phase 53: Standalone Core Modules** — completed 2026-06-20.
-- [ ] **Phase 54: Tools/MCP and Agent Optionality**
+- [x] **Phase 54: Tools/MCP and Agent Optionality** — completed 2026-06-20.
 - [ ] **Phase 55: Compatibility and Dogfood Validation**
 
 ### Phase 50: Module Boundary Contract
@@ -137,6 +137,8 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 **Depends on:** Phase 50.
 
 ### Phase 54: Tools/MCP and Agent Optionality
+
+**Status:** Complete 2026-06-20.
 
 **Goal:** Keep tools and MCP useful without committing consumers to the agent loop.
 
