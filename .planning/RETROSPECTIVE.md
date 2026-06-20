@@ -74,6 +74,43 @@
 
 ---
 
+## Milestone: v1.5.0 — Modular Adoption + Execution Parity
+
+**Shipped:** 2026-06-20
+**Phases:** 6 (50-55) | **Plans:** 6 | **REQ-IDs:** 30/30
+
+### What Was Built
+- Modular package subpaths for providers, audit, context, artifacts, routing, tools, storage, eval, agents, and core, with compatibility metadata and source/package type tests.
+- Provider-only execution parity: native tools, native tool choice, native structured output, finish metadata, streaming finish details, and xAI/GitFly-style model ID preservation.
+- External execution audit wrapping: signed receipts, compatible sidecars, replay envelopes, raw request/response hashes, and feature-flag metadata for host-owned executors.
+- Standalone core/tools/eval adoption paths: `prepareCoreRun`, MCP artifact helpers, standalone returned tool-call validation, typed agent final outputs, Node 20 modular smoke, GitFly-style dogfood, and a generic external-consumer example.
+
+### What Worked
+- **Dogfood-first acceptance criteria.** Phase 55 forced the milestone to prove GitFly-style provider-only and external-audit flows instead of stopping at internal API shape.
+- **Boundary scripts caught architecture drift.** The final integration audit found the eval facade still passed through `src/agent/**`; moving the eval kernel to a neutral module made the docs claim mechanically true.
+- **Built-subpath examples exposed consumer reality.** `examples/external-consumer` imports built `dist/*` facades, so it validates package shape rather than workspace source paths.
+
+### What Was Inefficient
+- Early Phase 51/52 summaries and verification files were prose-only and needed normalization before the milestone audit could run a clean three-source cross-reference.
+- The completion SDK archived files but left ROADMAP and PROJECT semantic updates to manual repair, so the living docs needed a post-archive reconciliation pass.
+- The open-artifact audit still reports seven stale missing quick-task index entries; they are acknowledged carryforward noise, but they continue to add closeout friction.
+
+### Patterns Established
+- **Module-by-module adoption contracts**: each facade has package metadata, docs, type coverage, and boundary checks where agent isolation is promised.
+- **External execution wrapping** as a first-class path: Lattice can provide audit/receipt/replay value without owning the model executor.
+- **Runtime compatibility as executable metadata**: Node 20 support is proven only for facades labelled `node20-compatible`, while full runtime stays Node 24.
+
+### Key Lessons
+1. **Do not let docs overclaim boundaries unless a script enforces them.** The eval facade issue was small, but it proved every architecture promise needs a mechanical check.
+2. **External-consumer examples should import built artifacts.** Source imports are convenient, but built subpaths catch export, bundling, and type-shape regressions closer to user reality.
+3. **Milestone audits need normalized evidence.** Prose summaries are readable, but requirement-completion frontmatter and explicit verification coverage make closeout much less ambiguous.
+
+### Cost Observations
+- Model mix: not instrumented this milestone. Most verification was local/offline against fake providers, package checks, and a real Node 20 binary.
+- Notable: Phase 55 ran the broadest v1.5.0 gate set: GitFly dogfood, Node 20 modular smoke, external-consumer example, typecheck, type tests, and package lint.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -85,8 +122,9 @@
 | v1.2 | 14–22 | FSB integration (retro) + agent capability (forward); 7-adapter parity contract. |
 | v1.3 | 24–39 | First public npm release + model-aware SDK + multi-agent crew; first use of `superseded` to descope a planned sub-scope (canary) for a cheaper real-consumer path. |
 | v1.4 | 40–49 | Provider/gateway breadth, streaming/multimodal, OTel/eval diagnostics, and package-candidate downstream dogfood became the release-validation pattern. |
+| v1.5.0 | 50–55 | Modular adoption became a release-quality contract: package facades, boundary enforcement, external execution wrapping, Node 20 facade smoke, and GitFly-style dogfood. |
 
 ### Top Lessons (Verified Across Milestones)
 1. **Opt-in, additive surfaces preserve the parity contract** — validated across v1.2 (adapters) and v1.3 (sanitizers/validators/crew).
 2. **Inspectable, signed, reproducible artifacts are the differentiator** — every milestone has leaned further into receipts/replay rather than feature breadth.
-3. **Validate releases as packages, not just source trees** — v1.3 FSB-via-npm and v1.4 packed-candidate dogfood both found or defended boundaries that workspace-local tests would miss.
+3. **Validate releases as packages, not just source trees** — v1.3 FSB-via-npm, v1.4 packed-candidate dogfood, and v1.5.0 built-subpath external-consumer examples all defended boundaries that workspace-local tests would miss.
