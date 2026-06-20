@@ -371,6 +371,85 @@ describe("Phase 37: OpenAI-compatible tool-call validation", () => {
   });
 });
 
+describe("Phase 51: OpenAI-compatible native provider execution", () => {
+  it("serializes native tools/tool choice/structured output and parses native results", async () => {
+    const { fetch, inits } = makeMultiRouteFetch([
+      {
+        body: {
+          choices: [
+            {
+              finish_reason: "tool_calls",
+              message: {
+                content: "{\"summary\":\"ok\"}",
+                tool_calls: [
+                  {
+                    id: "call_1",
+                    type: "function",
+                    function: {
+                      name: "search",
+                      arguments: "{\"query\":\"native\"}",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+          usage: { prompt_tokens: 1, completion_tokens: 2 },
+        },
+      },
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "grok-4-1-fast-demo",
+      baseUrl: "http://fake",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text", "json"],
+      nativeTools: [searchTool],
+      nativeToolChoice: { type: "tool", name: "search" },
+      nativeStructuredOutput: {
+        output: "json",
+        name: "answer_shape",
+        schema: z.object({ summary: z.string() }),
+      },
+    });
+
+    const requestBody = JSON.parse(String(inits[0]?.body)) as Record<string, unknown>;
+    const tools = requestBody.tools as readonly {
+      type: string;
+      function: { name: string; parameters: Record<string, unknown> };
+    }[];
+    expect(requestBody.model).toBe("grok-4-1-fast-demo");
+    expect(tools[0]?.type).toBe("function");
+    expect(tools[0]?.function.name).toBe("search");
+    expect(tools[0]?.function.parameters.type).toBe("object");
+    expect(requestBody.tool_choice).toEqual({
+      type: "function",
+      function: { name: "search" },
+    });
+    expect(requestBody.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: {
+        name: "answer_shape",
+        strict: true,
+      },
+    });
+    expect(response.rawOutputs.text).toBe("{\"summary\":\"ok\"}");
+    expect(response.rawOutputs.json).toEqual({ summary: "ok" });
+    expect(response.toolCalls).toEqual([
+      { id: "call_1", name: "search", args: { query: "native" } },
+    ]);
+    expect(response.finish).toEqual({
+      reason: "tool_calls",
+      toolCallIds: ["call_1"],
+    });
+  });
+});
+
 describe("Phase 44: OpenAI-compatible streaming adapter", () => {
   it("advertises streaming capability", () => {
     const adapter = createOpenAICompatibleProvider({
@@ -529,6 +608,26 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
         outputs: ["text"],
       })),
     ).rejects.toThrow("OpenAI-compatible provider failed with 503.");
+  });
+
+  it("complete chunks preserve provider finish metadata", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "ok" }, finish_reason: "stop" }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    expect(response.finish).toEqual({ reason: "stop" });
   });
 });
 

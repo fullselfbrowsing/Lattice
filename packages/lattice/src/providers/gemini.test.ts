@@ -541,6 +541,68 @@ describe("Phase 37: Gemini tool-call validation", () => {
   });
 });
 
+describe("Phase 51: Gemini native provider execution", () => {
+  it("serializes function declarations/tool config/response schema and parses native results", async () => {
+    const { fetch, capture } = makeFakeFetch({
+      candidates: [
+        {
+          finishReason: "STOP",
+          content: {
+            parts: [
+              { text: "{\"summary\":\"ok\"}" },
+              { functionCall: { name: "search", args: { query: "native" } } },
+            ],
+          },
+        },
+      ],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 2, totalTokenCount: 3 },
+    });
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text", "json"],
+      nativeTools: [searchTool],
+      nativeToolChoice: { type: "tool", name: "search" },
+      nativeStructuredOutput: {
+        output: "json",
+        name: "answer_shape",
+        schema: z.object({ summary: z.string() }),
+      },
+    });
+
+    const requestBody = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const generationConfig = requestBody.generationConfig as Record<string, unknown>;
+    const tools = requestBody.tools as readonly {
+      functionDeclarations: readonly { name: string; parameters: Record<string, unknown> }[];
+    }[];
+    expect(generationConfig.responseMimeType).toBe("application/json");
+    expect((generationConfig.responseSchema as Record<string, unknown>).type).toBe("object");
+    expect(tools[0]?.functionDeclarations[0]?.name).toBe("search");
+    expect(requestBody.toolConfig).toEqual({
+      functionCallingConfig: {
+        mode: "ANY",
+        allowedFunctionNames: ["search"],
+      },
+    });
+    expect(response.rawOutputs.text).toBe("{\"summary\":\"ok\"}");
+    expect(response.rawOutputs.json).toEqual({ summary: "ok" });
+    expect(response.toolCalls).toEqual([
+      { id: "gemini-function-call-0-1", name: "search", args: { query: "native" } },
+    ]);
+    expect(response.finish).toEqual({
+      reason: "STOP",
+      toolCallIds: ["gemini-function-call-0-1"],
+    });
+  });
+});
+
 describe("Phase 44: Gemini streaming", () => {
   it("streams Gemini text parts through executeStream", async () => {
     const { fetch, capture } = makeStreamingFetch([
