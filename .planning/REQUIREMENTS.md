@@ -46,12 +46,12 @@
 
 ### Compatibility and Dogfood
 
-- [ ] **COMP-01**: Node 20 compatibility is tested for every modular layer that does not require Node 24-only APIs.
-- [ ] **COMP-02**: Node 24 remains the supported full-runtime baseline where required APIs cannot be polyfilled or safely supported on Node 20.
-- [ ] **DOG-01**: A GitFly-style dogfood scenario proves provider-only native tools and structured outputs do not regress compared with Vercel AI SDK-style flows.
-- [ ] **DOG-02**: A GitFly-style dogfood scenario proves Lattice audit/receipts/replay can wrap an external executor behind a feature flag.
-- [ ] **DOG-03**: A generic external-consumer example proves module-by-module adoption for at least two independent slices.
-- [ ] **DOG-04**: Documentation explains recommended adoption paths: provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, eval-only, and full runtime.
+- [x] **COMP-01**: Node 20 compatibility is tested for every modular layer that does not require Node 24-only APIs.
+- [x] **COMP-02**: Node 24 remains the supported full-runtime baseline where required APIs cannot be polyfilled or safely supported on Node 20.
+- [x] **DOG-01**: A GitFly-style dogfood scenario proves provider-only native tools and structured outputs do not regress compared with Vercel AI SDK-style flows.
+- [x] **DOG-02**: A GitFly-style dogfood scenario proves Lattice audit/receipts/replay can wrap an external executor behind a feature flag.
+- [x] **DOG-03**: A generic external-consumer example proves module-by-module adoption for at least two independent slices.
+- [x] **DOG-04**: Documentation explains recommended adoption paths: provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, eval-only, and full runtime.
 
 ## Future Requirements
 
@@ -108,12 +108,12 @@
 | TOOL-03 | Phase 54 | Complete |
 | AGNT-01 | Phase 54 | Complete |
 | AGNT-02 | Phase 54 | Complete |
-| COMP-01 | Phase 55 | Pending |
-| COMP-02 | Phase 55 | Pending |
-| DOG-01 | Phase 55 | Pending |
-| DOG-02 | Phase 55 | Pending |
-| DOG-03 | Phase 55 | Pending |
-| DOG-04 | Phase 55 | Pending |
+| COMP-01 | Phase 55 | Complete |
+| COMP-02 | Phase 55 | Complete |
+| DOG-01 | Phase 55 | Complete |
+| DOG-02 | Phase 55 | Complete |
+| DOG-03 | Phase 55 | Complete |
+| DOG-04 | Phase 55 | Complete |
 
 **Coverage:**
 - v1.5.0 requirements: 30 total
@@ -122,4 +122,4 @@
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after Phase 54 completion*
+*Last updated: 2026-06-20 after Phase 55 completion*
