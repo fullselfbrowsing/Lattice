@@ -1,4 +1,8 @@
 export {
+  parseToolUseEnvelope,
+} from "./tools/tool-use.js";
+export type { ToolUseRequest } from "./tools/tool-use.js";
+export {
   defineTool,
   importMcpTools,
   runTool,

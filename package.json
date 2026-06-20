@@ -16,6 +16,7 @@
     "check:package-version": "node scripts/check-package-version-surfaces.mjs",
     "check:tarball": "node scripts/check-tarball-leak.mjs",
     "check:core-boundary": "node scripts/check-core-package-boundary.mjs",
+    "check:module-boundaries": "node scripts/check-lattice-module-boundaries.mjs",
     "example:work-inbox": "pnpm --filter @full-self-browsing/lattice build && node examples/work-inbox/index.mjs",
     "example:v14-validation": "pnpm --filter @full-self-browsing/lattice build && node examples/v14-validation/index.mjs",
     "dogfood:fsb": "node scripts/dogfood-fsb-candidate.mjs",

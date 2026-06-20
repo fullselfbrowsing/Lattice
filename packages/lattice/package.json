@@ -131,7 +131,7 @@
     "typecheck": "pnpm stamp:version && tsc -p tsconfig.json --noEmit",
     "test": "pnpm stamp:version && vitest run",
     "test:types": "pnpm stamp:version && vitest --typecheck --run && tsd",
-    "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only && node ./scripts/check-cli-deps.mjs"
+    "lint:packages": "pnpm build && node ../../scripts/check-lattice-module-boundaries.mjs && publint && attw --pack . --profile esm-only && node ./scripts/check-cli-deps.mjs"
   },
   "tsd": {
     "compilerOptions": {

@@ -23,6 +23,8 @@ export { createXaiProvider } from "./providers/xai.js";
 export type { XaiProviderOptions } from "./providers/xai.js";
 export { collectStream } from "./providers/streaming.js";
 export type { CollectStreamOptions } from "./providers/streaming.js";
+export { parseToolUseEnvelope } from "./tools/tool-use.js";
+export type { ToolUseRequest } from "./tools/tool-use.js";
 export type {
   CapabilityModality,
   ModelCapability,

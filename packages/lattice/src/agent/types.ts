@@ -30,6 +30,7 @@ import type { Usage } from "../providers/provider.js";
 import type { LatticeRunError } from "../results/errors.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import type { SurvivabilityAdapter } from "../runtime/survivability.js";
+import type { ToolUseRequest } from "../tools/tool-use.js";
 import type { ToolDefinition } from "../tools/tools.js";
 import type { TracerLike } from "../tracing/tracing.js";
 
@@ -188,12 +189,4 @@ export class AgentDeniedError extends Error {
   }
 }
 
-/**
- * Returned by `formatToolsForProvider` (Phase 19 Plan 19-03). Re-exported
- * here for convenience; the canonical declaration lives in format-tools.ts.
- */
-export interface ToolUseRequest {
-  readonly id: string;
-  readonly name: string;
-  readonly args: unknown;
-}
+export type { ToolUseRequest };

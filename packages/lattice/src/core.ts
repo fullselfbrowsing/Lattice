@@ -118,6 +118,9 @@ export type {
   Usage,
 } from "./providers/provider.js";
 export type {
+  ToolUseRequest,
+} from "./tools/tool-use.js";
+export type {
   ExecutionPlan,
   FallbackRoute,
   ProviderAttemptRecord,

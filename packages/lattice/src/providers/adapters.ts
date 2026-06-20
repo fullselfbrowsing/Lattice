@@ -19,8 +19,7 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
-import type { ToolUseRequest } from "../agent/types.js";
-import { parseToolUseEnvelope } from "../agent/format-tools.js";
+import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
 import {
   validateToolCallRequests,
   type ValidateToolCallsOption,
