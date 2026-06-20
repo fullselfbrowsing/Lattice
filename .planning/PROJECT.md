@@ -16,6 +16,8 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.4 Provider Breadth + Live Multimodal + Observability Export shipped 2026-06-16.** Phases 40-49 are complete and archived: package/version guardrails, gateway delegation, OpenRouter fallback/catalog refresh, streaming contract and adapters, multimodal request shaping, realtime direction, receipt provenance/KMS signer shapes, OpenTelemetry export, eval/diagnostics CLI, offline showcase validation, tarball checks, and FSB package-candidate dogfood. The milestone audit passed with 44 / 44 REQ-IDs satisfied.
 
+**v1.5.0 Modular Adoption + Execution Parity is in progress.** Phase 50 shipped the modular package contract: subpath facades, compatibility metadata/docs, source boundary checks for provider/audit/core paths, and package type tests. Phase 51 is next and focuses on provider-only native execution parity.
+
 ## Current Milestone
 
 **v1.5.0 Modular Adoption + Execution Parity** is active.
@@ -146,7 +148,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closed the three library-native competitive gaps from the June 2026 analysis while avoiding a platform/control-plane commitment. Lightweight deploy adapters remain parked. | Shipped 2026-06-16 with 44/44 REQ-IDs complete and passed milestone audit. |
 | Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
 | v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40 and rechecked in Phase 49 package-candidate FSB dogfood. |
-| v1.5.0 prioritizes modular adoption over new agent features | GitFly dogfood showed Lattice is valuable as provider, audit, replay, eval, context, and artifact infrastructure, but adopting the whole agent runtime creates architectural friction for apps with their own AI layer. | Active milestone; requirements and roadmap drafted for approval. |
+| v1.5.0 prioritizes modular adoption over new agent features | GitFly dogfood showed Lattice is valuable as provider, audit, replay, eval, context, and artifact infrastructure, but adopting the whole agent runtime creates architectural friction for apps with their own AI layer. | Active milestone; Phase 50 validated the modular entrypoint and boundary contract. |
 
 ## Evolution
 
@@ -166,4 +168,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 after v1.5.0 milestone start.*
+*Last updated: 2026-06-20 after Phase 50 modular boundary contract completion.*
