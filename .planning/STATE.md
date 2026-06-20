@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Provider Breadth + Live Multimodal + Observability Export
-status: Awaiting next milestone
-stopped_at: Milestone v1.4 completed and archived; ready for next milestone
-last_updated: "2026-06-16T09:34:26Z"
-last_activity: 2026-06-16 — Milestone v1.4 completed and archived
+milestone: v1.5.0
+milestone_name: Modular Adoption + Execution Parity
+status: planning
+last_updated: "2026-06-20T01:58:05.521Z"
+last_activity: 2026-06-20
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 36
-  completed_plans: 36
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-16)
+See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Planning next milestone
+**Current focus:** v1.5.0 Modular Adoption + Execution Parity roadmap approval
 
 ## Current Position
 
-Phase: Milestone v1.4 complete
+Phase: Not started (roadmap approval)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-16 — Milestone v1.4 completed and archived
+Status: Requirements and roadmap drafted; awaiting approval
+Last activity: 2026-06-20 — Milestone v1.5.0 requirements and roadmap drafted
 
 ## Performance Metrics
 
@@ -54,12 +53,13 @@ Last activity: 2026-06-16 — Milestone v1.4 completed and archived
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decisions affecting v1.4:
+v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carryforward decisions affecting v1.5.0:
 
 - [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
 - [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
-- [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
-- [v1.4 roadmap]: 44 REQ-IDs mapped across Phases 40-49. All 44 are complete and mapped to evidence in `49-MILESTONE-EVIDENCE.md`.
+- [v1.5.0 scope]: Modular adoption + execution parity. Provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, storage, eval, and full-runtime adoption paths must be independently usable.
+- [Compatibility]: Node 20 compatibility is in scope for modular layers where feasible; Node 24 remains acceptable for the full runtime or APIs that require Node 24-only primitives.
+- [Dogfood]: GitFly-style flows and a generic external-consumer example define milestone success before implementation is considered complete.
 
 ### Pending Todos
 

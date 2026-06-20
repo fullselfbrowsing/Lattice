@@ -18,7 +18,16 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ## Current Milestone
 
-No active milestone. v1.4 is archived under `.planning/milestones/v1.4-*`; the next cycle should start with `/gsd-new-milestone`, which will create fresh requirements and expand the compact roadmap.
+**v1.5.0 Modular Adoption + Execution Parity** is active.
+
+**Goal:** Make Lattice adoptable module-by-module in real apps like GitFly without forcing consumers into Lattice's agent runtime.
+
+**Target features:**
+- Provider-only usage that preserves native tool calling, native structured outputs, streaming, and provider-specific model IDs.
+- Audit, receipts, replay, and eval usable around an external execution layer such as Vercel AI SDK flows.
+- Context packing, artifact transport, deterministic routing, MCP/tools, and storage usable independently.
+- Node 20-compatible modular layers where feasible, with Node 24-only runtime assumptions isolated and explicit.
+- GitFly-style dogfood plus generic external-consumer examples proving incremental adoption.
 
 ## Shipped Milestones
 
@@ -58,14 +67,15 @@ No active milestone. v1.4 is archived under `.planning/milestones/v1.4-*`; the n
 
 ### Active
 
-No active milestone requirements. The next cycle starts by running `/gsd-new-milestone`, which will create a fresh `.planning/REQUIREMENTS.md` and expand `.planning/ROADMAP.md`.
+v1.5.0 active requirements are defined in `.planning/REQUIREMENTS.md`.
 
-Carryforward considerations for the next milestone:
+Current milestone focus:
 
-- Full production implementation of OpenAI Realtime and Gemini Live bidirectional sessions beyond the v1.4 interface-level design.
-- Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
-- Multi-scenario agent-loop showcase variants for tripwire, stall, and budget-exceeded behavior.
-- Lightweight deploy-adapter framing (`lattice serve`, serverless wrappers, Dockerfile) remains parked; hosted control plane remains out of scope.
+- Modular public entrypoints and dependency boundaries for provider, audit, context, artifact, routing, MCP/tools, storage, eval, and agent surfaces.
+- Native execution parity for provider-only consumers: structured outputs, native tools, streaming step insight, and explicit model-ID handling.
+- External execution audit wrapping so existing AI stacks can use Lattice receipts/replay/eval without swapping their executor.
+- Node 20 compatibility for modular layers that do not need Node 24 APIs.
+- GitFly-style and generic external-consumer dogfood before implementation is treated as complete.
 
 ### v1.1-to-v1.2 carryforward outcomes (closed)
 
@@ -136,6 +146,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closed the three library-native competitive gaps from the June 2026 analysis while avoiding a platform/control-plane commitment. Lightweight deploy adapters remain parked. | Shipped 2026-06-16 with 44/44 REQ-IDs complete and passed milestone audit. |
 | Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
 | v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40 and rechecked in Phase 49 package-candidate FSB dogfood. |
+| v1.5.0 prioritizes modular adoption over new agent features | GitFly dogfood showed Lattice is valuable as provider, audit, replay, eval, context, and artifact infrastructure, but adopting the whole agent runtime creates architectural friction for apps with their own AI layer. | Active milestone; requirements and roadmap drafted for approval. |
 
 ## Evolution
 
@@ -155,4 +166,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-16 after v1.4 milestone archive.*
+*Last updated: 2026-06-20 after v1.5.0 milestone start.*

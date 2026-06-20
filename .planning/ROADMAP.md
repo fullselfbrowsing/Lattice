@@ -9,6 +9,7 @@
 | v1.2 FSB Integration + Agent Capability | Shipped | 2026-05-31 | `.planning/milestones/v1.2-ROADMAP.md` · `.planning/milestones/v1.2-REQUIREMENTS.md` · `.planning/milestones/v1.2-MILESTONE-AUDIT.md` |
 | v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface | Shipped | 2026-06-15 | `.planning/milestones/v1.3-ROADMAP.md` · `.planning/milestones/v1.3-REQUIREMENTS.md` · `.planning/milestones/v1.3-MILESTONE-AUDIT.md` |
 | v1.4 Provider Breadth + Live Multimodal + Observability Export | Shipped | 2026-06-16 | `.planning/milestones/v1.4-ROADMAP.md` · `.planning/milestones/v1.4-REQUIREMENTS.md` · `.planning/milestones/v1.4-MILESTONE-AUDIT.md` |
+| v1.5.0 Modular Adoption + Execution Parity | Planning | — | `.planning/REQUIREMENTS.md` |
 
 ## Phases
 
@@ -44,4 +45,115 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 ## Active Milestone
 
-No active milestone. Start the next milestone with `/gsd-new-milestone`; it will create fresh `.planning/REQUIREMENTS.md` and expand this roadmap.
+### v1.5.0 Modular Adoption + Execution Parity
+
+**Status:** Draft roadmap, awaiting approval.
+
+**Goal:** Make Lattice adoptable module-by-module in real apps like GitFly without forcing consumers into Lattice's agent runtime.
+
+**Requirement coverage:** 30 / 30 mapped.
+
+| Phase | Name | Goal | Requirements |
+|-------|------|------|--------------|
+| 50 | Module Boundary Contract | Define and enforce modular entrypoints, dependency boundaries, and compatibility labels before implementation spreads. | MOD-01, MOD-02, MOD-03, MOD-04 |
+| 51 | Provider Execution Parity | Close provider-only execution gaps for native tools, structured outputs, streaming step insight, and model IDs. | PROV-01, PROV-02, PROV-03, PROV-04, PROV-05 |
+| 52 | External Execution Audit Layer | Let apps keep their existing AI executor while using Lattice receipts, replay, eval, and diffing. | AUD-01, AUD-02, AUD-03, AUD-04, AUD-05 |
+| 53 | Standalone Core Modules | Make context packing, artifact transport, routing, and storage independently usable and inspectable. | CORE-01, CORE-02, CORE-03, CORE-04, CORE-05 |
+| 54 | Tools/MCP and Agent Optionality | Decouple MCP/tool helpers from agents and close the typed agent-output gap for callers who opt into agents. | TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02 |
+| 55 | Compatibility and Dogfood Validation | Prove Node 20 modular compatibility, Node 24 full-runtime boundaries, GitFly-style dogfood, external examples, and adoption docs. | COMP-01, COMP-02, DOG-01, DOG-02, DOG-03, DOG-04 |
+
+### Phase 50: Module Boundary Contract
+
+**Goal:** Establish the public modular contract before changing runtime behavior.
+
+**Requirements:** MOD-01, MOD-02, MOD-03, MOD-04
+
+**Success criteria:**
+1. Package entrypoints or documented module facades identify provider, audit, context, artifact, routing, MCP/tools, storage, eval, and agent surfaces.
+2. Dependency-boundary checks prove provider-only, audit-only, and core-only paths do not import agent runtime or crew code.
+3. Documentation labels each module as Node 20-compatible, Node 24-only, or adapter-specific.
+4. Existing package public-surface tests protect the new modular contract.
+
+**Depends on:** None.
+
+### Phase 51: Provider Execution Parity
+
+**Goal:** Make provider-only use strong enough for GitFly-style execution flows.
+
+**Requirements:** PROV-01, PROV-02, PROV-03, PROV-04, PROV-05
+
+**Success criteria:**
+1. Provider-only calls can pass native tool declarations and provider-native tool-choice hints.
+2. Provider-only structured output calls materialize typed objects without validating schema objects against raw strings.
+3. xAI/GitFly-style model IDs are preserved or normalized intentionally with inspectable negotiation results.
+4. Streaming provider paths expose enough step/tool-finish information for host apps to maintain their own SSE insight surfaces.
+5. Existing `ai.run()` and `ai.runAgent()` tests prove default behavior remains backward compatible.
+
+**Depends on:** Phase 50.
+
+### Phase 52: External Execution Audit Layer
+
+**Goal:** Let Lattice wrap external execution instead of replacing it.
+
+**Requirements:** AUD-01, AUD-02, AUD-03, AUD-04, AUD-05
+
+**Success criteria:**
+1. A host app can create a signed Lattice receipt from an externally executed request/response envelope.
+2. Sidecar or replay fixture data captures task, model, artifacts, outputs, usage, policy, raw envelope, and hashes.
+3. `lattice repro`, `lattice verify`, `lattice eval`, or shared kernels can operate on external-execution fixtures where required data exists.
+4. Receipt compatibility tests prove existing v1.2 receipt verification still works.
+5. External execution audit APIs do not depend on provider adapters or agent runtime.
+
+**Depends on:** Phase 50.
+
+### Phase 53: Standalone Core Modules
+
+**Goal:** Make the non-execution core useful to apps that already have an AI runtime.
+
+**Requirements:** CORE-01, CORE-02, CORE-03, CORE-04, CORE-05
+
+**Success criteria:**
+1. Context packing can be invoked directly over artifacts and optional session turns.
+2. Artifact constructors, refs, fingerprints, lineage, and packaging metadata are usable without provider execution.
+3. Deterministic routing and capability negotiation can be used as advisory APIs without invoking providers.
+4. Storage adapters are usable independently of `createAI()`.
+5. Standalone core operations produce inspectable records that can feed receipts and debugging.
+
+**Depends on:** Phase 50.
+
+### Phase 54: Tools/MCP and Agent Optionality
+
+**Goal:** Keep tools and MCP useful without committing consumers to the agent loop.
+
+**Requirements:** TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02
+
+**Success criteria:**
+1. MCP/tool imports, validation, and artifact conversion are available through non-agent module paths.
+2. Returned tool-call validation works independently of provider adapters and agent runtime where possible.
+3. MCP resources, prompts, and tool results can be represented as artifacts for packing, replay, and signing.
+4. Tests prove non-agent module paths do not import `runAgent`, crew, or AgentHost code.
+5. `runAgent` callers can request typed final outputs when they intentionally use the agent surface.
+
+**Depends on:** Phase 50, Phase 51.
+
+### Phase 55: Compatibility and Dogfood Validation
+
+**Goal:** Prove the milestone solves real incremental adoption, not just internal API shape.
+
+**Requirements:** COMP-01, COMP-02, DOG-01, DOG-02, DOG-03, DOG-04
+
+**Success criteria:**
+1. Node 20 compatibility tests run for every modular layer classified as Node 20-compatible.
+2. Node 24-only modules have explicit guards, docs, or package metadata that prevent accidental Node 20 promises.
+3. A GitFly-style provider-only dogfood fixture proves native tools and structured outputs do not regress against the host-owned execution pattern.
+4. A GitFly-style audit dogfood fixture proves Lattice receipts/replay can wrap external execution behind a feature flag.
+5. Generic external-consumer examples demonstrate at least two independent adoption slices.
+6. Docs describe provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, eval-only, and full-runtime adoption paths.
+
+**Depends on:** Phases 51, 52, 53, 54.
+
+## Approval Status
+
+This roadmap is intentionally stopped for human approval before implementation. After approval, start with:
+
+`/gsd-discuss-phase 50`
