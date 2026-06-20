@@ -36,6 +36,7 @@ import {
 
 const provider = createOpenAICompatibleProvider({
   id: "gateway",
+  model: "gpt-4o-mini",
   baseUrl: "https://gateway.example/v1",
   apiKey: process.env.GATEWAY_API_KEY,
 });
@@ -256,15 +257,27 @@ When callers intentionally opt into the agent surface, `runAgent` can return typ
 
 ```ts
 import { runAgent } from "@full-self-browsing/lattice/agents";
+import { createFakeProvider } from "@full-self-browsing/lattice/providers";
 import { z } from "zod";
 
-const result = await runAgent({
-  task: "Return the build command",
-  tools: [],
-  outputs: {
-    build: z.object({ command: z.string() }),
+const provider = createFakeProvider({
+  response: {
+    rawOutputs: {
+      build: { command: "pnpm build" },
+    },
   },
 });
+
+const result = await runAgent(
+  {
+    task: "Return the build command",
+    tools: [],
+    outputs: {
+      build: z.object({ command: z.string() }),
+    },
+  },
+  { providers: [provider] },
+);
 
 if (result.kind === "success") {
   result.output.build.command;

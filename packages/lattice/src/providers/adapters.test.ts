@@ -521,6 +521,32 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
     });
   });
 
+  it("streaming structured output materializes parsed raw output", async () => {
+    const { fetch } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "{\"summary\":" } }] }),
+      sseData({ choices: [{ delta: { content: "\"ok\"}" }, finish_reason: "stop" }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    const response = await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text", "json"],
+      nativeStructuredOutput: {
+        output: "json",
+        schema: z.object({ summary: z.string() }),
+      },
+    }));
+
+    expect(response.rawOutputs.text).toBe("{\"summary\":\"ok\"}");
+    expect(response.rawOutputs.json).toEqual({ summary: "ok" });
+  });
+
   it("split SSE frames parse correctly", async () => {
     const { fetch } = makeStreamingFetch([
       "data: {\"choices\":[{\"delta\":{\"content\":\"hel",

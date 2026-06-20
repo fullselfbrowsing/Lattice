@@ -660,7 +660,15 @@ async function* streamOpenAICompatibleResponse(input: {
   }
 
   const text = textParts.join("");
-  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const structuredOutput = input.request.nativeStructuredOutput === undefined
+    ? undefined
+    : parseJsonValue(text);
+  const rawOutputs = rawOutputsForRequest({
+    outputs: input.request.outputs,
+    text,
+    structuredOutputRequest: input.request.nativeStructuredOutput,
+    structuredOutput,
+  });
   const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
     providerId: input.id,
     modelId: input.model,
