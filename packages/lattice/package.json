@@ -25,12 +25,106 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "import": "./dist/providers.js",
+      "default": "./dist/providers.js"
+    },
+    "./audit": {
+      "types": "./dist/audit.d.ts",
+      "import": "./dist/audit.js",
+      "default": "./dist/audit.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js",
+      "default": "./dist/context.js"
+    },
+    "./artifacts": {
+      "types": "./dist/artifacts.d.ts",
+      "import": "./dist/artifacts.js",
+      "default": "./dist/artifacts.js"
+    },
+    "./routing": {
+      "types": "./dist/routing.d.ts",
+      "import": "./dist/routing.js",
+      "default": "./dist/routing.js"
+    },
+    "./tools": {
+      "types": "./dist/tools.d.ts",
+      "import": "./dist/tools.js",
+      "default": "./dist/tools.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.js",
+      "default": "./dist/storage.js"
+    },
+    "./eval": {
+      "types": "./dist/eval.d.ts",
+      "import": "./dist/eval.js",
+      "default": "./dist/eval.js"
+    },
+    "./agents": {
+      "types": "./dist/agents.d.ts",
+      "import": "./dist/agents.js",
+      "default": "./dist/agents.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
     }
   },
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "lattice": {
+    "modules": {
+      "./providers": {
+        "compatibility": "adapter-specific",
+        "description": "Provider factories, provider contracts, streaming helpers, capability negotiation, and prompt scaffold helpers."
+      },
+      "./audit": {
+        "compatibility": "node20-compatible",
+        "description": "Receipt creation, signing, verification, CID, replay envelopes, replay redaction, materialization, and receipt OTel attributes."
+      },
+      "./context": {
+        "compatibility": "node20-compatible",
+        "description": "Context packing, token estimates, and artifact reference extraction."
+      },
+      "./artifacts": {
+        "compatibility": "node20-compatible",
+        "description": "Artifact builders, refs, metadata, storage references, and lineage types."
+      },
+      "./routing": {
+        "compatibility": "node20-compatible",
+        "description": "Deterministic routing, catalogs, policy, capability profiles, and negotiation helpers."
+      },
+      "./tools": {
+        "compatibility": "node20-compatible",
+        "description": "Tool definitions, tool execution, MCP-like tool import, and tool-call validation types."
+      },
+      "./storage": {
+        "compatibility": "adapter-specific",
+        "description": "Memory and Node filesystem artifact stores plus storage contracts."
+      },
+      "./eval": {
+        "compatibility": "node20-compatible",
+        "description": "Standalone evaluation kernels for regression checks."
+      },
+      "./agents": {
+        "compatibility": "node24-runtime",
+        "description": "Opt-in single-agent, crew, host, and agent infrastructure runtime surfaces."
+      },
+      "./core": {
+        "compatibility": "node20-compatible",
+        "description": "Non-agent artifact, context, output, contract, routing, provider-contract, storage-contract, and result primitives."
+      }
+    }
+  },
   "scripts": {
     "stamp:version": "node ../../scripts/stamp-package-version.mjs --package package.json --out src/version.ts --export latticeVersion",
     "build": "pnpm stamp:version && tsdown",
