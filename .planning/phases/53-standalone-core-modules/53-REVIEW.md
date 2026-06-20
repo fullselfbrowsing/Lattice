@@ -37,4 +37,4 @@ No open issues found.
 
 - `pnpm --filter @full-self-browsing/lattice test -- standalone` passed after remediation.
 - `pnpm --filter @full-self-browsing/lattice typecheck` passed after remediation.
-- Prior full package gates passed before the remediation; they will be rerun for phase verification.
+- Full package gates were rerun after remediation during phase verification.

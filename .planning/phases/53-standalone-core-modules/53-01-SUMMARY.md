@@ -93,7 +93,7 @@ None - no external service configuration required.
 - `pnpm --filter @full-self-browsing/lattice test -- standalone` - passed, 80 files / 1,042 tests.
 - `pnpm --filter @full-self-browsing/lattice typecheck` - passed.
 - `node scripts/check-lattice-module-boundaries.mjs` - passed.
-- `pnpm --filter @full-self-browsing/lattice test:types` - passed, 99 files / 1,239 tests, no type errors.
+- `pnpm --filter @full-self-browsing/lattice test:types` - passed, 99 files / 1,240 tests, no type errors.
 - `pnpm --filter @full-self-browsing/lattice lint:packages` - passed.
 
 ## Next Phase Readiness
