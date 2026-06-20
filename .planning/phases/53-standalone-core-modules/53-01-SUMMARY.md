@@ -59,6 +59,7 @@ completed: 2026-06-20
 ## Task Commits
 
 1. **Task 53-01: Standalone core helper, tests, and docs** - `ed5f668` (feat)
+2. **Review fix: custom storage hash fallback** - `5ba40b0` (fix)
 
 ## Files Created/Modified
 
@@ -81,6 +82,7 @@ None - plan executed as written.
 ## Issues Encountered
 
 - `pnpm --filter @full-self-browsing/lattice test:types` initially failed because `dist/core.d.ts` was stale. Running `pnpm --filter @full-self-browsing/lattice build` refreshed declarations, and the rerun passed.
+- Inline code review found that a custom `ArtifactStore.put` could return a ref without a fingerprint. `prepareCoreRun` now preserves or computes the available input hash in that storage path.
 
 ## User Setup Required
 
@@ -88,7 +90,7 @@ None - no external service configuration required.
 
 ## Verification
 
-- `pnpm --filter @full-self-browsing/lattice test -- standalone` - passed, 80 files / 1,041 tests.
+- `pnpm --filter @full-self-browsing/lattice test -- standalone` - passed, 80 files / 1,042 tests.
 - `pnpm --filter @full-self-browsing/lattice typecheck` - passed.
 - `node scripts/check-lattice-module-boundaries.mjs` - passed.
 - `pnpm --filter @full-self-browsing/lattice test:types` - passed, 99 files / 1,239 tests, no type errors.
