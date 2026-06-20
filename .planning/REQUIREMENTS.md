@@ -22,11 +22,11 @@
 
 ### External Execution Audit
 
-- [ ] **AUD-01**: Developer can wrap an externally executed AI call with Lattice receipts without replacing the executor.
-- [ ] **AUD-02**: Developer can record raw request/response envelopes, model identity, usage, artifacts, outputs, and policy decisions for external execution runs.
-- [ ] **AUD-03**: Developer can replay or diff external execution fixtures with the existing CLI where sufficient sidecar data exists.
-- [ ] **AUD-04**: Developer can use eval gates against external execution receipts and sidecars without depending on Lattice provider adapters.
-- [ ] **AUD-05**: Receipt signing and verification stay JCS/DSSE/Ed25519-compatible with existing v1.2 receipts.
+- [x] **AUD-01**: Developer can wrap an externally executed AI call with Lattice receipts without replacing the executor.
+- [x] **AUD-02**: Developer can record raw request/response envelopes, model identity, usage, artifacts, outputs, and policy decisions for external execution runs.
+- [x] **AUD-03**: Developer can replay or diff external execution fixtures with the existing CLI where sufficient sidecar data exists.
+- [x] **AUD-04**: Developer can use eval gates against external execution receipts and sidecars without depending on Lattice provider adapters.
+- [x] **AUD-05**: Receipt signing and verification stay JCS/DSSE/Ed25519-compatible with existing v1.2 receipts.
 
 ### Context, Artifacts, Routing, and Storage
 
@@ -93,11 +93,11 @@
 | PROV-03 | Phase 51 | Complete |
 | PROV-04 | Phase 51 | Complete |
 | PROV-05 | Phase 51 | Complete |
-| AUD-01 | Phase 52 | Pending |
-| AUD-02 | Phase 52 | Pending |
-| AUD-03 | Phase 52 | Pending |
-| AUD-04 | Phase 52 | Pending |
-| AUD-05 | Phase 52 | Pending |
+| AUD-01 | Phase 52 | Complete |
+| AUD-02 | Phase 52 | Complete |
+| AUD-03 | Phase 52 | Complete |
+| AUD-04 | Phase 52 | Complete |
+| AUD-05 | Phase 52 | Complete |
 | CORE-01 | Phase 53 | Pending |
 | CORE-02 | Phase 53 | Pending |
 | CORE-03 | Phase 53 | Pending |
@@ -122,4 +122,4 @@
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after Phase 50 completion*
+*Last updated: 2026-06-20 after Phase 52 completion*
