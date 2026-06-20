@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
-status: milestone_complete
-stopped_at: All v1.5.0 phases complete; milestone audit pending
-last_updated: 2026-06-20T03:39:07.281Z
-last_activity: 2026-06-20
+status: awaiting_next_milestone
+stopped_at: v1.5.0 archived; awaiting next milestone
+last_updated: "2026-06-20T03:48:53.893Z"
+last_activity: 2026-06-20 - Milestone v1.5.0 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Milestone complete
+**Current focus:** Awaiting next milestone
 
 ## Current Position
 
-Phase: 55
-Plan: 1/1 complete
-Status: All phases complete; milestone audit pending
-Last activity: 2026-06-20
+Phase: Milestone v1.5.0 complete
+Plan: n/a
+Status: Awaiting next milestone
+Last activity: 2026-06-20 - Milestone v1.5.0 completed and archived
 
 ## Performance Metrics
 
@@ -85,7 +85,7 @@ v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carr
 
 ## Deferred Items
 
-Items acknowledged and deferred at v1.4 milestone close on 2026-06-16:
+Items acknowledged and deferred at v1.5.0 milestone close on 2026-06-20:
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -147,9 +147,9 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 ## Session Continuity
 
 Last session: 2026-06-20T03:39:07Z
-Stopped at: All v1.5.0 phases complete; milestone audit pending
-Resume: `/gsd-audit-milestone`
+Stopped at: v1.5.0 archived; awaiting next milestone
+Resume: `/gsd-new-milestone`
 
 ## Operator Next Steps
 
-- Run the v1.5.0 milestone audit, then complete and archive the milestone if audit passes.
+- Start the next milestone with /gsd-new-milestone
