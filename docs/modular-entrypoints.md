@@ -137,6 +137,52 @@ void routeDeterministically;
 
 This path is for applications that already have a model execution layer and only need Lattice's shared primitives. `prepareCoreRun` returns a non-executing prepared core record with artifact refs, context pack, advisory route decision, input hashes, warnings, and an execution plan that downstream executors, audit helpers, and debugging tools can inspect.
 
+## Context/Artifact-Only
+
+Use the context and artifacts facades when an application only needs normalized artifact refs and context-pack inspection.
+
+```ts
+import { artifact } from "@full-self-browsing/lattice/artifacts";
+import { buildContextPack } from "@full-self-browsing/lattice/context";
+
+const caseBody = artifact.text("Customer says the package arrived late.", {
+  id: "artifact:case:1",
+});
+const pack = buildContextPack({
+  task: "Summarize the case",
+  artifacts: [caseBody],
+});
+
+void pack.included;
+```
+
+This path is useful for host-owned executors that need Lattice's packing and artifact metadata without routing or execution.
+
+## Routing Advisory
+
+Use the routing facade when the host owns execution but wants Lattice's deterministic model selection advice.
+
+```ts
+import {
+  createCapabilityCatalog,
+  defaultCapabilityForProvider,
+  routeDeterministically,
+} from "@full-self-browsing/lattice/routing";
+
+const catalog = createCapabilityCatalog([
+  defaultCapabilityForProvider("external"),
+]);
+const route = routeDeterministically(catalog, {
+  task: "Classify the case",
+  artifacts: [],
+  outputs: { answer: "text" },
+});
+
+void route.selected;
+```
+
+The result is advisory. No provider is called by the routing facade.
+
 ## Tools/MCP-Only
 
 Use the tools facade when an application wants tool declarations, returned tool-call validation, or MCP-shaped content conversion without importing the agent loop.
@@ -185,6 +231,23 @@ void toolResult;
 
 The returned MCP artifacts are ordinary Lattice artifacts, so downstream context packing, replay, external audit, and receipt signing can inspect the same refs and metadata without requiring `runAgent()`.
 
+## Eval-Only
+
+Use the eval facade when an application wants lightweight regression gates for its own agent or executor traces.
+
+```ts
+import { evalAgentRun } from "@full-self-browsing/lattice/eval";
+
+const report = evalAgentRun(
+  { iterationsToGoal: 2, usage: { promptTokens: 10, completionTokens: 5, costUsd: 0.002 } },
+  { iterationsToGoal: 2, usage: { promptTokens: 10, completionTokens: 5, costUsd: 0.002 } },
+);
+
+void report.ok;
+```
+
+This path does not require Lattice routing, provider adapters, or agent execution.
+
 ## Agent Opt-In
 
 Agent and crew APIs live under `@full-self-browsing/lattice/agents`. Importing providers, audit, context, artifacts, routing, tools, storage, eval, or core should not transitively import `src/agent/**`. The `check:module-boundaries` script enforces that separation for provider-only, audit-only, tools-only, and core-only entrypoints.
@@ -209,3 +272,33 @@ if (result.kind === "success") {
 ```
 
 Importing `@full-self-browsing/lattice/agents` is the explicit opt-in point for agent and crew runtime behavior. The `check:module-boundaries` script enforces provider-only, audit-only, tools-only, and core-only separation from agent modules.
+
+## Full Runtime
+
+Use the root package when an application wants Lattice to plan, route, execute, validate, and inspect the full run.
+
+```ts
+import { createAI } from "@full-self-browsing/lattice";
+
+const ai = createAI();
+const result = await ai.run({
+  task: "Say hello",
+  outputs: { answer: "text" },
+});
+
+void result;
+```
+
+The full runtime remains documented as Node `>=24` through package metadata. Node 20 validation is scoped to module facades labelled `node20-compatible`.
+
+## Validation Commands
+
+The v1.5.0 compatibility and dogfood checks are executable:
+
+```bash
+pnpm check:node20-modules
+pnpm --filter @full-self-browsing/lattice test -- gitfly-dogfood
+pnpm example:external-consumer
+```
+
+`check:node20-modules` builds Lattice, locates a real Node 20 binary (or uses `NODE20_BIN`), and imports every built facade labelled `node20-compatible`. `example:external-consumer` imports built modular subpaths and demonstrates core, tools/MCP, audit, and eval adoption slices.
