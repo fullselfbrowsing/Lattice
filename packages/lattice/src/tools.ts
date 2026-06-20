@@ -8,6 +8,18 @@ export {
 } from "./tools/schema.js";
 export type { JsonSchemaLike } from "./tools/schema.js";
 export {
+  mcpPromptArtifact,
+  mcpResourceArtifact,
+  mcpToolResultArtifact,
+} from "./tools/mcp-artifacts.js";
+export type {
+  McpArtifactOptions,
+  McpPromptArtifactInput,
+  McpPromptMessage,
+  McpResourceArtifactInput,
+  McpToolResultArtifactInput,
+} from "./tools/mcp-artifacts.js";
+export {
   defineTool,
   importMcpTools,
   runTool,
@@ -20,7 +32,10 @@ export type {
   ToolDefinition,
   ToolExecutionContext,
 } from "./tools/tools.js";
-export { ToolCallValidationError } from "./tools/tool-call-validation.js";
+export {
+  ToolCallValidationError,
+  validateToolCallRequests,
+} from "./tools/tool-call-validation.js";
 export type {
   ToolCallValidationFailureReason,
   ValidateToolCallsOption,

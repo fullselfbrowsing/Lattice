@@ -23,6 +23,29 @@ function makeSchema(): StandardSchemaV1 {
   } as StandardSchemaV1;
 }
 
+function makeBuildConfigSchema(): StandardSchemaV1 {
+  return {
+    "~standard": {
+      version: 1,
+      vendor: "test-stub",
+      validate: (value: unknown) => {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value) &&
+          typeof (value as { readonly command?: unknown }).command === "string"
+        ) {
+          return { value: value as never };
+        }
+
+        return {
+          issues: [{ message: "Expected build config with a string command." }],
+        };
+      },
+    } as never,
+  } as StandardSchemaV1;
+}
+
 function makeTool(
   name: string,
   execute: (input: unknown) => unknown | Promise<unknown> = () => "ok",
@@ -58,6 +81,63 @@ describe("runAgent — final-answer path", () => {
       expect(result.usage.costUsd).toBeCloseTo(0.001);
     }
     expect(calls).toBe(1);
+  });
+
+  it("materializes declared typed final outputs from provider rawOutputs", async () => {
+    let seenOutputs: readonly string[] = [];
+    let sawOutputContracts = false;
+    const fake = createFakeProvider({
+      response: (request) => {
+        seenOutputs = request.outputs;
+        sawOutputContracts = request.outputContracts !== undefined;
+        return {
+          rawOutputs: { build: { command: "pnpm build" } },
+          normalizedUsage: { promptTokens: 2, completionTokens: 4, costUsd: 0 },
+        };
+      },
+    });
+    const result = await runAgent(
+      {
+        task: "Return a build config.",
+        tools: [],
+        outputs: { build: makeBuildConfigSchema() },
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(seenOutputs).toEqual(["build"]);
+    expect(sawOutputContracts).toBe(true);
+    if (result.kind === "success") {
+      expect(result.output).toEqual({ build: { command: "pnpm build" } });
+    }
+  });
+
+  it("returns validation failure when declared final outputs are malformed", async () => {
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { build: { command: 42 } },
+        normalizedUsage: { promptTokens: 2, completionTokens: 4, costUsd: 0 },
+      }),
+    });
+    const result = await runAgent(
+      {
+        task: "Return a malformed build config.",
+        tools: [],
+        outputs: { build: makeBuildConfigSchema() },
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("validation");
+    if (result.kind !== "success") {
+      expect(result.reason).toBe('Invalid output "build".');
+      expect(result.cause).toMatchObject({
+        kind: "validation",
+        output: "build",
+      });
+      expect(result.iterations).toHaveLength(1);
+    }
   });
 });
 

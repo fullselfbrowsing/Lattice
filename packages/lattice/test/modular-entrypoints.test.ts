@@ -52,6 +52,8 @@ describe("modular package entrypoints", () => {
     expect(typeof artifacts.artifact.text).toBe("function");
     expect(typeof routing.routeDeterministically).toBe("function");
     expect(typeof tools.defineTool).toBe("function");
+    expect(typeof tools.mcpResourceArtifact).toBe("function");
+    expect(typeof tools.validateToolCallRequests).toBe("function");
     expect(typeof storage.createMemoryArtifactStore).toBe("function");
     expect(typeof evals.evalAgentRun).toBe("function");
     expect(typeof agents.runAgent).toBe("function");
@@ -75,11 +77,13 @@ describe("modular package entrypoints", () => {
     }
   });
 
-  it("keeps provider, audit, and core facades separate from agent APIs", () => {
+  it("keeps provider, audit, tools, and core facades separate from agent APIs", () => {
     expect("runAgent" in providers).toBe(false);
     expect("runAgentCrew" in providers).toBe(false);
     expect("runAgent" in audit).toBe(false);
     expect("runAgentCrew" in audit).toBe(false);
+    expect("runAgent" in tools).toBe(false);
+    expect("runAgentCrew" in tools).toBe(false);
     expect("runAgent" in core).toBe(false);
     expect("runAgentCrew" in core).toBe(false);
 
@@ -87,6 +91,9 @@ describe("modular package entrypoints", () => {
       "node24-runtime",
     );
     expect(packageJson.lattice?.modules?.["./audit"]?.compatibility).not.toBe(
+      "node24-runtime",
+    );
+    expect(packageJson.lattice?.modules?.["./tools"]?.compatibility).not.toBe(
       "node24-runtime",
     );
     expect(packageJson.lattice?.modules?.["./core"]?.compatibility).not.toBe(

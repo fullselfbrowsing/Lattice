@@ -46,6 +46,10 @@ export type {
 } from "./host.js";
 import type { AgentHost as _AgentHost } from "./host.js";
 
+export type DefaultAgentOutputs = {
+  readonly answer: "text";
+};
+
 /**
  * Per-iteration record stored on `AgentSuccess.iterations` for inspectability.
  *

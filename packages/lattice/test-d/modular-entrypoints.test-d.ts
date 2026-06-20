@@ -1,4 +1,5 @@
 import { expectType } from "tsd";
+import { z } from "zod";
 
 import { artifact, type ArtifactInput } from "@full-self-browsing/lattice/artifacts";
 import {
@@ -38,8 +39,17 @@ import {
   type ArtifactStore,
 } from "@full-self-browsing/lattice/storage";
 import {
+  defineTool,
+  mcpPromptArtifact,
+  mcpResourceArtifact,
+  mcpToolResultArtifact,
   parseToolUseEnvelope,
+  validateToolCallRequests,
+  type McpPromptArtifactInput,
+  type McpResourceArtifactInput,
+  type McpToolResultArtifactInput,
   type ToolUseRequest,
+  type ValidatedToolCall,
 } from "@full-self-browsing/lattice/tools";
 import {
   runAgent,
@@ -99,6 +109,33 @@ expectType<AgentEvalResult>(evalResult);
 
 const toolCalls = parseToolUseEnvelope('{"tool_calls":[{"id":"1","name":"lookup","args":{}}]}');
 expectType<readonly ToolUseRequest[] | null>(toolCalls);
+const tool = defineTool({
+  name: "lookup",
+  inputSchema: z.object({ query: z.string() }),
+  execute: () => "ok",
+});
+expectType<Promise<readonly ValidatedToolCall[] | undefined>>(
+  validateToolCallRequests(
+    [{ id: "1", name: "lookup", args: { query: "lattice" } }],
+    { tools: [tool] },
+  ),
+);
+const resourceInput: McpResourceArtifactInput = {
+  uri: "file:///case.md",
+  text: "Case body",
+};
+const promptInput: McpPromptArtifactInput = {
+  name: "summarize",
+  messages: [{ role: "user", content: "Summarize." }],
+};
+const resultInput: McpToolResultArtifactInput = {
+  toolName: "lookup",
+  callId: "call-1",
+  content: [{ type: "text", text: "found" }],
+};
+expectType<ArtifactInput>(mcpResourceArtifact(resourceInput));
+expectType<ArtifactInput>(mcpPromptArtifact(promptInput));
+expectType<ArtifactInput>(mcpToolResultArtifact(resultInput));
 
 expectType<typeof runAgent>(runAgent);
 const intent = {
@@ -106,6 +143,21 @@ const intent = {
   tools: [],
 } satisfies AgentIntent;
 void intent;
+
+async function typedAgentOutputSmoke() {
+  const result = await runAgent({
+    task: "Return a build config",
+    tools: [],
+    outputs: {
+      build: z.object({ command: z.string() }),
+    },
+  });
+
+  if (result.kind === "success") {
+    expectType<string>(result.output.build.command);
+  }
+}
+void typedAgentOutputSmoke;
 
 const externalAuditInput = {
   task: "Audit an external call",

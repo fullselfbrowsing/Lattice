@@ -137,6 +137,75 @@ void routeDeterministically;
 
 This path is for applications that already have a model execution layer and only need Lattice's shared primitives. `prepareCoreRun` returns a non-executing prepared core record with artifact refs, context pack, advisory route decision, input hashes, warnings, and an execution plan that downstream executors, audit helpers, and debugging tools can inspect.
 
+## Tools/MCP-Only
+
+Use the tools facade when an application wants tool declarations, returned tool-call validation, or MCP-shaped content conversion without importing the agent loop.
+
+```ts
+import {
+  defineTool,
+  mcpPromptArtifact,
+  mcpResourceArtifact,
+  mcpToolResultArtifact,
+  validateToolCallRequests,
+} from "@full-self-browsing/lattice/tools";
+import { z } from "zod";
+
+const lookup = defineTool({
+  name: "lookup",
+  inputSchema: z.object({ query: z.string() }),
+  execute: async ({ query }) => ({ result: `found:${query}` }),
+});
+
+const validCalls = await validateToolCallRequests(
+  [{ id: "call-1", name: "lookup", args: { query: "refund policy" } }],
+  { tools: [lookup] },
+);
+
+const resource = mcpResourceArtifact({
+  uri: "file:///case.md",
+  mimeType: "text/markdown",
+  text: "# Support case",
+});
+const prompt = mcpPromptArtifact({
+  name: "summarize-case",
+  messages: [{ role: "user", content: "Summarize the case." }],
+});
+const toolResult = mcpToolResultArtifact({
+  toolName: "lookup",
+  callId: "call-1",
+  content: [{ type: "text", text: "Refund policy found." }],
+});
+
+void validCalls;
+void resource;
+void prompt;
+void toolResult;
+```
+
+The returned MCP artifacts are ordinary Lattice artifacts, so downstream context packing, replay, external audit, and receipt signing can inspect the same refs and metadata without requiring `runAgent()`.
+
 ## Agent Opt-In
 
-Agent and crew APIs live under `@full-self-browsing/lattice/agents`. Importing providers, audit, context, artifacts, routing, tools, storage, eval, or core should not transitively import `src/agent/**`. The `check:module-boundaries` script enforces that separation for provider-only, audit-only, and core-only entrypoints.
+Agent and crew APIs live under `@full-self-browsing/lattice/agents`. Importing providers, audit, context, artifacts, routing, tools, storage, eval, or core should not transitively import `src/agent/**`. The `check:module-boundaries` script enforces that separation for provider-only, audit-only, tools-only, and core-only entrypoints.
+
+When callers intentionally opt into the agent surface, `runAgent` can return typed final outputs from declared output contracts.
+
+```ts
+import { runAgent } from "@full-self-browsing/lattice/agents";
+import { z } from "zod";
+
+const result = await runAgent({
+  task: "Return the build command",
+  tools: [],
+  outputs: {
+    build: z.object({ command: z.string() }),
+  },
+});
+
+if (result.kind === "success") {
+  result.output.build.command;
+}
+```
+
+Importing `@full-self-browsing/lattice/agents` is the explicit opt-in point for agent and crew runtime behavior. The `check:module-boundaries` script enforces provider-only, audit-only, tools-only, and core-only separation from agent modules.
