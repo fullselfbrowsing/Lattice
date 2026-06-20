@@ -62,6 +62,15 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 | 54 | Tools/MCP and Agent Optionality | Decouple MCP/tool helpers from agents and close the typed agent-output gap for callers who opt into agents. | TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02 |
 | 55 | Compatibility and Dogfood Validation | Prove Node 20 modular compatibility, Node 24 full-runtime boundaries, GitFly-style dogfood, external examples, and adoption docs. | COMP-01, COMP-02, DOG-01, DOG-02, DOG-03, DOG-04 |
 
+**Progress checklist:**
+
+- [x] **Phase 50: Module Boundary Contract** — completed 2026-06-20.
+- [ ] **Phase 51: Provider Execution Parity**
+- [ ] **Phase 52: External Execution Audit Layer**
+- [ ] **Phase 53: Standalone Core Modules**
+- [ ] **Phase 54: Tools/MCP and Agent Optionality**
+- [ ] **Phase 55: Compatibility and Dogfood Validation**
+
 ### Phase 50: Module Boundary Contract
 
 **Goal:** Establish the public modular contract before changing runtime behavior.
