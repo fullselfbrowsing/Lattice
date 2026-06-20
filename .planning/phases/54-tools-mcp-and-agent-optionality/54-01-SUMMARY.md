@@ -5,6 +5,7 @@ name: Standalone Tools/MCP Helpers and Typed Agent Finals
 status: complete
 completed_at: 2026-06-20
 commit: 6786999
+requirements-completed: [TOOL-01, TOOL-02, TOOL-03, AGNT-01, AGNT-02]
 ---
 
 # Summary 54-01: Standalone Tools/MCP Helpers and Typed Agent Finals

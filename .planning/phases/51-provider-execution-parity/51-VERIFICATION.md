@@ -36,3 +36,11 @@ Passed.
 ## Note
 
 An initial `test:types` attempt was interrupted after `vitest --typecheck --run` became idle while running concurrently with `lint:packages`, which cleans/builds `dist`. The same full command passed when rerun alone.
+
+## Requirement Coverage
+
+- PROV-01: Complete. Direct provider calls can pass native tool definitions and provider-native tool-choice hints.
+- PROV-02: Complete. Direct provider calls can opt into native structured output materialization as object values in `rawOutputs`.
+- PROV-03: Complete. xAI unknown-live `grok-4-1-fast-*` IDs remain live and inspectable instead of collapsing to an unusable registry fallback.
+- PROV-04: Complete. Streaming complete chunks and collected responses preserve finish metadata.
+- PROV-05: Complete. Existing `ai.run()` and `ai.runAgent()` paths keep current behavior unless callers opt into the new provider request fields.

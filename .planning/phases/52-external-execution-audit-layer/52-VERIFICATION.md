@@ -23,3 +23,11 @@ Passed.
   - publint passed
   - attw passed for ESM/bundler profiles
   - CLI dependency check passed
+
+## Requirement Coverage
+
+- AUD-01: Complete. External executors can mint Lattice receipts without replacing their execution layer.
+- AUD-02: Complete. Sidecar captures raw envelopes, model identity, usage, artifacts, outputs, policy, and hashes.
+- AUD-03: Complete. The helper emits replay-compatible data when raw outputs are present.
+- AUD-04: Complete. The helper lives in audit code and does not depend on provider adapters or agent runtime.
+- AUD-05: Complete. Receipt schema/signing/verification remains compatible with existing v1.2 receipts.
