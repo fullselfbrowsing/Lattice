@@ -3,6 +3,11 @@ export {
 } from "./tools/tool-use.js";
 export type { ToolUseRequest } from "./tools/tool-use.js";
 export {
+  standardSchemaToJsonSchema,
+  toolSchemaToJsonSchema,
+} from "./tools/schema.js";
+export type { JsonSchemaLike } from "./tools/schema.js";
+export {
   defineTool,
   importMcpTools,
   runTool,

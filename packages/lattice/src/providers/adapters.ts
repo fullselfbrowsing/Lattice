@@ -2,9 +2,13 @@ import type { UsageRecord } from "../plan/plan.js";
 import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
 import type {
   ProviderAdapter,
+  ProviderFinishMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
+  ProviderStructuredOutputRequest,
+  ProviderToolChoice,
+  ProviderToolDefinition,
   Usage,
 } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
@@ -20,6 +24,7 @@ import type { CapabilityAdapter } from "../capabilities/profile.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
 import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
+import { standardSchemaToJsonSchema } from "../tools/schema.js";
 import {
   validateToolCallRequests,
   type ValidateToolCallsOption,
@@ -298,6 +303,10 @@ function createOpenAICompatibleRequestBody(input: {
   readonly metadata?: Record<string, unknown>;
   readonly stream?: boolean;
 }): Record<string, unknown> {
+  const nativeTools = openAIToolDefinitions(input.request.nativeTools);
+  const nativeToolChoice = openAIToolChoice(input.request.nativeToolChoice);
+  const responseFormat = openAIResponseFormat(input.request.nativeStructuredOutput);
+
   return {
     model: input.model,
     ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
@@ -352,6 +361,53 @@ function createOpenAICompatibleRequestBody(input: {
       },
     ],
     ...(input.stream === true ? { stream: true } : {}),
+    ...(nativeTools.length > 0 ? { tools: nativeTools } : {}),
+    ...(nativeToolChoice !== undefined ? { tool_choice: nativeToolChoice } : {}),
+    ...(responseFormat !== undefined ? { response_format: responseFormat } : {}),
+  };
+}
+
+function openAIToolDefinitions(
+  tools: readonly ProviderToolDefinition[] | undefined,
+): readonly Record<string, unknown>[] {
+  return (tools ?? []).map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      ...(tool.description !== undefined ? { description: tool.description } : {}),
+      parameters: standardSchemaToJsonSchema(tool.inputSchema),
+    },
+  }));
+}
+
+function openAIToolChoice(choice: ProviderToolChoice | undefined): unknown {
+  if (choice === undefined) {
+    return undefined;
+  }
+  if (choice === "auto" || choice === "none" || choice === "required") {
+    return choice;
+  }
+
+  return {
+    type: "function",
+    function: { name: choice.name },
+  };
+}
+
+function openAIResponseFormat(
+  request: ProviderStructuredOutputRequest | undefined,
+): Record<string, unknown> | undefined {
+  if (request === undefined) {
+    return undefined;
+  }
+
+  return {
+    type: "json_schema",
+    json_schema: {
+      name: request.name ?? request.output,
+      schema: standardSchemaToJsonSchema(request.schema),
+      strict: request.strict ?? true,
+    },
   };
 }
 
@@ -442,21 +498,42 @@ export function createOpenAICompatibleProvider(
       }
 
       const body = await response.json() as {
-        choices?: readonly { message?: { content?: unknown } }[];
+        choices?: readonly Record<string, unknown>[];
         model?: unknown;
         usage?: unknown;
       };
       const observedModel = observedModelFromResponse(body);
-      const text = String(body.choices?.[0]?.message?.content ?? "");
-      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const choice = firstOpenAIChoice(body);
+      const message = openAIMessageFromChoice(choice);
+      const text = openAIMessageText(message);
+      const structuredOutput = openAIStructuredOutputValue(
+        request.nativeStructuredOutput,
+        message,
+        text,
+      );
+      const rawOutputs = rawOutputsForRequest({
+        outputs: request.outputs,
+        text,
+        structuredOutputRequest: request.nativeStructuredOutput,
+        structuredOutput,
+      });
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
         providerId: id,
         modelId: options.model,
       });
       const parsedToolCalls = parseToolUseEnvelope(text);
-      const toolCalls = parsedToolCalls === null
+      const promptToolCalls = parsedToolCalls === null
         ? undefined
         : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
+      const nativeToolRequests = openAIToolUseRequestsFromMessage(message);
+      const nativeToolCalls = nativeToolRequests.length === 0
+        ? undefined
+        : await validateToolCallRequests(nativeToolRequests, options.validateToolCalls);
+      const hasToolCallResult = promptToolCalls !== undefined || nativeToolCalls !== undefined;
+      const toolCalls = [
+        ...(promptToolCalls ?? []),
+        ...(nativeToolCalls ?? []),
+      ];
       const usage = normalizeUsage(body.usage);
       const normalizedUsage = normalizeUsageToRunUsage(body.usage, options.pricing);
       const sanitizedGatewayPolicy = sanitizedGatewayPolicyForPlan(mergedGatewayPolicy);
@@ -469,12 +546,15 @@ export function createOpenAICompatibleProvider(
           }
         : undefined;
 
+      const finish = openAIFinishMetadata(choice, toolCalls);
+
       return {
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
-        ...(toolCalls !== undefined ? { toolCalls } : {}),
+        ...(hasToolCallResult ? { toolCalls } : {}),
         ...(gateway !== undefined ? { gateway } : {}),
+        ...(finish !== undefined ? { finish } : {}),
         rawResponse: body,
       };
     },
@@ -541,6 +621,7 @@ async function* streamOpenAICompatibleResponse(input: {
   const nativeToolCalls = new Map<number, AccumulatedOpenAIToolCall>();
   let usagePayload: unknown;
   let observedModel: string | undefined;
+  let finishReason: string | undefined;
 
   for await (const event of readSseEvents(response)) {
     const data = event.data.trim();
@@ -562,6 +643,10 @@ async function* streamOpenAICompatibleResponse(input: {
     }
 
     for (const choice of streamChoices(chunk)) {
+      const choiceFinishReason = stringField(choice, "finish_reason");
+      if (choiceFinishReason !== undefined) {
+        finishReason = choiceFinishReason;
+      }
       const delta = isRecord(choice.delta) ? choice.delta : {};
       const content = typeof delta.content === "string" ? delta.content : undefined;
       if (content !== undefined && content.length > 0) {
@@ -606,6 +691,11 @@ async function* streamOpenAICompatibleResponse(input: {
       }
     : undefined;
 
+  const finish = finishMetadata({
+    reason: finishReason,
+    toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+  });
+
   yield {
     kind: "complete",
     rawOutputs: sanitizedOutputs,
@@ -613,6 +703,7 @@ async function* streamOpenAICompatibleResponse(input: {
     normalizedUsage,
     ...(toolCalls.length > 0 ? { toolCalls } : {}),
     ...(gateway !== undefined ? { gateway } : {}),
+    ...(finish !== undefined ? { finish } : {}),
     rawResponse: {
       kind: "openai-compatible-stream",
       chunks: rawChunks,
@@ -624,6 +715,141 @@ interface AccumulatedOpenAIToolCall {
   id?: string;
   name?: string;
   arguments: string;
+}
+
+function firstOpenAIChoice(body: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(body) || !Array.isArray(body.choices)) {
+    return undefined;
+  }
+
+  return body.choices.find(isRecord);
+}
+
+function openAIMessageFromChoice(choice: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  return choice !== undefined && isRecord(choice.message) ? choice.message : undefined;
+}
+
+function openAIMessageText(message: Record<string, unknown> | undefined): string {
+  if (message === undefined) {
+    return "";
+  }
+  if (typeof message.content === "string") {
+    return message.content;
+  }
+  if (Array.isArray(message.content)) {
+    return message.content
+      .flatMap((part) => isRecord(part) && typeof part.text === "string" ? [part.text] : [])
+      .join("");
+  }
+
+  return "";
+}
+
+function openAIToolUseRequestsFromMessage(
+  message: Record<string, unknown> | undefined,
+): readonly ToolUseRequest[] {
+  if (message === undefined || !Array.isArray(message.tool_calls)) {
+    return [];
+  }
+
+  const calls = new Map<number, AccumulatedOpenAIToolCall>();
+  for (const [index, item] of message.tool_calls.entries()) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const current: AccumulatedOpenAIToolCall = { arguments: "" };
+    if (typeof item.id === "string") {
+      current.id = item.id;
+    }
+    if (isRecord(item.function)) {
+      if (typeof item.function.name === "string") {
+        current.name = item.function.name;
+      }
+      if (typeof item.function.arguments === "string") {
+        current.arguments = item.function.arguments;
+      }
+    }
+    calls.set(index, current);
+  }
+
+  return openAIToolUseRequests(calls);
+}
+
+function openAIStructuredOutputValue(
+  request: ProviderStructuredOutputRequest | undefined,
+  message: Record<string, unknown> | undefined,
+  text: string,
+): unknown {
+  if (request === undefined) {
+    return undefined;
+  }
+  if (message !== undefined && "parsed" in message) {
+    return message.parsed;
+  }
+
+  return parseJsonValue(text);
+}
+
+function rawOutputsForRequest(input: {
+  readonly outputs: readonly string[];
+  readonly text: string;
+  readonly structuredOutputRequest: ProviderStructuredOutputRequest | undefined;
+  readonly structuredOutput: unknown;
+}): Record<string, unknown> {
+  const rawOutputs: Record<string, unknown> = Object.fromEntries(
+    input.outputs.map((name) => [name, input.text]),
+  );
+  if (
+    input.structuredOutputRequest !== undefined &&
+    input.structuredOutput !== undefined
+  ) {
+    rawOutputs[input.structuredOutputRequest.output] = input.structuredOutput;
+  }
+
+  return rawOutputs;
+}
+
+function parseJsonValue(text: string): unknown {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function openAIFinishMetadata(
+  choice: Record<string, unknown> | undefined,
+  toolCalls: readonly { readonly id: string }[],
+): ProviderFinishMetadata | undefined {
+  return finishMetadata({
+    reason: stringField(choice, "finish_reason"),
+    toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+  });
+}
+
+function finishMetadata(input: {
+  readonly reason: string | undefined;
+  readonly toolCallIds: readonly string[];
+}): ProviderFinishMetadata | undefined {
+  const toolCallIds = input.toolCallIds.filter((id) => id.length > 0);
+  if (input.reason === undefined && toolCallIds.length === 0) {
+    return undefined;
+  }
+
+  return {
+    ...(input.reason !== undefined ? { reason: input.reason } : {}),
+    ...(toolCallIds.length > 0 ? { toolCallIds } : {}),
+  };
+}
+
+function stringField(record: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = record?.[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 function parseJsonObject(data: string): unknown {

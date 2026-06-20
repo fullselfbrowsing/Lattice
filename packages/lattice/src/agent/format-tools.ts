@@ -34,9 +34,8 @@
  *   }
  */
 
-import type { StandardSchemaV1 } from "@standard-schema/spec";
-
 import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
+import { standardSchemaToJsonSchema } from "../tools/schema.js";
 import type { ToolDefinition } from "../tools/tools.js";
 
 export { parseToolUseEnvelope };
@@ -114,39 +113,7 @@ export interface FormattedToolsHandle {
   readonly mode: "prompt-reencoded";
 }
 
-/**
- * Convert a Standard Schema to a JSON Schema-shaped descriptor suitable for
- * inclusion in an LLM tool description. Standard Schema vendors can
- * optionally expose `toJSONSchema` on their schema objects; when absent,
- * we fall back to a minimal structural description that lists the schema
- * vendor + version + a placeholder. Models tolerate placeholder schemas in
- * practice because the tool description is supplementary — what matters
- * is the envelope contract (`{tool_call: {name, args}}`).
- */
-export function toolSchemaToJsonSchema(schema: StandardSchemaV1): unknown {
-  const standardSchema = (schema as unknown as { readonly "~standard"?: unknown })["~standard"];
-  if (
-    typeof standardSchema === "object" &&
-    standardSchema !== null &&
-    "vendor" in standardSchema
-  ) {
-    const vendor = standardSchema as { readonly vendor: string };
-    const maybeToJson = (schema as unknown as { readonly toJSONSchema?: () => unknown })
-      .toJSONSchema;
-    if (typeof maybeToJson === "function") {
-      try {
-        return maybeToJson();
-      } catch {
-        // fall through to placeholder
-      }
-    }
-    return {
-      $comment: `standard-schema vendor: ${vendor.vendor}; toJSONSchema not available`,
-      type: "object",
-    };
-  }
-  return { $comment: "non-standard-schema input", type: "object" };
-}
+export const toolSchemaToJsonSchema = standardSchemaToJsonSchema;
 
 /**
  * Builds the prompt-reencoded tool-use protocol handle for any provider.
@@ -158,7 +125,7 @@ export function toolSchemaToJsonSchema(schema: StandardSchemaV1): unknown {
  */
 export function formatToolsForProvider(
   providerName: string,
-  tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>,
+  tools: ReadonlyArray<ToolDefinition>,
   options: FormatToolsOptions = {},
 ): FormattedToolsHandle {
   // mode is currently a forward-compat field — v1.2 resolves all modes to

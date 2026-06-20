@@ -3,6 +3,8 @@ import type { ContextPack } from "../context/context-pack.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { ExecutionPlan, ProviderPackagingPlan, UsageRecord } from "../plan/plan.js";
 import type { ValidatedToolCall } from "../tools/tool-call-validation.js";
+import type { ToolDefinition } from "../tools/tools.js";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 // Phase 34 — D-01 / D-02 optional fields on ProviderAdapter (non-breaking for
 // v1.2 consumer adapters; existing 4-field literals still satisfy the interface)
 import type { AdapterQuirks } from "./quirks.js";
@@ -87,6 +89,27 @@ export interface ProviderRef {
   readonly kind?: "provider-ref";
 }
 
+export type ProviderToolDefinition = Pick<
+  ToolDefinition<StandardSchemaV1>,
+  "name" | "description" | "inputSchema"
+>;
+
+export type ProviderToolChoice =
+  | "auto"
+  | "none"
+  | "required"
+  | {
+      readonly type: "tool";
+      readonly name: string;
+    };
+
+export interface ProviderStructuredOutputRequest {
+  readonly output: string;
+  readonly schema: StandardSchemaV1;
+  readonly name?: string;
+  readonly strict?: boolean;
+}
+
 export interface ProviderRunRequest {
   readonly task: string;
   readonly artifacts: readonly ArtifactInput[];
@@ -109,6 +132,14 @@ export interface ProviderRunRequest {
    * `ProviderAdapter` METHODS frozen per INV-03).
    */
   readonly cacheSystemPrefix?: string;
+  /**
+   * Phase 51 — Provider-only native tool declarations. This is an explicit
+   * opt-in so existing `ai.run()` and agent prompt-reencoded behavior does not
+   * change merely because output contracts or tools exist elsewhere.
+   */
+  readonly nativeTools?: readonly ProviderToolDefinition[];
+  readonly nativeToolChoice?: ProviderToolChoice;
+  readonly nativeStructuredOutput?: ProviderStructuredOutputRequest;
 }
 
 export interface ProviderGatewayMetadata {
@@ -117,6 +148,12 @@ export interface ProviderGatewayMetadata {
   readonly observedModel?: string;
   readonly fallbackModels?: readonly string[];
   readonly policy?: Record<string, unknown>;
+}
+
+export interface ProviderFinishMetadata {
+  readonly reason?: string;
+  readonly toolCallIds?: readonly string[];
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface ProviderRunResponse {
@@ -138,6 +175,7 @@ export interface ProviderRunResponse {
   readonly normalizedUsage?: Usage;
   readonly toolCalls?: readonly ValidatedToolCall[];
   readonly gateway?: ProviderGatewayMetadata;
+  readonly finish?: ProviderFinishMetadata;
   readonly rawResponse?: unknown;
 }
 
@@ -177,6 +215,7 @@ export interface ProviderStreamCompleteChunk {
   readonly normalizedUsage?: Usage;
   readonly gateway?: ProviderGatewayMetadata;
   readonly toolCalls?: readonly ValidatedToolCall[];
+  readonly finish?: ProviderFinishMetadata;
   readonly rawResponse?: unknown;
 }
 

@@ -37,6 +37,7 @@ export type {
   ProviderRegistryInput,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderFinishMetadata,
   ProviderStream,
   ProviderStreamChunk,
   ProviderStreamCompleteChunk,
@@ -45,6 +46,9 @@ export type {
   ProviderStreamTextDeltaChunk,
   ProviderStreamToolCallChunk,
   ProviderStreamUsageChunk,
+  ProviderStructuredOutputRequest,
+  ProviderToolChoice,
+  ProviderToolDefinition,
   ProviderTransportMode,
   Usage,
 } from "./providers/provider.js";

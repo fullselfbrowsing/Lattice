@@ -1,9 +1,13 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type {
   ProviderAdapter,
+  ProviderFinishMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
+  ProviderStructuredOutputRequest,
+  ProviderToolChoice,
+  ProviderToolDefinition,
   Usage,
 } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
@@ -18,6 +22,7 @@ import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendati
 import type { RunEventSink } from "../tracing/tracing.js";
 import { createRunEvent } from "../tracing/tracing.js";
 import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
+import { standardSchemaToJsonSchema } from "../tools/schema.js";
 import {
   validateToolCallRequests,
   type ValidateToolCallsOption,
@@ -134,6 +139,9 @@ async function createGeminiGenerateContentBody(
   request: ProviderRunRequest,
 ): Promise<Record<string, unknown>> {
   const parts = await createGeminiUserParts(request);
+  const functionDeclarations = geminiFunctionDeclarations(request.nativeTools);
+  const toolConfig = geminiToolConfig(request.nativeToolChoice);
+  const structuredOutputConfig = geminiStructuredOutputConfig(request.nativeStructuredOutput);
 
   return {
     contents: [
@@ -146,8 +154,58 @@ async function createGeminiGenerateContentBody(
       temperature: DEFAULT_TEMPERATURE,
       topP: DEFAULT_TOP_P,
       maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+      ...(structuredOutputConfig !== undefined ? structuredOutputConfig : {}),
     },
     safetySettings: SAFETY_SETTINGS,
+    ...(functionDeclarations.length > 0
+      ? { tools: [{ functionDeclarations }] }
+      : {}),
+    ...(toolConfig !== undefined ? { toolConfig } : {}),
+  };
+}
+
+function geminiFunctionDeclarations(
+  tools: readonly ProviderToolDefinition[] | undefined,
+): readonly Record<string, unknown>[] {
+  return (tools ?? []).map((tool) => ({
+    name: tool.name,
+    ...(tool.description !== undefined ? { description: tool.description } : {}),
+    parameters: standardSchemaToJsonSchema(tool.inputSchema),
+  }));
+}
+
+function geminiToolConfig(choice: ProviderToolChoice | undefined): Record<string, unknown> | undefined {
+  if (choice === undefined) {
+    return undefined;
+  }
+  if (choice === "auto") {
+    return { functionCallingConfig: { mode: "AUTO" } };
+  }
+  if (choice === "none") {
+    return { functionCallingConfig: { mode: "NONE" } };
+  }
+  if (choice === "required") {
+    return { functionCallingConfig: { mode: "ANY" } };
+  }
+
+  return {
+    functionCallingConfig: {
+      mode: "ANY",
+      allowedFunctionNames: [choice.name],
+    },
+  };
+}
+
+function geminiStructuredOutputConfig(
+  request: ProviderStructuredOutputRequest | undefined,
+): Record<string, unknown> | undefined {
+  if (request === undefined) {
+    return undefined;
+  }
+
+  return {
+    responseMimeType: "application/json",
+    responseSchema: standardSchemaToJsonSchema(request.schema),
   };
 }
 
@@ -519,6 +577,7 @@ export function createGeminiProvider(
       const body = (await response.json()) as {
         candidates?: readonly {
           content?: { parts?: readonly { text?: unknown }[] };
+          finishReason?: unknown;
         }[];
         usageMetadata?: unknown;
       };
@@ -527,24 +586,50 @@ export function createGeminiProvider(
         throw new Error("Gemini provider returned no candidates.");
       }
 
-      const text = String(body.candidates[0]?.content?.parts?.[0]?.text ?? "");
-      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const text = geminiTextFromBody(body);
+      const structuredOutput = request.nativeStructuredOutput === undefined
+        ? undefined
+        : parseJsonValue(text);
+      const rawOutputs = rawOutputsForRequest({
+        outputs: request.outputs,
+        text,
+        structuredOutputRequest: request.nativeStructuredOutput,
+        structuredOutput,
+      });
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
         providerId: id,
         modelId: options.model,
       });
       const parsedToolCalls = parseToolUseEnvelope(text);
-      const toolCalls = parsedToolCalls === null
+      const promptToolCalls = parsedToolCalls === null
         ? undefined
         : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
+      const nativeToolRequests = geminiParts(body)
+        .flatMap(({ part, candidateIndex, partIndex }) => {
+          const request = geminiFunctionCallRequest(part, candidateIndex, partIndex);
+          return request === undefined ? [] : [request];
+        });
+      const nativeToolCalls = nativeToolRequests.length === 0
+        ? undefined
+        : await validateToolCallRequests(nativeToolRequests, options.validateToolCalls);
+      const hasToolCallResult = promptToolCalls !== undefined || nativeToolCalls !== undefined;
+      const toolCalls = [
+        ...(promptToolCalls ?? []),
+        ...(nativeToolCalls ?? []),
+      ];
       const usage = normalizeGeminiUsage(body.usageMetadata);
       const normalizedUsage = normalizeGeminiUsageToRunUsage(body.usageMetadata, options.pricing);
+      const finish = finishMetadata({
+        reason: geminiFinishReason(body),
+        toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+      });
 
       return {
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
-        ...(toolCalls !== undefined ? { toolCalls } : {}),
+        ...(hasToolCallResult ? { toolCalls } : {}),
+        ...(finish !== undefined ? { finish } : {}),
         rawResponse: body,
       };
     },
@@ -606,6 +691,7 @@ async function* streamGeminiResponse(input: {
   const rawChunks: unknown[] = [];
   const nativeToolRequests: ToolUseRequest[] = [];
   let usagePayload: unknown;
+  let finishReason: string | undefined;
 
   for await (const event of readSseEvents(response)) {
     const data = event.data.trim();
@@ -622,6 +708,7 @@ async function* streamGeminiResponse(input: {
     if (usage !== undefined) {
       usagePayload = usage;
     }
+    finishReason = geminiFinishReason(chunk) ?? finishReason;
 
     for (const { part, candidateIndex, partIndex } of geminiParts(chunk)) {
       if (typeof part.text === "string" && part.text.length > 0) {
@@ -639,7 +726,15 @@ async function* streamGeminiResponse(input: {
   }
 
   const text = textParts.join("");
-  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const structuredOutput = input.request.nativeStructuredOutput === undefined
+    ? undefined
+    : parseJsonValue(text);
+  const rawOutputs = rawOutputsForRequest({
+    outputs: input.request.outputs,
+    text,
+    structuredOutputRequest: input.request.nativeStructuredOutput,
+    structuredOutput,
+  });
   const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
     providerId: input.id,
     modelId: input.model,
@@ -657,6 +752,10 @@ async function* streamGeminiResponse(input: {
   ];
   const usage = normalizeGeminiUsage(usagePayload);
   const normalizedUsage = normalizeGeminiUsageToRunUsage(usagePayload, input.pricing);
+  const finish = finishMetadata({
+    reason: finishReason,
+    toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+  });
 
   yield {
     kind: "complete",
@@ -664,6 +763,7 @@ async function* streamGeminiResponse(input: {
     ...(usage !== undefined ? { usage } : {}),
     normalizedUsage,
     ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(finish !== undefined ? { finish } : {}),
     rawResponse: {
       kind: "gemini-stream",
       chunks: rawChunks,
@@ -682,6 +782,26 @@ function parseJsonObject(data: string, providerName: string): unknown {
 
 function geminiUsageMetadata(chunk: unknown): unknown {
   return isRecord(chunk) ? chunk.usageMetadata : undefined;
+}
+
+function geminiFinishReason(chunk: unknown): string | undefined {
+  if (!isRecord(chunk) || !Array.isArray(chunk.candidates)) {
+    return undefined;
+  }
+
+  for (const candidate of chunk.candidates) {
+    if (isRecord(candidate) && typeof candidate.finishReason === "string") {
+      return candidate.finishReason;
+    }
+  }
+
+  return undefined;
+}
+
+function geminiTextFromBody(body: unknown): string {
+  return geminiParts(body)
+    .flatMap(({ part }) => typeof part.text === "string" ? [part.text] : [])
+    .join("");
 }
 
 function geminiParts(chunk: unknown): Array<{
@@ -726,6 +846,53 @@ function geminiFunctionCallRequest(
     id: `gemini-function-call-${candidateIndex}-${partIndex}`,
     name,
     args: part.functionCall.args ?? {},
+  };
+}
+
+function parseJsonValue(text: string): unknown {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function rawOutputsForRequest(input: {
+  readonly outputs: readonly string[];
+  readonly text: string;
+  readonly structuredOutputRequest: ProviderStructuredOutputRequest | undefined;
+  readonly structuredOutput: unknown;
+}): Record<string, unknown> {
+  const rawOutputs: Record<string, unknown> = Object.fromEntries(
+    input.outputs.map((name) => [name, input.text]),
+  );
+  if (
+    input.structuredOutputRequest !== undefined &&
+    input.structuredOutput !== undefined
+  ) {
+    rawOutputs[input.structuredOutputRequest.output] = input.structuredOutput;
+  }
+
+  return rawOutputs;
+}
+
+function finishMetadata(input: {
+  readonly reason: string | undefined;
+  readonly toolCallIds: readonly string[];
+}): ProviderFinishMetadata | undefined {
+  const toolCallIds = input.toolCallIds.filter((id) => id.length > 0);
+  if (input.reason === undefined && toolCallIds.length === 0) {
+    return undefined;
+  }
+
+  return {
+    ...(input.reason !== undefined ? { reason: input.reason } : {}),
+    ...(toolCallIds.length > 0 ? { toolCallIds } : {}),
   };
 }
 

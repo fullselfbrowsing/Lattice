@@ -144,8 +144,23 @@ function mergeXaiModelsWithRegistry(
   }
 
   // Model exists in org per /models but Phase 33 registry doesn't have it.
-  // Use registry-fallback (no capability data available).
-  return synthesizeNegotiatedCapabilitiesFromRegistry("xai", modelId, "registry-fallback");
+  // Preserve the live model id instead of collapsing to a registry fallback.
+  // This keeps new xAI/GitFly ids like grok-4-1-fast-* inspectable while
+  // remaining conservative about capabilities we cannot prove from /models.
+  return {
+    modelId,
+    contextWindow: 0,
+    supports: {
+      nativeToolCalling: true,
+      structuredOutputs: true,
+      parallelToolCalls: true,
+      extendedThinking: false,
+      streaming: true,
+    },
+    knownFailureModes: [],
+    recommendedSanitizers: [],
+    source: "live",
+  };
 }
 
 /**
