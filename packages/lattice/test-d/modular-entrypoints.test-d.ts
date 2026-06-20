@@ -15,6 +15,9 @@ import {
 import {
   contract,
   output,
+  prepareCoreRun,
+  type PreparedCoreRun,
+  type PrepareCoreRunInput,
   type ProviderAdapter as CoreProviderAdapter,
 } from "@full-self-browsing/lattice/core";
 import {
@@ -72,6 +75,13 @@ const catalog: CapabilityCatalog = {
   version: "test",
   models: [],
 };
+const coreRunInput = {
+  task: "Prepare standalone core inputs",
+  artifacts: [input],
+  outputs,
+  catalog,
+} satisfies PrepareCoreRunInput;
+expectType<Promise<PreparedCoreRun<typeof outputs>>>(prepareCoreRun(coreRunInput));
 routeDeterministically(catalog, {
   task: "Summarize",
   artifacts: [input],

@@ -3,6 +3,12 @@ export {
   isArtifactRef,
   toArtifactRef,
 } from "./artifacts/artifact.js";
+export { prepareCoreRun } from "./core/standalone.js";
+export type {
+  PreparedCoreArtifact,
+  PreparedCoreRun,
+  PrepareCoreRunInput,
+} from "./core/standalone.js";
 export type {
   ArtifactDerivedOptions,
   ArtifactFingerprint,

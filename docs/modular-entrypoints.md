@@ -108,6 +108,7 @@ import {
   artifact,
   buildContextPack,
   output,
+  prepareCoreRun,
   routeDeterministically,
 } from "@full-self-browsing/lattice/core";
 
@@ -121,12 +122,20 @@ const outputs = {
   answer: output.citations(),
 };
 
+const prepared = await prepareCoreRun({
+  task: "Extract the refund reason",
+  artifacts: [document],
+  outputs,
+  catalog: { version: "external-runtime", models: [] },
+});
+
 void context;
 void outputs;
+void prepared;
 void routeDeterministically;
 ```
 
-This path is for applications that already have a model execution layer and only need Lattice's shared primitives.
+This path is for applications that already have a model execution layer and only need Lattice's shared primitives. `prepareCoreRun` returns a non-executing prepared core record with artifact refs, context pack, advisory route decision, input hashes, warnings, and an execution plan that downstream executors, audit helpers, and debugging tools can inspect.
 
 ## Agent Opt-In
 
