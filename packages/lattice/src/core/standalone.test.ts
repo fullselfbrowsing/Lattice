@@ -7,6 +7,7 @@ import type { ModelCapability, ProviderAdapter } from "../providers/provider.js"
 import { createCapabilityCatalog, defaultCapabilityForProvider } from "../routing/catalog.js";
 import type { SessionRecord } from "../sessions/session.js";
 import { createMemoryArtifactStore } from "../storage/memory.js";
+import type { ArtifactStore } from "../storage/storage.js";
 import { prepareCoreRun } from "./standalone.js";
 
 describe("prepareCoreRun", () => {
@@ -86,6 +87,52 @@ describe("prepareCoreRun", () => {
       id: "artifact:text:stored",
       value: "stored case",
     });
+  });
+
+  it("keeps available input hashes when custom storage omits fingerprints", async () => {
+    const input = artifact.text("hashable case", { id: "artifact:text:hashable" });
+    const store: ArtifactStore = {
+      kind: "artifact-store",
+      id: "custom",
+      async put(artifactInput) {
+        return {
+          ...toArtifactRef(artifactInput),
+          storage: { storeId: "custom", key: artifactInput.id },
+        };
+      },
+      async get() {
+        return undefined;
+      },
+      async load() {
+        return undefined;
+      },
+      async has() {
+        return false;
+      },
+      async delete() {
+        return false;
+      },
+      async list() {
+        return [];
+      },
+    };
+
+    const prepared = await prepareCoreRun({
+      task: "Prepare",
+      artifacts: [input],
+      outputs: { answer: "text" as const },
+      storage: store,
+    });
+
+    expect(prepared.artifacts[0]).toMatchObject({
+      stored: true,
+      ref: {
+        id: "artifact:text:hashable",
+        storage: { storeId: "custom", key: "artifact:text:hashable" },
+      },
+    });
+    expect(prepared.artifacts[0]?.inputHash).toEqual(prepared.inputHashes[0]);
+    expect(prepared.inputHashes[0]).toMatch(/^[a-f0-9]{64}$/u);
   });
 
   it("packs optional session turns in standalone context", async () => {

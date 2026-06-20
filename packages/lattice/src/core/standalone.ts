@@ -123,6 +123,10 @@ async function prepareArtifact(
 ): Promise<PreparedArtifactInternal> {
   if (storage !== undefined) {
     const ref = await storage.put(input);
+    const inputHash =
+      ref.fingerprint?.value ??
+      input.fingerprint?.value ??
+      (await fingerprintArtifactValue(input.value))?.value;
     const preparedInput: ArtifactInput = {
       ...input,
       ...ref,
@@ -133,7 +137,7 @@ async function prepareArtifact(
       artifact: {
         ref,
         stored: true,
-        ...(ref.fingerprint?.value !== undefined ? { inputHash: ref.fingerprint.value } : {}),
+        ...(inputHash !== undefined ? { inputHash } : {}),
       },
     };
   }
