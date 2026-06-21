@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-20T07:21:15.000Z"
-last_activity: 2026-06-20 - Patched external audit failure replay semantics
+last_updated: "2026-06-21T09:35:50.000Z"
+last_activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-20 - Patched external audit failure replay semantics
+Last activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-06-21 | Prepare v1.5.0 release metadata, PR CI hardening, and tag plan | Normalized runtime and CLI versions to `1.5.0`, added release changelog sections, generated release notes preview, hardened the CLI test script for clean CI runners, and passed the local release gates before PR merge and tag operations. |
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
 | 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
