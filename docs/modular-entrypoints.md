@@ -100,6 +100,31 @@ await verifyReceipt(
 
 This path does not require the Lattice runtime to choose or execute a model.
 
+### Node 20 signing
+
+Node 20 logs an experimental warning when `crypto.subtle.sign` uses the `Ed25519`
+algorithm. To avoid this on the signing path, swap `createInMemorySigner` for
+`createNobleEd25519Signer` from the same import:
+
+```ts
+import { createNobleEd25519Signer } from "@full-self-browsing/lattice/audit";
+
+const privateKeyJwk = await loadPrivateSigningJwkFromKeyManagement();
+const publicKeyJwk = await loadPublicSigningJwkFromKeyManagement();
+
+const signer = createNobleEd25519Signer(privateKeyJwk, {
+  kid: "local",
+  publicKeyJwk,
+});
+```
+
+`createNobleEd25519Signer` uses `@noble/ed25519` for signing (pure JS, stable
+WebCrypto SHA-512 internally, with no experimental warning on the signing path).
+`verifyReceipt` and `generateEd25519KeyPairJwk` are unchanged; they still use
+WebCrypto Ed25519 and can still emit the Node 20 experimental warning when called
+in the same process. A noble-backed verify/keygen helper is a possible fast
+follow.
+
 ## Core-Only
 
 Use the core facade for artifacts, context packing, output contracts, deterministic routing primitives, and storage contracts without agent runtime imports.

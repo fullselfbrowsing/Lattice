@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-21T09:35:50.000Z"
-last_activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
+last_updated: "2026-06-21T22:13:00.000Z"
+last_activity: 2026-06-21 - Prepared v1.5.1 GitFly Node 20 audit signer patch release
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
+Last activity: 2026-06-21 - Prepared v1.5.1 GitFly Node 20 audit signer patch release
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-06-21 | Ship GitFly Node 20 audit signer patch release | Added `createNobleEd25519Signer`, exported it from root and audit subpaths, moved `@noble/ed25519` to runtime dependencies, prepared `1.5.1` package metadata and changelogs, generated release notes preview, passed full local release gates, and verified Node 20 modular imports. |
 | 2026-06-21 | Prepare v1.5.0 release metadata, PR CI hardening, and tag plan | Normalized runtime and CLI versions to `1.5.0`, added release changelog sections, generated release notes preview, hardened the CLI test script for clean CI runners, and passed the local release gates before PR merge and tag operations. |
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |

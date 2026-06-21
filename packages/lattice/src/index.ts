@@ -29,6 +29,7 @@ export {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "./receipts/sign.js";
+export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";

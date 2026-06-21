@@ -1,6 +1,6 @@
 {
   "name": "@full-self-browsing/lattice",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "TypeScript-first capability runtime SDK for AI applications",
   "license": "MIT",
   "repository": {
@@ -152,12 +152,12 @@
     }
   },
   "dependencies": {
+    "@noble/ed25519": "3.1.0",
     "@standard-schema/spec": "1.1.0",
     "canonicalize": "3.0.0",
     "mime": "4.1.0"
   },
   "devDependencies": {
-    "@noble/ed25519": "3.1.0",
     "@types/node": "24.12.2",
     "fast-check": "catalog:",
     "zod": "4.3.6"
