@@ -29,21 +29,21 @@ export function createNobleEd25519Signer(
   // Validate before touching the d field.
   if (privateKeyJwk.kty !== "OKP") {
     throw new Error(
-      `createNobleEd25519Signer: invalid key — expected kty=OKP, got ${String(privateKeyJwk.kty)}`,
+      `createNobleEd25519Signer: invalid key, expected kty=OKP, got ${String(privateKeyJwk.kty)}`,
     );
   }
   if (privateKeyJwk.crv !== "Ed25519") {
     throw new Error(
-      `createNobleEd25519Signer: invalid key — expected crv=Ed25519, got ${String(privateKeyJwk.crv)}`,
+      `createNobleEd25519Signer: invalid key, expected crv=Ed25519, got ${String(privateKeyJwk.crv)}`,
     );
   }
   if (typeof privateKeyJwk.d !== "string") {
     throw new Error(
-      "createNobleEd25519Signer: invalid key — missing or non-string d field (private key seed required)",
+      "createNobleEd25519Signer: invalid key, missing or non-string d field (private key seed required)",
     );
   }
 
-  // Lazily decode the 32-byte seed on first sign() call — keeps the factory
+  // Lazily decode the 32-byte seed on first sign() call. Keeps the factory
   // synchronous and avoids touching Buffer during module load.
   let cachedSeed: Uint8Array | undefined;
   const ensureSeed = (): Uint8Array => {

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.1
+
+### Patch Changes
+
+* Add `createNobleEd25519Signer` for Node 20 audit signing paths that need stable receipt signing without WebCrypto Ed25519 signing warnings.
+* Export the noble signer from the package root and audit subpath for modular audit consumers.
+* Move `@noble/ed25519` into runtime dependencies because the noble signer is a public package surface.
+* Document the Node 20 signing path for downstream consumers that adopt Lattice audit receipts without the full runtime.
+
+### Validation
+
+* Runtime focused gate passed with 84 test files and 1095 tests.
+* CLI showcase gate passed with 17 test files and 162 tests.
+* Recursive workspace test gate passed across runtime and CLI packages.
+
 ## 1.5.0
 
 ### Minor Changes

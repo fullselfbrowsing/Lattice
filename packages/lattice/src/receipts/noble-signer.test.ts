@@ -24,7 +24,7 @@ function minimalInput(): CreateReceiptInput {
   };
 }
 
-describe("createNobleEd25519Signer — identity", () => {
+describe("createNobleEd25519Signer - identity", () => {
   it("returns a ReceiptSigner with the configured kid and publicKeyJwk (reference equality)", async () => {
     const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
     const signer: ReceiptSigner = createNobleEd25519Signer(privateKeyJwk, {
@@ -36,7 +36,7 @@ describe("createNobleEd25519Signer — identity", () => {
   });
 });
 
-describe("createNobleEd25519Signer — signature size", () => {
+describe("createNobleEd25519Signer - signature size", () => {
   it("sign returns exactly 64 bytes (Ed25519 RFC 8032)", async () => {
     const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
     const signer = createNobleEd25519Signer(privateKeyJwk, {
@@ -48,7 +48,7 @@ describe("createNobleEd25519Signer — signature size", () => {
   });
 });
 
-describe("createNobleEd25519Signer — interop with verifyReceipt", () => {
+describe("createNobleEd25519Signer - interop with verifyReceipt", () => {
   it("a receipt signed with noble signer passes verifyReceipt against a matching keyset", async () => {
     const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
     const signer = createNobleEd25519Signer(privateKeyJwk, {
@@ -64,7 +64,7 @@ describe("createNobleEd25519Signer — interop with verifyReceipt", () => {
   });
 });
 
-describe("createNobleEd25519Signer — cross-impl byte parity", () => {
+describe("createNobleEd25519Signer - cross-impl byte parity", () => {
   it("noble signer signature byte-equals createInMemorySigner signature for the same key+message", async () => {
     const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
     const nobleSigner = createNobleEd25519Signer(privateKeyJwk, {
@@ -92,7 +92,7 @@ describe("createNobleEd25519Signer — cross-impl byte parity", () => {
   });
 });
 
-describe("createNobleEd25519Signer — generateEd25519KeyPairJwk compat", () => {
+describe("createNobleEd25519Signer - generateEd25519KeyPairJwk compat", () => {
   it("works with keys produced by generateEd25519KeyPairJwk", async () => {
     const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
     const signer = createNobleEd25519Signer(privateKeyJwk, {
@@ -105,7 +105,7 @@ describe("createNobleEd25519Signer — generateEd25519KeyPairJwk compat", () => 
   });
 });
 
-describe("createNobleEd25519Signer — rejects bad JWK kty", () => {
+describe("createNobleEd25519Signer - rejects bad JWK kty", () => {
   it("throws Error when kty is not OKP", () => {
     expect(() =>
       createNobleEd25519Signer({ kty: "RSA" } as unknown as JsonWebKey, {
@@ -116,7 +116,7 @@ describe("createNobleEd25519Signer — rejects bad JWK kty", () => {
   });
 });
 
-describe("createNobleEd25519Signer — rejects bad JWK crv", () => {
+describe("createNobleEd25519Signer - rejects bad JWK crv", () => {
   it("throws Error when crv is not Ed25519", () => {
     expect(() =>
       createNobleEd25519Signer(
@@ -127,7 +127,7 @@ describe("createNobleEd25519Signer — rejects bad JWK crv", () => {
   });
 });
 
-describe("createNobleEd25519Signer — rejects missing d", () => {
+describe("createNobleEd25519Signer - rejects missing d", () => {
   it("throws Error when d field is absent", () => {
     expect(() =>
       createNobleEd25519Signer(

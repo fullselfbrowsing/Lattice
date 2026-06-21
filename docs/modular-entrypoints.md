@@ -107,25 +107,23 @@ algorithm. To avoid this on the signing path, swap `createInMemorySigner` for
 `createNobleEd25519Signer` from the same import:
 
 ```ts
-import {
-  createNobleEd25519Signer,
-  createMemoryKeySet,
-  createReceipt,
-  generateEd25519KeyPairJwk,
-  verifyReceipt,
-} from "@full-self-browsing/lattice/audit";
+import { createNobleEd25519Signer } from "@full-self-browsing/lattice/audit";
 
-const keyPair = await generateEd25519KeyPairJwk();
-const signer = createNobleEd25519Signer(keyPair.privateKeyJwk, {
+const privateKeyJwk = await loadPrivateSigningJwkFromKeyManagement();
+const publicKeyJwk = await loadPublicSigningJwkFromKeyManagement();
+
+const signer = createNobleEd25519Signer(privateKeyJwk, {
   kid: "local",
-  publicKeyJwk: keyPair.publicKeyJwk,
+  publicKeyJwk,
 });
 ```
 
 `createNobleEd25519Signer` uses `@noble/ed25519` for signing (pure JS, stable
-WebCrypto SHA-512 internally — no experimental warning). `verifyReceipt` and
-`generateEd25519KeyPairJwk` are unchanged; they still use WebCrypto Ed25519.
-A noble-backed verify/keygen helper is a possible fast follow.
+WebCrypto SHA-512 internally, with no experimental warning on the signing path).
+`verifyReceipt` and `generateEd25519KeyPairJwk` are unchanged; they still use
+WebCrypto Ed25519 and can still emit the Node 20 experimental warning when called
+in the same process. A noble-backed verify/keygen helper is a possible fast
+follow.
 
 ## Core-Only
 
