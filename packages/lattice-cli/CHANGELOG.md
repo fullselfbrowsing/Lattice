@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0
+
+### Minor Changes
+
+- 3ab4423: Add agent-run eval gating, receipt structural diffing, and local LM Studio latency diagnostics to the `lattice` CLI.
+
+### Patch Changes
+
+- Updated dependencies [3b152a1]
+- Updated dependencies [5f77ec5]
+- Updated dependencies [e68d1e5]
+- Updated dependencies [25a36bc]
+- Updated dependencies [6503486]
+- Updated dependencies [9278b77]
+- Updated dependencies [25ef841]
+  - @full-self-browsing/lattice@1.4.0
+
 ## 1.3.0
 
 ### Patch Changes

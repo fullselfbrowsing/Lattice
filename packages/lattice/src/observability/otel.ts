@@ -88,6 +88,13 @@ export function createOtelRunEventSink(
     setSpanAttributes(span, attributes);
     span.addEvent?.(`lattice.${event.kind}`, attributes);
 
+    if (event.kind === "capabilities.negotiation.fallback") {
+      span.setStatus?.({ code: OTEL_STATUS_OK });
+      span.end?.(eventTime(event));
+      spans.delete(event.runId);
+      return;
+    }
+
     if (event.kind === "run.complete") {
       span.setStatus?.({ code: OTEL_STATUS_OK });
       span.end?.(eventTime(event));

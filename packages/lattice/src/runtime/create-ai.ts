@@ -470,6 +470,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "succeeded",
           fallback: index > 0,
+          normalizedUsage: normalizeAdapterUsage(response),
           ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
         },
       }));
@@ -509,6 +510,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: built.artifacts,
+            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
             contractVerdict: "validation-failed",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -586,6 +588,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: built.artifacts,
+            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
             contractVerdict: "tripwire-violated",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -671,7 +674,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: built.artifacts,
-        lineageArtifacts: [...built.artifacts, ...artifactRefs],
+        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
         contractVerdict: "success",
         model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {

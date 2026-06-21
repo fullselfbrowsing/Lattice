@@ -8,6 +8,7 @@ import type {
   ProviderPackagingPlan,
   SelectedRoute,
 } from "../plan/plan.js";
+import { mediaTypeForArtifact } from "./multimodal.js";
 import type { ProviderTransportMode } from "./provider.js";
 
 const MEDIA_INLINE_LIMIT_BYTES = 100 * 1024 * 1024;
@@ -46,6 +47,7 @@ export function packageArtifactsForProvider(input: {
 
   for (const inputArtifact of input.artifacts) {
     const choice = chooseTransport(inputArtifact, route, input.policy);
+    const mediaType = providerMediaType(inputArtifact, route.providerId);
 
     if (choice.blocked !== undefined) {
       blocked.push(choice.blocked);
@@ -56,7 +58,7 @@ export function packageArtifactsForProvider(input: {
     packaged.push({
       artifactId: inputArtifact.id,
       transport: choice.transport,
-      ...(inputArtifact.mediaType !== undefined ? { mediaType: inputArtifact.mediaType } : {}),
+      ...(mediaType !== undefined ? { mediaType } : {}),
       lineageTransform: "provider-packaging",
       providerRequest: choice.providerRequest,
       warnings: choice.warnings,
@@ -84,7 +86,7 @@ export function packageArtifactsForProvider(input: {
             metadata: transformMetadata,
           },
           metadata: transformMetadata,
-          ...(inputArtifact.mediaType !== undefined ? { mediaType: inputArtifact.mediaType } : {}),
+          ...(mediaType !== undefined ? { mediaType } : {}),
           privacy: inputArtifact.privacy,
         }),
       ),
@@ -129,7 +131,21 @@ function chooseTransport(
       continue;
     }
 
+    // noPublicUrl blocks "url" transport and also blocks "file-id" transport
+    // when the referenced metadata value resolves to a public HTTP/HTTPS URL.
+    // Provider-internal handles (e.g. "files/audio-123") are not public URLs and
+    // are permitted. See Codex PR #12 finding P2-B.
     if (policy?.noPublicUrl === true && transport === "url") {
+      continue;
+    }
+
+    if (
+      policy?.noPublicUrl === true &&
+      transport === "file-id" &&
+      candidate.reference !== undefined &&
+      candidate.reference.metadataKey !== undefined &&
+      isHttpUrl(inputArtifact.metadata?.[candidate.reference.metadataKey])
+    ) {
       continue;
     }
 
@@ -280,15 +296,50 @@ function providerRequestPlan(
 ): ProviderPackagedArtifactRequestPlan {
   const sourceType = providerRequestSourceType(providerId, transport);
   const shape = providerRequestShape(providerId, inputArtifact.kind, transport);
+  const mediaType = providerMediaType(inputArtifact, providerId);
 
   return {
     shape,
     sourceType,
     reason: candidate.reason,
-    ...(inputArtifact.mediaType !== undefined ? { mediaType: inputArtifact.mediaType } : {}),
+    ...(mediaType !== undefined ? { mediaType } : {}),
     ...(inputArtifact.size?.bytes !== undefined ? { sizeBytes: inputArtifact.size.bytes } : {}),
     ...(candidate.reference !== undefined ? { reference: candidate.reference } : {}),
   };
+}
+
+function providerMediaType(
+  inputArtifact: ArtifactInput,
+  providerId: string,
+): string | undefined {
+  const fallback = providerMediaTypeFallback(providerId, inputArtifact.kind);
+  return fallback === undefined
+    ? inputArtifact.mediaType
+    : mediaTypeForArtifact(inputArtifact, fallback);
+}
+
+function providerMediaTypeFallback(
+  providerId: string,
+  kind: ArtifactInput["kind"],
+): string | undefined {
+  if (providerId === "anthropic" && kind === "image") {
+    return "image/jpeg";
+  }
+
+  if (providerId === "gemini") {
+    switch (kind) {
+      case "image":
+        return "image/jpeg";
+      case "audio":
+        return "audio/mpeg";
+      case "video":
+        return "video/mp4";
+      default:
+        return undefined;
+    }
+  }
+
+  return undefined;
 }
 
 function providerRequestSourceType(

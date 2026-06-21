@@ -50,7 +50,18 @@ export function mediaTypeForArtifact(
   artifact: ArtifactInput,
   fallback: string,
 ): string {
-  return artifact.mediaType ?? fallback;
+  if (artifact.mediaType !== undefined) {
+    return artifact.mediaType;
+  }
+
+  if (typeof artifact.value === "string") {
+    const dataUrl = parseDataUrl(artifact.value);
+    if (dataUrl?.mediaType !== undefined) {
+      return dataUrl.mediaType;
+    }
+  }
+
+  return fallback;
 }
 
 export async function artifactBase64Data(
@@ -110,7 +121,7 @@ function bufferToBase64(value: ArrayBuffer): string {
   return Buffer.from(value).toString("base64");
 }
 
-function isHttpUrl(value: unknown): value is string {
+export function isHttpUrl(value: unknown): value is string {
   if (typeof value !== "string") {
     return false;
   }

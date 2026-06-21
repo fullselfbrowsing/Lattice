@@ -36,6 +36,7 @@ import {
   packagedPlanForArtifact,
 } from "./multimodal.js";
 import { readSseEvents } from "./sse.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 /**
  * Options for {@link createAnthropicProvider}.
@@ -573,6 +574,8 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         model: options.model,
         request,
       });
+      const bodyStr = JSON.stringify(messagesBody.body);
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -583,7 +586,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
             ? { "anthropic-beta": "files-api-2025-04-14" }
             : {}),
         },
-        body: JSON.stringify(messagesBody.body),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
 
@@ -685,6 +688,8 @@ async function* streamAnthropicResponse(input: {
     request: input.request,
     stream: true,
   });
+  const streamBodyStr = JSON.stringify(messagesBody.body);
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(`${input.baseUrl}/v1/messages`, {
     method: "POST",
     headers: {
@@ -695,7 +700,7 @@ async function* streamAnthropicResponse(input: {
         ? { "anthropic-beta": "files-api-2025-04-14" }
         : {}),
     },
-    body: JSON.stringify(messagesBody.body),
+    body: streamBodyStr,
     ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
   });
 

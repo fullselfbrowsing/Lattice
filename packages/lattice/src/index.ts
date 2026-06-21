@@ -41,6 +41,7 @@ export type {
   ExternalExecutionUsage,
 } from "./audit/external-execution.js";
 export { isTerminal } from "./results/errors.js";
+export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
 export {
   createAISdkProvider,
   createOpenAICompatibleProvider,

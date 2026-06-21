@@ -198,6 +198,24 @@ describe("createOtelRunEventSink", () => {
     }
   });
 
+  it("ends one-shot negotiation fallback spans instead of retaining them by run id", async () => {
+    const tracer = new FakeTracer();
+    const sink = createOtelRunEventSink({ tracer });
+
+    await sink(event("capabilities.negotiation.fallback", {
+      runId: "negotiation:anthropic:model",
+    }));
+    await sink(event("capabilities.negotiation.fallback", {
+      runId: "negotiation:anthropic:model",
+    }));
+
+    expect(tracer.starts).toHaveLength(2);
+    expect(tracer.starts[0]?.span.events[0]?.name).toBe("lattice.capabilities.negotiation.fallback");
+    expect(tracer.starts[0]?.span.statuses).toEqual([{ code: 1 }]);
+    expect(tracer.starts[0]?.span.ended).toBe(true);
+    expect(tracer.starts[1]?.span.ended).toBe(true);
+  });
+
   it("adds receipt CID and signature attributes when metadata carries an envelope", async () => {
     const tracer = new FakeTracer();
     const sink = createOtelRunEventSink({ tracer });

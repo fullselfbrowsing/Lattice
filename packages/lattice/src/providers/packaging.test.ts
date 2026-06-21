@@ -52,6 +52,33 @@ describe("packageArtifactsForProvider multimodal request evidence", () => {
     });
   });
 
+  it("preserves media types from inline data URLs in packaging evidence", () => {
+    const input = artifact.image("data:image/webp;base64,AAAA", {
+      id: "img-data-url",
+    });
+
+    const result = packageArtifactsForProvider({
+      artifacts: [input],
+      route: route({ providerId: "gemini" }),
+    });
+
+    expect(result.blocked).toEqual([]);
+    const packaged = result.plan.artifacts[0];
+    expect(packaged?.transport).toBe("base64");
+    expect(packaged?.mediaType).toBe("image/webp");
+    expect(packaged?.providerRequest).toMatchObject({
+      shape: "gemini:part.inlineData",
+      sourceType: "base64",
+      mediaType: "image/webp",
+    });
+    expect(result.packagedArtifacts[0]?.mediaType).toBe("image/webp");
+    expect(result.packagedArtifacts[0]?.lineage?.transform.metadata).toMatchObject({
+      providerRequest: {
+        mediaType: "image/webp",
+      },
+    });
+  });
+
   it("records URL media packaging when artifact value is public HTTP URL", () => {
     const input = artifact.image("https://cdn.example.test/photo.jpg", {
       id: "img-url",
@@ -132,6 +159,40 @@ describe("packageArtifactsForProvider multimodal request evidence", () => {
 
     expect(result.blocked).toEqual(["No policy-safe transport for artifact video-url."]);
     expect(result.plan.warnings).toEqual(["No policy-safe transport for artifact video-url."]);
+  });
+
+  it("blocks file-id transport when metadata value is a public URL under noPublicUrl", () => {
+    const input = artifact.audio("ignored.mp3", {
+      id: "audio-file-uri-public",
+      mediaType: "audio/mpeg",
+      metadata: { fileUri: "https://cdn.example.test/clip.mp4" },
+    });
+
+    const result = packageArtifactsForProvider({
+      artifacts: [input],
+      route: route({ providerId: "gemini" }),
+      policy: { noPublicUrl: true },
+    });
+
+    expect(result.blocked).not.toHaveLength(0);
+    expect(result.plan.artifacts).toHaveLength(0);
+  });
+
+  it("allows file-id transport when metadata value is a provider-internal handle under noPublicUrl", () => {
+    const input = artifact.audio("ignored.mp3", {
+      id: "audio-file-uri-internal",
+      mediaType: "audio/mpeg",
+      metadata: { geminiFileUri: "files/audio-123" },
+    });
+
+    const result = packageArtifactsForProvider({
+      artifacts: [input],
+      route: route({ providerId: "gemini" }),
+      policy: { noPublicUrl: true },
+    });
+
+    expect(result.blocked).toHaveLength(0);
+    expect(result.plan.artifacts[0]?.transport).toBe("file-id");
   });
 
   it("blocks restricted media from base64 and file-reference transport", () => {

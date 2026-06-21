@@ -34,6 +34,8 @@ import {
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
 import { readSseEvents } from "./sse.js";
+import { isHttpUrl } from "./multimodal.js";
+import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 export interface OpenAICompatibleProviderOptions {
   readonly id?: string;
@@ -335,32 +337,42 @@ function createOpenAICompatibleRequestBody(input: {
                   },
             }),
           },
-          ...input.request.artifacts.map((inputArtifact) => ({
-            type: "text",
-            text: JSON.stringify({
-              artifactId: inputArtifact.id,
-              kind: inputArtifact.kind,
-              mediaType: inputArtifact.mediaType,
-              privacy: inputArtifact.privacy,
-              transport: input.request.providerPackaging?.artifacts.find(
+          ...input.request.artifacts.map((inputArtifact) => {
+            const resolvedTransport =
+              input.request.providerPackaging?.artifacts.find(
                 (item) => item.artifactId === inputArtifact.id,
-              )?.transport ?? input.request.plan?.providerPackaging?.artifacts.find(
+              )?.transport ??
+              input.request.plan?.providerPackaging?.artifacts.find(
                 (item) => item.artifactId === inputArtifact.id,
-              )?.transport,
-              value:
-                typeof inputArtifact.value === "string" && inputArtifact.kind !== "url"
-                  ? inputArtifact.value
-                  : undefined,
-              url:
-                inputArtifact.kind === "url" && typeof inputArtifact.value === "string"
-                  ? inputArtifact.value
-                  : undefined,
-            }),
-          })),
+              )?.transport;
+
+            return {
+              type: "text",
+              text: JSON.stringify({
+                artifactId: inputArtifact.id,
+                kind: inputArtifact.kind,
+                mediaType: inputArtifact.mediaType,
+                privacy: inputArtifact.privacy,
+                transport: resolvedTransport,
+                value:
+                  typeof inputArtifact.value === "string" &&
+                  inputArtifact.kind !== "url" &&
+                  !(isHttpUrl(inputArtifact.value) && resolvedTransport !== "url")
+                    ? inputArtifact.value
+                    : undefined,
+                url:
+                  inputArtifact.kind === "url" &&
+                  typeof inputArtifact.value === "string" &&
+                  resolvedTransport === "url"
+                    ? inputArtifact.value
+                    : undefined,
+              }),
+            };
+          }),
         ],
       },
     ],
-    ...(input.stream === true ? { stream: true } : {}),
+    ...(input.stream === true ? { stream: true, stream_options: { include_usage: true } } : {}),
     ...(nativeTools.length > 0 ? { tools: nativeTools } : {}),
     ...(nativeToolChoice !== undefined ? { tool_choice: nativeToolChoice } : {}),
     ...(responseFormat !== undefined ? { response_format: responseFormat } : {}),
@@ -478,17 +490,19 @@ export function createOpenAICompatibleProvider(
         readGatewayPolicy(request.policy),
       );
       const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+      const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+        model: options.model,
+        request,
+        ...(metadata !== undefined ? { metadata } : {}),
+      }));
+      assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
           ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
         },
-        body: JSON.stringify(createOpenAICompatibleRequestBody({
-          model: options.model,
-          request,
-          ...(metadata !== undefined ? { metadata } : {}),
-        })),
+        body: bodyStr,
         ...(request.signal !== undefined ? { signal: request.signal } : {}),
       };
       const response = await fetchImpl(`${baseUrl}/chat/completions`, init);
@@ -597,18 +611,20 @@ async function* streamOpenAICompatibleResponse(input: {
     readGatewayPolicy(input.request.policy),
   );
   const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
+  const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+    model: input.model,
+    request: input.request,
+    ...(metadata !== undefined ? { metadata } : {}),
+    stream: true,
+  }));
+  assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(`${input.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(input.apiKey !== undefined ? { authorization: `Bearer ${input.apiKey}` } : {}),
     },
-    body: JSON.stringify(createOpenAICompatibleRequestBody({
-      model: input.model,
-      request: input.request,
-      ...(metadata !== undefined ? { metadata } : {}),
-      stream: true,
-    })),
+    body: streamBodyStr,
     ...(input.request.signal !== undefined ? { signal: input.request.signal } : {}),
   });
 

@@ -1,6 +1,6 @@
 {
   "name": "@full-self-browsing/lattice-cli",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Lattice CLI — replay, verify, eval, diff, and diagnose capability runs",
   "license": "MIT",
   "repository": {

@@ -231,6 +231,16 @@ describe("Phase 7 end-to-end integration", () => {
     if (result.ok) {
       expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, costUsd: 0.0001 });
     }
+    const succeededAttemptEvent = result.events?.find(
+      (event) =>
+        event.kind === "provider.attempt" &&
+        event.metadata?.status === "succeeded",
+    );
+    expect(succeededAttemptEvent?.metadata?.normalizedUsage).toEqual({
+      promptTokens: 10,
+      completionTokens: 5,
+      costUsd: 0.0001,
+    });
   });
 
   it("E5: v1.0 backward compatibility — no contract field, default fake yields RunSuccess with present usage (costUsd null)", async () => {
@@ -592,6 +602,68 @@ describe("Phase 43 streaming runtime", () => {
     expect(streamCalls).toBe(1);
   });
 
+  it("routes streaming runs only to streaming-capable candidates", async () => {
+    let bufferedExecuteCalls = 0;
+    let streamCalls = 0;
+    const bufferedProvider = {
+      id: "buffered-runtime",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("buffered-runtime"),
+          modelId: "buffered-runtime:model",
+          streaming: false,
+        },
+      ],
+      execute: async () => {
+        bufferedExecuteCalls += 1;
+        return { rawOutputs: { answer: "buffered" } };
+      },
+    } satisfies ProviderAdapter;
+    const streamProvider = {
+      id: "streaming-runtime-fallback",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("streaming-runtime-fallback"),
+          modelId: "streaming-runtime-fallback:model",
+          streaming: true,
+        },
+      ],
+      executeStream: () => {
+        streamCalls += 1;
+        return streamFrom([
+          { kind: "text-delta", output: "answer", text: "streamed" },
+        ]);
+      },
+    } satisfies ProviderAdapter;
+    const ai = createAI({ providers: [bufferedProvider, streamProvider] });
+
+    const plan = await ai.plan({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+    expect(plan.route.selected?.providerId).toBe("streaming-runtime-fallback");
+    const rejectedBuffered = plan.route.rejected.find(
+      (candidate) => candidate.providerId === "buffered-runtime",
+    );
+    expect(rejectedBuffered?.reasons.some((r) => r.code === "streaming-unsupported")).toBe(true);
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.outputs.answer).toBe("streamed");
+    }
+    expect(bufferedExecuteCalls).toBe(0);
+    expect(streamCalls).toBe(1);
+  });
+
   it("runs policy.stream through a real OpenAI-compatible adapter factory", async () => {
     const provider = createOpenAICompatibleProvider({
       model: "test-model",
@@ -674,6 +746,51 @@ describe("Phase 43 streaming runtime", () => {
     expect((result.events ?? []).some((event) => event.kind === "stream.failed")).toBe(true);
     for (const event of result.events ?? []) {
       expect(JSON.stringify(event.metadata ?? {})).not.toContain("partial-secret");
+    }
+  });
+
+  it("surfaces non-zero usage from streaming final chunk into result.usage and signed receipt", async () => {
+    // Local copy of makeSignerAndKeySet (defined in Phase 9 scope, not accessible here)
+    const kid = "phase-43-streaming-usage";
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([
+      { kid, publicKeyJwk, state: "active" },
+    ]);
+
+    // Use the OpenAI-compatible adapter with a final SSE chunk carrying usage,
+    // mirroring the existing test at line 595 but with usage assertions added.
+    const provider = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      fetch: makeOpenAICompatibleStreamingFetch([
+        openAICompatibleSseData({ choices: [{ delta: { content: "answer" } }] }),
+        openAICompatibleSseData({
+          choices: [{ delta: {} }],
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        }),
+        openAICompatibleSseData("[DONE]"),
+      ]),
+    });
+    const ai = createAI({ providers: [provider], signer });
+
+    const result = await ai.run({
+      task: "x",
+      outputs: { answer: "text" as const },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.usage.promptTokens).toBeGreaterThan(0);
+    expect(result.usage.completionTokens).toBeGreaterThan(0);
+
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.usage.promptTokens).toBeGreaterThan(0);
+      expect(verifyResult.body.usage.completionTokens).toBeGreaterThan(0);
     }
   });
 });
@@ -797,6 +914,39 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.tripwireEvidence?.kind).toBe(
         result.error.evidence.kind,
       );
+    }
+  });
+
+  it("T4b: tripwire-violated receipt lineageMerkleRoot includes packaged artifacts", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = localTemplateProvider({
+      rawOutputs: { text: "Contact alice@example.com please" },
+      normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const source = artifact.text("source", {
+      id: "artifact:text:trip-lineage-source",
+    });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      artifacts: [source],
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("tripwire-violated");
+    }
+    expect(result.receipt).toBeDefined();
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      // This inequality is the regression guard: it fails if lineageArtifacts is
+      // missing from the tripwire-violated maybeIssueReceipt call in create-ai.ts.
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
@@ -972,9 +1122,14 @@ describe("Phase 9 receipts integration", () => {
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
       expect(verifyResult.body.inputHashes).toHaveLength(2);
-      expect(verifyResult.body.lineageMerkleRoot).toBe(
-        await computeArtifactLineageMerkleRoot([source, derived]),
-      );
+      // The runtime folds provider-packaged artifacts (provider-packaging lineage)
+      // into the lineage root, so it must be a valid root AND must differ from the
+      // root computed over the raw input/output artifacts alone. The inequality
+      // guards the create-ai.ts wiring that includes attemptPackaging.packagedArtifacts
+      // (Codex PR #12 P2-3): reverting that fix makes the root equal inputOnlyRoot.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 
@@ -1141,9 +1296,13 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      expect(verifyResult.body.lineageMerkleRoot).toBe(
-        await computeArtifactLineageMerkleRoot([source, derived]),
-      );
+      // The runtime folds provider-packaged artifacts into the lineage root, so it
+      // must differ from the root computed over the raw input/output artifacts alone.
+      // This inequality guards the create-ai.ts packaged-artifact lineage wiring
+      // (Codex PR #12 P2-3) on the streaming success path.
+      const inputOnlyRoot = await computeArtifactLineageMerkleRoot([source, derived]);
+      expect(verifyResult.body.lineageMerkleRoot).toMatch(/^sha256:[a-f0-9]{64}$/u);
+      expect(verifyResult.body.lineageMerkleRoot).not.toBe(inputOnlyRoot);
     }
   });
 

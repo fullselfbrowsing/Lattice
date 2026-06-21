@@ -272,6 +272,35 @@ describe("Phase 4 Anthropic adapter", () => {
     expect(content[1]).toEqual({ type: "text", text: "describe" });
   });
 
+  it("Anthropic preserves media types from inline data URLs", async () => {
+    const image = artifact.image("data:image/png;base64,cG5n", {
+      id: "img-data-url",
+    });
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await adapter.execute!({
+      task: "describe",
+      artifacts: [image],
+      outputs: ["text"],
+      providerPackaging: anthropicPackaging([image]),
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(userContent(body)[0]).toEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "cG5n",
+      },
+    });
+  });
+
   it("Anthropic packages image URL artifacts as url image blocks", async () => {
     const image = artifact.image("https://cdn.example.test/photo.jpg", {
       id: "img-url",

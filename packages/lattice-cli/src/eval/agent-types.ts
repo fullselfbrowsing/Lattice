@@ -21,6 +21,7 @@ export interface AgentEvalBaselineFile {
 export interface AgentEvalConfig extends EvalOptions {
   readonly fixturesDir: string;
   readonly baselinePath: string;
+  readonly initBaseline?: boolean;
 }
 
 export interface AgentEvalLoadError {

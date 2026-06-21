@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { createAnthropicProvider } from "./anthropic.js";
 import { createGeminiProvider } from "./gemini.js";
+import { NoPublicUrlEgressError } from "./no-public-url.js";
+import { artifact } from "../artifacts/artifact.js";
 import { createLiteLLMProvider } from "./litellm.js";
 import { createLmStudioProvider } from "./lm-studio.js";
 import { createOpenRouterProvider } from "./openrouter.js";
@@ -759,5 +761,273 @@ describe("Phase 37 tool-call validation parity", () => {
         requestId: "tool-bad",
       });
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// noPublicUrl defense-in-depth chokepoint parity (260616-inn)
+// ---------------------------------------------------------------------------
+// Tests 1, 2, 3 are RED before assertNoPublicUrlEgress is wired into each
+// adapter egress path (Task 2).  Tests 4, 5, 6 must be GREEN immediately.
+//
+// Mislabeling threat: metadata.base64Data holds a public http(s) URL
+// (REVIEW3 P2). artifactBase64Data() reads metadata.base64Data first, so the
+// URL lands in the serialized body as inlineData.data / source.data for
+// Anthropic and Gemini when transport="base64".
+//
+// For OpenAI-compat the threat vector is a url-kind artifact that the
+// packaging mistakenly assigns transport="url" despite noPublicUrl:true.
+// The h31 body builder includes the url field only when transport==="url",
+// so the URL reaches the wire body in exactly this mis-packaged case.
+// ---------------------------------------------------------------------------
+
+const INN_PUBLIC_URL = "https://evil.example/x.png";
+
+// Mislabeled artifact used by Anthropic (Test 2) and Gemini (Test 3).
+// The value is a clean data URL; metadata.base64Data is the public URL.
+// artifactBase64Data() prefers metadata.base64Data, so the URL becomes
+// the base64 payload and lands in the serialized body under base64 transport.
+const mislabeledArtifact = artifact.image("data:image/png;base64,abc", {
+  id: "mislabeled-img",
+  metadata: { base64Data: INN_PUBLIC_URL, encoding: "base64" },
+});
+
+// Packaging plan that routes the mislabeled artifact via "base64" transport,
+// causing Anthropic/Gemini body builders to call artifactBase64Data() and
+// embed the PUBLIC_URL in the request body.
+const mislabeledPackaging = {
+  providerId: "test",
+  modelId: "test",
+  artifacts: [
+    {
+      artifactId: "mislabeled-img",
+      transport: "base64" as const,
+      lineageTransform: "provider-packaging" as const,
+      warnings: [],
+    },
+  ],
+  warnings: [],
+};
+
+function makeCapturingFetch(body: unknown): {
+  fetch: typeof fetch;
+  capturedBodies: string[];
+} {
+  const capturedBodies: string[] = [];
+  const fakeFetch = (async (_url: unknown, init?: RequestInit) => {
+    capturedBodies.push(typeof init?.body === "string" ? init.body : "");
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof fetch;
+  return { fetch: fakeFetch, capturedBodies };
+}
+
+describe("noPublicUrl defense-in-depth chokepoint parity (260616-inn)", () => {
+  // Test 1 (RED before wiring, GREEN after):
+  // OpenAI-compat execute throws NoPublicUrlEgressError when a url-kind artifact
+  // is mis-packaged with transport="url" despite noPublicUrl:true.
+  // The h31 body builder emits url: PUBLIC_URL only when transport==="url";
+  // the chokepoint catches this mis-packaged case as defense-in-depth.
+  it("Test 1: OpenAI-compat execute throws NoPublicUrlEgressError for url-artifact mis-packaged as url-transport under noPublicUrl", async () => {
+    const { fetch } = makeCapturingFetch(OPENAI_COMPAT_BODY);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://fake.example/v1",
+      apiKey: "sk-test",
+      fetch,
+    });
+
+    const urlArtifact = artifact.url(INN_PUBLIC_URL, { id: "url-mislabeled" });
+    const urlPackaging = {
+      providerId: "test",
+      modelId: "test",
+      artifacts: [
+        {
+          artifactId: urlArtifact.id,
+          transport: "url" as const,
+          lineageTransform: "provider-packaging" as const,
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+
+    await expect(
+      adapter.execute!({
+        task: "describe this",
+        artifacts: [urlArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: urlPackaging,
+      }),
+    ).rejects.toBeInstanceOf(NoPublicUrlEgressError);
+
+    await expect(
+      adapter.execute!({
+        task: "describe this",
+        artifacts: [urlArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: urlPackaging,
+      }),
+    ).rejects.toThrow(INN_PUBLIC_URL);
+  });
+
+  // Test 2 (RED before wiring, GREEN after):
+  // Anthropic execute throws NoPublicUrlEgressError for base64-mislabeled artifact.
+  // With transport="base64", Anthropic calls artifactBase64Data(artifact) which
+  // reads metadata.base64Data first and gets PUBLIC_URL — embedding it in the body.
+  it("Test 2: Anthropic execute throws NoPublicUrlEgressError for base64-mislabeled artifact under noPublicUrl", async () => {
+    const { fetch } = makeCapturingFetch(ANTHROPIC_BODY);
+    const adapter = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      fetch,
+    });
+
+    await expect(
+      adapter.execute!({
+        task: "describe this image",
+        artifacts: [mislabeledArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: mislabeledPackaging,
+      }),
+    ).rejects.toBeInstanceOf(NoPublicUrlEgressError);
+
+    await expect(
+      adapter.execute!({
+        task: "describe this image",
+        artifacts: [mislabeledArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: mislabeledPackaging,
+      }),
+    ).rejects.toThrow(INN_PUBLIC_URL);
+  });
+
+  // Test 3 (RED before wiring, GREEN after):
+  // Gemini execute throws NoPublicUrlEgressError for base64-mislabeled artifact.
+  // With transport="base64", Gemini calls artifactBase64Data(artifact) which
+  // reads metadata.base64Data first and gets PUBLIC_URL — embedding it in the body.
+  it("Test 3: Gemini execute throws NoPublicUrlEgressError for base64-mislabeled artifact under noPublicUrl", async () => {
+    const { fetch } = makeCapturingFetch(GEMINI_BODY);
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+    });
+
+    await expect(
+      adapter.execute!({
+        task: "describe this image",
+        artifacts: [mislabeledArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: mislabeledPackaging,
+      }),
+    ).rejects.toBeInstanceOf(NoPublicUrlEgressError);
+
+    await expect(
+      adapter.execute!({
+        task: "describe this image",
+        artifacts: [mislabeledArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: mislabeledPackaging,
+      }),
+    ).rejects.toThrow(INN_PUBLIC_URL);
+  });
+
+  // Test 4 (must be GREEN immediately — no-false-positive):
+  // noPublicUrl:true but the URL was already stripped from the body by packaging.
+  // The chokepoint substring-scans serializedBody; if the URL isn't there, it does not throw.
+  it("Test 4: No throw when noPublicUrl:true but URL was already stripped from body (packaging removed it)", async () => {
+    const { fetch } = makeCapturingFetch(OPENAI_COMPAT_BODY);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://fake.example/v1",
+      apiKey: "sk-test",
+      fetch,
+    });
+
+    // Artifact whose value is a public URL, but providerPackaging requests base64 transport.
+    // The OpenAI-compat adapter will NOT emit the URL in the body for non-url transport,
+    // so assertNoPublicUrlEgress will not find the URL substring and will not throw.
+    const urlArtifact = artifact.url(INN_PUBLIC_URL, { id: "url-art" });
+
+    await expect(
+      adapter.execute!({
+        task: "describe this image",
+        artifacts: [urlArtifact],
+        outputs: ["text"],
+        policy: { noPublicUrl: true },
+        providerPackaging: {
+          providerId: "test-model",
+          modelId: "test-model",
+          artifacts: [
+            {
+              artifactId: urlArtifact.id,
+              transport: "base64",
+              lineageTransform: "provider-packaging",
+              warnings: [],
+            },
+          ],
+          warnings: [],
+        },
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  // Test 5 (must be GREEN immediately — scope):
+  // gateway.metadata may contain URLs, but those are not artifact-derived.
+  // The chokepoint only scans request.artifacts, so this must NOT throw.
+  it("Test 5: No throw when gateway metadata has a URL but no artifact has a public URL under noPublicUrl", async () => {
+    const { fetch } = makeCapturingFetch(OPENAI_COMPAT_BODY);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://fake.example/v1",
+      apiKey: "sk-test",
+      fetch,
+    });
+
+    const textArtifact = artifact.text("hello", { id: "txt-1" });
+
+    await expect(
+      adapter.execute!({
+        task: "summarize",
+        artifacts: [textArtifact],
+        outputs: ["text"],
+        policy: {
+          noPublicUrl: true,
+          gateway: { metadata: { source: "https://gateway.example/route" } },
+        },
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  // Test 6 (must be GREEN immediately — positive baseline):
+  // noPublicUrl is not set, so even a URL artifact must pass through.
+  it("Test 6: No throw when noPublicUrl is not set even with URL artifact", async () => {
+    const { fetch } = makeCapturingFetch(OPENAI_COMPAT_BODY);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test-model",
+      baseUrl: "https://fake.example/v1",
+      apiKey: "sk-test",
+      fetch,
+    });
+
+    const urlArtifact = artifact.url(INN_PUBLIC_URL, { id: "url-art-2" });
+
+    await expect(
+      adapter.execute!({
+        task: "fetch this url",
+        artifacts: [urlArtifact],
+        outputs: ["text"],
+        policy: undefined,
+      }),
+    ).resolves.toBeDefined();
   });
 });
