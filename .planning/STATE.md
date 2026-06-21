@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-21T09:35:50.000Z"
-last_activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
+last_updated: "2026-06-21T19:22:03.000Z"
+last_activity: 2026-06-21 - Refreshed IEEE paper for v1.5.0
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
+Last activity: 2026-06-21 - Refreshed IEEE paper for v1.5.0
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-06-21 | Refresh IEEE paper for v1.5.0 | Updated the paper's release facts, modular adoption coverage, external audit and standalone core sections, CLI command coverage, evaluation chart, limitations, and future work. Rebuilt the ignored PDF locally with `tectonic`; it remains 8 pages. |
 | 2026-06-21 | Prepare v1.5.0 release metadata, PR CI hardening, and tag plan | Normalized runtime and CLI versions to `1.5.0`, added release changelog sections, generated release notes preview, hardened the CLI test script for clean CI runners, and passed the local release gates before PR merge and tag operations. |
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
