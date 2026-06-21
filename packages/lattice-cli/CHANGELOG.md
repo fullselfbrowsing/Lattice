@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0
+
+### Patch Changes
+
+* Updated dependency `@full-self-browsing/lattice` to `1.5.0`.
+
 ## 1.4.0
 
 ### Minor Changes

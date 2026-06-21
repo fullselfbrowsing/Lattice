@@ -39,8 +39,8 @@ const body = [
   sectionBody,
   "",
   "## Packages",
-  `- https://www.npmjs.com/package/@full-self-browsing/lattice/v/${version}`,
-  `- https://www.npmjs.com/package/@full-self-browsing/lattice-cli/v/${version}`,
+  `* https://www.npmjs.com/package/@full-self-browsing/lattice/v/${version}`,
+  `* https://www.npmjs.com/package/@full-self-browsing/lattice-cli/v/${version}`,
   "",
 ].join("\n");
 
