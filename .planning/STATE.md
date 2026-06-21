@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-20T03:48:53.893Z"
-last_activity: 2026-06-20 - Milestone v1.5.0 completed and archived
+last_updated: "2026-06-20T07:21:15.000Z"
+last_activity: 2026-06-20 - Patched external audit failure replay semantics
 progress:
   total_phases: 6
   completed_phases: 6
@@ -143,6 +143,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | 2026-06-15 | Correct paper author name spelling | Updated `paper/main.tex` and `paper/README.md` to use `Lakshman Turlapati`, then rebuilt `paper/main.pdf` from the corrected LaTeX source. See `.planning/quick/260615-7qq-update-paper-author-name-to-lakshman-tur/`. |
 | 2026-06-15 | Capitalize paper author last name | Updated the paper author spelling to `Lakshman Turlapati` with an uppercase `T` in the last name, then rebuilt `paper/main.pdf`. See `.planning/quick/260615-ei0-capitalize-t-in-paper-author-last-name-a/`. |
 | 2026-06-15 | Record FSB-via-npm dogfood validation and version-stamping follow-up | Recorded that FSB validates `@full-self-browsing/lattice@1.3.0` as a real npm downstream consumer with `npm run test:lattice` at 426 PASS / 0 FAIL, including `modelClass` signed-body coverage. Captured the remaining Lattice-side version-stamping bug as low-severity follow-up. |
+| 2026-06-20 | Patch external audit failure replay semantics | Updated external audit replay envelopes so non-success verdicts keep sidecar/receipt evidence but omit replayable outputs and inspect as failed plans/attempts. Added regression coverage for failed executions with and without raw outputs. See `.planning/quick/260620-382-patch-external-audit-failure-replay-sema/`. |
 
 ## Session Continuity
 

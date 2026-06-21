@@ -188,6 +188,15 @@ function createExternalReplayEnvelope(input: {
   readonly contractVerdict: ContractVerdict;
   readonly metadata: Record<string, unknown> | undefined;
 }): ReplayEnvelope<OutputContractMap> {
+  const isSuccess = input.contractVerdict === "success";
+  const attempt = {
+    providerId: input.route.providerId,
+    modelId: input.route.capabilityId,
+    status: isSuccess ? "succeeded" as const : "failed" as const,
+    usage: usageRecord(input.usage),
+    metadata: { externalExecution: true },
+    ...(!isSuccess ? { error: input.contractVerdict } : {}),
+  };
   const plan = withPlanStatus(
     createExecutionPlan({
       task: input.task,
@@ -220,18 +229,12 @@ function createExternalReplayEnvelope(input: {
         ...(input.metadata !== undefined ? { external: input.metadata } : {}),
       },
     }),
-    "completed",
+    isSuccess ? "completed" : "failed",
     {
-      stages: markAllStagesCompleted,
-      attempts: [
-        {
-          providerId: input.route.providerId,
-          modelId: input.route.capabilityId,
-          status: "succeeded",
-          usage: usageRecord(input.usage),
-          metadata: { externalExecution: true },
-        },
-      ],
+      stages: isSuccess
+        ? markAllStagesCompleted
+        : markExternalStagesFailed(input.contractVerdict),
+      attempts: [attempt],
     },
   );
 
@@ -243,14 +246,53 @@ function createExternalReplayEnvelope(input: {
     createdAt: new Date().toISOString(),
     plan,
     artifacts: input.artifacts,
-    ...(input.outputs !== undefined ? { outputs: input.outputs } : {}),
+    ...(isSuccess && input.outputs !== undefined ? { outputs: input.outputs } : {}),
     warnings: [],
-    errors: input.contractVerdict === "success" ? [] : [input.contractVerdict],
+    errors: isSuccess ? [] : [input.contractVerdict],
     usage: usageRecord(input.usage),
     events: [],
     receipt: input.receipt,
     contract: input.contract,
   };
+}
+
+function markExternalStagesFailed(verdict: ContractVerdict): ExecutionPlan["stages"] {
+  const failedStage = failedStageForVerdict(verdict);
+  let hasFailed = false;
+
+  return markAllStagesCompleted.map((stage) => {
+    if (stage.kind === failedStage) {
+      hasFailed = true;
+      return {
+        ...stage,
+        status: "failed" as const,
+        warnings: [...stage.warnings, verdict],
+      };
+    }
+
+    if (hasFailed) {
+      return {
+        ...stage,
+        status: "skipped" as const,
+      };
+    }
+
+    return stage;
+  });
+}
+
+function failedStageForVerdict(verdict: ContractVerdict): ExecutionPlan["stages"][number]["kind"] {
+  switch (verdict) {
+    case "validation-failed":
+      return "validation";
+    case "tripwire-violated":
+      return "tripwire";
+    case "no-contract-match":
+      return "analysis";
+    case "execution-failed":
+    case "success":
+      return "execution";
+  }
 }
 
 function usageRecord(usage: ExternalExecutionUsage): UsageRecord {

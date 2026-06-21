@@ -117,5 +117,56 @@ describe("createExternalExecutionAudit", () => {
     }
     expect(result.sidecar.rawOutputs).toBeUndefined();
     expect(result.replayEnvelope.outputs).toBeUndefined();
+    expect(result.replayEnvelope.plan.status).toBe("failed");
+    expect(result.replayEnvelope.plan.attempts[0]).toMatchObject({
+      status: "failed",
+      error: "execution-failed",
+    });
+    const replayed = await replayOffline(result.replayEnvelope);
+    expect(replayed.ok).toBe(false);
+  });
+
+  it("keeps failed raw outputs auditable without making them replayable", async () => {
+    const { signer, keySet } = await makeSigner("external-audit-validation-failure");
+    const input = artifact.text("customer issue", { id: "artifact:external:validation" });
+    const outputs = { answer: { valid: false, reason: "missing required citation" } };
+
+    const result = await createExternalExecutionAudit(
+      {
+        task: "External validation failed",
+        artifacts: [input],
+        outputSpecs: { answer: "text" },
+        outputs,
+        policy: {},
+        contract: contract(),
+        model: { requested: "external-model", observed: "external-model" },
+        route: { providerId: "external", capabilityId: "external-model", attemptNumber: 1 },
+        usage: { promptTokens: 5, completionTokens: 3, costUsd: null },
+        contractVerdict: "validation-failed",
+        rawRequest: { model: "external-model" },
+        rawResponse: { output: outputs },
+      },
+      signer,
+    );
+
+    const outputHash = await fingerprintArtifactValue(outputs);
+    const verifyResult = await verifyReceipt(result.receipt, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.contractVerdict).toBe("validation-failed");
+      expect(verifyResult.body.outputHash).toBe(outputHash?.value);
+    }
+
+    expect(result.sidecar.rawOutputs).toEqual(outputs);
+    expect(result.outputHash).toBe(outputHash?.value);
+    expect(result.replayEnvelope.outputs).toBeUndefined();
+    expect(result.replayEnvelope.plan.status).toBe("failed");
+    expect(result.replayEnvelope.plan.attempts[0]).toMatchObject({
+      status: "failed",
+      error: "validation-failed",
+    });
+
+    const replayed = await replayOffline(result.replayEnvelope);
+    expect(replayed.ok).toBe(false);
   });
 });
