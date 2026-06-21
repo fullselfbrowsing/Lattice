@@ -37,6 +37,7 @@ import { BAND, type HookPipeline, createHookPipeline } from "../contract/bands.j
 import { createCheckpointHook } from "../contract/checkpoint.js";
 import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
+import { validateOutputMapValues } from "../outputs/validate.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
 import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
@@ -49,6 +50,7 @@ import {
 } from "./host.js";
 import {
   AgentDeniedError,
+  type DefaultAgentOutputs,
   type AgentFailure,
   type AgentIntent,
   type AgentResult,
@@ -57,6 +59,7 @@ import {
 } from "./types.js";
 
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
+const DEFAULT_AGENT_OUTPUTS: DefaultAgentOutputs = { answer: "text" };
 
 /**
  * Context handed to an injected `dispatchToolUse` seam (Phase 39, internal).
@@ -104,7 +107,7 @@ export interface RunAgentInternalOptions {
  * with no internal options — the public signature and behavior are
  * unchanged.
  */
-export async function runAgent<TOutputs extends OutputContractMap = OutputContractMap>(
+export async function runAgent<TOutputs extends OutputContractMap = DefaultAgentOutputs>(
   intent: AgentIntent<TOutputs>,
   config: LatticeConfig = {},
 ): Promise<AgentResult<TOutputs>> {
@@ -116,7 +119,7 @@ export async function runAgent<TOutputs extends OutputContractMap = OutputContra
  * In-package consumers (agent/crew/, 39-05) call this directly; it is NOT
  * part of the public package surface.
  */
-export async function runAgentInternal<TOutputs extends OutputContractMap = OutputContractMap>(
+export async function runAgentInternal<TOutputs extends OutputContractMap = DefaultAgentOutputs>(
   intent: AgentIntent<TOutputs>,
   config: LatticeConfig = {},
   internalOptions: RunAgentInternalOptions = {},
@@ -149,6 +152,8 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Outp
   // 3. Initialize conversation + tools handle.
   let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
   const handle = formatToolsForProvider(providerName, intent.tools);
+  const outputContracts = intent.outputs ?? DEFAULT_AGENT_OUTPUTS;
+  const outputNames = Object.keys(outputContracts);
 
   const budget = intent.contract?.budget;
   const maxIterations = budget?.maxIterations ?? Number.POSITIVE_INFINITY;
@@ -274,7 +279,8 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Outp
       const providerRequest = {
         task,
         artifacts: [],
-        outputs: ["answer"],
+        outputs: outputNames,
+        outputContracts,
         ...(intent.policy !== undefined ? { policy: intent.policy } : {}),
       };
       response = host.transport !== undefined
@@ -327,23 +333,34 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Outp
         previousStepName: `agent-iteration-${iterationIndex}-before`,
       });
 
+      // 4f. Output materialization. When `intent.outputs` is omitted, the
+      // default contract remains `{ answer: "text" }`. Declared outputs are
+      // validated through the same kernel used by the single-shot runtime.
+      const outputValidation = await validateOutputMapValues(
+        outputContracts,
+        response.rawOutputs,
+      );
+      if (!outputValidation.ok) {
+        return buildFailure({
+          kind: "validation",
+          reason: outputValidation.error.message,
+          cause: outputValidation.error,
+          iterations,
+          usage: cumulativeUsage,
+        });
+      }
+
       // 4e.1. Clear persistent storage on final-answer success so the next
       // run starts fresh (Phase 20).
       await host.storage?.clear();
 
-      // 4f. Output materialization. Phase 19 produces a flat
-      // `{ answer: string }` output by default. When `intent.outputs` is
-      // declared, the runtime still surfaces the same flat shape — full
-      // OutputContractMap-aware materialization (Standard Schema
-      // round-trip, structured output fields) lives in a follow-on phase
-      // alongside the agent showcase (Phase 22).
       const artifactRefs =
         response.artifactRefs !== undefined
           ? response.artifactRefs.map(toArtifactRef)
           : [];
       return {
         kind: "success",
-        output: { answer: responseText } as never,
+        output: outputValidation.outputs as never,
         ...(artifactRefs.length > 0 ? { artifacts: artifactRefs } : {}),
         usage: snapshotUsage(cumulativeUsage),
         iterations: Object.freeze([...iterations]),
@@ -474,16 +491,18 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Outp
   });
 }
 
-function ensurePipeline<T extends AgentIntent>(intent: T): HookPipeline {
+function ensurePipeline<TOutputs extends OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+): HookPipeline {
   if (intent.pipeline !== undefined) return intent.pipeline;
   const options: Parameters<typeof createHookPipeline>[0] =
     intent.tracer !== undefined ? { tracer: intent.tracer } : {};
   return createHookPipeline(options);
 }
 
-function maybeAutoRegisterCheckpoint<T extends AgentIntent>(
+function maybeAutoRegisterCheckpoint<TOutputs extends OutputContractMap>(
   pipeline: HookPipeline,
-  intent: T,
+  intent: AgentIntent<TOutputs>,
 ): void {
   if (intent.signer === undefined) return;
   if (intent.autoRegisterCheckpoint === false) return;

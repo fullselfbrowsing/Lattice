@@ -31,6 +31,15 @@ export {
 } from "./receipts/sign.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
+export { createExternalExecutionAudit } from "./audit/external-execution.js";
+export type {
+  ExternalExecutionAuditInput,
+  ExternalExecutionAuditResult,
+  ExternalExecutionMetadata,
+  ExternalExecutionSidecar,
+  ExternalExecutionSidecarOutputSpec,
+  ExternalExecutionUsage,
+} from "./audit/external-execution.js";
 export { isTerminal } from "./results/errors.js";
 export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
 export {
@@ -159,14 +168,14 @@ export {
   realtimeStepName,
 } from "./realtime/realtime.js";
 // Agent eval helper (v1.2 Phase 22).
-export { evalAgentRun } from "./agent/eval.js";
+export { evalAgentRun } from "./eval/agent-run.js";
 export type {
   AgentEvalResult,
   AgentRunSnapshot,
   EvalOptions,
   EvalRegression,
   EvalRegressionKind,
-} from "./agent/eval.js";
+} from "./eval/agent-run.js";
 export { createAI } from "./runtime/create-ai.js";
 export { createNoopSurvivabilityAdapter } from "./runtime/survivability.js";
 export { createMemorySessionStore } from "./sessions/session.js";

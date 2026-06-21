@@ -394,6 +394,37 @@ describe("Phase 34: xAI quirks + negotiateCapabilities", () => {
     expect(authHeader).toBe("Bearer xai-test");
   });
 
+  it("Phase 51: preserves unknown live grok-4-1-fast model ids with conservative capabilities", async () => {
+    const modelId = "grok-4-1-fast-demo";
+    const { fetch: negotiateFetch } = makeSequenceFetch([
+      {
+        body: {
+          object: "list",
+          data: [{ id: modelId, object: "model", created: 1720000000, owned_by: "xai" }],
+        },
+        status: 200,
+      },
+    ]);
+    const adapter = createXaiProvider({
+      model: modelId,
+      apiKey: "xai-test",
+      fetch: negotiateFetch,
+    });
+
+    const result = await adapter.negotiateCapabilities(modelId);
+
+    expect(result).toMatchObject({
+      modelId,
+      source: "live",
+      supports: {
+        nativeToolCalling: true,
+        structuredOutputs: true,
+        parallelToolCalls: true,
+        streaming: true,
+      },
+    });
+  });
+
   it("Test 4 (lenient parse -- Pitfall 1): weird body shape falls back to registry without crash", async () => {
     // xAI may return unexpected shape in the future; lenient parse must handle gracefully
     const weirdBody = { weird: "shape", data: "not-an-array" };

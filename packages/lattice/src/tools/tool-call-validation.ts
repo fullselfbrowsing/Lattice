@@ -1,8 +1,8 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { validateSchemaOutput } from "../outputs/validate.js";
-import type { ToolUseRequest } from "../agent/types.js";
 import type { ValidationIssue } from "../results/errors.js";
+import type { ToolUseRequest } from "./tool-use.js";
 import type { ToolDefinition } from "./tools.js";
 
 export type ToolCallValidationFailureReason =

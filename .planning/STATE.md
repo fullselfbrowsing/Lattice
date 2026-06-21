@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Provider Breadth + Live Multimodal + Observability Export
-status: Awaiting next milestone
-stopped_at: Milestone v1.4 completed and archived; ready for next milestone
-last_updated: "2026-06-16T20:31:23Z"
-last_activity: 2026-06-16 — Fixed PR #12 review threads
+milestone: v1.5.0
+milestone_name: Modular Adoption + Execution Parity
+status: awaiting_next_milestone
+stopped_at: v1.5.0 archived; awaiting next milestone
+last_updated: "2026-06-21T09:35:50.000Z"
+last_activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 36
-  completed_plans: 36
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 6
+  completed_plans: 6
   percent: 100
 ---
 
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-16)
+See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Planning next milestone
+**Current focus:** Awaiting next milestone
 
 ## Current Position
 
-Phase: Milestone v1.4 complete
-Plan: —
+Phase: Milestone v1.5.0 complete
+Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-16 — Fixed PR #12 review threads
+Last activity: 2026-06-21 - Prepared v1.5.0 release metadata and hardened PR CI
 
 ## Performance Metrics
 
@@ -54,12 +54,17 @@ Last activity: 2026-06-16 — Fixed PR #12 review threads
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decisions affecting v1.4:
+v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carryforward decisions affecting v1.5.0:
 
 - [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
 - [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
-- [v1.4 scope]: Provider breadth + gateway delegation, live/streaming multimodal, eval + OpenTelemetry observability export — research-first.
-- [v1.4 roadmap]: 44 REQ-IDs mapped across Phases 40-49. All 44 are complete and mapped to evidence in `49-MILESTONE-EVIDENCE.md`.
+- [v1.5.0 scope]: Modular adoption + execution parity. Provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, storage, eval, and full-runtime adoption paths must be independently usable.
+- [Compatibility]: Node 20 compatibility is in scope for modular layers where feasible; Node 24 remains acceptable for the full runtime or APIs that require Node 24-only primitives.
+- [Dogfood]: GitFly-style flows and a generic external-consumer example define milestone success before implementation is considered complete.
+- [Provider parity]: Provider-only native execution is opt-in through `ProviderRunRequest.nativeTools`, `nativeToolChoice`, and `nativeStructuredOutput`; `ai.run()` and `ai.runAgent()` keep existing behavior unless callers use those fields directly.
+- [External audit]: External executors can call `createExternalExecutionAudit` to mint signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes without adopting Lattice provider adapters or agent runtime.
+- [Standalone core]: External runtimes can call `prepareCoreRun` from the core subpath to get artifact refs, optional storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider or agent execution.
+- [Tools/MCP optionality]: Tools-only consumers can import MCP artifact helpers and returned tool-call validation from the tools subpath without agent imports; `runAgent` callers who opt in can request typed final outputs.
 
 ### Pending Todos
 
@@ -80,7 +85,7 @@ v1.3 shipped 2026-06-15 (full record in `milestones/v1.3-*`). Carryforward decis
 
 ## Deferred Items
 
-Items acknowledged and deferred at v1.4 milestone close on 2026-06-16:
+Items acknowledged and deferred at v1.5.0 milestone close on 2026-06-20:
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -111,11 +116,15 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | Phase 44 P02 | 5min | 2 tasks | 2 files |
 | Phase 44 P03 | 4min | 2 tasks | 2 files |
 | Phase 44 P04 | 3min | 3 tasks | 3 files |
+| Phase 53 P01 | 12min | 3 tasks | 5 files |
+| Phase 54 P01 | 22min | 4 tasks | 12 files |
+| Phase 55 P01 | 18min | 4 tasks | 5 files |
 
 ## Quick Tasks Completed
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-06-21 | Prepare v1.5.0 release metadata, PR CI hardening, and tag plan | Normalized runtime and CLI versions to `1.5.0`, added release changelog sections, generated release notes preview, hardened the CLI test script for clean CI runners, and passed the local release gates before PR merge and tag operations. |
 | 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
 | 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
 | 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
@@ -140,12 +149,13 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 | 2026-06-16 | Harden noPublicUrl enforcement (260616-h31) | A `noPublicUrl` audit (triggered by the second local Codex review) found the policy is decided at the packaging boundary and correctly honored by the Anthropic and Gemini adapters, but the **OpenAI-compatible adapter** (`createOpenAICompatibleRequestBody`, shared by OpenAI/OpenRouter/xAI/LM Studio/LiteLLM) ignored the packaging transport and emitted artifact `url`/`value` raw — leaking a public URL under `noPublicUrl`. Gated url/value emission on `transport === "url"` (non-URL text content unaffected), promoted `isHttpUrl` to a shared export, and added a 5-test cross-adapter parity block (OpenAI-compat blocked url + value, positive no-over-block, Anthropic + Gemini regression locks) so the invariant can't silently drift again. Guard proven load-bearing. The executor agent hit a transient API 500 mid-run; the orchestrator reviewed/completed the staged fix, fixed a tsc-only type error in the parity tests, and ran the CI gate. 3 commits on `recon`; full CI mirror green. See `.planning/quick/260616-h31-harden-nopublicurl-enforcement-openai-co/`. |
 | 2026-06-16 | Single-chokepoint noPublicUrl egress enforcement (260616-inn) | After three rounds of per-site patches, a third local Codex review showed `noPublicUrl` still had gaps (gateway metadata, base64-string mislabeling, custom adapters) because there was no single enforcement point. Added `assertNoPublicUrlEgress` (new `providers/no-public-url.ts`): a shared egress assertion called right before every run-request `fetch` in all three adapter families (OpenAI-compatible, Anthropic, Gemini — execute + stream). Under `noPublicUrl` it derives the set of public http(s) URLs from `request.artifacts` (value + string metadata) and throws a typed `NoPublicUrlEgressError` (surfaced as a RunFailure) if any appears in the serialized body — a fail-closed backstop that catches paths the per-site gating misses (e.g. a URL mislabeled as `metadata.base64Data`). **Scope decision:** `noPublicUrl` governs artifact-derived URLs, NOT user-set `policy.gateway.metadata` (documented in the module). New `parity.test.ts` + `no-public-url.test.ts` lock it across adapters; proven load-bearing (disabling the throw fails 7 tests). The executor caught and fixed a false-GREEN test design (mislabel artifacts needed `providerPackaging` to reach the body). 3 commits on `recon`; full CI mirror green. New public export `NoPublicUrlEgressError` added to the surface inventory; no new changeset (part of the already-changeset'd v1.4 multimodal feature). See `.planning/quick/260616-inn-add-single-chokepoint-nopublicurl-egress/`. |
 | 2026-06-16 | Fix PR #12 review threads (260616-ldk) | Addressed all 8 current review findings: data URL MIME preservation, gateway policy deep merge, stream-capable routing, OTel one-shot span cleanup and usage export, agent eval baseline bootstrap, receipt diff field coverage, and Gemini `noPublicUrl` direct-regression tests. Targeted core/CLI tests and package typechecks passed. See `.planning/quick/260616-ldk-fix-pr-12-review-threads-data-url-mime-g/`. |
+| 2026-06-20 | Patch external audit failure replay semantics | Updated external audit replay envelopes so non-success verdicts keep sidecar/receipt evidence but omit replayable outputs and inspect as failed plans/attempts. Added regression coverage for failed executions with and without raw outputs. See `.planning/quick/260620-382-patch-external-audit-failure-replay-sema/`. |
 
 ## Session Continuity
 
-Last session: 2026-06-16T20:31:23Z
-Stopped at: PR #12 review-thread fixes implemented and verified locally
-Resume: `/gsd-autonomous`
+Last session: 2026-06-20T03:39:07Z
+Stopped at: v1.5.0 archived; awaiting next milestone
+Resume: `/gsd-new-milestone`
 
 ## Operator Next Steps
 

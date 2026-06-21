@@ -9,6 +9,7 @@
 | v1.2 FSB Integration + Agent Capability | Shipped | 2026-05-31 | `.planning/milestones/v1.2-ROADMAP.md` · `.planning/milestones/v1.2-REQUIREMENTS.md` · `.planning/milestones/v1.2-MILESTONE-AUDIT.md` |
 | v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface | Shipped | 2026-06-15 | `.planning/milestones/v1.3-ROADMAP.md` · `.planning/milestones/v1.3-REQUIREMENTS.md` · `.planning/milestones/v1.3-MILESTONE-AUDIT.md` |
 | v1.4 Provider Breadth + Live Multimodal + Observability Export | Shipped | 2026-06-16 | `.planning/milestones/v1.4-ROADMAP.md` · `.planning/milestones/v1.4-REQUIREMENTS.md` · `.planning/milestones/v1.4-MILESTONE-AUDIT.md` |
+| v1.5.0 Modular Adoption + Execution Parity | Shipped | 2026-06-20 | `.planning/milestones/v1.5.0-ROADMAP.md` · `.planning/milestones/v1.5.0-REQUIREMENTS.md` · `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md` |
 
 ## Phases
 
@@ -40,8 +41,12 @@ Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-
 
 Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage/KMS signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, eval/diagnostics CLI expansion, offline validation, tarball checks, and FSB package-candidate dogfood. 44 / 44 REQ-IDs shipped. See `.planning/milestones/v1.4-ROADMAP.md` and `.planning/milestones/v1.4-MILESTONE-AUDIT.md`.
 
+### v1.5.0 Modular Adoption + Execution Parity (shipped 2026-06-20)
+
+Phases 50 to 55. Modular package subpaths and compatibility metadata, provider-only native tools/structured outputs, external execution audit receipts/replay, standalone core preparation records, tools/MCP-only helpers, typed agent final outputs, Node 20 modular smoke coverage, GitFly-style dogfood, and a generic external-consumer example. 30 / 30 REQ-IDs shipped. See `.planning/milestones/v1.5.0-ROADMAP.md` and `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md`.
+
 </details>
 
 ## Active Milestone
 
-No active milestone. Start the next milestone with `/gsd-new-milestone`; it will create fresh `.planning/REQUIREMENTS.md` and expand this roadmap.
+No active milestone. Start the next milestone with `/gsd-new-milestone`.

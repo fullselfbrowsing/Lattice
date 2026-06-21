@@ -2,10 +2,22 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { isArtifactRef, toArtifactRef } from "../artifacts/artifact.js";
 import type { ResultPlan } from "../plan/plan.js";
-import type { ValidationIssue } from "../results/errors.js";
+import type { ValidationError, ValidationIssue } from "../results/errors.js";
 import type { RunResult } from "../results/result.js";
 import type { OutputContract, OutputContractMap } from "./contracts.js";
 import type { InferOutputMap } from "./infer.js";
+
+export type OutputMapValidationResult<TOutputs extends OutputContractMap> =
+  | {
+      readonly ok: true;
+      readonly outputs: InferOutputMap<TOutputs>;
+    }
+  | {
+      readonly ok: false;
+      readonly error: ValidationError;
+      readonly raw: Record<string, unknown>;
+      readonly partialOutputs: Record<string, unknown>;
+    };
 
 export async function validateSchemaOutput<S extends StandardSchemaV1>(
   name: string,
@@ -45,6 +57,32 @@ export async function validateOutputMap<TOutputs extends OutputContractMap>(
   rawOutputs: Record<string, unknown>,
   plan: ResultPlan,
 ): Promise<RunResult<TOutputs>> {
+  const validation = await validateOutputMapValues(contracts, rawOutputs);
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      error: validation.error,
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      raw: validation.raw,
+      partialOutputs: validation.partialOutputs,
+      plan,
+    };
+  }
+
+  return {
+    ok: true,
+    outputs: validation.outputs,
+    artifacts: [],
+    usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+    plan,
+  };
+}
+
+export async function validateOutputMapValues<TOutputs extends OutputContractMap>(
+  contracts: TOutputs,
+  rawOutputs: Record<string, unknown>,
+): Promise<OutputMapValidationResult<TOutputs>> {
   const outputs: Record<string, unknown> = {};
 
   for (const [name, contract] of Object.entries(contracts)) {
@@ -60,10 +98,8 @@ export async function validateOutputMap<TOutputs extends OutputContractMap>(
           ["output"]: name,
           issues: issue.issues,
         },
-        usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
         raw: rawOutputs,
         partialOutputs: outputs,
-        plan,
       };
     }
 
@@ -73,9 +109,6 @@ export async function validateOutputMap<TOutputs extends OutputContractMap>(
   return {
     ok: true,
     outputs: outputs as InferOutputMap<TOutputs>,
-    artifacts: [],
-    usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
-    plan,
   };
 }
 

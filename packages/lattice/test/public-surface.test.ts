@@ -4,6 +4,7 @@ import {
   collectStream,
   contract,
   createAI,
+  createExternalExecutionAudit,
   createInMemorySigner,
   createLangfuseOtlpConfig,
   createLiteLLMProvider,
@@ -88,6 +89,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createAnthropicProvider",
   "createCheckpointHook",
   "createCostTracker",
+  "createExternalExecutionAudit",
   "createFakeProvider",
   "createGeminiProvider",
   "createGoalProgressTracker",
@@ -168,6 +170,12 @@ describe("public-surface inventory", () => {
     const mod = await import("../src/index.js");
     expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
     expect("default" in mod).toBe(false);
+  });
+});
+
+describe("Phase 52 public surface", () => {
+  it("exports external execution audit helper", () => {
+    expect(typeof createExternalExecutionAudit).toBe("function");
   });
 });
 

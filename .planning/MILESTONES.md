@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.5.0 Modular Adoption + Execution Parity (Shipped: 2026-06-20)
+
+**Phases completed:** 6 phases, 6 plans, 7 tasks
+
+**Key accomplishments:**
+
+- Modular package subpaths with compatibility metadata, source boundary enforcement, and type/package tests
+- Provider-only native tools, native structured outputs, finish metadata, and model-ID preservation
+- External execution audit helper with signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes
+- Non-executing core preparation helper for artifact refs, optional storage, context packs, advisory routes, hashes, and inspectable execution plans
+- Tools/MCP-only artifact helpers and returned tool-call validation without agent adoption
+- Node 20 modular smoke, GitFly-style dogfood, and generic external-consumer example
+
+**Audit:** Passed, 30/30 requirements satisfied. Known deferred items at close: 7 stale missing quick-task index entries already acknowledged in `STATE.md`.
+
+---
+
 ## v1.4 Provider Breadth + Live Multimodal + Observability Export (Shipped: 2026-06-16)
 
 **Phases completed:** 10 phases, 36 plans, 54 tasks

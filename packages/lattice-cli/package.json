@@ -1,6 +1,6 @@
 {
   "name": "@full-self-browsing/lattice-cli",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Lattice CLI — replay, verify, eval, diff, and diagnose capability runs",
   "license": "MIT",
   "repository": {
@@ -38,7 +38,7 @@
     "stamp:version": "node ../../scripts/stamp-package-version.mjs --package package.json --out src/version.ts --export latticeCliVersion",
     "build": "pnpm stamp:version && tsdown",
     "typecheck": "pnpm stamp:version && tsc -p tsconfig.json --noEmit",
-    "test": "pnpm build && vitest run",
+    "test": "pnpm --filter @full-self-browsing/lattice build && pnpm build && vitest run",
     "lint:packages": "pnpm build && publint && attw --pack . --profile esm-only"
   },
   "dependencies": {

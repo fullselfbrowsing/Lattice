@@ -588,6 +588,62 @@ describe("Phase 37: Anthropic tool-call validation", () => {
   });
 });
 
+describe("Phase 51: Anthropic native provider execution", () => {
+  it("serializes native tools and materializes structured output from a forced tool_use", async () => {
+    const { fetch, capture } = makeFakeFetch({
+      content: [
+        { type: "text", text: "partial text" },
+        {
+          type: "tool_use",
+          id: "toolu_structured",
+          name: "answer_shape",
+          input: { summary: "ok" },
+        },
+        {
+          type: "tool_use",
+          id: "toolu_search",
+          name: "search",
+          input: { query: "native" },
+        },
+      ],
+      stop_reason: "tool_use",
+      usage: { input_tokens: 1, output_tokens: 2 },
+    });
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+      validateToolCalls: { tools: [searchTool] },
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text", "json"],
+      nativeTools: [searchTool],
+      nativeStructuredOutput: {
+        output: "json",
+        name: "answer_shape",
+        schema: z.object({ summary: z.string() }),
+      },
+    });
+
+    const requestBody = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const tools = requestBody.tools as readonly { name: string; input_schema: unknown }[];
+    expect(tools.map((tool) => tool.name)).toEqual(["search", "answer_shape"]);
+    expect(requestBody.tool_choice).toEqual({ type: "tool", name: "answer_shape" });
+    expect(response.rawOutputs.text).toBe("partial text");
+    expect(response.rawOutputs.json).toEqual({ summary: "ok" });
+    expect(response.toolCalls).toEqual([
+      { id: "toolu_search", name: "search", args: { query: "native" } },
+    ]);
+    expect(response.finish).toEqual({
+      reason: "tool_use",
+      toolCallIds: ["toolu_search"],
+    });
+  });
+});
+
 describe("Phase 44: Anthropic streaming", () => {
   it("streams Anthropic text deltas through executeStream", async () => {
     const { fetch, capture } = makeStreamingFetch([
