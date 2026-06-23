@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-23T17:22:22.000Z"
-last_activity: 2026-06-23 - Tracked the rebuilt paper PDF in git
+last_updated: "2026-06-23T19:16:50.000Z"
+last_activity: 2026-06-23 - Refreshed the root README for Lattice 1.5.1
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-23 - Tracked the rebuilt paper PDF in git
+Last activity: 2026-06-23 - Refreshed the root README for Lattice 1.5.1
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-06-23 | Refresh root README | Replaced stale v1.2 and v1.3 release narrative with a current Lattice 1.5.1 README covering status, quick start, runtime usage, modular entrypoints, providers, audit, tools, agents, CLI, and development. |
 | 2026-06-23 | Track paper PDF | Added `paper/main.pdf` to git by allowing the file through the paper ignore rules and preserving the 8-page rebuilt PDF alongside the source. |
 | 2026-06-23 | Merge paper PR #15 | Reconciled the paper refresh branch with current `main`, resolved the planning state conflict, reran paper merge checks, and prepared PR #15 for merge. |
 | 2026-06-21 | Ship GitFly Node 20 audit signer patch release | Added `createNobleEd25519Signer`, exported it from root and audit subpaths, moved `@noble/ed25519` to runtime dependencies, prepared `1.5.1` package metadata and changelogs, generated release notes preview, passed full local release gates, and verified Node 20 modular imports. |
