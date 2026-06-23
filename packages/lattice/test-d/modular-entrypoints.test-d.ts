@@ -5,6 +5,7 @@ import { artifact, type ArtifactInput } from "@full-self-browsing/lattice/artifa
 import {
   createExternalExecutionAudit,
   createMemoryKeySet,
+  createNobleEd25519Signer,
   type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
@@ -66,6 +67,7 @@ expectType<KeySet>(keySet);
 const maybeReceipt = undefined as ReceiptEnvelope | undefined;
 expectType<ReceiptEnvelope | undefined>(maybeReceipt);
 expectType<typeof createExternalExecutionAudit>(createExternalExecutionAudit);
+expectType<typeof createNobleEd25519Signer>(createNobleEd25519Signer);
 
 const input = artifact.text("case body");
 expectType<ArtifactInput>(input);

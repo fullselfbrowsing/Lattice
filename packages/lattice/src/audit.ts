@@ -23,6 +23,7 @@ export {
   generateEd25519KeyPairJwk,
 } from "./receipts/sign.js";
 export type { GeneratedEd25519KeyPair } from "./receipts/sign.js";
+export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { receiptCid } from "./receipts/cid.js";
 export {
