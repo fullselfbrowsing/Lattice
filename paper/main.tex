@@ -69,12 +69,13 @@ opaque model call, output invariants carry terminal semantics so a violated run 
 never silently retried, and a verifier can reconstruct the run offline and confirm
 that the recomputed output hash matches the signed receipt. We describe the threat
 model, the design of the receipt and replay pipeline, and an implementation that
-ships as two published npm packages with 960 automated tests across 82 files, a
-seven provider parity contract, and a content addressed command line tool for
-reproduction and verification. Our evaluation is assurance by construction: the
-guarantees are expressed as code level invariants and property tests rather than as
-a latency benchmark. The result is a small runtime that makes auditability and
-reproducibility a default property of every multimodal model run.
+ships as two published npm packages at version 1.5.0 with modular entrypoints,
+1,248 automated tests across 100 files, a seven provider parity contract, and a
+content addressed command line tool for reproduction and verification. Our
+evaluation is assurance by construction: the guarantees are expressed as code level
+invariants and property tests rather than as a latency benchmark. The result is a
+small runtime that makes auditability and reproducibility a default property of
+every multimodal model run.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -146,12 +147,13 @@ ordering and a canonical encoding turn it into a verifiable artifact rather than
 log line. We show how a deterministic and inspectable router, terminal output
 invariants, and a content addressed verification tool compose into a runtime where
 auditability and reproducibility are default properties. We describe a working
-implementation that ships publicly with supply chain provenance, a seven provider
-parity contract, and a test suite that encodes the guarantees as invariants. We
-discuss what signed receipts enable in practice and we state plainly what they do
-not provide. The remainder of the paper covers background and related work, the
-threat model and goals, the design, the implementation, the evaluation, a
-discussion, the limitations, future work, and a conclusion.
+implementation that ships publicly with supply chain provenance, modular adoption
+paths, a seven provider parity contract, and a test suite that encodes the
+guarantees as invariants. We also show how external executors can mint compatible
+receipts without adopting Lattice's provider or agent runtime. The remainder of the
+paper covers background and related work, the threat model and goals, the design, the
+implementation, the evaluation, a discussion, the limitations, future work, and a
+conclusion.
 
 % --- Background and Related Work ------------------------------------------
 \section{Background and Related Work}
@@ -513,16 +515,24 @@ Verifiable replay & verify before load & loader call count is zero on verify fai
 
 Lattice is a TypeScript pnpm workspace that publishes two packages,
 \code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli}, both at
-version 1.3.0. The packages are live on the public npm registry. They are published
+version 1.5.0. The packages are live on the public npm registry. They are published
 with an OpenID Connect trusted publisher and with supply chain provenance attestations
 in the spirit of SLSA \cite{slsa}, and a tagged GitHub release accompanies the
 publish. The runtime targets Node version 24 or newer. The implementation is about
-21,584 lines of production TypeScript across the packages. The core package has a
-deliberately small runtime dependency surface of three packages: \code{canonicalize}
-for RFC 8785 encoding, \code{@standard-schema/spec} for schema contracts, and
-\code{mime} for artifact typing. The Ed25519 reference oracle and the schema library
-used in tests are development dependencies only, so a consumer of the core package
-does not inherit them.
+29,400 lines of production TypeScript across 130 non-test source files. The core
+package has a deliberately small runtime dependency surface of three packages:
+\code{canonicalize} for RFC 8785 encoding, \code{@standard-schema/spec} for schema
+contracts, and \code{mime} for artifact typing. The Ed25519 reference oracle and the
+schema library used in tests are development dependencies only, so a consumer of the
+core package does not inherit them.
+
+Version 1.5.0 adds modular public subpaths for \code{providers}, \code{audit},
+\code{context}, \code{artifacts}, \code{routing}, \code{tools}, \code{storage},
+\code{eval}, \code{agents}, and \code{core}. These entrypoints let a downstream
+runtime adopt only the provider layer, only signed audit artifacts, or only context
+and artifact preparation. The package still targets Node 24 for the full runtime,
+while the audit, context, artifact, routing, tools, eval, and core adoption paths are
+validated for Node 20 style modular consumers.
 
 \subsection{Signing internals}
 
@@ -546,6 +556,12 @@ non success response, propagation of an abort signal into the underlying fetch, 
 response pass through, and that the set of adapter identifiers has size seven. The
 parity contract is what lets a receipt mean the same thing regardless of which provider
 served the run.
+
+The same provider contract now exposes opt in native provider features for provider
+only consumers. \code{ProviderRunRequest.nativeTools}, \code{nativeToolChoice}, and
+\code{nativeStructuredOutput} let an external orchestrator use native tool calling
+and structured output where adapters support it, without changing the default
+\code{ai.run} or agent behavior.
 
 \begin{table}[t]
 \centering
@@ -580,20 +596,35 @@ live cache and inflight request coalescing, and falling back to the registry on 
 transient error. Adapter quirk flags capture provider specific behavior so that the
 runtime can adapt without breaking the parity contract.
 
+\subsection{External audit and standalone adoption}
+
+The receipt layer can also be used without Lattice execution. The
+\code{createExternalExecutionAudit} helper accepts externally produced request,
+response, output, usage, and verdict data, then mints the same signed receipt family,
+sidecar, replay envelope, and raw request, raw response, input, and output hashes that
+native Lattice runs produce. Failed verdicts preserve sidecar and receipt evidence but
+omit replayable outputs, so a failed external execution remains auditable without
+becoming an offline success fixture.
+
+For runtimes that want preparation without provider execution, \code{prepareCoreRun}
+returns artifact references, optional storage references, a context pack, advisory
+routes, input hashes, warnings, and an execution plan. The tools subpath also exposes
+MCP resource, prompt, and tool-result artifact helpers, so tool systems can convert
+their outputs into replayable artifacts without importing the agent runtime.
+
 \subsection{The command line tool}
 
 The \code{lattice} command line tool ships in the second package. It uses a lazily
 loaded subcommand structure and a consistent exit code convention of 0 for success, 1
-for a verification or test failure, and 2 for a load or configuration failure. Three
-subcommands exist today. The \code{verify} subcommand checks the signature and the
-structure of a receipt and prints the key identifier and the contract verdict. The
-\code{repro} subcommand performs a full content addressed reproduction: it loads the
-receipt, verifies it, materializes the replay envelope, replays offline, and diffs the
-recomputed output hash, returning 0 on a match and 1 on a drift. The \code{eval}
-subcommand walks a directory of receipts, replays each, and gates layered determinism
-along with cost and quality regressions relative to a baseline, with a flag to
-initialize a fresh baseline and a disk backed judge cache. These three subcommands turn
-a receipt from a passive record into an executable regression and audit gate.
+for a verification or test failure, and 2 for a load or configuration failure. The
+\code{verify} subcommand checks the signature and structure of a receipt and prints the
+key identifier and contract verdict. The \code{repro} subcommand verifies a receipt,
+materializes the replay envelope, replays offline, and diffs the recomputed output
+hash. The \code{eval} subcommand walks receipt directories or agent snapshots and gates
+determinism, cost, and quality regressions relative to a baseline, with a disk backed
+judge cache. The \code{receipt diff} subcommand compares signed receipt envelopes and
+reports structural differences. Together these commands turn a receipt from a passive
+record into an executable regression and audit gate.
 
 \subsection{Agents and chained receipts}
 
@@ -617,9 +648,9 @@ Our evaluation is assurance by construction. The claims in this paper are proper
 the system, and we evaluate them by encoding each as an invariant or a property test
 that fails the build when the property does not hold, rather than by measuring latency
 or model output quality, which depend on providers outside our trust boundary. The
-suite contains 960 automated test cases across 82 test files, with 816 in the core
-package and 144 in the command line package, and it runs under a standard TypeScript
-test runner. Figure~\ref{fig:tests} shows the distribution by package.
+suite contains 1,248 automated test cases across 100 test files, with 1,086 in the
+runtime package and 162 in the command line package, and it runs under a standard
+TypeScript test runner. Figure~\ref{fig:tests} shows the distribution by package.
 
 \begin{figure}[t]
 \centering
@@ -628,10 +659,10 @@ test runner. Figure~\ref{fig:tests} shows the distribution by package.
   ybar,
   width=\columnwidth, height=44mm,
   bar width=14mm,
-  ymin=0, ymax=900,
+  ymin=0, ymax=1400,
   ylabel={test cases},
   ylabel near ticks,
-  symbolic x coords={core package, CLI package},
+  symbolic x coords={runtime package, CLI package},
   xtick=data,
   nodes near coords,
   every node near coord/.append style={font=\scriptsize},
@@ -640,11 +671,11 @@ test runner. Figure~\ref{fig:tests} shows the distribution by package.
   ylabel style={font=\scriptsize},
   enlarge x limits=0.5,
 ]
-\addplot[draw=blue!60!black, fill=blue!30] coordinates {(core package,816) (CLI package,144)};
+\addplot[draw=blue!60!black, fill=blue!30] coordinates {(runtime package,1086) (CLI package,162)};
 \end{axis}
 \end{tikzpicture}
-\caption{Automated test cases by package. The suite totals 960 cases across 82 files,
-816 in the core package and 144 in the command line package, and it encodes the
+\caption{Automated test cases by package. The suite totals 1,248 cases across 100
+files, 1,086 in the runtime package and 162 in the command line package, and it encodes the
 paper's guarantees as executable obligations.}
 \label{fig:tests}
 \end{figure}
@@ -708,10 +739,10 @@ output hash, and it offers a layered determinism check in the evaluation tool fo
 form text. The second is redaction against reproducibility. A receipt that redacts a
 secret cannot reproduce a run that depended on that secret value, so redaction is scoped
 to material that must never be shared, and the redaction manifest makes the omission
-explicit and signed. The third is parity against provider native features. The INV-03
-contract keeps every improvement working across all seven providers, which sometimes
-means exposing a feature through a uniform shape rather than through a provider specific
-surface. We accept this cost because parity is what makes a receipt portable.
+explicit and signed. The third is modularity against uniformity. Provider only
+consumers can opt into native tools and structured outputs, while the default runtime
+and agent paths preserve their existing portable behavior. We accept this explicit
+split because parity is what makes a receipt portable.
 
 % --- Limitations ----------------------------------------------------------
 \section{Limitations}
@@ -722,29 +753,25 @@ rather than a way to obtain new model behavior. Semantic determinism for free fo
 relies on a layered judge in the evaluation tool, which is more expensive and less
 crisp than an exact hash match. The capability registry is a point in time snapshot
 refreshed by continuous integration, so a brand new model may be absent until the next
-refresh, although capability negotiation can refine a profile at call time. Provider
-native streaming and multimodal request shaping are still being generalized across all
-seven adapters at the time of writing. Finally, two command line features named in our
-roadmap, an agent oriented mode of the evaluation subcommand and a receipt difference
-subcommand, are planned and are not yet implemented, so they appear here only as future
-work and not as shipped capability.
+refresh, although capability negotiation can refine a profile at call time. The full
+runtime package still targets Node 24, even though several modular subpaths are
+validated for Node 20 style consumers. Finally, external audit helpers can sign and
+replay evidence produced elsewhere, but they cannot prove that the external executor
+used the claimed provider unless that executor supplies trustworthy raw envelopes.
 
 % --- Future Work ----------------------------------------------------------
 \section{Future Work}
 
-Several extensions build naturally on the receipt primitive. Streaming responses can
-preserve the signing guarantees through a buffer then sign strategy, in which a
-\code{collectStream} step assembles the full output before the receipt commits to its
-hash, so that a signature never commits to partial content. The run event vocabulary can
-be exported to an observability backend through an OpenTelemetry \cite{opentelemetry}
-exporter, so that receipts and traces share a vocabulary. Provider breadth can grow
-through gateway delegation to routing infrastructure such as LiteLLM \cite{litellm} and
-through multi model routing, without expanding the transport surface. A signed Merkle
-\cite{merkle} root over the artifacts a run consumed and produced would extend the
-receipt with a verifiable lineage commitment. Key management can be hardened with key
-management service backed signers. Finally, realtime audio and video sessions need a
-distinct session surface and a session summary receipt, since a bidirectional stream
-differs structurally from a request and response.
+Several extensions build naturally on the receipt primitive. External audit can become
+stronger when executors attach provider side attestations or gateway signed envelopes.
+The run event vocabulary can be exported more broadly through OpenTelemetry
+\cite{opentelemetry} so receipts and traces share a vocabulary across organizations.
+Key management can be hardened with key management service backed signers and rotation
+policies. Realtime audio and video sessions need a distinct session surface and a
+session summary receipt, since a bidirectional stream differs structurally from a
+request and response. Finally, the modular subpaths can be validated against more
+downstream runtimes so adoption does not require replacing an existing orchestration
+stack.
 
 % --- Conclusion -----------------------------------------------------------
 \section{Conclusion}
@@ -757,8 +784,8 @@ deterministic and inspectable router and by output invariants with terminal sema
 verifier can check a receipt with a public key and replay the run offline, confirming
 that the recomputed output hash matches the signed value. The implementation ships
 publicly with supply chain provenance, a seven provider parity contract, a registry of
-332 model profiles, and 960 tests that encode the guarantees as invariants. By making a
-signed and replayable receipt a default byproduct of every run, Lattice turns
+332 model profiles, modular adoption paths, and 1,248 tests that encode the guarantees
+as invariants. By making a signed and replayable receipt a default byproduct of every run, Lattice turns
 auditability and reproducibility from after the fact instrumentation into properties of
 the runtime itself.
 
