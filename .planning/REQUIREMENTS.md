@@ -92,42 +92,42 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Phase numbers are assigned by the roadmapper (this milestone continues numbering from v1.4, i.e. phases begin at 50).
+Which phases cover which requirements. Phase numbers continue from v1.4 (phases begin at 50).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPEC-01 | (set by roadmap) | Pending |
-| SPEC-02 | (set by roadmap) | Pending |
-| SPEC-03 | (set by roadmap) | Pending |
-| SPEC-04 | (set by roadmap) | Pending |
-| SPEC-05 | (set by roadmap) | Pending |
-| SPEC-06 | (set by roadmap) | Pending |
-| SPEC-07 | (set by roadmap) | Pending |
-| VEC-01 | (set by roadmap) | Pending |
-| VEC-02 | (set by roadmap) | Pending |
-| VEC-03 | (set by roadmap) | Pending |
-| VEC-04 | (set by roadmap) | Pending |
-| VEC-05 | (set by roadmap) | Pending |
-| VEC-06 | (set by roadmap) | Pending |
-| TSCONF-01 | (set by roadmap) | Pending |
-| TSCONF-02 | (set by roadmap) | Pending |
-| PYV-01 | (set by roadmap) | Pending |
-| PYV-02 | (set by roadmap) | Pending |
-| PYV-03 | (set by roadmap) | Pending |
-| PYV-04 | (set by roadmap) | Pending |
-| PYR-01 | (set by roadmap) | Pending |
-| PYR-02 | (set by roadmap) | Pending |
-| PYM-01 | (set by roadmap) | Pending |
-| PYM-02 | (set by roadmap) | Pending |
-| PYM-03 | (set by roadmap) | Pending |
-| PARITY-01 | (set by roadmap) | Pending |
-| PARITY-02 | (set by roadmap) | Pending |
+| SPEC-01 | Phase 50 | Pending |
+| SPEC-02 | Phase 50 | Pending |
+| SPEC-03 | Phase 50 | Pending |
+| SPEC-04 | Phase 50 | Pending |
+| SPEC-05 | Phase 50 | Pending |
+| SPEC-06 | Phase 50 | Pending |
+| SPEC-07 | Phase 50 | Pending |
+| VEC-01 | Phase 51 | Pending |
+| VEC-02 | Phase 51 | Pending |
+| VEC-03 | Phase 51 | Pending |
+| VEC-04 | Phase 51 | Pending |
+| VEC-05 | Phase 51 | Pending |
+| VEC-06 | Phase 51 | Pending |
+| TSCONF-01 | Phase 52 | Pending |
+| TSCONF-02 | Phase 52 | Pending |
+| PYV-01 | Phase 53 | Pending |
+| PYV-02 | Phase 53 | Pending |
+| PYV-03 | Phase 53 | Pending |
+| PYV-04 | Phase 53 | Pending |
+| PYR-01 | Phase 54 | Pending |
+| PYR-02 | Phase 54 | Pending |
+| PYM-01 | Phase 55 | Pending |
+| PYM-02 | Phase 55 | Pending |
+| PYM-03 | Phase 55 | Pending |
+| PARITY-01 | Phase 56 | Pending |
+| PARITY-02 | Phase 56 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 26 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 26 (filled during roadmap creation)
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-24*
-*Last updated: 2026-06-24 after initial definition*
+*Last updated: 2026-06-24 — traceability filled by roadmapper*
