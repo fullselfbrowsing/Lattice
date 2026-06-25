@@ -65,7 +65,11 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
   3. The spec contains a worked byte-level PAE example, mandates standard base64 (RFC 4648 §4) for `payload` and `sig`, and specifies base64url only for JWK `d`/`x` fields
   4. Three machine-checkable JSON Schema files (`spec/schema/v1.1.json`, `v1.2.json`, `v1.3.json`) exist and a `spec/CHANGELOG.md` records per-version deltas
   5. The spec enumerates the accepted version set (v1.1, v1.2, v1.3), states the downgrade-defense rule (reject `lattice-receipt/v1` and absent version before any crypto), and defines the complete `VerifyErrorKind` taxonomy
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 50-01-PLAN.md — Generate vector #0 script + committed fixture (wave 1)
+- [ ] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
+- [ ] 50-03-PLAN.md — Author JSON Schema files v1.1/v1.2/v1.3 + CHANGELOG.md (wave 2, parallel)
 
 ### Phase 51: Conformance Vector Generator + Committed Vectors
 **Goal**: Cross-language golden conformance vectors are committed to the repo, generated once from a fixed keypair and timestamps, and integrity-protected by a SHA manifest
@@ -130,7 +134,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 50. Protocol Specification | 0/TBD | Not started | - |
+| 50. Protocol Specification | 0/3 | Not started | - |
 | 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
