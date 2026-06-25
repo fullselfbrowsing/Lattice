@@ -45,7 +45,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 ## Active Milestone: v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client
 
-- [~] **Phase 50: Protocol Specification** - Versioned, normative `spec/SPEC.md` with machine-checkable JSON Schema files, resolving the two spec-precision blockers (`outputHash` algorithm and vector field schema) — Plan 01 complete (1/3 plans)
+- [x] **Phase 50: Protocol Specification** - Versioned, normative `spec/SPEC.md` with machine-checkable JSON Schema files, resolving the two spec-precision blockers (`outputHash` algorithm and vector field schema) — Complete (3/3 plans, 2026-06-25)
 - [ ] **Phase 51: Conformance Vector Generator + Committed Vectors** - Flag-gated TS generator producing positive, negative, and mint vectors across all three schema versions, committed with SHA manifest
 - [ ] **Phase 52: TypeScript Self-Verification Harness** - Private vitest harness asserting byte-identity at every pipeline step against all committed vectors, CI skeleton wired
 - [ ] **Phase 53: Python Verify** - `lattice_receipt` Python client with `verify()`, downgrade defense, and a pytest conformance harness passing all positive and negative vectors

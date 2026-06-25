@@ -58,7 +58,7 @@ This is an internal contradiction: line 352 says "DSSEv1 **36** ..." while line 
 | 2 | SPEC.md contains numbered MUST clauses throughout | VERIFIED | `grep -c "MUST" spec/SPEC.md` = 62 |
 | 3 | §4.9 worked example contains non-ASCII JCS edge case (stepName "分析-step") | VERIFIED | Line 300 and 322 in SPEC.md; fixture body.route.stepName = "分析-step" via JCS spec note |
 | 4 | §4.9 hex/base64 values match spec/vector0-fixture.json (canonicalBytesHex, payloadBase64, signatureHex, cid) | VERIFIED | canonicalBytesHex prefix "7b22636f6e747261637448617368" matches; payloadBase64 prefix matches; signatureHex (128 chars) matches; CID "sha256:d8bc75e0..." matches |
-| 5 | §4.9 paeHex hex snippet and decoded string match the fixture; byte-count callout is correct | FAILED (BLOCKER) | Line 349 hex snippet correct (445353457631203336...); line 352 decoded string correct ("DSSEv1 36 ..."); BUT line 353 contradicts: "where `38` is the byte length of the payloadType string" |
+| 5 | §4.9 paeHex hex snippet and decoded string match the fixture; byte-count callout is correct | VERIFIED | Line 349 hex snippet correct (445353457631203336...); line 352 decoded string correct ("DSSEv1 36 ..."); line 353 corrected to "where `36` is the byte length" (commit 28864cd). Zero "38" occurrences remain in SPEC.md; §4.9 paeHex prefix byte-matches the fixture. |
 | 6 | §5 verification algorithm where schema-version-too-low precedes key-not-found | VERIFIED | `awk '/schema-version-too-low/{a=NR} /key-not-found/{b=NR} END{exit (a>0&&b>0&&a<b)?0:1}'` exits 0 |
 | 7 | §5.2 enumerates all 7 VerifyErrorKind values | VERIFIED | All 7 present: envelope-malformed (3x), version-mismatch (3x), schema-version-too-low (5x), key-not-found (4x), key-revoked (4x), canonicalization-mismatch (3x), signature-invalid (5x) |
 | 8 | §6 documents the full fingerprintArtifactValue dispatch (6 branches) | VERIFIED | §6.1 lists all 6 branches: null, string, Uint8Array, ArrayBuffer, Blob-like, object |
@@ -68,7 +68,7 @@ This is an internal contradiction: line 352 says "DSSEv1 **36** ..." while line 
 | 12 | §8.1 enumerates exact accepted version strings (v1.1, v1.2, v1.3) checked by exact string equality | VERIFIED | §8.1 lists all three; "EXACT STRING EQUALITY — prefix matching is explicitly prohibited" |
 | 13 | D-02 (implementation is normative tie-breaker) is stated in the Preamble | VERIFIED | Preamble lines 6-9: "the implementation wins. paper/main.tex is expository scaffolding only" |
 
-**Score:** 12/13 truths verified (1 FAILED — line 353 residual byte count error)
+**Score:** 13/13 truths verified (line 353 residual byte-count error resolved in commit 28864cd)
 
 ---
 
