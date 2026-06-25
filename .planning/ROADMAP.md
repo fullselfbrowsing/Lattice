@@ -83,7 +83,16 @@ Plans:
   2. Committed positive vectors cover schema versions v1.1, v1.2, and v1.3; committed negative/adversarial vectors cover every `VerifyErrorKind` (tampered payload, wrong `kid`, bad signature, `v1` downgrade, absent version, malformed envelope, and remaining kinds)
   3. At least two positive vectors are cross-checked against RFC 8785 reference test data, proving TS JCS canonicalization is spec-compliant rather than self-consistent
   4. `conformance/vectors/MANIFEST.sha256` exists and running `sha256sum --check` against it passes cleanly; any modification to a vector file breaks the manifest check
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+- [ ] 51-01-PLAN.md — Workspace scaffold: register conformance/* in pnpm-workspace.yaml, private @lattice-conformance/generate package with ajv deps, ConformanceVector type (VEC-01), --regen-vectors no-op gate (VEC-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 51-02-PLAN.md — Positive vector generator: RFC 8785 cross-checks (VEC-05), v1.1/v1.2/v1.3 positive vectors with ajv schema validation, vec-00 byte-identity against Phase 50 fixture (VEC-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 51-03-PLAN.md — Negative vector generator (9 adversarial constructions, all 7 VerifyErrorKind) + MANIFEST.sha256 writer written last (VEC-04, VEC-06)
 
 ### Phase 52: TypeScript Self-Verification Harness
 **Goal**: The TypeScript reference implementation proves the committed vectors are correct by asserting byte-identity at every pipeline step before any Python client depends on them
@@ -138,7 +147,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 50. Protocol Specification | 3/3 | Complete    | 2026-06-25 |
-| 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
+| 51. Conformance Vector Generator + Committed Vectors | 0/3 | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
 | 54. Python Replay | 0/TBD | Not started | - |
