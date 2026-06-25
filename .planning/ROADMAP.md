@@ -46,7 +46,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 ## Active Milestone: v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client
 
 - [x] **Phase 50: Protocol Specification** - Versioned, normative `spec/SPEC.md` with machine-checkable JSON Schema files, resolving the two spec-precision blockers (`outputHash` algorithm and vector field schema) — Complete (3/3 plans, 2026-06-25)
-- [ ] **Phase 51: Conformance Vector Generator + Committed Vectors** - Flag-gated TS generator producing positive, negative, and mint vectors across all three schema versions, committed with SHA manifest
+- [x] **Phase 51: Conformance Vector Generator + Committed Vectors** - Flag-gated TS generator producing positive, negative, and mint vectors across all three schema versions, committed with SHA manifest (completed 2026-06-25)
 - [ ] **Phase 52: TypeScript Self-Verification Harness** - Private vitest harness asserting byte-identity at every pipeline step against all committed vectors, CI skeleton wired
 - [ ] **Phase 53: Python Verify** - `lattice_receipt` Python client with `verify()`, downgrade defense, and a pytest conformance harness passing all positive and negative vectors
 - [ ] **Phase 54: Python Replay** - `replay()` in the Python client computing `outputHash` byte-identically to the spec, with replay conformance vectors passing
@@ -92,7 +92,7 @@ Plans:
 - [x] 51-02-PLAN.md — Positive vector generator: RFC 8785 cross-checks (VEC-05), v1.1/v1.2/v1.3 positive vectors with ajv schema validation, vec-00 byte-identity against Phase 50 fixture (VEC-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 51-03-PLAN.md — Negative vector generator (9 adversarial constructions, all 7 VerifyErrorKind) + MANIFEST.sha256 writer written last (VEC-04, VEC-06)
+- [x] 51-03-PLAN.md — Negative vector generator (9 adversarial constructions, all 7 VerifyErrorKind) + MANIFEST.sha256 writer written last (VEC-04, VEC-06)
 
 ### Phase 52: TypeScript Self-Verification Harness
 **Goal**: The TypeScript reference implementation proves the committed vectors are correct by asserting byte-identity at every pipeline step before any Python client depends on them
@@ -147,7 +147,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 50. Protocol Specification | 3/3 | Complete    | 2026-06-25 |
-| 51. Conformance Vector Generator + Committed Vectors | 2/3 | In Progress|  |
+| 51. Conformance Vector Generator + Committed Vectors | 3/3 | Complete   | 2026-06-25 |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
 | 54. Python Replay | 0/TBD | Not started | - |

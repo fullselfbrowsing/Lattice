@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Polyglot Receipt Protocol + Conformance Vectors + Python Client
 status: executing
 stopped_at: Phase 50 Plan 01 complete
-last_updated: "2026-06-25T11:20:01.937Z"
+last_updated: "2026-06-25T12:44:35.883Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-24)
 ## Current Position
 
 Phase: 51 (Conformance Vector Generator + Committed Vectors) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -134,9 +134,13 @@ Items deferred at v1.4 milestone close (2026-06-16) that carry forward to v1.5 (
 
 (v1.4 and earlier — see v1.4 STATE.md archive for full log)
 
+| Date | Task | Outcome |
+|------|------|---------|
+| 2026-06-25 | publish-readme-data-to-npm-package-pages | Added package-local npm READMEs for runtime and CLI packages, explicit README packing, and a tarball README gate. |
+
 ## Session Continuity
 
-Last session: 2026-06-25T11:20:01.933Z
+Last session: 2026-06-25T12:44:35.879Z
 Stopped at: Phase 50 Plan 01 complete
 Resume: `/gsd-execute-phase 50 02`
 
