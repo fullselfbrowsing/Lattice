@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Polyglot Receipt Protocol + Conformance Vectors + Python Client
 status: executing
-stopped_at: Phase 50 context gathered
-last_updated: "2026-06-25T09:17:06.846Z"
-last_activity: 2026-06-25 -- Phase 50 planning complete
+stopped_at: Phase 50 Plan 01 complete
+last_updated: "2026-06-25T10:00:00.000Z"
+last_activity: 2026-06-25 -- Phase 50 Plan 01 executed (vector #0 generator + fixture)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 4
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** v1.5 — Phases 50–56. Promote the receipt protocol to a language-neutral spec, commit conformance vectors, and ship the Python reference client (verify + replay + mint).
+**Current focus:** Phase 50 — Protocol Specification
 
 ## Current Position
 
-Phase: Phase 50 (not started)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-06-25 -- Phase 50 planning complete
+Phase: 50 (Protocol Specification) — EXECUTING
+Plan: 2 of 3
+Status: Phase 50 Plan 01 complete; executing Phase 50 Plan 02
+Last activity: 2026-06-25 -- Phase 50 Plan 01 complete (spec/generate-vector0.ts + spec/vector0-fixture.json)
 
 ```
-v1.5 Progress: [                                        ] 0% (0/7 phases)
+v1.5 Progress: [==                                      ] 4% (1/3 plans in Phase 50, 0/7 phases complete)
 ```
 
 ## Performance Metrics
@@ -56,6 +56,12 @@ v1.5 Progress: [                                        ] 0% (0/7 phases)
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+
+**v1.5 Phase 50 Plan 01 decisions:**
+
+- [tsx added to workspace root]: tsx ^4.22.4 added to root devDependencies so `pnpm exec tsx` works from repo root without a `spec/package.json`. First cold run requires `--no-cache` due to pnpm symlink resolution; subsequent runs are cached.
+- [TripwireEvidence full fields required]: The `TripwireEvidence` interface requires `invariantId`, `kind`, `path`, `observed`, and `message` — the generator body includes all fields to satisfy TypeScript's strict types.
+- [vector #0 fixture CID locked]: `sha256:d8bc75e07072455cd8d234d86e2b7d7444ef5233ad71e62586ac7a358ae0cf63` — committed as Phase 51 vector #0 CID reference.
 
 **v1.5 key decisions (recorded at roadmap creation):**
 
@@ -119,6 +125,7 @@ Items deferred at v1.4 milestone close (2026-06-16) that carry forward to v1.5 (
 | Phase 44 P02 | 5min | 2 tasks | 2 files |
 | Phase 44 P03 | 4min | 2 tasks | 2 files |
 | Phase 44 P04 | 3min | 3 tasks | 3 files |
+| Phase 50 P01 | 15 min | 2 tasks | 4 files |
 
 ## Quick Tasks Completed
 
@@ -126,10 +133,10 @@ Items deferred at v1.4 milestone close (2026-06-16) that carry forward to v1.5 (
 
 ## Session Continuity
 
-Last session: 2026-06-25T08:27:40.341Z
-Stopped at: Phase 50 context gathered
-Resume: `/gsd-plan-phase 50`
+Last session: 2026-06-25T10:00:00.000Z
+Stopped at: Phase 50 Plan 01 complete
+Resume: `/gsd-execute-phase 50 02`
 
 ## Operator Next Steps
 
-- Plan Phase 50 with `/gsd-plan-phase 50`
+- Execute Phase 50 Plan 02 with `/gsd-execute-phase 50 02`

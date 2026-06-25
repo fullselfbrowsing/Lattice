@@ -45,7 +45,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 
 ## Active Milestone: v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client
 
-- [ ] **Phase 50: Protocol Specification** - Versioned, normative `spec/SPEC.md` with machine-checkable JSON Schema files, resolving the two spec-precision blockers (`outputHash` algorithm and vector field schema)
+- [~] **Phase 50: Protocol Specification** - Versioned, normative `spec/SPEC.md` with machine-checkable JSON Schema files, resolving the two spec-precision blockers (`outputHash` algorithm and vector field schema) — Plan 01 complete (1/3 plans)
 - [ ] **Phase 51: Conformance Vector Generator + Committed Vectors** - Flag-gated TS generator producing positive, negative, and mint vectors across all three schema versions, committed with SHA manifest
 - [ ] **Phase 52: TypeScript Self-Verification Harness** - Private vitest harness asserting byte-identity at every pipeline step against all committed vectors, CI skeleton wired
 - [ ] **Phase 53: Python Verify** - `lattice_receipt` Python client with `verify()`, downgrade defense, and a pytest conformance harness passing all positive and negative vectors
@@ -68,7 +68,7 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
 **Plans**: 3 plans
 Plans:
 **Wave 1**
-- [ ] 50-01-PLAN.md — Generate vector #0 script + committed fixture (wave 1)
+- [x] 50-01-PLAN.md — Generate vector #0 script + committed fixture (wave 1) — COMPLETE (2026-06-25)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
@@ -137,7 +137,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 50. Protocol Specification | 0/3 | Not started | - |
+| 50. Protocol Specification | 1/3 | In Progress | - |
 | 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
