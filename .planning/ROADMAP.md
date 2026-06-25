@@ -71,7 +71,7 @@ Plans:
 - [x] 50-01-PLAN.md — Generate vector #0 script + committed fixture (wave 1) — COMPLETE (2026-06-25)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
+- [x] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
 - [ ] 50-03-PLAN.md — Author JSON Schema files v1.1/v1.2/v1.3 + CHANGELOG.md (wave 2, parallel)
 
 ### Phase 51: Conformance Vector Generator + Committed Vectors
@@ -137,7 +137,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 50. Protocol Specification | 1/3 | In Progress | - |
+| 50. Protocol Specification | 2/3 | In Progress|  |
 | 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
