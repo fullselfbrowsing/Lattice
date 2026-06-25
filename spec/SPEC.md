@@ -470,8 +470,8 @@ Ordering guarantee: `schema-version-too-low` (step 4) precedes `key-not-found` (
 
 ### § 6.1  Normative Type-Dispatch
 
-`outputHash` is computed by the `fingerprintArtifactValue` function
-(`packages/lattice/src/storage/fingerprint.ts`). The dispatch is:
+`outputHash` is computed by the `fingerprintArtifactValue` type-dispatch function
+(`packages/lattice/src/storage/fingerprint.ts`). The type-dispatch is:
 
 1. **null branch:** If `outputs` is `undefined` or `null`, then `outputHash = null`.
 
