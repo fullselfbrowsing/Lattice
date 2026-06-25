@@ -3,15 +3,20 @@
  *
  * VEC-02: Validates the --regen-vectors flag gate no-op behaviour.
  * VEC-01: Validates the ConformanceVector type shape at compile time.
+ * VEC-03: Validates positive vectors cover v1.1, v1.2, v1.3 (one per version).
+ * VEC-05: Validates RFC 8785 cross-checks run and pass.
  */
 
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import type { ConformanceVector } from "./types.js";
 import { VERIFY_ERROR_KINDS } from "./types.js";
+import { generatePositiveVectors } from "./positive.js";
+import { runRFC8785CrossChecks } from "./rfc8785-check.js";
 
 // ---------------------------------------------------------------------------
 // Derive paths relative to this test file so tests remain portable.
@@ -20,7 +25,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // conformance/generate/src/ -> conformance/generate/ -> conformance/ -> repo root
 const PACKAGE_ROOT = dirname(__dirname);
+const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
 const MAIN_TS = join(PACKAGE_ROOT, "src", "main.ts");
+const VECTORS_POSITIVE_DIR = join(REPO_ROOT, "conformance", "vectors", "positive");
+
+// Load the Phase 50 fixture for vec-00 byte-identity check
+const FIXTURE_PATH = join(REPO_ROOT, "spec", "vector0-fixture.json");
+const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
+  canonicalBytesHex: string;
+  payloadBase64: string;
+  paeHex: string;
+  signatureHex: string;
+  publicKeyJwk: JsonWebKey;
+  kid?: string;
+};
 
 // ---------------------------------------------------------------------------
 // Test 1 (VEC-02): No-op without --regen-vectors flag
@@ -147,5 +165,105 @@ describe("VERIFY_ERROR_KINDS", () => {
     expect(VERIFY_ERROR_KINDS).toContain("key-revoked");
     expect(VERIFY_ERROR_KINDS).toContain("canonicalization-mismatch");
     expect(VERIFY_ERROR_KINDS).toContain("signature-invalid");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 4 (VEC-05): RFC 8785 cross-checks pass.
+//
+// runRFC8785CrossChecks() must not throw. A wrong §3.2.4 hex constant causes
+// this test to fail — proving the library is RFC 8785-compliant.
+// ---------------------------------------------------------------------------
+describe("VEC-05 — RFC 8785 cross-checks", () => {
+  it("runRFC8785CrossChecks() does not throw", () => {
+    expect(() => runRFC8785CrossChecks()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 5 (VEC-03): Positive vectors cover v1.1, v1.2, v1.3 (one per version).
+//
+// Calls generatePositiveVectors() and validates the version fields, expected
+// results, and count.
+// ---------------------------------------------------------------------------
+describe("VEC-03 — positive vector version coverage", () => {
+  it("generates exactly 3 positive vectors (v1.3, v1.1, v1.2)", async () => {
+    const vecs = await generatePositiveVectors();
+    expect(vecs).toHaveLength(3);
+
+    // vec-00: v1.3
+    expect(vecs[0]?.body["version"]).toBe("lattice-receipt/v1.3");
+    expect(vecs[0]?.expectedResult).toBe("ok");
+
+    // vec-01: v1.1
+    expect(vecs[1]?.body["version"]).toBe("lattice-receipt/v1.1");
+    expect(vecs[1]?.expectedResult).toBe("ok");
+
+    // vec-02: v1.2
+    expect(vecs[2]?.body["version"]).toBe("lattice-receipt/v1.2");
+    expect(vecs[2]?.expectedResult).toBe("ok");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 6 (vec-00 byte-identity): canonicalBytesHex must match spec/vector0-fixture.json
+// ---------------------------------------------------------------------------
+describe("vec-00 byte-identity", () => {
+  it("vec-00 canonicalBytesHex is byte-identical to spec/vector0-fixture.json", async () => {
+    const vecs = await generatePositiveVectors();
+    const vec00 = vecs[0];
+    expect(vec00).toBeDefined();
+    expect(vec00!.canonicalBytesHex).toBe(fixture.canonicalBytesHex);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 7 (schema validation): v1.1 body must NOT have modelClass; v1.2 MUST.
+// ---------------------------------------------------------------------------
+describe("schema field validation", () => {
+  it("vec-01 (v1.1) body does not contain modelClass", async () => {
+    const vecs = await generatePositiveVectors();
+    const vec01 = vecs[1];
+    expect(vec01).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(vec01!.body, "modelClass")).toBe(false);
+  });
+
+  it("vec-02 (v1.2) body contains modelClass: frontier_rlhf", async () => {
+    const vecs = await generatePositiveVectors();
+    const vec02 = vecs[2];
+    expect(vec02).toBeDefined();
+    expect(vec02!.body["modelClass"]).toBe("frontier_rlhf");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 8 (file write): conformance/vectors/positive/ contains exactly 3 files.
+//
+// This test is intentionally skipped if the vectors haven't been written yet
+// (first run before main.ts --regen-vectors). After generation it asserts the
+// expected file names exist.
+// ---------------------------------------------------------------------------
+describe("file write — positive vectors", () => {
+  it("conformance/vectors/positive/ contains exactly 3 named vector files", () => {
+    // The generator must have been run (Task 2 action runs it before this test
+    // is expected to pass). If directory doesn't exist, this test fails cleanly.
+    const vec00Path = join(VECTORS_POSITIVE_DIR, "vec-00-v1.3.json");
+    const vec01Path = join(VECTORS_POSITIVE_DIR, "vec-01-v1.1.json");
+    const vec02Path = join(VECTORS_POSITIVE_DIR, "vec-02-v1.2.json");
+
+    expect(existsSync(vec00Path), `Missing: ${vec00Path}`).toBe(true);
+    expect(existsSync(vec01Path), `Missing: ${vec01Path}`).toBe(true);
+    expect(existsSync(vec02Path), `Missing: ${vec02Path}`).toBe(true);
+  });
+
+  it("vec-00-v1.3.json on disk matches fixture canonicalBytesHex", () => {
+    const vec00Path = join(VECTORS_POSITIVE_DIR, "vec-00-v1.3.json");
+    if (!existsSync(vec00Path)) {
+      // Vectors not yet written — skip gracefully with informative message
+      console.warn("SKIP: vec-00-v1.3.json not yet written; run --regen-vectors first");
+      return;
+    }
+    const vec00 = JSON.parse(readFileSync(vec00Path, "utf8")) as ConformanceVector;
+    expect(vec00.canonicalBytesHex).toBe(fixture.canonicalBytesHex);
   });
 });
