@@ -137,7 +137,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 50. Protocol Specification | 3/3 | Complete   | 2026-06-25 |
+| 50. Protocol Specification | 3/3 | Complete    | 2026-06-25 |
 | 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
