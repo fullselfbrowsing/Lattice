@@ -791,15 +791,13 @@ The planner must schedule a generation task. Here is what it needs to produce:
 
 ## Open Questions
 
-1. **outputHash: bare hex or `sha256:<hex>`?**
-   - What we know: `fingerprintArtifactValue` returns `{ algorithm: "sha256", value: toHex(...) }` where `toHex` returns bare lowercase hex (64 chars). The call site at `create-ai.ts` line 1241 takes `.value` (bare hex). But D-07 lists `sha256:` fields as `parentReceiptCid`, `lineageMerkleRoot` — not `outputHash`.
-   - What's unclear: whether there is any wrapper that prepends `sha256:` before storing in the receipt body.
-   - Recommendation: Run `pnpm test` for `receipt.test.ts` or `canonical.test.ts` and print an actual minted receipt body to observe `outputHash` value. The JSON Schema `outputHash` pattern must match observation. The spec author must resolve this before writing §6 and `spec/schema/v1.3.json`.
+1. **outputHash: bare hex or `sha256:<hex>`?** — ✅ **RESOLVED (orchestrator, 2026-06-25): bare 64-char lowercase hex, NO `sha256:` prefix.**
+   - `fingerprintArtifactValue` returns `{ algorithm: "sha256", value: toHex(...) }` (bare hex); the call site `create-ai.ts:1241` stores `.value` directly. No wrapper prepends `sha256:`. Only CID (`receiptCid`) and the `parentReceiptCid`/`lineageMerkleRoot` fields carry the `sha256:` prefix.
+   - **Action for planner:** `outputHash` and each `inputHashes[]` entry use JSON Schema pattern `^[0-9a-f]{64}$` (or `null` for `outputHash`). The CID/lineage fields use `^sha256:[0-9a-f]{64}$`.
 
-2. **modelClass enum values**
-   - What we know: `CapabilityReceiptBody.modelClass?: TrainingClass` — the type is from `capabilities/profile.ts`.
-   - What's unclear: the exact string values of `TrainingClass` (e.g. `"frontier_rlhf"`, `"local_quantized"`, etc.).
-   - Recommendation: Read `packages/lattice/src/capabilities/profile.ts` at plan time and enumerate all values for the JSON Schema `enum`.
+2. **modelClass enum values** — ✅ **RESOLVED (orchestrator, 2026-06-25).**
+   - `TrainingClass` (`packages/lattice/src/capabilities/profile.ts:61-66`) = exactly 5 values: `"frontier_rlhf"`, `"mid_tier_rlhf"`, `"open_weight_instruct"`, `"open_weight_base"`, `"local_quantized"`.
+   - **Action for planner:** v1.2.json and v1.3.json `modelClass` field → `{ "type": "string", "enum": ["frontier_rlhf","mid_tier_rlhf","open_weight_instruct","open_weight_base","local_quantized"] }` (optional; not in v1.1.json).
 
 3. **Phase 50 generator vs Phase 51 generator (D-05)**
    - What we know: D-05 says the Phase 50 example becomes vector #0 of Phase 51. The planner must decide: throwaway or pulled-forward.
