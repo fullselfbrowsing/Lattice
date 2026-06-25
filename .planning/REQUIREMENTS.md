@@ -20,8 +20,8 @@ Requirements for this milestone. Each maps to a roadmap phase. The hard dependen
 
 ### Vectors — Cross-language conformance vectors
 
-- [ ] **VEC-01**: A committed vector JSON schema defines each vector's fields (input body, expected canonical-bytes hex, payload base64, PAE hex, signature hex, public-key JWK, `kid`, expected result) so any client consumes the same fixtures.
-- [ ] **VEC-02**: A TypeScript generator produces golden vectors from the reference implementation using a fixed committed test keypair and fixed timestamps, runnable only as a deliberate flag-gated developer action — never at CI time.
+- [x] **VEC-01**: A committed vector JSON schema defines each vector's fields (input body, expected canonical-bytes hex, payload base64, PAE hex, signature hex, public-key JWK, `kid`, expected result) so any client consumes the same fixtures.
+- [x] **VEC-02**: A TypeScript generator produces golden vectors from the reference implementation using a fixed committed test keypair and fixed timestamps, runnable only as a deliberate flag-gated developer action — never at CI time.
 - [ ] **VEC-03**: Committed positive vectors cover every accepted schema version (v1.1, v1.2, v1.3).
 - [ ] **VEC-04**: Committed negative / adversarial vectors cover every `VerifyErrorKind` (tampered payload, wrong `kid`, bad signature, `v1` downgrade, absent version, malformed envelope, and the remaining kinds).
 - [ ] **VEC-05**: At least two positive vectors are cross-checked against RFC 8785 reference test data, proving canonicalization is spec-compliant rather than merely self-consistent.
@@ -103,8 +103,8 @@ Which phases cover which requirements. Phase numbers continue from v1.4 (phases 
 | SPEC-05 | Phase 50 | Complete |
 | SPEC-06 | Phase 50 | Complete |
 | SPEC-07 | Phase 50 | Complete |
-| VEC-01 | Phase 51 | Pending |
-| VEC-02 | Phase 51 | Pending |
+| VEC-01 | Phase 51 | Complete |
+| VEC-02 | Phase 51 | Complete |
 | VEC-03 | Phase 51 | Pending |
 | VEC-04 | Phase 51 | Pending |
 | VEC-05 | Phase 51 | Pending |
