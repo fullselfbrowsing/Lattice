@@ -72,7 +72,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
-- [ ] 50-03-PLAN.md — Author JSON Schema files v1.1/v1.2/v1.3 + CHANGELOG.md (wave 2, parallel)
+- [x] 50-03-PLAN.md — Author JSON Schema files v1.1/v1.2/v1.3 + CHANGELOG.md (wave 2, parallel)
 
 ### Phase 51: Conformance Vector Generator + Committed Vectors
 **Goal**: Cross-language golden conformance vectors are committed to the repo, generated once from a fixed keypair and timestamps, and integrity-protected by a SHA manifest
@@ -137,7 +137,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 50. Protocol Specification | 2/3 | In Progress|  |
+| 50. Protocol Specification | 3/3 | Complete   | 2026-06-25 |
 | 51. Conformance Vector Generator + Committed Vectors | 0/TBD | Not started | - |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |

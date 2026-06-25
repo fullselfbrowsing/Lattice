@@ -16,7 +16,7 @@ Requirements for this milestone. Each maps to a roadmap phase. The hard dependen
 - [x] **SPEC-04**: The spec normatively defines the exact `outputHash` algorithm (serialization + hash function), resolved by reading the live TS `materialize`/receipt implementation.
 - [x] **SPEC-05**: The spec defines the CID format (`sha256:<lowercase-hex>` over the DSSE payload bytes) and the `kid` / KeySet key model with JWK OKP (RFC 8037) key encoding.
 - [x] **SPEC-06**: The spec enumerates the accepted schema-version set (`lattice-receipt/v1.1`, `v1.2`, `v1.3`), the downgrade-defense rule (reject `v1` and absent version before any crypto), and the verification algorithm with its complete error-kind taxonomy.
-- [ ] **SPEC-07**: The spec is versioned with a `CHANGELOG.md` and machine-checkable JSON Schema files (`spec/schema/v1.1.json`, `v1.2.json`, `v1.3.json`) that the vector generator validates bodies against.
+- [x] **SPEC-07**: The spec is versioned with a `CHANGELOG.md` and machine-checkable JSON Schema files (`spec/schema/v1.1.json`, `v1.2.json`, `v1.3.json`) that the vector generator validates bodies against.
 
 ### Vectors — Cross-language conformance vectors
 
@@ -102,7 +102,7 @@ Which phases cover which requirements. Phase numbers continue from v1.4 (phases 
 | SPEC-04 | Phase 50 | Complete |
 | SPEC-05 | Phase 50 | Complete |
 | SPEC-06 | Phase 50 | Complete |
-| SPEC-07 | Phase 50 | Pending |
+| SPEC-07 | Phase 50 | Complete |
 | VEC-01 | Phase 51 | Pending |
 | VEC-02 | Phase 51 | Pending |
 | VEC-03 | Phase 51 | Pending |
