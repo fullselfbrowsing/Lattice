@@ -3,7 +3,8 @@
   "compilerOptions": {
     "moduleResolution": "Bundler",
     "outDir": "dist",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }
