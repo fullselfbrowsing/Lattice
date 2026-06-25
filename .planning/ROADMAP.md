@@ -67,7 +67,10 @@ Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, det
   5. The spec enumerates the accepted version set (v1.1, v1.2, v1.3), states the downgrade-defense rule (reject `lattice-receipt/v1` and absent version before any crypto), and defines the complete `VerifyErrorKind` taxonomy
 **Plans**: 3 plans
 Plans:
+**Wave 1**
 - [ ] 50-01-PLAN.md — Generate vector #0 script + committed fixture (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 50-02-PLAN.md — Author spec/SPEC.md normative prose §1–§9 + Appendix A (wave 2)
 - [ ] 50-03-PLAN.md — Author JSON Schema files v1.1/v1.2/v1.3 + CHANGELOG.md (wave 2, parallel)
 

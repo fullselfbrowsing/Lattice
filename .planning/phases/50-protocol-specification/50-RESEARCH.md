@@ -789,7 +789,7 @@ The planner must schedule a generation task. Here is what it needs to produce:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **outputHash: bare hex or `sha256:<hex>`?** — ✅ **RESOLVED (orchestrator, 2026-06-25): bare 64-char lowercase hex, NO `sha256:` prefix.**
    - `fingerprintArtifactValue` returns `{ algorithm: "sha256", value: toHex(...) }` (bare hex); the call site `create-ai.ts:1241` stores `.value` directly. No wrapper prepends `sha256:`. Only CID (`receiptCid`) and the `parentReceiptCid`/`lineageMerkleRoot` fields carry the `sha256:` prefix.
@@ -799,7 +799,7 @@ The planner must schedule a generation task. Here is what it needs to produce:
    - `TrainingClass` (`packages/lattice/src/capabilities/profile.ts:61-66`) = exactly 5 values: `"frontier_rlhf"`, `"mid_tier_rlhf"`, `"open_weight_instruct"`, `"open_weight_base"`, `"local_quantized"`.
    - **Action for planner:** v1.2.json and v1.3.json `modelClass` field → `{ "type": "string", "enum": ["frontier_rlhf","mid_tier_rlhf","open_weight_instruct","open_weight_base","local_quantized"] }` (optional; not in v1.1.json).
 
-3. **Phase 50 generator vs Phase 51 generator (D-05)**
+3. **Phase 50 generator vs Phase 51 generator (D-05)** — ✅ **RESOLVED (planner, 2026-06-25): throwaway script.** Plan 50-01 creates `spec/generate-vector0.ts` as a throwaway generator with a fixed committed test keypair + fixed timestamps; Phase 51 reuses that fixture/keypair as its vector #0. See `50-01-PLAN.md`.
    - What we know: D-05 says the Phase 50 example becomes vector #0 of Phase 51. The planner must decide: throwaway or pulled-forward.
    - Recommendation: Throwaway script in `spec/generate-vector0.ts` with the same fixed keypair and body that Phase 51's generator will use for vector #0. Document the fixed keypair in a separate file (`spec/vector0-keypair.json`) committed to the repo (this is test/example key material, NOT production key material). Phase 51 imports this keypair as its vector #0 fixture.
 
