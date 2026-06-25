@@ -89,7 +89,7 @@ Plans:
 - [x] 51-01-PLAN.md — Workspace scaffold: register conformance/* in pnpm-workspace.yaml, private @lattice-conformance/generate package with ajv deps, ConformanceVector type (VEC-01), --regen-vectors no-op gate (VEC-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 51-02-PLAN.md — Positive vector generator: RFC 8785 cross-checks (VEC-05), v1.1/v1.2/v1.3 positive vectors with ajv schema validation, vec-00 byte-identity against Phase 50 fixture (VEC-03)
+- [x] 51-02-PLAN.md — Positive vector generator: RFC 8785 cross-checks (VEC-05), v1.1/v1.2/v1.3 positive vectors with ajv schema validation, vec-00 byte-identity against Phase 50 fixture (VEC-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 51-03-PLAN.md — Negative vector generator (9 adversarial constructions, all 7 VerifyErrorKind) + MANIFEST.sha256 writer written last (VEC-04, VEC-06)
@@ -147,7 +147,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 50. Protocol Specification | 3/3 | Complete    | 2026-06-25 |
-| 51. Conformance Vector Generator + Committed Vectors | 1/3 | In Progress|  |
+| 51. Conformance Vector Generator + Committed Vectors | 2/3 | In Progress|  |
 | 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
 | 54. Python Replay | 0/TBD | Not started | - |
