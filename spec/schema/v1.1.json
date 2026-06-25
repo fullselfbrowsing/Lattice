@@ -69,6 +69,7 @@
         "attemptNumber": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 9007199254740991,
           "$comment": "I-JSON safe integer (2^53-1). MUST be encoded as bare integer without fraction or exponent (5 not 5.0 or 5e0)."
         }
       }

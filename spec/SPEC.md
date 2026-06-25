@@ -168,8 +168,12 @@ normative prose (D-08).
 
 The files `spec/schema/v1.1.json`, `spec/schema/v1.2.json`, and `spec/schema/v1.3.json` are
 normative machine-checkable complements to this section. All three files use JSON Schema
-draft 2020-12 with `additionalProperties: false`. Where prose and schema disagree, prose
-wins.
+draft 2020-12, and the root receipt-body object and its structured sub-objects (`model`,
+`route`, `usage`) use `additionalProperties: false` — this is the drift/forgery gate for the
+receipt body's field set. The optional diagnostic payloads `tripwireEvidence` and the
+entries of `noRouteReasons` carry implementation-defined fields whose internal shape is
+outside the normative receipt-protocol surface; they are intentionally left open and are
+NOT closed with `additionalProperties: false`. Where prose and schema disagree, prose wins.
 
 ---
 
@@ -235,7 +239,7 @@ PAE = "DSSEv1 " + len(payloadType) + " " + payloadType
 ```
 
 Where:
-- `payloadType` is the literal string `"application/vnd.lattice.receipt+json"` (38 bytes).
+- `payloadType` is the literal string `"application/vnd.lattice.receipt+json"` (36 bytes).
 - `payloadBase64` is the base64 string from step 4.
 - `len(s)` is the ASCII decimal encoding of the byte length of `s`. For pure-ASCII strings,
   byte length equals character count.
@@ -342,10 +346,10 @@ eyJjb250cmFjdEhhc2giOm51bGwsImNvbnRyYWN0VmVyZGljdCI6InN1Y2Nlc3MiLCJpbnB1dEh...
 **Step 5 — PAE bytes (hex, first 80 chars):**
 
 ```
-445353457631203338206170706c69636174696f6e2f766e642e6c6174746963652e726563656970...
+445353457631203336206170706c69636174696f6e2f766e642e6c6174746963652e726563656970...
 ```
 
-The PAE prefix decodes to `"DSSEv1 38 application/vnd.lattice.receipt+json 1136 "`,
+The PAE prefix decodes to `"DSSEv1 36 application/vnd.lattice.receipt+json 1136 "`,
 where `38` is the byte length of the payloadType string and `1136` is the length of the
 base64 payload string.
 
