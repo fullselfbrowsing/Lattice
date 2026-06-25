@@ -22,6 +22,8 @@ import { dirname, join } from "node:path";
 
 import { runRFC8785CrossChecks } from "./rfc8785-check.js";
 import { generatePositiveVectors } from "./positive.js";
+import { generateNegativeVectors } from "./negative.js";
+import { writeManifest } from "./manifest.js";
 
 // ---------------------------------------------------------------------------
 // Flag gate — VEC-02 no-op path
@@ -50,16 +52,17 @@ console.log("[generate-vectors] Starting vector regeneration...");
 /**
  * Full vector generation logic.
  *
- * Order of operations:
+ * Order of operations (Plan 51-03 final pipeline):
  *   1. RFC 8785 cross-checks (VEC-05) — MUST pass before any file writes.
  *      A wrong §3.2.4 hex constant or library regression throws immediately.
  *   2. Create output directories (idempotent).
  *   3. Generate positive vectors (v1.3 vec-00, v1.1 vec-01, v1.2 vec-02).
  *      The vec-00 byte-identity assertion runs inside generatePositiveVectors().
  *   4. Write positive vector files.
- *   5. Log summary.
- *
- * Negative vectors + manifest will be added in Plan 51-03.
+ *   5. Generate negative vectors (9 adversarial constructions covering all 7 VerifyErrorKind).
+ *   6. Write negative vector files.
+ *   7. Write MANIFEST.sha256 (LAST — after ALL 12 vector files are on disk).
+ *      T-51-06: if any write fails before step 7, manifest is not written.
  */
 async function generate(): Promise<void> {
   // Step 1: RFC 8785 cross-checks — fail fast before any file writes (VEC-05)
@@ -89,9 +92,43 @@ async function generate(): Promise<void> {
     console.log(`[generate-vectors] Wrote: conformance/vectors/positive/${filename}`);
   }
 
-  // Step 5: Log summary
   console.log(`[generate-vectors] Wrote ${positiveVectors.length} positive vectors.`);
-  console.log("[generate-vectors] Negative vectors: pending (Plan 03).");
+
+  // Step 5: Generate negative vectors (VEC-04 — 9 constructions, all 7 kinds)
+  const negativeVectors = await generateNegativeVectors();
+
+  // Step 6: Write negative vector files
+  // File names follow the plan spec exactly:
+  const negativeFilenames = [
+    "neg-01-envelope-malformed.json",
+    "neg-02-version-mismatch.json",
+    "neg-03a-schema-version-too-low-v1.json",
+    "neg-03b-schema-version-too-low-absent.json",
+    "neg-04-key-not-found.json",
+    "neg-05-key-revoked.json",
+    "neg-06-canonicalization-mismatch.json",
+    "neg-07-signature-invalid-bad-sig.json",
+    "neg-08-signature-invalid-kid-mismatch.json",
+  ];
+
+  for (let i = 0; i < negativeVectors.length; i++) {
+    const vec = negativeVectors[i];
+    const filename = negativeFilenames[i];
+    if (vec === undefined || filename === undefined) continue;
+    const outPath = join(VECTORS_DIR, "negative", filename);
+    writeFileSync(outPath, JSON.stringify(vec, null, 2) + "\n", "utf8");
+    console.log(`[generate-vectors] Wrote: conformance/vectors/negative/${filename}`);
+  }
+
+  console.log(`[generate-vectors] Wrote ${negativeVectors.length} negative vectors.`);
+
+  // Step 7: Write MANIFEST.sha256 — LAST (T-51-06: only after all 12 files exist).
+  // writeManifest() self-verifies consistency before returning.
+  writeManifest(VECTORS_DIR);
+
+  console.log(
+    `[generate-vectors] Complete: ${positiveVectors.length} positive + ${negativeVectors.length} negative vectors written, MANIFEST.sha256 verified.`,
+  );
 }
 
 await generate();

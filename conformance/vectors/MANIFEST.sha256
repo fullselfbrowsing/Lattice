@@ -1,0 +1,12 @@
+591e9755fccba4f71a56e842bf1a7ffd0ba570bae11c9c4456e6d94633152f9b  negative/neg-01-envelope-malformed.json
+36b376dba420517cd82eb5d96e074b51fdb614074decc28fda8728bbffb5c7d6  negative/neg-02-version-mismatch.json
+0fec44e73bc3ab104e2562069888421cd122869c2709db6ae7dd379894ae2f9f  negative/neg-03a-schema-version-too-low-v1.json
+7ca22b2c1fdafae4a29410ab09e7983e9d71316a5ffdf956089e293617615242  negative/neg-03b-schema-version-too-low-absent.json
+b84498e76a8a1cb425d77223b8835d36a0db5993e5731aab14ae79d5a354f09e  negative/neg-04-key-not-found.json
+7f74d5a831541137ed9a26ce57c5edad4a76ad5360b5f6ac6c4dd324be731756  negative/neg-05-key-revoked.json
+ed9b9e234878eb2bc9ebe3b517f92188c795837f9e32cd9c9b6b2cda54244af7  negative/neg-06-canonicalization-mismatch.json
+92c6445d1b1b444e70f0005f893c2c0be53e462619d01a68a82b731bb625789e  negative/neg-07-signature-invalid-bad-sig.json
+da742bdac0f21d56c4d9d1ce7e4ad4e9d04a446bb66f818e51e2150573332866  negative/neg-08-signature-invalid-kid-mismatch.json
+b59743826c1037c77109368d8c447dcfd06fec2edab68225d9c2fb3ad4185a1e  positive/vec-00-v1.3.json
+d8d110efb61f77fe04cb75f4db7d0c52c68d6750d4005632f25d1334037ebacf  positive/vec-01-v1.1.json
+ecf564fc6bd8144d4a2881e1f0385b8485f22a7e106d1399d98047e925e564d7  positive/vec-02-v1.2.json
