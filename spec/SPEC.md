@@ -350,7 +350,7 @@ eyJjb250cmFjdEhhc2giOm51bGwsImNvbnRyYWN0VmVyZGljdCI6InN1Y2Nlc3MiLCJpbnB1dEh...
 ```
 
 The PAE prefix decodes to `"DSSEv1 36 application/vnd.lattice.receipt+json 1136 "`,
-where `38` is the byte length of the payloadType string and `1136` is the length of the
+where `36` is the byte length of the payloadType string and `1136` is the length of the
 base64 payload string.
 
 (Full hex: `spec/vector0-fixture.json` → `paeHex`)
