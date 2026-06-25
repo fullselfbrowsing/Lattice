@@ -5,17 +5,20 @@
  * VEC-01: Validates the ConformanceVector type shape at compile time.
  * VEC-03: Validates positive vectors cover v1.1, v1.2, v1.3 (one per version).
  * VEC-05: Validates RFC 8785 cross-checks run and pass.
+ * VEC-04: Validates negative vectors cover all 7 VerifyErrorKind values.
+ * VEC-06: Validates MANIFEST.sha256 passes sha256sum --check.
  */
 
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import type { ConformanceVector } from "./types.js";
 import { VERIFY_ERROR_KINDS } from "./types.js";
 import { generatePositiveVectors } from "./positive.js";
+import { generateNegativeVectors } from "./negative.js";
 import { runRFC8785CrossChecks } from "./rfc8785-check.js";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +31,8 @@ const PACKAGE_ROOT = dirname(__dirname);
 const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
 const MAIN_TS = join(PACKAGE_ROOT, "src", "main.ts");
 const VECTORS_POSITIVE_DIR = join(REPO_ROOT, "conformance", "vectors", "positive");
+const VECTORS_NEGATIVE_DIR = join(REPO_ROOT, "conformance", "vectors", "negative");
+const VECTORS_DIR = join(REPO_ROOT, "conformance", "vectors");
 
 // Load the Phase 50 fixture for vec-00 byte-identity check
 const FIXTURE_PATH = join(REPO_ROOT, "spec", "vector0-fixture.json");
@@ -265,5 +270,242 @@ describe("file write — positive vectors", () => {
     }
     const vec00 = JSON.parse(readFileSync(vec00Path, "utf8")) as ConformanceVector;
     expect(vec00.canonicalBytesHex).toBe(fixture.canonicalBytesHex);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 9 (VEC-04): generateNegativeVectors() covers all 7 VerifyErrorKind.
+//
+// Calls generateNegativeVectors() and validates:
+//   - returns exactly 9 vectors
+//   - expectedResult values cover all 7 VerifyErrorKind values
+//   - "schema-version-too-low" and "signature-invalid" each appear exactly twice
+//   - VERIFY_ERROR_KINDS.every(kind => results.some(v => v.expectedResult === kind))
+// ---------------------------------------------------------------------------
+describe("VEC-04 — negative vector kind coverage (in-memory)", () => {
+  it("generateNegativeVectors() returns exactly 9 vectors", async () => {
+    const vecs = await generateNegativeVectors();
+    expect(vecs).toHaveLength(9);
+  });
+
+  it("covers all 7 VerifyErrorKind values", async () => {
+    const vecs = await generateNegativeVectors();
+    for (const kind of VERIFY_ERROR_KINDS) {
+      expect(
+        vecs.some((v) => v.expectedResult === kind),
+        `Missing kind: ${kind}`,
+      ).toBe(true);
+    }
+  });
+
+  it("schema-version-too-low appears exactly twice", async () => {
+    const vecs = await generateNegativeVectors();
+    const count = vecs.filter((v) => v.expectedResult === "schema-version-too-low").length;
+    expect(count).toBe(2);
+  });
+
+  it("signature-invalid appears exactly twice", async () => {
+    const vecs = await generateNegativeVectors();
+    const count = vecs.filter((v) => v.expectedResult === "signature-invalid").length;
+    expect(count).toBe(2);
+  });
+
+  it("NEG-05 (key-revoked) has verifyKeyState === 'revoked'", async () => {
+    const vecs = await generateNegativeVectors();
+    const neg05 = vecs.find((v) => v.expectedResult === "key-revoked");
+    expect(neg05).toBeDefined();
+    expect(neg05!.verifyKeyState).toBe("revoked");
+  });
+
+  it("NEG-01 (envelope-malformed) has envelope field with payloadType 'application/json'", async () => {
+    const vecs = await generateNegativeVectors();
+    const neg01 = vecs.find((v) => v.expectedResult === "envelope-malformed");
+    expect(neg01).toBeDefined();
+    expect(neg01!.envelope).toBeDefined();
+    expect(neg01!.envelope!.payloadType).toBe("application/json" as unknown as "application/vnd.lattice.receipt+json");
+  });
+
+  it("NEG-08 (kid mismatch) has body.kid !== 'spec-example-key-v0' and vector.kid === 'spec-example-key-v0'", async () => {
+    const vecs = await generateNegativeVectors();
+    // NEG-08 is the second signature-invalid vector (kid mismatch, not corrupted sig)
+    const signatureInvalids = vecs.filter((v) => v.expectedResult === "signature-invalid");
+    expect(signatureInvalids).toHaveLength(2);
+    // The kid-mismatch one has body.kid !== vector.kid
+    const kidMismatch = signatureInvalids.find(
+      (v) => v.body["kid"] !== "spec-example-key-v0",
+    );
+    expect(kidMismatch).toBeDefined();
+    expect(kidMismatch!.body["kid"]).toBe("wrong-kid");
+    expect(kidMismatch!.kid).toBe("spec-example-key-v0");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 10 (VEC-04 from disk): after generation, negative vector files on disk
+// cover all 7 VerifyErrorKind values.
+// ---------------------------------------------------------------------------
+describe("VEC-04 — negative vectors on disk", () => {
+  it("conformance/vectors/negative/ contains exactly 9 files", () => {
+    if (!existsSync(VECTORS_NEGATIVE_DIR)) {
+      console.warn("SKIP: conformance/vectors/negative/ not yet written; run --regen-vectors first");
+      return;
+    }
+    const files = readdirSync(VECTORS_NEGATIVE_DIR);
+    expect(files.filter((f) => f.endsWith(".json"))).toHaveLength(9);
+  });
+
+  it("neg-01-envelope-malformed.json has envelope field with payloadType 'application/json'", () => {
+    const neg01Path = join(VECTORS_NEGATIVE_DIR, "neg-01-envelope-malformed.json");
+    if (!existsSync(neg01Path)) {
+      console.warn("SKIP: neg-01 not yet written");
+      return;
+    }
+    const vec = JSON.parse(readFileSync(neg01Path, "utf8")) as ConformanceVector & {
+      envelope?: { payloadType: string };
+    };
+    expect(vec.envelope).toBeDefined();
+    expect(vec.envelope!.payloadType).toBe("application/json");
+  });
+
+  it("neg-05-key-revoked.json has verifyKeyState === 'revoked'", () => {
+    const neg05Path = join(VECTORS_NEGATIVE_DIR, "neg-05-key-revoked.json");
+    if (!existsSync(neg05Path)) {
+      console.warn("SKIP: neg-05 not yet written");
+      return;
+    }
+    const vec = JSON.parse(readFileSync(neg05Path, "utf8")) as ConformanceVector;
+    expect(vec.verifyKeyState).toBe("revoked");
+  });
+
+  it("neg-08-signature-invalid-kid-mismatch.json has body.kid !== 'spec-example-key-v0'", () => {
+    const neg08Path = join(VECTORS_NEGATIVE_DIR, "neg-08-signature-invalid-kid-mismatch.json");
+    if (!existsSync(neg08Path)) {
+      console.warn("SKIP: neg-08 not yet written");
+      return;
+    }
+    const vec = JSON.parse(readFileSync(neg08Path, "utf8")) as ConformanceVector;
+    expect(vec.body["kid"]).toBe("wrong-kid");
+    expect(vec.kid).toBe("spec-example-key-v0");
+  });
+
+  it("all 7 VerifyErrorKind values are covered by disk files", () => {
+    if (!existsSync(VECTORS_NEGATIVE_DIR)) {
+      console.warn("SKIP: negative vector directory not yet written");
+      return;
+    }
+    const files = readdirSync(VECTORS_NEGATIVE_DIR);
+    const kinds = new Set<string>(
+      files
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => {
+          const parsed = JSON.parse(
+            readFileSync(join(VECTORS_NEGATIVE_DIR, f), "utf8"),
+          ) as { expectedResult: string };
+          return parsed.expectedResult;
+        }),
+    );
+    for (const kind of VERIFY_ERROR_KINDS) {
+      expect(kinds.has(kind), `Missing kind: ${kind}`).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 11 (VEC-06): MANIFEST.sha256 passes sha256sum --check.
+//
+// The tamper-detection test modifies one byte of the first vector file,
+// asserts sha256sum --check fails, then restores and asserts it passes again.
+// ---------------------------------------------------------------------------
+describe("VEC-06 — MANIFEST.sha256 integrity", () => {
+  const MANIFEST_PATH = join(VECTORS_DIR, "MANIFEST.sha256");
+
+  it("sha256sum --check MANIFEST.sha256 exits 0", () => {
+    if (!existsSync(MANIFEST_PATH)) {
+      console.warn("SKIP: MANIFEST.sha256 not yet written; run --regen-vectors first");
+      return;
+    }
+    const result = spawnSync("sha256sum", ["--check", "MANIFEST.sha256"], {
+      cwd: VECTORS_DIR,
+      encoding: "utf8",
+    });
+    expect(
+      result.status,
+      `sha256sum --check failed (exit ${result.status}): ${result.stderr || result.stdout}`,
+    ).toBe(0);
+  });
+
+  it("tamper-detection: modifying a vector file breaks the manifest check", () => {
+    if (!existsSync(MANIFEST_PATH)) {
+      console.warn("SKIP: MANIFEST.sha256 not yet written; run --regen-vectors first");
+      return;
+    }
+    // Pick the first vector file listed in the manifest
+    const manifestContent = readFileSync(MANIFEST_PATH, "utf8");
+    const firstLine = manifestContent.split("\n").find((l) => l.trim().length > 0);
+    if (!firstLine) {
+      throw new Error("MANIFEST.sha256 is empty — cannot perform tamper-detection test");
+    }
+    // Format: "<hex>  <relative-path>"
+    const parts = firstLine.split("  ");
+    if (parts.length < 2) {
+      throw new Error(`Unexpected MANIFEST line format: ${firstLine}`);
+    }
+    const relPath = parts.slice(1).join("  ");
+    const fullPath = join(VECTORS_DIR, relPath);
+
+    // Read original, tamper, verify fails, restore, verify passes
+    const original = readFileSync(fullPath);
+    const tampered = Buffer.from(original);
+    tampered[tampered.length - 1] ^= 0x01; // flip last byte
+
+    try {
+      writeFileSync(fullPath, tampered);
+      const resultFail = spawnSync("sha256sum", ["--check", "MANIFEST.sha256"], {
+        cwd: VECTORS_DIR,
+        encoding: "utf8",
+      });
+      expect(
+        resultFail.status,
+        "sha256sum --check should exit non-zero after tampering a file",
+      ).not.toBe(0);
+    } finally {
+      // Always restore original
+      writeFileSync(fullPath, original);
+    }
+
+    // Verify passes after restore
+    const resultPass = spawnSync("sha256sum", ["--check", "MANIFEST.sha256"], {
+      cwd: VECTORS_DIR,
+      encoding: "utf8",
+    });
+    expect(
+      resultPass.status,
+      `sha256sum --check failed after restore: ${resultPass.stderr || resultPass.stdout}`,
+    ).toBe(0);
+  });
+
+  it("MANIFEST.sha256 mtime is later than all vector files", () => {
+    if (!existsSync(MANIFEST_PATH)) {
+      console.warn("SKIP: MANIFEST.sha256 not yet written");
+      return;
+    }
+    const manifestMtime = statSync(MANIFEST_PATH).mtime;
+    const posFiles = existsSync(join(VECTORS_DIR, "positive"))
+      ? readdirSync(join(VECTORS_DIR, "positive")).map((f) =>
+          statSync(join(VECTORS_DIR, "positive", f)).mtime,
+        )
+      : [];
+    const negFiles = existsSync(VECTORS_NEGATIVE_DIR)
+      ? readdirSync(VECTORS_NEGATIVE_DIR).map((f) =>
+          statSync(join(VECTORS_NEGATIVE_DIR, f)).mtime,
+        )
+      : [];
+    const allVectorMtimes = [...posFiles, ...negFiles];
+    for (const mtime of allVectorMtimes) {
+      expect(
+        manifestMtime.getTime(),
+        `MANIFEST.sha256 mtime (${manifestMtime.toISOString()}) must be >= vector file mtime (${mtime.toISOString()})`,
+      ).toBeGreaterThanOrEqual(mtime.getTime());
+    }
   });
 });
