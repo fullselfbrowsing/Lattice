@@ -668,7 +668,7 @@ because nearly every fact was independently confirmed by executing commands (`pn
 data — this is a "mirror an existing proven pattern" phase, not a "adopt a new library" phase, so
 the verification bar was achievable in full.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the manifest self-check be a `pretest` npm script or an in-suite `describe` block?**
    - What we know: The locked decision says "self-checks MANIFEST.sha256 as its first test" — both
