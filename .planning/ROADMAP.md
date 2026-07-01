@@ -101,7 +101,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A `conformance/verify-ts/` vitest package re-derives canonical bytes, PAE hex, signature, and verdict for every committed vector and asserts byte-identity at each step; the harness fails the build if any vector diverges
   2. Both `conformance/generate/` and `conformance/verify-ts/` are added to `pnpm-workspace.yaml` as private, unpublished packages; the existing tarball-leak and core-package-boundary CI scripts remain green with no modification
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+**Wave 1**
+- [ ] 52-01-PLAN.md — Scaffold conformance/verify-ts package (config triad) + manifest self-check + positive 4-step re-derivation + negative verdict assertion + tarball/boundary evidence capture (TSCONF-01, TSCONF-02)
 
 ### Phase 53: Python Verify
 **Goal**: A Python developer can verify a Lattice DSSE receipt envelope with a typed verdict matching the spec's error-kind taxonomy, proven against all committed vectors
@@ -148,7 +151,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 50. Protocol Specification | 3/3 | Complete    | 2026-06-25 |
 | 51. Conformance Vector Generator + Committed Vectors | 3/3 | Complete   | 2026-06-25 |
-| 52. TypeScript Self-Verification Harness | 0/TBD | Not started | - |
+| 52. TypeScript Self-Verification Harness | 0/1 | Not started | - |
 | 53. Python Verify | 0/TBD | Not started | - |
 | 54. Python Replay | 0/TBD | Not started | - |
 | 55. Python Mint | 0/TBD | Not started | - |
