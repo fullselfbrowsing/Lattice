@@ -16,17 +16,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 **v1.4 Provider Breadth + Live Multimodal + Observability Export shipped 2026-06-16.** Phases 40-49 are complete and archived: package/version guardrails, gateway delegation, OpenRouter fallback/catalog refresh, streaming contract and adapters, multimodal request shaping, realtime direction, receipt provenance/KMS signer shapes, OpenTelemetry export, eval/diagnostics CLI, offline showcase validation, tarball checks, and FSB package-candidate dogfood. The milestone audit passed with 44 / 44 REQ-IDs satisfied.
 
-## Current Milestone: v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client
-
-**Goal:** Promote Lattice's capability-receipt / replay / contract format from a TypeScript implementation detail to a versioned, language-neutral specification, prove cross-language byte-parity with committed conformance vectors, and ship a Python reference client (verify + replay + mint).
-
-**Target features:**
-- Versioned, language-neutral `lattice-receipt` / replay / contract specification (JCS / RFC 8785 canonicalization, DSSE PAE, Ed25519, CID, I-JSON numeric rules, schema versioning + downgrade defense) — liftable from `paper/main.tex`.
-- Cross-language conformance vectors committed to the repo (fixed `input → canonical bytes → signature` triples) plus a CI gate proving the TypeScript implementation and every client stay byte-identical and cannot drift.
-- Python reference client implementing the full triad: verify (signature + structure), replay (re-materialize + diff `outputHash`), and mint (sign new receipts in-language), passing the conformance suite.
-- Research-ranked target-language list for this domain; the roadmap scopes which additional clients (e.g. Go, Rust) land in v1.5 versus Future.
-
-**Key context:** TypeScript stays the home of the runtime SDK (`createAI` / `run` / routing / provider adapters) — porting those is an explicit non-goal. The cross-language product is the *audit trail* (signed, replayable receipts). The Python client ships in-repo with the conformance proof; PyPI publishing is deferred to a later milestone. This milestone deliberately re-scopes the long-standing "TypeScript-first" constraint: the runtime stays TS-first, but the receipt *protocol* becomes language-neutral.
+**v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client shipped 2026-07-06.** Phases 50-56 are complete and archived: language-neutral receipt protocol specification, JSON Schemas and changelog, committed positive and adversarial conformance vectors, TypeScript self-verification harness, Python `lattice_receipt` verify/replay/mint client, cross-mint parity, and SHA-pinned conformance CI. The milestone audit passed with 26 / 26 REQ-IDs satisfied.
 
 ## Shipped Milestones
 
@@ -35,6 +25,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - **v1.2 FSB Integration + Agent Capability** (2026-05-31) — Five FSB-integration extensions backfilled onto canonical Lattice (Phases 14-18): public surface index + packaging readiness, receipt v1.1 schema extension, tripwire band pipeline + lifecycle events, step-transition tracing + checkpoint hook, 5 new provider adapters (Anthropic, Gemini, xAI, OpenRouter, LM Studio) + INV-03 parity smoke across 7 providers, survivability adapter contract. Plus a runtime-agnostic single-agent capability (Phases 19-22): `ai.runAgent(intent)` with uniform tool-use across 7 providers + per-iteration signed receipts + SAFETY-band veto, pluggable `AgentHost` with scheduler / transport / storage seams + recovery markers closing v1.1 TRACE-EXT-01, five agent infrastructure primitives (cost / transcript / goal-progress / action-history / permission-context), `examples/agent-loop` showcase + `evalAgentRun` regression gate. Brand identity also shipped (mark + wordmark + app icon + favicons + social card + animated spin GIF, generated from a parametric 3D renderer).
 - **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface** (2026-06-15) — First public npm release under `@full-self-browsing/*` (OIDC Trusted Publisher + SLSA provenance, GitHub Release `v1.3.0`); model capability registry (~337 profiles from the OpenRouter feed + static supplements), adapter quirk flags + capability negotiation, prompt scaffolds, opt-in output sanitizers + tool-call validators across 7 adapters, receipt v1.2 + `modelClass`; first-class opt-in multi-agent crew surface (`defineAgent` / `runAgentCrew`, crew budgets, prompt-cache-prefix sharing, rate-limit groups, chained receipts). 64/87 REQ-IDs shipped; canary phases 30–32 superseded for FSB-via-npm dogfooding.
 - **v1.4 Provider Breadth + Live Multimodal + Observability Export** (2026-06-16) — Package identity guardrails, LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage + remote signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, agent eval/receipt diff/LM Studio diagnostics CLI, offline validation, tarball checks, and FSB package-candidate dogfood. 44/44 REQ-IDs shipped; audit passed.
+- **v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client** (2026-07-06) — Language-neutral `lattice-receipt` protocol spec, schema/changelog set, golden conformance vectors, TS verifier harness, Python verify/replay/mint client, Python-to-TypeScript mint parity, and conformance CI gate. 26/26 REQ-IDs shipped; audit passed.
 
 ## Requirements
 
@@ -66,9 +57,9 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-Milestone **v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client** is being defined. `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` are generated by this `/gsd-new-milestone` run.
+No active milestone is open. Start the next milestone with `$gsd-new-milestone`.
 
-Carryforward considerations not yet scheduled (independent of v1.5):
+Carryforward considerations not yet scheduled:
 
 - Full production implementation of OpenAI Realtime and Gemini Live bidirectional sessions beyond the v1.4 interface-level design.
 - Native tool-use across providers via an additive `ProviderAdapter` extension that preserves the INV-03 7-provider parity contract.
@@ -145,8 +136,8 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.4 scoped to provider breadth + live multimodal + eval/observability; managed deploy-runtime theme dropped | Closed the three library-native competitive gaps from the June 2026 analysis while avoiding a platform/control-plane commitment. Lightweight deploy adapters remain parked. | Shipped 2026-06-16 with 44/44 REQ-IDs complete and passed milestone audit. |
 | Supersede the synthetic canary (Phases 30–32) for FSB-via-npm dogfooding | A real downstream product installing the published package validates packaging + integration more credibly than a synthetic repo; the maintainer feeds integration findings back. Residual risk: FSB exercises only the API slice it uses. | Validated 2026-06-15: FSB installed from npm with no local/git/workspace refs and `npm run test:lattice` passed 426 / 426 checks. Follow-up: fix Lattice runtime/CLI version stamping from `0.0.0` to package version. |
 | v1.4 starts with package identity guardrails before adding new surfaces | FSB dogfood exposed version stamping as the only Lattice-side defect. Fixing it first prevents every new v1.4 export from inheriting a known release-hygiene gap. | Validated in Phase 40 and rechecked in Phase 49 package-candidate FSB dogfood. |
-| v1.5 makes the receipt *protocol* language-neutral while the runtime stays TypeScript-first | "Other languages can't use this" is only true for the SDK ergonomics; the receipt / replay / contract format is built on cross-language standards (JCS, DSSE, Ed25519, CID) and is portable by construction. Specifying it + shipping thin verify / replay / mint clients makes the audit trail the cross-language product without a perpetual N-language runtime port. | — Pending (v1.5) |
-| v1.5 ships the Python client in-repo with committed conformance vectors before any PyPI publish | A committed `input → canonical bytes → signature` vector set + a CI gate proves byte-parity and prevents TS/client drift; publishing posture (trusted publishing, provenance) is a separate concern best handled once the client surface stabilizes. | — Pending (v1.5) |
+| v1.5 makes the receipt *protocol* language-neutral while the runtime stays TypeScript-first | "Other languages can't use this" is only true for the SDK ergonomics; the receipt / replay / contract format is built on cross-language standards (JCS, DSSE, Ed25519, CID) and is portable by construction. Specifying it + shipping thin verify / replay / mint clients makes the audit trail the cross-language product without a perpetual N-language runtime port. | Validated in v1.5: spec, vectors, TypeScript harness, Python client, parity, and CI shipped. |
+| v1.5 ships the Python client in-repo with committed conformance vectors before any PyPI publish | A committed `input → canonical bytes → signature` vector set + a CI gate proves byte-parity and prevents TS/client drift; publishing posture (trusted publishing, provenance) is a separate concern best handled once the client surface stabilizes. | Validated in v1.5; PyPI publishing remains deferred. |
 
 ## Evolution
 
@@ -166,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-24 — started milestone v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client.*
+*Last updated: 2026-07-06 after v1.5 milestone*

@@ -42,6 +42,7 @@ requirements_satisfied:
   - SPEC-04
   - SPEC-05
   - SPEC-07
+requirements-completed: [SPEC-01, SPEC-03, SPEC-04, SPEC-05, SPEC-07]
 ---
 
 # Phase 50 Plan 01: Vector #0 Generator and Fixture Summary

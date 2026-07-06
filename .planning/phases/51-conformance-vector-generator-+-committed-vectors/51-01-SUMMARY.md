@@ -45,6 +45,7 @@ metrics:
   completed: "2026-06-25T06:18:23-05:00"
   tasks: 2
   files: 7
+requirements-completed: [VEC-01, VEC-02]
 ---
 
 # Phase 51 Plan 01: Scaffold @lattice-conformance/generate private pnpm package — Summary

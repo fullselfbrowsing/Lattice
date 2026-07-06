@@ -22,6 +22,7 @@ decisions:
   - "outputHash uses bare hex pattern ^[0-9a-f]{64}$ (not sha256: prefix) per T-50-09 and fingerprint.ts behavior"
   - "Optional fields present in all versions (stepName, stepIndex, etc.) are listed in properties of all three files to satisfy additionalProperties:false without rejecting valid receipts"
   - "noRouteReasons and tripwireEvidence left unconstrained (items: {type: object}) per RESEARCH.md recommendation — full item schemas arrive in Phase 51 when conformance vectors exercise them"
+requirements-completed: [SPEC-07]
 metrics:
   duration: "3 minutes"
   completed_date: "2026-06-25"

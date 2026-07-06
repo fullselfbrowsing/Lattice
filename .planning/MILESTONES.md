@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client (Shipped: 2026-07-06)
+
+**Phases completed:** 7 phases, 11 plans, 11 tasks
+**Audit:** Passed - 26 / 26 REQ-IDs satisfied (`milestones/v1.5-MILESTONE-AUDIT.md`)
+**Validation:** Manifest check, TypeScript conformance, Python pytest harness, cross-mint parity, workflow-safety check, full workspace build/typecheck/test, type tests, lint/package checks.
+
+**Key accomplishments:**
+
+- Language-neutral receipt protocol: normative `spec/SPEC.md`, exact DSSE/JCS/Ed25519 worked example, v1.1/v1.2/v1.3 JSON Schemas, changelog, downgrade-defense ordering, and I-JSON numeric constraints.
+- Committed conformance vectors: fixed test keypair, 3 positive vectors, 9 adversarial negative vectors covering every `VerifyErrorKind`, RFC 8785 reference cross-checks, and `MANIFEST.sha256` over all 12 vectors.
+- TypeScript self-verification: private `@lattice-conformance/verify-ts` package re-derives manifest hashes, canonical bytes, PAE bytes, signatures, and exact verdicts against the committed vector set.
+- Python reference client: in-repo `lattice_receipt` package implementing verify, replay, and mint with typed errors, RFC 8785 canonicalization, DSSE PAE, Ed25519 JWK handling, verify-first replay, and I-JSON numeric rejection.
+- Cross-language parity and CI: TypeScript verifies a Python-minted receipt, and `.github/workflows/conformance.yml` gates spec/conformance/Python drift with manifest -> TS -> Python -> parity ordering and SHA-pinned setup actions.
+
+---
+
 ## v1.4 Provider Breadth + Live Multimodal + Observability Export (Shipped: 2026-06-16)
 
 **Phases completed:** 10 phases, 36 plans, 54 tasks

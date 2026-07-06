@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { readFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -493,36 +493,33 @@ describe("VEC-06 — MANIFEST.sha256 integrity", () => {
     ).toBe(0);
   });
 
-  it("MANIFEST.sha256 mtime is later than most vector files (generator ordering proof)", () => {
-    // This test proves the generator wrote the manifest AFTER all vector files.
-    // Note: the tamper-detection test above modifies and restores one vector file
-    // during the test run, which updates that file's mtime to AFTER the manifest.
-    // That is expected behavior — we assert the manifest mtime is later than at
-    // least (N-1) vector files (i.e., at most 1 file may have a later mtime due
-    // to the tamper-detection test). For a fresh generation run, all files will
-    // have mtime <= manifest mtime.
+  it("MANIFEST.sha256 covers every committed vector file exactly once", () => {
     if (!existsSync(MANIFEST_PATH)) {
       console.warn("SKIP: MANIFEST.sha256 not yet written");
       return;
     }
-    const manifestMtime = statSync(MANIFEST_PATH).mtime.getTime();
-    const posFiles = existsSync(join(VECTORS_DIR, "positive"))
-      ? readdirSync(join(VECTORS_DIR, "positive")).map((f) =>
-          statSync(join(VECTORS_DIR, "positive", f)).mtime.getTime(),
-        )
-      : [];
-    const negFiles = existsSync(VECTORS_NEGATIVE_DIR)
-      ? readdirSync(VECTORS_NEGATIVE_DIR).map((f) =>
-          statSync(join(VECTORS_NEGATIVE_DIR, f)).mtime.getTime(),
-        )
-      : [];
-    const allVectorMtimes = [...posFiles, ...negFiles];
-    // At most 1 file may have a later mtime (the one modified by the tamper test).
-    const laterCount = allVectorMtimes.filter((mt) => mt > manifestMtime).length;
-    expect(
-      laterCount,
-      `More than 1 vector file has mtime after MANIFEST.sha256 — generator may not have written manifest last. ` +
-        `${laterCount} files are newer than manifest. (1 is acceptable: tamper-detection test side-effect.)`,
-    ).toBeLessThanOrEqual(1);
+    const manifestRelPaths = readFileSync(MANIFEST_PATH, "utf8")
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const separatorIdx = line.indexOf("  ");
+        if (separatorIdx === -1) {
+          throw new Error(`Unexpected MANIFEST line format: ${line}`);
+        }
+        return line.slice(separatorIdx + 2);
+      })
+      .sort();
+    const vectorRelPaths = [
+      ...readdirSync(join(VECTORS_DIR, "negative"))
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => `negative/${f}`),
+      ...readdirSync(join(VECTORS_DIR, "positive"))
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => `positive/${f}`),
+    ].sort();
+
+    expect(manifestRelPaths).toEqual(vectorRelPaths);
+    expect(new Set(manifestRelPaths).size).toBe(manifestRelPaths.length);
   });
 });
