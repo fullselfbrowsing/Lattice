@@ -74,6 +74,43 @@
 
 ---
 
+## Milestone: v1.5 — Polyglot Receipt Protocol + Conformance Vectors + Python Client
+
+**Shipped:** 2026-07-06
+**Phases:** 7 (50–56) | **Plans:** 11 | **REQ-IDs:** 26/26
+
+### What Was Built
+- A language-neutral `lattice-receipt` protocol specification with JSON Schemas, changelog, RFC 8785/JCS canonicalization rules, DSSE PAE, Ed25519 JWK handling, CID rules, I-JSON numeric constraints, and downgrade defense.
+- A committed conformance vector set: fixed test keypair, 3 positive vectors, 9 adversarial negative vectors, RFC 8785 reference cross-checks, and a SHA-256 manifest over all vectors.
+- A private TypeScript self-verification harness plus an in-repo Python `lattice_receipt` client implementing verify, replay, and mint.
+- A cross-language parity proof where TypeScript verifies a Python-minted receipt, wired into a SHA-pinned conformance CI job.
+
+### What Worked
+- **Protocol-first sequencing.** The hard chain (spec -> vectors -> TS harness -> Python verify -> replay -> mint -> parity/CI) kept every downstream step anchored to a stable byte contract.
+- **Committed vectors as the drift anchor.** The same fixture set drives TypeScript and Python tests, so language implementations fail against shared bytes rather than independent expectations.
+- **Verify-first replay stayed explicit.** Replay behavior is safer because the Python client refuses to hash outputs until the receipt verifies.
+
+### What Was Inefficient
+- Phase 52 had stale planning artifacts: a missing `52-VERIFICATION.md` and a draft validation file, even though the implementation was complete.
+- A checkout-fragile mtime assertion survived from Phase 51 until Phase 56 replaced it with content-based manifest coverage.
+- Milestone-close extraction from verbose summaries produced noisy accomplishments, requiring manual cleanup in `MILESTONES.md`.
+
+### Patterns Established
+- **Golden-vector protocol gates** for any future language client: every client should prove canonical bytes, PAE bytes, signatures, exact error taxonomy, replay hash behavior, and cross-mint parity.
+- **Client location outside publishable TS packages:** `clients/python/` keeps non-TS artifacts out of npm package boundaries while remaining in the same repo-level conformance gate.
+- **SHA-pinned conformance workflow:** setup actions are pinned and the job order is manifest -> TS -> Python -> cross-mint parity.
+
+### Key Lessons
+1. **Cross-language work needs byte-level fixtures before client code.** The Python client stayed small because the spec and vectors already decided the hard parts.
+2. **Avoid filesystem metadata as a protocol proof.** Content hashes survive checkout and CI boundaries; mtimes do not.
+3. **Milestone audits should normalize planning artifacts before archive.** Missing verification/validation files can create false gaps even when code and tests are complete.
+
+### Cost Observations
+- Model mix: not instrumented this milestone.
+- Notable: final verification was local and deterministic: manifest, TypeScript, Python, parity, package/type/lint checks, and workflow safety.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -85,8 +122,10 @@
 | v1.2 | 14–22 | FSB integration (retro) + agent capability (forward); 7-adapter parity contract. |
 | v1.3 | 24–39 | First public npm release + model-aware SDK + multi-agent crew; first use of `superseded` to descope a planned sub-scope (canary) for a cheaper real-consumer path. |
 | v1.4 | 40–49 | Provider/gateway breadth, streaming/multimodal, OTel/eval diagnostics, and package-candidate downstream dogfood became the release-validation pattern. |
+| v1.5 | 50–56 | Receipt audit trail became language-neutral with shared conformance vectors, Python verify/replay/mint, and cross-language parity CI. |
 
 ### Top Lessons (Verified Across Milestones)
 1. **Opt-in, additive surfaces preserve the parity contract** — validated across v1.2 (adapters) and v1.3 (sanitizers/validators/crew).
 2. **Inspectable, signed, reproducible artifacts are the differentiator** — every milestone has leaned further into receipts/replay rather than feature breadth.
 3. **Validate releases as packages, not just source trees** — v1.3 FSB-via-npm and v1.4 packed-candidate dogfood both found or defended boundaries that workspace-local tests would miss.
+4. **Use content-addressed evidence for protocol gates** — v1.5 replaced checkout-sensitive freshness checks with manifest coverage and byte-level conformance vectors.
