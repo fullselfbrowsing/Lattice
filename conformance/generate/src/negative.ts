@@ -177,7 +177,7 @@ export async function generateNegativeVectors(): Promise<ConformanceVector[]> {
   const neg01Envelope: ReceiptEnvelope = {
     payloadType: "application/json" as unknown as "application/vnd.lattice.receipt+json",
     payload: base.payloadBase64,
-    signatures: [{ keyid: KID, sig: base.signatureHex }],
+    signatures: [{ keyid: KID, sig: base64Encode(base.sigBytes) }],
   };
 
   const neg01: ConformanceVector = {

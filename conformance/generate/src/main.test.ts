@@ -323,6 +323,10 @@ describe("VEC-04 — negative vector kind coverage (in-memory)", () => {
     expect(neg01).toBeDefined();
     expect(neg01!.envelope).toBeDefined();
     expect(neg01!.envelope!.payloadType).toBe("application/json" as unknown as "application/vnd.lattice.receipt+json");
+    expect(neg01!.envelope!.signatures[0]?.sig).toBe(
+      Buffer.from(neg01!.signatureHex, "hex").toString("base64"),
+    );
+    expect(neg01!.envelope!.signatures[0]?.sig).not.toBe(neg01!.signatureHex);
   });
 
   it("NEG-08 (kid mismatch) has body.kid !== 'spec-example-key-v0' and vector.kid === 'spec-example-key-v0'", async () => {

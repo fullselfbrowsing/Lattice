@@ -1,4 +1,4 @@
-591e9755fccba4f71a56e842bf1a7ffd0ba570bae11c9c4456e6d94633152f9b  negative/neg-01-envelope-malformed.json
+9ea92a58020fe58ea567a00b27b0c7e5581261196c4b9f094d97d651f05a697f  negative/neg-01-envelope-malformed.json
 36b376dba420517cd82eb5d96e074b51fdb614074decc28fda8728bbffb5c7d6  negative/neg-02-version-mismatch.json
 0fec44e73bc3ab104e2562069888421cd122869c2709db6ae7dd379894ae2f9f  negative/neg-03a-schema-version-too-low-v1.json
 7ca22b2c1fdafae4a29410ab09e7983e9d71316a5ffdf956089e293617615242  negative/neg-03b-schema-version-too-low-absent.json

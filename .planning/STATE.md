@@ -44,6 +44,7 @@ v1.5 Progress: [========================================] 100% (11/11 plans, 7/7
 | Quick Task | Date | Summary |
 |------------|------|---------|
 | 260706-scq Refresh paper for v1.5 protocol and conformance | 2026-07-07 | Updated `paper/main.tex`, `paper/refs.bib`, and `spec/SPEC.md` for v1.5 protocol/conformance facts; built with `tectonic`. |
+| 260706-tm8 Fix review findings: conformance vector sig encoding and package README docs | 2026-07-07 | Fixed NEG-01 DSSE signature encoding, regenerated vector manifest, and replaced shipped package READMEs with docs matching current package surfaces. |
 
 ## Accumulated Context
 

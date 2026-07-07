@@ -13,6 +13,9 @@
  *   - published packages must not ship install-time lifecycle scripts
  *   - the core runtime package must not depend directly on optional native/heavy integrations
  *
+ * Package-page docs extension:
+ *   - published packages must ship a non-empty README.md so npm renders docs
+ *
  * Implements PITFALLS RENAME-1 / RENAME-3 forever-guard: catches a regression
  * where the rename to @full-self-browsing/* leaves a stale bare "lattice"
  * reference that would ship to the registry tarball.
@@ -161,6 +164,21 @@ async function inspectPackage(entry) {
       return {
         offenders: [],
         fatal: `[check-tarball-leak] FAIL — tar extract failed for ${tgz} (exit ${tarResult.code}): ${tarResult.stderr.trim()}`,
+        tarball: tgz,
+      };
+    }
+    const readmeResult = await runCommand("tar", ["-xOf", join(tmp, tgz), "package/README.md"], {});
+    if (readmeResult.code !== 0) {
+      return {
+        offenders: [],
+        fatal: `[check-tarball-leak] FAIL — ${entry.name} tarball is missing package/README.md`,
+        tarball: tgz,
+      };
+    }
+    if (readmeResult.stdout.trim().length === 0) {
+      return {
+        offenders: [],
+        fatal: `[check-tarball-leak] FAIL — ${entry.name} package/README.md is empty`,
         tarball: tgz,
       };
     }
