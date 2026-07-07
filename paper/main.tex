@@ -69,11 +69,12 @@ opaque model call, output invariants carry terminal semantics so a violated run 
 never silently retried, and a verifier can reconstruct the run offline and confirm
 that the recomputed output hash matches the signed receipt. We describe the threat
 model, the design of the receipt and replay pipeline, and an implementation that
-ships as two published npm packages with 960 automated tests across 82 files, a
-seven provider parity contract, and a content addressed command line tool for
-reproduction and verification. Our evaluation is assurance by construction: the
-guarantees are expressed as code level invariants and property tests rather than as
-a latency benchmark. The result is a small runtime that makes auditability and
+ships as two published npm packages, a language neutral receipt specification, a
+Python reference client, conformance vectors, a seven provider parity contract, and
+a content addressed command line tool for reproduction and verification. Our
+evaluation is assurance by construction: the guarantees are expressed as code level
+invariants, cross language conformance checks, and property tests rather than as a
+latency benchmark. The result is a small runtime that makes auditability and
 reproducibility a default property of every multimodal model run.
 \end{abstract}
 
@@ -147,11 +148,12 @@ log line. We show how a deterministic and inspectable router, terminal output
 invariants, and a content addressed verification tool compose into a runtime where
 auditability and reproducibility are default properties. We describe a working
 implementation that ships publicly with supply chain provenance, a seven provider
-parity contract, and a test suite that encodes the guarantees as invariants. We
-discuss what signed receipts enable in practice and we state plainly what they do
-not provide. The remainder of the paper covers background and related work, the
-threat model and goals, the design, the implementation, the evaluation, a
-discussion, the limitations, future work, and a conclusion.
+parity contract, a language neutral receipt specification, committed conformance
+vectors, and a Python reference client. We discuss what signed receipts enable in
+practice and we state plainly what they do not provide. The remainder of the paper
+covers background and related work, the threat model and goals, the design, the
+implementation, the evaluation, a discussion, the limitations, future work, and a
+conclusion.
 
 % --- Background and Related Work ------------------------------------------
 \section{Background and Related Work}
@@ -430,14 +432,29 @@ about what the signature commits to.
 
 \subsection{Schema versioning and downgrade defense}
 
-Receipts carry an explicit version. Three versions exist: \code{lattice-receipt/v1},
-\code{lattice-receipt/v1.1}, and \code{lattice-receipt/v1.2}. The v1.2 schema adds an
-optional and signed model class field that records the training class of the chosen
-model. Verification rejects a body whose version is the original v1 or is absent, with
-the error \code{schema-version-too-low}, and it does so before any cryptographic work.
-This is the downgrade defense from the threat model. An adversary who holds a valid
-signing key still cannot mint a v1 shaped body to evade the integrity fields that the
-v1.1 and v1.2 schemas commit to, because the structural version check fails first.
+Receipts carry an explicit version. The accepted receipt versions are
+\code{lattice-receipt/v1.1}, \code{lattice-receipt/v1.2}, and
+\code{lattice-receipt/v1.3}. The v1.2 schema adds an optional and signed model class
+field that records the training class of the chosen model. The v1.3 schema adds
+optional \code{parentReceiptCid} and \code{lineageMerkleRoot} fields so chained agent
+runs and artifact lineages can be committed inside the signed body. Newly minted
+receipts use v1.3; historical v1.1 and v1.2 receipts remain verifiable. Verification
+rejects a body whose version is the original v1 or is absent, with the error
+\code{schema-version-too-low}, and it does so before any cryptographic work. This is
+the downgrade defense from the threat model. An adversary who holds a valid signing key
+still cannot mint a v1 shaped body to evade the integrity fields that the accepted
+schemas commit to, because the structural version check fails first.
+
+\subsection{Output hash conformance boundary}
+
+The receipt commits to the output through \code{outputHash}. For cross language
+conformance, the protocol treats null, string, and binary outputs as portable hash
+inputs: null produces a null hash, strings are hashed as UTF-8 bytes, and binary values
+are hashed as their raw bytes. Object outputs are deliberately outside the v1.5
+conformance boundary because JavaScript \code{JSON.stringify} and other language
+serializers disagree on floating point notation, negative zero, and key ordering in
+edge cases. Lattice still records object-output hashes for the TypeScript runtime, but
+a non-TypeScript implementation is conformant without reproducing that branch.
 
 \subsection{Verification}
 
@@ -512,12 +529,12 @@ Verifiable replay & verify before load & loader call count is zero on verify fai
 \subsection{Packaging and footprint}
 
 Lattice is a TypeScript pnpm workspace that publishes two packages,
-\code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli}, both at
-version 1.3.0. The packages are live on the public npm registry. They are published
+\code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli}. At the
+time of writing, both public npm packages are at version 1.5.1. They are published
 with an OpenID Connect trusted publisher and with supply chain provenance attestations
-in the spirit of SLSA \cite{slsa}, and a tagged GitHub release accompanies the
-publish. The runtime targets Node version 24 or newer. The implementation is about
-21,584 lines of production TypeScript across the packages. The core package has a
+in the spirit of SLSA \cite{slsa}, and tagged GitHub releases accompany the publishes.
+The runtime targets Node version 24 or newer. The implementation is about 27,300 lines
+of production TypeScript across the runtime and command line source. The core package has a
 deliberately small runtime dependency surface of three packages: \code{canonicalize}
 for RFC 8785 encoding, \code{@standard-schema/spec} for schema contracts, and
 \code{mime} for artifact typing. The Ed25519 reference oracle and the schema library
@@ -528,7 +545,7 @@ does not inherit them.
 
 Signing uses the Node 24 WebCrypto interface with the literal algorithm name
 \code{Ed25519}. Keys are represented as JSON Web Keys of the octet key pair type and
-signatures are 64 bytes as specified by EdDSA \cite{rfc8032}. To guard against a
+signatures are 64 bytes as specified by EdDSA \cite{rfc8032,rfc8037}. To guard against a
 silent regression in the platform implementation, a development only parity oracle
 signs the same message with an independent Ed25519 library and asserts a byte for byte
 match in the test suite. The oracle is never on the production signing path.
@@ -584,15 +601,16 @@ runtime can adapt without breaking the parity contract.
 
 The \code{lattice} command line tool ships in the second package. It uses a lazily
 loaded subcommand structure and a consistent exit code convention of 0 for success, 1
-for a verification or test failure, and 2 for a load or configuration failure. Three
-subcommands exist today. The \code{verify} subcommand checks the signature and the
-structure of a receipt and prints the key identifier and the contract verdict. The
-\code{repro} subcommand performs a full content addressed reproduction: it loads the
-receipt, verifies it, materializes the replay envelope, replays offline, and diffs the
-recomputed output hash, returning 0 on a match and 1 on a drift. The \code{eval}
-subcommand walks a directory of receipts, replays each, and gates layered determinism
-along with cost and quality regressions relative to a baseline, with a flag to
-initialize a fresh baseline and a disk backed judge cache. These three subcommands turn
+for a verification or test failure, and 2 for a load or configuration failure. The
+\code{verify} subcommand checks the signature and the structure of a receipt and prints
+the key identifier and the contract verdict. The \code{repro} subcommand performs a
+full content addressed reproduction: it loads the receipt, verifies it, materializes
+the replay envelope, replays offline, and diffs the recomputed output hash, returning 0
+on a match and 1 on a drift. The \code{eval} subcommand walks a directory of receipts,
+replays each, and gates layered determinism along with cost and quality regressions
+relative to a baseline, with agent-run evaluation support and a disk backed judge
+cache. The \code{receipt diff} path compares receipt records directly, and diagnostics
+commands cover operational checks such as LM Studio latency tails. These commands turn
 a receipt from a passive record into an executable regression and audit gate.
 
 \subsection{Agents and chained receipts}
@@ -610,46 +628,63 @@ inbox that demonstrates a contract, a signed receipt, a tripwire violation, and 
 contract match, a single agent loop that emits per iteration checkpoint receipts, and a
 crew example that demonstrates chained receipts and an evaluation gate.
 
+\subsection{Language neutral conformance}
+
+The v1.5 receipt protocol is specified outside the TypeScript implementation in
+\code{spec/SPEC.md}. The repository includes JSON Schemas for v1.1, v1.2, and v1.3
+receipt bodies, a worked DSSE and JCS example, and a committed conformance set. The
+vector set contains 12 receipts: 3 positive vectors across the accepted schema
+versions and 9 adversarial negative vectors that cover every \code{VerifyErrorKind}.
+A private TypeScript conformance package re-derives manifest hashes, canonical bytes,
+DSSE pre authentication encoding, signatures, and exact verdicts from those vectors.
+An in repository Python package, \code{lattice\_receipt}, implements verify, replay, and
+mint using RFC 8785 canonicalization, I-JSON numeric rejection, DSSE pre authentication
+encoding, Ed25519 JWK handling, and RFC 4648 base64 processing \cite{rfc4648}. The
+continuous integration gate verifies the vector manifest, runs the TypeScript harness,
+runs the Python tests, and verifies a Python minted receipt in TypeScript, so drift
+between the runtime and a non-TypeScript client fails before release.
+
 % --- Evaluation -----------------------------------------------------------
 \section{Evaluation}
 
 Our evaluation is assurance by construction. The claims in this paper are properties of
-the system, and we evaluate them by encoding each as an invariant or a property test
-that fails the build when the property does not hold, rather than by measuring latency
-or model output quality, which depend on providers outside our trust boundary. The
-suite contains 960 automated test cases across 82 test files, with 816 in the core
-package and 144 in the command line package, and it runs under a standard TypeScript
-test runner. Figure~\ref{fig:tests} shows the distribution by package.
+the system, and we evaluate them by encoding each as an invariant, a property test, or
+a conformance vector check that fails the build when the property does not hold, rather
+than by measuring latency or model output quality, which depend on providers outside
+our trust boundary. The current repository test posture covers 1059 runtime tests, 162
+command line tests, 28 conformance vector generator tests, 34 TypeScript conformance
+and parity checks when cross mint parity is enabled, and 29 Python client tests.
+Figure~\ref{fig:tests} shows the distribution.
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  ybar,
-  width=\columnwidth, height=44mm,
-  bar width=14mm,
-  ymin=0, ymax=900,
-  ylabel={test cases},
-  ylabel near ticks,
-  symbolic x coords={core package, CLI package},
-  xtick=data,
+  xbar,
+  width=0.96\columnwidth, height=50mm,
+  bar width=4.5mm,
+  xmin=0, xmax=1300,
+  xlabel={test cases},
+  symbolic y coords={Python,TS conf,vector gen,CLI,runtime},
+  ytick=data,
   nodes near coords,
   every node near coord/.append style={font=\scriptsize},
   xticklabel style={font=\scriptsize},
   yticklabel style={font=\scriptsize},
-  ylabel style={font=\scriptsize},
-  enlarge x limits=0.5,
+  xlabel style={font=\scriptsize},
+  enlarge y limits=0.16,
 ]
-\addplot[draw=blue!60!black, fill=blue!30] coordinates {(core package,816) (CLI package,144)};
+\addplot[draw=blue!60!black, fill=blue!30] coordinates
+  {(29,Python) (34,TS conf) (28,vector gen) (162,CLI) (1059,runtime)};
 \end{axis}
 \end{tikzpicture}
-\caption{Automated test cases by package. The suite totals 960 cases across 82 files,
-816 in the core package and 144 in the command line package, and it encodes the
-paper's guarantees as executable obligations.}
+\caption{Automated test cases by suite. The main runtime and command line packages are
+supplemented by conformance-vector generation, TypeScript conformance and cross mint
+parity, and Python client tests.}
 \label{fig:tests}
 \end{figure}
 
-We organize the evaluation around the four guarantees.
+We organize the evaluation around the four guarantees and the v1.5 portability goal.
 
 \textbf{Determinism of routing and invariants.} The router and the tripwire kernel are
 pure functions. Tests assert that the same inputs always produce the same route
@@ -683,6 +718,12 @@ code for a match and for a drift.
 uniform behavior summarized in Table~\ref{tab:parity}, including that the set of
 adapter identifiers has size seven. Parity is what lets a single receipt format and a
 single verification path apply regardless of which provider served the run.
+
+\textbf{Cross language conformance.} The conformance vector set checks accepted
+versions, exact negative verdicts, canonical bytes, signatures, and manifest hashes.
+The Python client verifies and mints receipts against the same vectors, and the
+TypeScript verifier accepts a Python minted receipt. This demonstrates that the receipt
+protocol is not merely an implementation detail of the TypeScript SDK.
 
 Taken together, these tests turn the paper's guarantees into executable obligations.
 A change that weakens a guarantee fails the suite, so the guarantees are maintained
@@ -722,29 +763,28 @@ rather than a way to obtain new model behavior. Semantic determinism for free fo
 relies on a layered judge in the evaluation tool, which is more expensive and less
 crisp than an exact hash match. The capability registry is a point in time snapshot
 refreshed by continuous integration, so a brand new model may be absent until the next
-refresh, although capability negotiation can refine a profile at call time. Provider
-native streaming and multimodal request shaping are still being generalized across all
-seven adapters at the time of writing. Finally, two command line features named in our
-roadmap, an agent oriented mode of the evaluation subcommand and a receipt difference
-subcommand, are planned and are not yet implemented, so they appear here only as future
-work and not as shipped capability.
+refresh, although capability negotiation can refine a profile at call time. The runtime
+SDK remains TypeScript first; v1.5 makes the receipt protocol portable, but it does not
+port the full runtime API into every language. The Python client is an in repository
+reference client rather than a published PyPI package. Finally, object-output
+\code{outputHash} reproduction is outside the v1.5 conformance boundary, so exact
+cross language replay is specified for null, string, and binary outputs but not for
+arbitrary object serialization.
 
 % --- Future Work ----------------------------------------------------------
 \section{Future Work}
 
-Several extensions build naturally on the receipt primitive. Streaming responses can
-preserve the signing guarantees through a buffer then sign strategy, in which a
-\code{collectStream} step assembles the full output before the receipt commits to its
-hash, so that a signature never commits to partial content. The run event vocabulary can
-be exported to an observability backend through an OpenTelemetry \cite{opentelemetry}
-exporter, so that receipts and traces share a vocabulary. Provider breadth can grow
-through gateway delegation to routing infrastructure such as LiteLLM \cite{litellm} and
-through multi model routing, without expanding the transport surface. A signed Merkle
-\cite{merkle} root over the artifacts a run consumed and produced would extend the
-receipt with a verifiable lineage commitment. Key management can be hardened with key
-management service backed signers. Finally, realtime audio and video sessions need a
-distinct session surface and a session summary receipt, since a bidirectional stream
-differs structurally from a request and response.
+Several extensions build naturally on the receipt primitive. The Python client should
+gain a PyPI release path with trusted publishing and provenance, mirroring the npm
+posture. Additional thin clients in languages such as Go, Rust, Java, and .NET can
+reuse the same conformance vectors without requiring a full runtime port. The
+conformance suite can grow to include more adversarial I-JSON, Unicode, and key
+rotation cases, and future schema versions can decide whether to replace the
+implementation-defined object-output hash branch with a language neutral object
+encoding. Realtime audio and video sessions need a distinct session surface and a
+session summary receipt, since a bidirectional stream differs structurally from a
+request and response. Finally, production key management can move beyond signer shapes
+into concrete key management service integrations and operational rotation playbooks.
 
 % --- Conclusion -----------------------------------------------------------
 \section{Conclusion}
@@ -757,8 +797,9 @@ deterministic and inspectable router and by output invariants with terminal sema
 verifier can check a receipt with a public key and replay the run offline, confirming
 that the recomputed output hash matches the signed value. The implementation ships
 publicly with supply chain provenance, a seven provider parity contract, a registry of
-332 model profiles, and 960 tests that encode the guarantees as invariants. By making a
-signed and replayable receipt a default byproduct of every run, Lattice turns
+332 model profiles, protocol conformance vectors, a Python reference client, and test
+suites that encode the guarantees as invariants. By making a signed and replayable
+receipt a default byproduct of every run, Lattice turns
 auditability and reproducibility from after the fact instrumentation into properties of
 the runtime itself.
 

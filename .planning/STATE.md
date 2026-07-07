@@ -4,8 +4,8 @@ milestone: null
 milestone_name: null
 status: planning_next_milestone
 stopped_at: v1.5 milestone archived
-last_updated: "2026-07-06"
-last_activity: 2026-07-06
+last_updated: "2026-07-07"
+last_activity: 2026-07-07
 progress:
   total_phases: 0
   completed_phases: 0
@@ -38,6 +38,12 @@ v1.5 Progress: [========================================] 100% (11/11 plans, 7/7
 | Milestone | Status | Requirements | Audit |
 |-----------|--------|--------------|-------|
 | v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client | Shipped 2026-07-06 | 26/26 complete | passed |
+
+## Quick Tasks Completed
+
+| Quick Task | Date | Summary |
+|------------|------|---------|
+| 260706-scq Refresh paper for v1.5 protocol and conformance | 2026-07-07 | Updated `paper/main.tex`, `paper/refs.bib`, and `spec/SPEC.md` for v1.5 protocol/conformance facts; built with `tectonic`. |
 
 ## Accumulated Context
 

@@ -5,8 +5,8 @@
 **Normative tie-breaker:** The live TypeScript reference implementation
 (`packages/lattice/src/receipts/` and `packages/lattice/src/storage/fingerprint.ts`) is the
 normative authority on protocol behavior. Where this document and the implementation diverge,
-the implementation wins. `paper/main.tex` is expository scaffolding only and caps at v1.2;
-it does not document `parentReceiptCid` or `lineageMerkleRoot`. (D-02)
+the implementation wins. `paper/main.tex` is expository scaffolding only; this
+specification remains normative for receipt protocol behavior. (D-02)
 
 **Normative references:** RFC 2119, RFC 8174, RFC 8785 (JCS), RFC 4648, RFC 7493 (I-JSON),
 RFC 8037 (OKP JWK), RFC 8032 (Ed25519), DSSE v1.0 protocol.
@@ -652,10 +652,9 @@ conformance scope.
 ## Appendix A — Informative References (non-normative)
 
 - **Lattice paper** (`paper/main.tex`): Expository description of the Lattice capability
-  receipt protocol through schema version v1.2. Does not document `parentReceiptCid` or
-  `lineageMerkleRoot` (v1.3 additions). Normative authority rests with the reference
-  implementation, not the paper (D-02). The paper is a useful introduction to the protocol
-  concepts but must not be used as a source of normative behavior.
+  receipt protocol. Normative authority rests with the reference implementation, not the
+  paper (D-02). The paper is a useful introduction to the protocol concepts but must not
+  be used as a source of normative behavior.
 
 - **canonicalize npm package v3.0.0**: The RFC 8785 JCS implementation used by the
   reference implementation. Imported as `"canonicalize"` in `packages/lattice/src/receipts/canonical.ts`.
