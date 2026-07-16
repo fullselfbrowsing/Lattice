@@ -29,16 +29,16 @@
 - [ ] **CTXAUTH-01**: A provider receives exactly the materialized context projection selected by the execution plan.
 - [ ] **CTXAUTH-02**: A provider never receives omitted, archived, or raw summarized artifacts.
 - [ ] **CTXAUTH-03**: A summarizer receives only selected source artifacts, and each resulting summary preserves source lineage, privacy, and trust metadata.
-- [ ] **CTXAUTH-04**: A caller can include policy-permitted session turns and stored artifact references in provider context with explicit missing-reference behavior.
+- [x] **CTXAUTH-04**: A caller can include policy-permitted session turns and stored artifact references in provider context with explicit missing-reference behavior.
 - [ ] **CTXAUTH-05**: Each fallback attempt materializes and packages context against that route's limits and capabilities before its provider call.
-- [ ] **CTXAUTH-06**: Plans, hashes, receipts, traces, and events describe the same provider-visible context projection.
+- [x] **CTXAUTH-06**: Plans, hashes, receipts, traces, and events describe the same provider-visible context projection.
 
 ### Persistence
 
 - [ ] **PERSIST-01**: A configured artifact store receives lifecycle writes for input, summary, tool, derived, and provider-output artifacts.
 - [ ] **PERSIST-02**: Runtime results and session records expose store-returned references and fingerprints instead of fabricated storage metadata.
-- [ ] **PERSIST-03**: A run reports unconfigured persistence as skipped and returns typed outcomes for configured write or load failures.
-- [ ] **PERSIST-04**: Tenant, privacy, retention, and upload policy is enforced before an artifact is persisted or rehydrated.
+- [x] **PERSIST-03**: A run reports unconfigured persistence as skipped and returns typed outcomes for configured write or load failures.
+- [x] **PERSIST-04**: Tenant, privacy, retention, and upload policy is enforced before an artifact is persisted or rehydrated.
 
 ### Audit and Evaluation
 
@@ -125,13 +125,13 @@ Roadmap creation maps each requirement to exactly one phase.
 | CTXAUTH-01 | Phase 59 | Pending |
 | CTXAUTH-02 | Phase 59 | Pending |
 | CTXAUTH-03 | Phase 59 | Pending |
-| CTXAUTH-04 | Phase 59 | Pending |
+| CTXAUTH-04 | Phase 59 | Complete |
 | CTXAUTH-05 | Phase 59 | Pending |
-| CTXAUTH-06 | Phase 59 | Pending |
+| CTXAUTH-06 | Phase 59 | Complete |
 | PERSIST-01 | Phase 59 | Pending |
 | PERSIST-02 | Phase 59 | Pending |
-| PERSIST-03 | Phase 59 | Pending |
-| PERSIST-04 | Phase 59 | Pending |
+| PERSIST-03 | Phase 59 | Complete |
+| PERSIST-04 | Phase 59 | Complete |
 | AUDIT16-01 | Phase 60 | Pending |
 | AUDIT16-02 | Phase 60 | Pending |
 | AUDIT16-03 | Phase 60 | Pending |

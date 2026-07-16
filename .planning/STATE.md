@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T23:21:50.605Z"
-last_activity: 2026-07-16 -- Phase 59 planning complete
+last_updated: "2026-07-16T23:30:58.682Z"
+last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 8
+  completed_plans: 9
   percent: 33
 ---
 
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 ## Current Position
 
-Phase: 59 (Authoritative Runtime State) — PLANNED
-Plan: 0 of 9
+Phase: 59 (Authoritative Runtime State) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-07-16 -- Phase 59 planning complete
+Last activity: 2026-07-16
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 53%
 
 ## Recent Milestone Snapshot
 
@@ -72,6 +72,9 @@ Recent decisions affecting v1.6:
 - [Phase 58]: Conformance remains one least-privilege Node 24/Python 3.13 job; ordered named steps provide drift attribution without a broader runtime matrix. — Phase 58 needs identifiable protocol failures, while Phase 62 owns cross-version and provider-wire coverage.
 - [Phase 58]: Python product conformance and the exact securesystemslib oracle run as separate CI steps. — Separate steps distinguish Lattice behavior drift from upstream DSSE PAE/signature drift.
 - [Phase 58]: Reciprocal minting and exact aggregate coverage use dedicated non-watch package scripts. — Stable command names keep local and CI validation identical and prevent accidental watch-mode gates.
+- [Phase 59]: Session branches inherit parent tenant/privacy/retention exactly and reject explicit scope changes. — This prevents scoped runs from silently adopting legacy or mismatched history.
+- [Phase 59]: ExecutionPlan.artifactRefs remains declared history while ContextProjectionPlan records provider-visible evidence. — Compatibility and execution authority remain independently inspectable.
+- [Phase 59]: Context materialization and persistence failures are terminal bounded public variants. — Fallback cannot repair policy/storage failures and must not expose raw causes.
 
 ### Pending Todos
 
@@ -113,3 +116,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P04 | 15min | 3 tasks | 11 files |
 | Phase 58 P05 | 15min | 3 tasks | 9 files |
 | Phase 58 P06 | 9min | 3 tasks | 5 files |
+| Phase 59 P01 | 12 min | 1 tasks | 9 files |
