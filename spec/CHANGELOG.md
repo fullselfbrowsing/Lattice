@@ -4,6 +4,26 @@ This changelog documents per-version field additions to the Lattice capability-r
 
 ---
 
+## lattice-receipt/v1.4
+
+v1.4 corrects Lattice issuance to standard DSSE v1.0 semantics. PAE now commits to the
+decoded RFC 8785 canonical payload bytes; the envelope's standard-base64 `payload` remains
+transport encoding and is no longer the signed PAE payload. New receipts authenticate the
+required `signatureProfile: "dsse-v1"` field.
+
+Verification exposes which path succeeded through `verificationProfile` and `deprecated`.
+The direct-library bridge defaults to allowing read-only verification of historical
+base64-text-PAE receipts, while strict consumers may reject that path. A corrected v1.4
+signature failure never falls back. The new typed errors are `signature-profile-mismatch`
+and `legacy-profile-rejected`.
+
+This release adds the closed `spec/schema/v1.4.json` schema and
+`spec/MIGRATION-v1.4.md`. Conformance evidence is separated into immutable historical
+(`vectors/legacy`) and current standard (`vectors/standard`) corpora; the corrected standard
+corpus is introduced separately from this specification update.
+
+---
+
 ## lattice-receipt/v1.3
 
 Introduced in Phase 39 (receipt chaining / crew receipts) and Phase 46 (artifact lineage provenance). These are additive optional fields.

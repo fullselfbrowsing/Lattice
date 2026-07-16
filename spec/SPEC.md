@@ -1,12 +1,12 @@
 # Lattice Capability Receipt Protocol Specification
 
 **Status:** Normative
-**Spec version:** 1.0-draft (tied to receipt schema v1.3)
-**Normative tie-breaker:** The live TypeScript reference implementation
-(`packages/lattice/src/receipts/` and `packages/lattice/src/storage/fingerprint.ts`) is the
-normative authority on protocol behavior. Where this document and the implementation diverge,
-the implementation wins. `paper/main.tex` is expository scaffolding only; this
-specification remains normative for receipt protocol behavior. (D-02)
+**Spec version:** 1.1-draft (tied to receipt schema v1.4)
+**Normative authority:** This specification and the versioned JSON Schemas in
+`spec/schema/` define the public protocol. An implementation MUST NOT require access to the
+Lattice TypeScript source to reproduce signing or verification. Where normative prose and a
+schema differ, the schema governs receipt-body shape and this document governs algorithms and
+policy. Reference implementations and `paper/main.tex` are non-normative.
 
 **Normative references:** RFC 2119, RFC 8174, RFC 8785 (JCS), RFC 4648, RFC 7493 (I-JSON),
 RFC 8037 (OKP JWK), RFC 8032 (Ed25519), DSSE v1.0 protocol.
@@ -45,9 +45,10 @@ within a `KeySet`. The `kid` appears both in the receipt body and in the DSSE
 Scheme (JCS) to a receipt body object. The canonical bytes are the signed commitment.
 
 **Payload:** The standard base64 encoding (RFC 4648 § 4) of the canonical bytes. This is
-the `payload` field of the DSSE envelope and is also the input to the PAE construction.
+the `payload` field of the DSSE envelope. It is transport encoding only; the decoded
+canonical payload bytes, not this base64 text, are input to standard PAE construction.
 
-**VerifyErrorKind:** A discriminated union of seven string literals identifying the reason a
+**VerifyErrorKind:** A discriminated union of nine string literals identifying the reason a
 receipt fails verification. Defined in § 5.2.
 
 ---
@@ -57,10 +58,10 @@ receipt fails verification. Defined in § 5.2.
 A Lattice capability receipt records a single AI capability invocation as a signed,
 replayable, redaction-aware JSON artifact. The signing pipeline proceeds as follows:
 the minter assembles a receipt body, applies the redaction policy to produce a manifest of
-redacted fields, canonicalizes the redacted body using RFC 8785 JCS, base64-encodes the
-canonical bytes to form the DSSE payload, constructs the DSSE PAE string, signs the PAE
-bytes with an Ed25519 key, assembles the DSSE envelope, and optionally derives a CID for
-receipt chaining. Verification reverses this pipeline in a strict 10-step decision tree that
+redacted fields, canonicalizes the redacted body using RFC 8785 JCS, constructs DSSE PAE over
+the canonical payload bytes, signs the PAE bytes with an Ed25519 key, base64-encodes the
+canonical bytes for envelope transport, assembles the DSSE envelope, and optionally derives
+a CID for receipt chaining. Verification follows a strict 12-step decision tree that
 short-circuits at the first failure. The downgrade defense (step 4) fires before any
 cryptographic operation, ensuring that receipts with deprecated version strings cannot be
 accepted even when a valid-but-revoked key is presented.
@@ -71,7 +72,7 @@ accepted even when a valid-but-revoked key is presented.
 
 ### § 3.1  Fields — All Versions
 
-All three accepted receipt versions share the following required fields.
+All four accepted receipt versions share the following required fields.
 Implementations MUST reject receipt bodies that omit any required field.
 
 | Field | Type (JSON) | Description |
@@ -104,10 +105,11 @@ and `costUsd` (string or null). See § 3.3 for I-JSON constraints.
 
 ### § 3.2  Version-Specific Fields
 
-The three accepted versions add optional fields beyond the required set. Because all schema
-files use `additionalProperties: false` (§ 3.4), v1.1 bodies MUST NOT carry `modelClass`,
-`parentReceiptCid`, or `lineageMerkleRoot`; v1.2 bodies MUST NOT carry `parentReceiptCid`
-or `lineageMerkleRoot`.
+The accepted versions add fields beyond the common required set. Because all schema files
+use `additionalProperties: false` (§ 3.4), v1.1 bodies MUST NOT carry `modelClass`,
+`parentReceiptCid`, `lineageMerkleRoot`, or `signatureProfile`; v1.2 bodies MUST NOT carry
+`parentReceiptCid`, `lineageMerkleRoot`, or `signatureProfile`; and v1.3 bodies MUST NOT
+carry `signatureProfile`.
 
 **Optional fields present in all versions (v1.1, v1.2, v1.3):**
 
@@ -134,6 +136,16 @@ or `lineageMerkleRoot`.
 |-------|-------------|-------------|
 | `parentReceiptCid` | string | CID of the parent receipt in a chained crew execution. Format: `sha256:<lowercase-hex>`. |
 | `lineageMerkleRoot` | string | SHA-256 Merkle root of the artifact lineage graph. Format: `sha256:<lowercase-hex>`. |
+
+**Field added in v1.4 (required):**
+
+| Field | Type (JSON) | Description |
+|-------|-------------|-------------|
+| `signatureProfile` | string | Authenticated signature profile. MUST be the exact literal `"dsse-v1"`. |
+
+New receipts MUST use version `"lattice-receipt/v1.4"` and MUST include
+`"signatureProfile":"dsse-v1"`. Versions v1.1 through v1.3 are historical and MUST omit
+`signatureProfile`.
 
 ### § 3.3  Field Types and I-JSON Constraints
 
@@ -166,14 +178,15 @@ normative prose (D-08).
 
 ### § 3.4  JSON Schema Files (Normative)
 
-The files `spec/schema/v1.1.json`, `spec/schema/v1.2.json`, and `spec/schema/v1.3.json` are
-normative machine-checkable complements to this section. All three files use JSON Schema
+The files `spec/schema/v1.1.json`, `spec/schema/v1.2.json`, `spec/schema/v1.3.json`, and
+`spec/schema/v1.4.json` are normative machine-checkable complements to this section. All
+four files use JSON Schema
 draft 2020-12, and the root receipt-body object and its structured sub-objects (`model`,
 `route`, `usage`) use `additionalProperties: false` — this is the drift/forgery gate for the
 receipt body's field set. The optional diagnostic payloads `tripwireEvidence` and the
 entries of `noRouteReasons` carry implementation-defined fields whose internal shape is
 outside the normative receipt-protocol surface; they are intentionally left open and are
-NOT closed with `additionalProperties: false`. Where prose and schema disagree, prose wins.
+NOT closed with `additionalProperties: false`. The schemas govern receipt-body shape.
 
 ---
 
@@ -187,9 +200,11 @@ canonicalization MUST precede signing. No step may be skipped or reordered.
 
 The implementation MUST assemble the receipt body with all required fields populated. The
 `kid` field MUST be set to `signer.kid` — the receipt body has no independent `kid` input;
-it is always taken from the signer object. The `version` field MUST be set to
-`"lattice-receipt/v1.3"` for all newly minted receipts. Historical receipts may carry
-`"lattice-receipt/v1.1"` or `"lattice-receipt/v1.2"` version strings and remain verifiable.
+it is always taken from the signer object. For every newly minted receipt, `version` MUST be
+`"lattice-receipt/v1.4"` and `signatureProfile` MUST be `"dsse-v1"`. Historical receipts may
+carry `"lattice-receipt/v1.1"`, `"lattice-receipt/v1.2"`, or `"lattice-receipt/v1.3"` and
+remain eligible for verification under § 5. No conforming minter exposes a historical or
+legacy signing path.
 
 ### § 4.2  Step 2 — Redact
 
@@ -230,23 +245,28 @@ implementation MUST NOT use base64url (RFC 4648 § 5), which substitutes `+` wit
 
 ### § 4.5  Step 5 — Build PAE (DSSE v1.0)
 
-The implementation MUST construct the Pre-Authentication Encoding (PAE) as the UTF-8
-encoding of the following string:
+The implementation MUST construct standard DSSE v1.0 Pre-Authentication Encoding (PAE) by
+concatenating the following byte sequences:
 
 ```
-PAE = "DSSEv1 " + len(payloadType) + " " + payloadType
-                + " " + len(payloadBase64) + " " + payloadBase64
+PAE = UTF8("DSSEv1") || SP || UTF8(DECIMAL(LEN(UTF8(payloadType))))
+      || SP || UTF8(payloadType)
+      || SP || UTF8(DECIMAL(LEN(canonicalPayloadBytes)))
+      || SP || canonicalPayloadBytes
 ```
 
 Where:
-- `payloadType` is the literal string `"application/vnd.lattice.receipt+json"` (36 bytes).
-- `payloadBase64` is the base64 string from step 4.
-- `len(s)` is the ASCII decimal encoding of the byte length of `s`. For pure-ASCII strings,
-  byte length equals character count.
+- `SP` is the single byte `0x20`.
+- `payloadType` is the literal string `"application/vnd.lattice.receipt+json"`; its UTF-8
+  encoding is 36 bytes.
+- `canonicalPayloadBytes` are the exact bytes produced in step 3 and decoded from the
+  envelope `payload` during verification.
+- `LEN(bytes)` is the number of bytes, and `DECIMAL(n)` is the non-negative ASCII decimal
+  representation of that number with no sign or leading zeroes (except `0` itself).
 
 The DSSE PAE structure uses length-prefixed fields to prevent ambiguity attacks. The
-Ed25519 signature MUST be computed over the PAE bytes, NOT over the canonical body bytes
-directly.
+Ed25519 signature MUST be computed over these PAE bytes. Envelope base64 text MUST NOT be
+substituted for `canonicalPayloadBytes`.
 
 ### § 4.6  Step 6 — Ed25519 Sign PAE Bytes
 
@@ -272,7 +292,7 @@ The implementation MUST produce a DSSE envelope with the following fields:
     MUST use standard base64 (RFC 4648 § 4), NOT base64url.
 
 The structural invariant `body.kid === signatures[0].keyid` MUST hold. This is enforced by
-the minter (kid is taken from the signer) and verified in step 9 of the verification
+the minter (kid is taken from the signer) and verified in step 12 of the verification
 algorithm (§ 5.1).
 
 ### § 4.8  Step 8 — Derive CID (for chaining)
@@ -286,187 +306,131 @@ The CID is derived from the DSSE envelope as follows:
 The CID is stable: it can be derived from any valid DSSE envelope without key material. The
 CID of a receipt is used as `parentReceiptCid` in downstream chained receipts.
 
-### § 4.9  Worked Example — Vector #0 (non-normative)
+### § 4.9  v1.4 Signing Walk-Through (non-normative)
 
-This section threads a complete receipt through every pipeline step. The exact byte values
-are committed in `spec/vector0-fixture.json` (vector #0 of the Phase 51 conformance set).
-The values below are transcribed directly from that file.
-
-**Input body (abbreviated):**
+A minimal current body includes the authenticated signature profile:
 
 ```json
 {
-  "version": "lattice-receipt/v1.3",
+  "version": "lattice-receipt/v1.4",
+  "signatureProfile": "dsse-v1",
   "receiptId": "00000000-0000-4000-a000-000000000001",
-  "runId": "spec-vector-0",
-  "issuedAt": "2026-06-25T00:00:00.000Z",
-  "kid": "spec-example-key-v0",
-  "stepName": "分析-step",
-  "model": { "requested": "claude-3-5-sonnet", "observed": "claude-3-5-sonnet-20241022" },
-  "route": { "providerId": "anthropic", "capabilityId": "chat", "attemptNumber": 1 },
-  "usage": { "promptTokens": 100, "completionTokens": 42, "costUsd": "0.001250" },
+  "runId": "example-run",
+  "issuedAt": "2026-07-16T00:00:00.000Z",
+  "kid": "example-key",
+  "model": { "requested": "example-model", "observed": null },
+  "route": { "providerId": "example", "capabilityId": "chat", "attemptNumber": 1 },
+  "usage": { "promptTokens": 0, "completionTokens": 0, "costUsd": null },
   "contractVerdict": "success",
   "contractHash": null,
   "inputHashes": [],
   "outputHash": null,
   "redactionPolicyId": "lattice.default.v1",
-  "redactions": [
-    { "path": "tripwireEvidence.observed", "reason": "no-pii-detector-substring-only" }
-  ],
-  "tripwireEvidence": {
-    "invariantId": "spec-tripwire-example",
-    "kind": "no-pii",
-    "path": "tripwireEvidence.observed",
-    "observed": "spec-example-tripwire",
-    "message": "no-pii detector triggered (spec example only)"
-  }
+  "redactions": []
 }
 ```
 
-Note: `stepName` contains the CJK string `"分析-step"`, exercising the non-ASCII Unicode
-preservation requirement from § 4.3. The `redactions[]` array is non-empty (one entry),
-exercising the redact-before-sign ordering from § 4.2.
-
-**Step 3 — JCS canonical bytes (hex, first 64 chars):**
+Let `B = UTF8(JCS(body))`. Standard issuance performs these byte operations:
 
 ```
-7b22636f6e747261637448617368223a6e756c6c2c22636f6e747261637456657264696374223a...
+payload = BASE64_STANDARD(B)
+PAE     = UTF8("DSSEv1 36 application/vnd.lattice.receipt+json ")
+          || UTF8(DECIMAL(LEN(B))) || SP || B
+sig     = BASE64_STANDARD(ED25519_SIGN(privateKey, PAE))
+cid     = "sha256:" || LOWER_HEX(SHA256(B))
 ```
 
-(Full hex: `spec/vector0-fixture.json` → `canonicalBytesHex`)
-
-**Step 4 — DSSE payload (base64, first 80 chars):**
-
-```
-eyJjb250cmFjdEhhc2giOm51bGwsImNvbnRyYWN0VmVyZGljdCI6InN1Y2Nlc3MiLCJpbnB1dEh...
-```
-
-(Full base64: `spec/vector0-fixture.json` → `payloadBase64`)
-
-**Step 5 — PAE bytes (hex, first 80 chars):**
-
-```
-445353457631203336206170706c69636174696f6e2f766e642e6c6174746963652e726563656970...
-```
-
-The PAE prefix decodes to `"DSSEv1 36 application/vnd.lattice.receipt+json 1136 "`,
-where `36` is the byte length of the payloadType string and `1136` is the length of the
-base64 payload string.
-
-(Full hex: `spec/vector0-fixture.json` → `paeHex`)
-
-**Step 6 — Ed25519 signature (all 128 hex chars = 64 bytes):**
-
-```
-0ace19c3105af3e97cfbf5a051dcb9cc983cee46f88c72ccf8a2a680d26dfb4f
-66b9ddc599372c075dd0df5e07ff9221f89892f4abacc1a908113ff16db4b602
-```
-
-(Source: `spec/vector0-fixture.json` → `signatureHex`)
-
-**Step 7 — DSSE envelope (abbreviated):**
-
-```json
-{
-  "payloadType": "application/vnd.lattice.receipt+json",
-  "payload": "eyJjb250cmFjdEhhc2giOm51bGwsImNvbnRyYWN0VmVyZGljdCI6...",
-  "signatures": [
-    {
-      "keyid": "spec-example-key-v0",
-      "sig": "Cs4ZwxBa8+l8+/WgUdy5zJg87kb4jHLM+KKmgNJt+09mud3FmTcsB13Q314H/5Ih+JiS9KuswakIET/xbbS2Ag=="
-    }
-  ]
-}
-```
-
-Note: `sig` uses standard base64 (contains `+` and `/`). The `payload` field is the same
-base64 string used to build the PAE in step 5.
-
-**Step 8 — CID:**
-
-```
-sha256:d8bc75e07072455cd8d234d86e2b7d7444ef5233ad71e62586ac7a358ae0cf63
-```
-
-(Source: `spec/vector0-fixture.json` → `cid`)
-
-Complete byte values are in `spec/vector0-fixture.json` (vector #0 of the Phase 51
-conformance set).
+The envelope stores `payload` and `sig` as canonical RFC 4648 standard base64. The PAE
+contains `B` itself after its decimal byte length; it does not contain `payload`. This
+walk-through illustrates the construction without naming a committed conformance vector.
 
 ---
 
 ## § 5  Verification Algorithm
 
-Implementations MUST process the following 10 steps in order. The first step that fails
-determines the `VerifyErrorKind`. Verification succeeds only if all 10 steps pass. No step
-may be skipped or reordered. The downgrade-defense step (step 4) MUST occur before any
-keyset lookup or cryptographic operation (steps 5–8).
+Verification is non-throwing at the protocol boundary: malformed or invalid input produces a
+typed failure. Implementations MUST process the following steps in order. The first terminal
+condition determines the result, and no later check may replace it.
 
-### § 5.1  Decision Tree (10 Steps)
+### § 5.1  First-Match Decision Tree (12 Steps)
 
-| Step | Condition | Error Kind |
-|------|-----------|-----------|
-| 1 | `decodeEnvelope` throws (wrong payloadType, malformed base64), or `signatures[]` is empty | `envelope-malformed` |
-| 2 | Decoded payload bytes are not valid JSON | `envelope-malformed` |
-| 3 | Body shape check fails (missing required fields or wrong primitive types), or `version` is a non-empty string that is not one of: `undefined`, `"lattice-receipt/v1"`, `"lattice-receipt/v1.1"`, `"lattice-receipt/v1.2"`, `"lattice-receipt/v1.3"` | `version-mismatch` |
-| 4 | `body.version === undefined` OR `body.version === "lattice-receipt/v1"` | `schema-version-too-low` |
-| 5 | `keySet.lookup(firstSig.keyid)` returns `undefined` | `key-not-found` |
-| 6 | `entry.state === "revoked"` | `key-revoked` |
-| 7 | Re-canonicalized body bytes are not byte-for-byte identical to the decoded payload bytes | `canonicalization-mismatch` |
-| 8 | Ed25519 verify of PAE bytes with the entry's public key fails | `signature-invalid` |
-| 9 | `body.kid !== entry.kid` | `signature-invalid` |
-| 10 | All prior steps pass | ok + `keyState` |
+| Step | Condition or action | Result / next step |
+|------|---------------------|--------------------|
+| 1 | Require the exact payload type, at least one signature, and canonical RFC 4648 standard base64 for `payload` and every `sig`; decode them to bytes. | Any failure: `envelope-malformed`. |
+| 2 | Decode payload bytes as UTF-8 JSON. | Parse failure: `envelope-malformed`. |
+| 3 | Validate the common receipt shape and require `version` to be absent or exactly one of `lattice-receipt/v1`, v1.1, v1.2, v1.3, or v1.4. | Shape failure or any other non-empty version: `version-mismatch`. |
+| 4 | Reject an absent version or exact `lattice-receipt/v1`. | `schema-version-too-low`. |
+| 5 | Require v1.4 to carry `signatureProfile: "dsse-v1"`; require v1.1-v1.3 to omit `signatureProfile`. | Any other version/profile pairing: `signature-profile-mismatch`. |
+| 6 | Use `signatures[0].keyid` to look up a `KeyEntry`. | Missing entry: `key-not-found`. |
+| 7 | Inspect the located key's lifecycle state. | `revoked`: `key-revoked`; `active` or `retired`: continue. |
+| 8 | RFC 8785-canonicalize the parsed body and byte-compare it with the decoded payload bytes. | Difference: `canonicalization-mismatch`. |
+| 9 | Verify `signatures[0].sig` over standard PAE from § 4.5 using the decoded payload bytes. | Success: select `dsse-v1` and continue at step 12; failure: continue. |
+| 10 | If the body is v1.4, stop. Corrected-profile signature failures are never eligible for historical fallback. | `signature-invalid`. Historical v1.1-v1.3: continue. |
+| 11 | If legacy policy is `reject`, stop. Otherwise verify the signature over historical base64-text PAE (§ 5.4). | Reject policy: `legacy-profile-rejected`; failed legacy signature: `signature-invalid`; success: select `lattice-legacy-base64-pae` and continue. |
+| 12 | Require the signed `body.kid` to equal the located `KeyEntry.kid` (and therefore the envelope lookup identifier). | Mismatch: `signature-invalid`; match: return success with the selected profile, deprecation flag, body, and key state. |
 
-**Step 3 detail:** The shape check accepts `version: undefined`, `"lattice-receipt/v1"`,
-`"lattice-receipt/v1.1"`, `"lattice-receipt/v1.2"`, and `"lattice-receipt/v1.3"` so that
-too-low version strings always reach step 4 (the schema-version-too-low chokepoint). An
-unrecognized non-undefined literal (e.g., `"lattice-receipt/v2"` or `"garbage"`) is a
-structural shape failure that falls to step 3 with `version-mismatch`.
+Step 3 deliberately admits the two too-low forms so they reach the unambiguous downgrade
+chokepoint at step 4. JSON Schema validation for a declared version MAY be performed as part
+of the step-3 body check, but it MUST preserve the result ordering above.
 
-**Step 7 detail:** The verifier re-canonicalizes the parsed body and byte-compares to the
-signed payload bytes. This catches any modification of the canonical bytes that still parses
-as valid JSON but is not the canonical form (e.g., whitespace injection, alternate float
-representation of a numeric field).
-
-**Step 4 exact error message:**
-
-```
-Receipt body.version must be 'lattice-receipt/v1.1', 'lattice-receipt/v1.2', or
-'lattice-receipt/v1.3' — v1 receipts are not accepted (CRYPTO-01).
-```
+At step 6, envelope `keyid` is an unauthenticated routing hint until signature verification
+and the step-12 signed-body cross-check both pass. Implementations MUST NOT treat successful
+key lookup alone as proof of key identity.
 
 ### § 5.2  VerifyErrorKind Taxonomy
 
-The following seven error kinds are the complete set. No other values are defined.
+The following nine error kinds are the complete protocol set.
 
 | Error Kind | Step(s) | Description |
 |------------|---------|-------------|
-| `envelope-malformed` | 1–2 | The DSSE envelope cannot be decoded, has no signatures, or the payload is not valid JSON. |
-| `version-mismatch` | 3 | The body fails the structural shape check, or carries an unrecognized version string. |
-| `schema-version-too-low` | 4 | The body carries `version: undefined` or `"lattice-receipt/v1"`. Rejected before any crypto. |
-| `key-not-found` | 5 | The `kid` in the envelope's first signature does not match any entry in the `KeySet`. |
-| `key-revoked` | 6 | The key was found but its `state` is `"revoked"`. |
-| `canonicalization-mismatch` | 7 | The re-canonicalized body bytes do not match the bytes that were signed. |
-| `signature-invalid` | 8–9 | The Ed25519 signature verification failed, or `body.kid` does not equal `entry.kid`. |
+| `envelope-malformed` | 1-2 | The envelope, canonical base64, signature list, payload type, or payload JSON is malformed. |
+| `version-mismatch` | 3 | The body shape is unsupported or the version is an unrecognized literal. |
+| `schema-version-too-low` | 4 | Version is absent or exactly `lattice-receipt/v1`; rejection occurs before key or crypto work. |
+| `signature-profile-mismatch` | 5 | v1.4 is missing exact `dsse-v1`, or a historical version declares a signature profile. |
+| `key-not-found` | 6 | No key entry exists for the first envelope signature's `keyid`. |
+| `key-revoked` | 7 | The located key is revoked. |
+| `canonicalization-mismatch` | 8 | Re-canonicalized body bytes differ from decoded payload bytes. |
+| `signature-invalid` | 9-12 | Neither eligible signature path verifies, v1.4 standard verification fails, or signed `kid` differs. |
+| `legacy-profile-rejected` | 11 | A historical receipt needs the deprecated verification path while policy is `reject`. |
 
-### § 5.3  Downgrade Defense (CRYPTO-01)
+### § 5.3  Successful Result and Legacy Policy
 
-Implementations MUST reject receipts with `body.version === undefined` or
-`body.version === "lattice-receipt/v1"` at step 4, **before** performing keyset lookup or
-any cryptographic operation. Reversing this order enables a downgrade attack (CRYPTO-01)
-where an adversary presents a v1-shaped body with a valid signature from a key that has
-since been revoked. Because the revocation check (step 6) follows keyset lookup (step 5),
-and both occur after step 4, an implementation that performs steps 5–6 before step 4 would
-pass a revoked-key v1 receipt through to signature verification.
+A successful result MUST expose:
 
-This invariant is enforced in the reference implementation at `verify.ts` lines 119–132
-(the version chokepoint fires before lines 135–165 which perform keyset lookup,
-re-canonicalization, and signature verification). The `schema-version-too-low` check at
-step 4 is the CRYPTO-01 security invariant of this specification.
+- `verificationProfile: "dsse-v1"` and `deprecated: false` when standard PAE verifies.
+- `verificationProfile: "lattice-legacy-base64-pae"` and `deprecated: true` when the
+  bounded historical path verifies.
+- The parsed body and located key state.
 
-Ordering guarantee: `schema-version-too-low` (step 4) precedes `key-not-found` (step 5),
-`key-revoked` (step 6), `canonicalization-mismatch` (step 7), and `signature-invalid`
-(steps 8–9). Accordingly, any `key-not-found` result implies step 4 already passed.
+The direct-library default legacy policy is `allow` for the v1.6 bridge. A strict consumer
+sets `reject`. Policy `reject` disables only the deprecated fallback: a v1.1-v1.3 receipt
+whose standard DSSE signature verifies still succeeds as `dsse-v1` and is not deprecated.
+Compatibility acceptance MUST NOT be collapsed into a bare boolean because callers need to
+distinguish current conformance from historical acceptance.
+
+### § 5.4  Bounded Historical Verification
+
+Historical v1.1-v1.3 receipts created by earlier Lattice releases may have signed the
+envelope's base64 payload text rather than the decoded canonical bytes. Their verification-only
+PAE is:
+
+```
+legacyPAE = UTF8("DSSEv1 " + LEN(UTF8(payloadType)) + " " + payloadType
+                 + " " + LEN(UTF8(payloadBase64)) + " " + payloadBase64)
+```
+
+For Lattice's fixed payload type and canonical standard-base64 payload, both inputs are ASCII.
+This path MUST run only after standard verification fails, only for v1.1-v1.3, and only when
+legacy policy is `allow`. It MUST NOT be used to mint receipts. A v1.4 standard signature
+failure terminates at step 10 and MUST NOT fall back.
+
+### § 5.5  Downgrade Defense (CRYPTO-01)
+
+Implementations MUST reject an absent `body.version` or exact
+`body.version === "lattice-receipt/v1"` at step 4, before key lookup, key-state checks,
+canonicalization, or signature verification. This ordering prevents a too-low body from
+bypassing commitments added by versioned schemas and makes `schema-version-too-low` the
+stable first-match verdict regardless of key state.
 
 ---
 
@@ -552,7 +516,7 @@ internal data structure of a `KeySet` is implementation-defined.
 - `"active"`: the key is in use for signing and verification.
 - `"retired"`: the key MAY be used for verification of historical receipts but MUST NOT be
   used for signing new receipts.
-- `"revoked"`: the key MUST NOT be used for signing or verification. Step 6 of the
+- `"revoked"`: the key MUST NOT be used for signing or verification. Step 7 of the
   verification algorithm (§ 5.1) returns `key-revoked` for any receipt whose signing key
   has state `"revoked"`.
 
@@ -572,10 +536,11 @@ padding) used for the envelope `payload` and `sig` fields.
 ### § 7.3  kid Cross-Check Invariant
 
 The `kid` field in the receipt body MUST equal the `keyid` field in `signatures[0]` of the
-DSSE envelope. Step 9 of the verification algorithm enforces this as a defense-in-depth
-check: if `body.kid !== entry.kid`, the verifier returns `signature-invalid`. This prevents
-an attacker from routing verification to a different key while keeping a valid `body.kid`
-commitment in the signed body.
+DSSE envelope. Envelope `keyid` is an unauthenticated lookup hint; it becomes trustworthy
+only after signature verification and step 12. That step compares the signed `body.kid` to
+the located entry's `kid` and returns `signature-invalid` on mismatch. This prevents an
+attacker from routing verification to a different key while retaining a conflicting signed
+identifier.
 
 ---
 
@@ -591,6 +556,7 @@ checked by EXACT STRING EQUALITY — prefix matching is explicitly prohibited.
 "lattice-receipt/v1.1"
 "lattice-receipt/v1.2"
 "lattice-receipt/v1.3"
+"lattice-receipt/v1.4"
 ```
 
 The string `"lattice-receipt/v1"` (no minor version component) is permanently rejected at
@@ -599,11 +565,11 @@ rejected at step 4.
 
 ### § 8.2  Version String Format
 
-Version strings follow the pattern `"lattice-receipt/v{major}.{minor}"`. Future minor
-versions (e.g., `v1.4`) will add new optional fields without removing existing ones.
-The minter forces `version = "lattice-receipt/v1.3"` for all newly minted receipts.
-Historical receipts may carry `"lattice-receipt/v1.1"` or `"lattice-receipt/v1.2"` strings
-and remain verifiable with the same verifier.
+Version strings follow the pattern `"lattice-receipt/v{major}.{minor}"`. The current issuance
+version is v1.4. Every conforming minter forces `version = "lattice-receipt/v1.4"` and
+`signatureProfile = "dsse-v1"`. Historical v1.1-v1.3 bodies remain verifiable under the
+ordered policy in § 5, but no conforming minter emits them. Future versions require an
+explicit schema and version/profile rule; prefix or optimistic version matching is forbidden.
 
 ### § 8.3  Conformance Boundary (D-11 cross-reference)
 
