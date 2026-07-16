@@ -23,9 +23,11 @@ export interface BuildContextPackInput {
 
 export interface ContextSummarizer {
   summarize(input: {
-    readonly artifacts: readonly ArtifactRef[];
+    readonly artifacts: readonly ArtifactInput[];
     readonly budgetTokens: number;
-  }): Promise<readonly ArtifactRef[]> | readonly ArtifactRef[];
+  }):
+    | Promise<readonly (ArtifactInput | ArtifactRef)[]>
+    | readonly (ArtifactInput | ArtifactRef)[];
 }
 
 export function buildContextPack(input: BuildContextPackInput): ContextPack {
