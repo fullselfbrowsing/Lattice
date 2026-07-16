@@ -22,7 +22,7 @@
 - [ ] **CONF16-03**: TypeScript and Python callers can reciprocally mint and verify standard-profile receipts.
 - [ ] **CONF16-04**: CI validates standard PAE behavior against the independent `securesystemslib==1.4.0` test oracle without adding a runtime dependency.
 - [ ] **CONF16-05**: CLI verification and replay report the verified signature profile and can enforce standard-only verification.
-- [ ] **CONF16-06**: CI rejects stale manifests, generated artifacts, cross-language drift, independent-oracle failures, and packed-consumer incompatibility.
+- [x] **CONF16-06**: CI rejects stale manifests, generated artifacts, cross-language drift, independent-oracle failures, and packed-consumer incompatibility.
 
 ### Context Authority
 
@@ -121,7 +121,7 @@ Roadmap creation maps each requirement to exactly one phase.
 | CONF16-03 | Phase 58 | Pending |
 | CONF16-04 | Phase 58 | Pending |
 | CONF16-05 | Phase 58 | Pending |
-| CONF16-06 | Phase 58 | Pending |
+| CONF16-06 | Phase 58 | Complete |
 | CTXAUTH-01 | Phase 59 | Pending |
 | CTXAUTH-02 | Phase 59 | Pending |
 | CTXAUTH-03 | Phase 59 | Pending |

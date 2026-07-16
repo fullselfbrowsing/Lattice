@@ -92,7 +92,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   4. CI checks PAE behavior against `securesystemslib==1.4.0` as a test-only oracle and rejects stale manifests, generated artifacts, language drift, oracle failures, and packed-consumer incompatibility.
   5. CLI verify and replay report the profile that verified and can enforce standard-only operation.
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 ### Phase 59: Authoritative Runtime State
 
@@ -160,7 +160,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | --- | --- | --- |
 | 57. Protocol Semantics | v1.6 | 2/2 | Complete    | 2026-07-16 |
-| 58. Conformance and Client Migration | v1.6 | 2/6 | In Progress|  |
+| 58. Conformance and Client Migration | v1.6 | 3/6 | In Progress|  |
 | 59. Authoritative Runtime State | v1.6 | 0/TBD | Not started | - |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |
 | 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |
