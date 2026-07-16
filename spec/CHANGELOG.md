@@ -11,11 +11,17 @@ decoded RFC 8785 canonical payload bytes; the envelope's standard-base64 `payloa
 transport encoding and is no longer the signed PAE payload. New receipts authenticate the
 required `signatureProfile: "dsse-v1"` field.
 
-Verification exposes which path succeeded through `verificationProfile` and `deprecated`.
-The direct-library bridge defaults to allowing read-only verification of historical
-base64-text-PAE receipts, while strict consumers may reject that path. A corrected v1.4
-signature failure never falls back. The new typed errors are `signature-profile-mismatch`
-and `legacy-profile-rejected`.
+Verification exposes which path succeeded through `verificationProfile` and `deprecated`:
+standard verification reports `dsse-v1` and `false`, while the bounded historical path
+reports `lattice-legacy-base64-pae` and `true`. The direct-library bridge defaults to policy
+`allow` for read-only verification of historical base64-text-PAE receipts; strict consumers
+select `reject`. A corrected v1.4 signature failure never falls back. The new typed errors
+are `signature-profile-mismatch` and `legacy-profile-rejected`.
+
+The CLI bridge uses `--standard-only` for policy `reject`. Successful `verify` and `repro`
+commands report `profile=` and `deprecated=`. `verify` retains exit 0 for success, 1 for a
+typed verification failure, and 2 for load failure; `repro` retains exit 0 for a match, 1
+for drift, and 2 for prerequisite or replay failure.
 
 This release adds the closed `spec/schema/v1.4.json` schema and
 `spec/MIGRATION-v1.4.md`. Conformance evidence is separated into immutable historical

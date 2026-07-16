@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "test:cross-mint": "vitest run src/cross_mint_parity.test.ts",
+    "test:manifest": "vitest run src/manifest.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

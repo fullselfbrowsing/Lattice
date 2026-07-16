@@ -81,10 +81,28 @@ lattice verify receipt.json --standard-only
 lattice repro receipt.json --standard-only
 ```
 
-`--standard-only` maps to legacy policy `reject`. A receipt that requires the historical
-path fails with `legacy-profile-rejected`; it is not reported as a generic load failure.
-Successful `verify` and `repro` output includes `profile=<value>` and
-`deprecated=<true|false>`.
+`--standard-only` maps to legacy policy `reject`. In `verify`, a receipt that requires the
+historical path fails with `legacy-profile-rejected`. In `repro`, the same verdict is
+reported as the replay prerequisite failure
+`FAIL kind=verify-failed reason=legacy-profile-rejected: ...`; neither command reports it
+as a generic load failure. Successful `verify` and `repro` output includes
+`profile=<value>` and `deprecated=<true|false>`.
+
+### CLI Exit and Output Contract
+
+The exit classes remain stable for automation:
+
+| Command and outcome | Exit | Output contract |
+|---------------------|------|-----------------|
+| `verify`, receipt verifies | 0 | One stdout line: `OK kid=<kid> verdict=<contractVerdict> profile=<verificationProfile> deprecated=<true\|false>` |
+| `verify`, typed protocol failure (including strict legacy rejection) | 1 | One stderr line: `FAIL kind=<VerifyErrorKind> reason=<message>` |
+| `verify`, receipt or keyset cannot be loaded | 2 | One stderr line with `kind=receipt-load-failed` or `kind=keyset-load-failed` |
+| `repro`, replayed output hash matches | 0 | Stable summary ending in `profile=...`, `deprecated=...`, and `verdict=match` |
+| `repro`, replayed output hash differs | 1 | Stable summary ending in `verdict=drift` plus expected and actual output hashes |
+| `repro`, load, verification, artifact, replay, or output-hash prerequisite fails | 2 | One or more stderr lines beginning with `FAIL kind=<prerequisite-kind> reason=...` |
+
+Strict legacy rejection therefore has command-specific exit classes: exit 1 from `verify`
+and exit 2 from `repro`. It never reaches artifact loading or replay.
 
 ## Result Contract
 

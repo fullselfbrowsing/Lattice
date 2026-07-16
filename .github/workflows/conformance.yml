@@ -86,7 +86,7 @@ jobs:
         run: sha256sum --check MANIFEST.sha256
 
       - name: Verify aggregate exact manifest coverage
-        run: pnpm --filter @lattice-conformance/verify-ts exec vitest run src/manifest.test.ts
+        run: pnpm --filter @lattice-conformance/verify-ts test:manifest
 
       - name: Typecheck conformance generator
         run: pnpm --filter @lattice-conformance/generate typecheck
@@ -123,7 +123,7 @@ jobs:
         env:
           LATTICE_RUN_CROSS_MINT: "1"
           PYTHON: python
-        run: pnpm --filter @lattice-conformance/verify-ts test -- src/cross_mint_parity.test.ts
+        run: pnpm --filter @lattice-conformance/verify-ts test:cross-mint
 
       - name: Build runtime and CLI packages
         run: |

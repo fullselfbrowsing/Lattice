@@ -408,6 +408,11 @@ whose standard DSSE signature verifies still succeeds as `dsse-v1` and is not de
 Compatibility acceptance MUST NOT be collapsed into a bare boolean because callers need to
 distinguish current conformance from historical acceptance.
 
+The Lattice command-line mapping is non-normative protocol guidance: `--standard-only`
+selects policy `reject`, while omitted strictness selects `allow`. Successful command output
+reports the verifier-owned fields as `profile=<verification-profile>` and
+`deprecated=<true|false>`; it does not infer either value from the receipt version.
+
 ### § 5.4  Bounded Historical Verification
 
 Historical v1.1-v1.3 receipts created by earlier Lattice releases may have signed the
