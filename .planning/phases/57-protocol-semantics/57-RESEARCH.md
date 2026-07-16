@@ -116,11 +116,11 @@ TypeScript phase gate:
 
 Python feedback and gate:
 
-`python3 -m pytest clients/python/tests`
+`.context/python-venv/bin/python -m pytest clients/python/tests`
 
 Final Phase 57 gate:
 
-`pnpm --filter @full-self-browsing/lattice typecheck && pnpm --filter @full-self-browsing/lattice test && python3 -m pytest clients/python/tests`
+`pnpm --filter @full-self-browsing/lattice typecheck && pnpm --filter @full-self-browsing/lattice test && .context/python-venv/bin/python -m pytest clients/python/tests`
 
 Required matrix coverage includes standard v1.4 success, historical standard-first success,
 legacy allow success, legacy strict rejection, invalid legacy signature, missing/unknown/mismatched
@@ -144,4 +144,3 @@ and CI work forward prematurely.
 - `.planning/research/PITFALLS.md`
 - DSSE v1.0.2 protocol: https://github.com/secure-systems-lab/dsse/blob/v1.0.2/protocol.md
 - DSSE v1.0.2 envelope: https://github.com/secure-systems-lab/dsse/blob/v1.0.2/envelope.md
-
