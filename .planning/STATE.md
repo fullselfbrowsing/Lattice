@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T21:09:37.333Z"
-last_activity: 2026-07-16 -- Phase 58 planning complete
+last_updated: "2026-07-16T21:23:25.700Z"
+last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 2
+  completed_plans: 3
   percent: 17
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 58 — conformance and client migration
+**Current focus:** Phase 58 — Conformance and Client Migration
 
 ## Current Position
 
-Phase: 58
-Plan: Not started
+Phase: 58 (Conformance and Client Migration) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-16 -- Phase 58 planning complete
+Last activity: 2026-07-16
 
 Progress: [██████████] 100%
 
@@ -60,6 +60,7 @@ Recent decisions affecting v1.6:
 - v1.6 follows protocol -> conformance -> runtime state -> audit/cost -> agent evidence -> operational closure.
 - Reconcile and validate `origin/main` before Phase 57 implementation; the six product phases begin at 57 so neither v1.5 history's phase numbers are reused.
 - [Phase 57]: Python mint accepts only lattice-receipt/v1.4 with signed signatureProfile dsse-v1. — This keeps historical base64-PAE support read-only and prevents algorithm downgrade through issuance.
+- [Phase 58]: Versioned specification and schemas are normative; production TypeScript source is non-normative. — External implementers must reproduce protocol behavior without reading production source.
 
 ### Pending Todos
 
@@ -90,3 +91,9 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 
 - Reconcile and validate `origin/main` against the working branch.
 - `$gsd-plan-phase 57` - plan Protocol Semantics after the repository precondition passes.
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 58 P01 | 9min | 2 tasks | 17 files |
