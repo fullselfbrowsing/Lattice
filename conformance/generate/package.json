@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "tsx src/main.ts --regen-vectors",
+    "generate": "tsx src/main.ts --regen-vectors && tsx src/manifest.ts --write-aggregate",
+    "check:generated": "tsx src/check-generated.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

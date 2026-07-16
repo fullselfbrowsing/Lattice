@@ -1,10 +1,14 @@
 import {
+  appendFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
@@ -33,6 +37,13 @@ import {
   buildStandardPae,
 } from "./protocol.js";
 import type { StandardConformanceVector } from "./types.js";
+import { checkGenerated } from "./check-generated.js";
+import {
+  createAggregateManifest,
+  parseManifest,
+  verifyAggregateManifest,
+  writeAggregateManifest,
+} from "./manifest.js";
 
 const sourceDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(sourceDir, "..", "..", "..");
@@ -294,5 +305,117 @@ describe("generation output boundary", () => {
       /immutable legacy corpus/,
     );
     expect(existsSync(blockedTarget)).toBe(false);
+  });
+});
+
+function createTemporaryCorpus(): string {
+  const root = mkdtempSync(join(tmpdir(), "lattice-conformance-manifest-"));
+  cpSync(join(DEFAULT_VECTORS_ROOT, "legacy"), join(root, "legacy"), {
+    recursive: true,
+    dereference: false,
+    verbatimSymlinks: true,
+  });
+  cpSync(join(DEFAULT_VECTORS_ROOT, "standard"), join(root, "standard"), {
+    recursive: true,
+    dereference: false,
+    verbatimSymlinks: true,
+  });
+  writeAggregateManifest(root);
+  return root;
+}
+
+describe("exact aggregate manifest", () => {
+  it("verifies the complete committed corpus", () => {
+    verifyAggregateManifest(DEFAULT_VECTORS_ROOT);
+  });
+
+  it("rejects files absent from the manifest", () => {
+    const root = createTemporaryCorpus();
+    try {
+      writeFileSync(join(root, "standard", "positive", "extra.json"), "{}\n");
+      expect(() => verifyAggregateManifest(root)).toThrow(/manifest set mismatch/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects manifest entries whose files are missing", () => {
+    const root = createTemporaryCorpus();
+    try {
+      unlinkSync(join(root, "standard", "positive", STANDARD_POSITIVE_FILENAMES[0]));
+      expect(() => verifyAggregateManifest(root)).toThrow(/manifest set mismatch/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects duplicate paths", () => {
+    const root = createTemporaryCorpus();
+    try {
+      const manifestPath = join(root, "MANIFEST.sha256");
+      const firstLine = readFileSync(manifestPath, "utf8").split("\n")[0];
+      appendFileSync(manifestPath, `${firstLine}\n`, "utf8");
+      expect(() => verifyAggregateManifest(root)).toThrow(/duplicate manifest path/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects changed bytes", () => {
+    const root = createTemporaryCorpus();
+    try {
+      writeFileSync(
+        join(root, "standard", "positive", STANDARD_POSITIVE_FILENAMES[0]),
+        "{}\n",
+      );
+      expect(() => verifyAggregateManifest(root)).toThrow(/manifest hash mismatch/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects symlinks in a corpus tree", () => {
+    const root = createTemporaryCorpus();
+    try {
+      symlinkSync(
+        join(root, "standard", "positive", STANDARD_POSITIVE_FILENAMES[0]),
+        join(root, "standard", "positive", "linked.json"),
+      );
+      expect(() => createAggregateManifest(root)).toThrow(/must not be symlinks/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects escaping manifest paths", () => {
+    const hash = "0".repeat(64);
+    expect(() => parseManifest(`${hash}  ../escape.json\n`)).toThrow(
+      /canonical POSIX relative path/,
+    );
+  });
+});
+
+describe("nonmutating regeneration check", () => {
+  it("produces byte-identical standard corpora repeatedly", async () => {
+    const first = mkdtempSync(join(tmpdir(), "lattice-conformance-repeat-a-"));
+    const second = mkdtempSync(join(tmpdir(), "lattice-conformance-repeat-b-"));
+    try {
+      await generateStandardVectors(first);
+      await generateStandardVectors(second);
+      cpSync(join(DEFAULT_VECTORS_ROOT, "legacy"), join(first, "legacy"), {
+        recursive: true,
+      });
+      cpSync(join(DEFAULT_VECTORS_ROOT, "legacy"), join(second, "legacy"), {
+        recursive: true,
+      });
+      expect(createAggregateManifest(first)).toBe(createAggregateManifest(second));
+    } finally {
+      rmSync(first, { recursive: true, force: true });
+      rmSync(second, { recursive: true, force: true });
+    }
+  });
+
+  it("matches a clean temporary generation to committed bytes", async () => {
+    await expect(checkGenerated()).resolves.toBeUndefined();
   });
 });
