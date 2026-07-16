@@ -19,8 +19,8 @@
 
 - [x] **CONF16-01**: An implementer can use the specification, schemas, examples, and migration guide to reproduce both standard verification and the bounded legacy bridge without reading production source.
 - [x] **CONF16-02**: A conformance consumer can distinguish immutable legacy vectors from standard positive and adversarial negative vectors.
-- [ ] **CONF16-03**: TypeScript and Python callers can reciprocally mint and verify standard-profile receipts.
-- [ ] **CONF16-04**: CI validates standard PAE behavior against the independent `securesystemslib==1.4.0` test oracle without adding a runtime dependency.
+- [x] **CONF16-03**: TypeScript and Python callers can reciprocally mint and verify standard-profile receipts.
+- [x] **CONF16-04**: CI validates standard PAE behavior against the independent `securesystemslib==1.4.0` test oracle without adding a runtime dependency.
 - [ ] **CONF16-05**: CLI verification and replay report the verified signature profile and can enforce standard-only verification.
 - [x] **CONF16-06**: CI rejects stale manifests, generated artifacts, cross-language drift, independent-oracle failures, and packed-consumer incompatibility.
 
@@ -118,8 +118,8 @@ Roadmap creation maps each requirement to exactly one phase.
 | SIGBR-06 | Phase 57 | Complete |
 | CONF16-01 | Phase 58 | Complete |
 | CONF16-02 | Phase 58 | Complete |
-| CONF16-03 | Phase 58 | Pending |
-| CONF16-04 | Phase 58 | Pending |
+| CONF16-03 | Phase 58 | Complete |
+| CONF16-04 | Phase 58 | Complete |
 | CONF16-05 | Phase 58 | Pending |
 | CONF16-06 | Phase 58 | Complete |
 | CTXAUTH-01 | Phase 59 | Pending |

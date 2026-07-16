@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T21:46:37.106Z"
+last_updated: "2026-07-16T22:02:19.597Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 58 (Conformance and Client Migration) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-16
 
@@ -64,6 +64,8 @@ Recent decisions affecting v1.6:
 - [Phase 58]: Standard vectors carry explicit schema, profile, deprecation, result, and adversarial-axis metadata. — Harnesses must not infer cryptographic semantics from directory names or filenames.
 - [Phase 58]: Aggregate evidence uses exact recursive set equality before hash verification. — This rejects valid subsets, stale files, duplicate entries, unsafe paths, and symlink substitution.
 - [Phase 58]: The normative fixture is byte-identical to the designated independently generated standard vector. — A single artifact identity prevents prose examples and executable conformance evidence from drifting.
+- [Phase 58]: Cross-language conformance requires reciprocal minting with byte, CID, profile, and deprecation parity. — Shared static fixtures or boolean-only verification cannot detect one-sided issuance drift.
+- [Phase 58]: securesystemslib 1.4.0 is a test-only oracle for upstream PAE and Ed25519 signatures. — Lattice retains authority over canonical base64, schema, key state, signed kid, and legacy policy.
 
 ### Pending Todos
 
@@ -102,3 +104,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P01 | 9min | 2 tasks | 17 files |
 | Phase 58 P02 | 12min | 2 tasks | 23 files |
 | Phase 58 P03 | 8min | 2 tasks | 7 files |
+| Phase 58 P04 | 15min | 3 tasks | 11 files |
