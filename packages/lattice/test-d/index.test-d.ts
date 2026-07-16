@@ -36,7 +36,11 @@ import type {
   ProviderStreamTextDeltaChunk,
   RateLimitGroup,
   ReceiptEnvelope,
+  ReceiptSignatureProfile,
   RunEventSink,
+  LegacyReceiptPolicy,
+  VerificationProfile,
+  VerifyReceiptOptions,
 } from "..";
 
 // Phase 40 public-surface guard:
@@ -49,6 +53,16 @@ expectAssignable<Function>(createAI);
 
 declare const summarySchema: StandardSchemaV1;
 declare const envelope: ReceiptEnvelope;
+
+const legacyPolicy: LegacyReceiptPolicy = "reject";
+const verifyOptions: VerifyReceiptOptions = { legacyPolicy };
+const signatureProfile: ReceiptSignatureProfile = "dsse-v1";
+const verificationProfile: VerificationProfile =
+  "lattice-legacy-base64-pae";
+expectType<"reject">(legacyPolicy);
+expectType<VerifyReceiptOptions>(verifyOptions);
+expectType<"dsse-v1">(signatureProfile);
+expectType<"lattice-legacy-base64-pae">(verificationProfile);
 
 const agent = defineAgent({
   id: "public-index-smoke",

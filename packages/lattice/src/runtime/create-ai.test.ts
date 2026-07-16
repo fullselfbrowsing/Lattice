@@ -846,7 +846,10 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      expect(verifyResult.body.version).toBe("lattice-receipt/v1.3");
+      expect(verifyResult.body.version).toBe("lattice-receipt/v1.4");
+      expect(verifyResult.body.signatureProfile).toBe("dsse-v1");
+      expect(verifyResult.verificationProfile).toBe("dsse-v1");
+      expect(verifyResult.deprecated).toBe(false);
       expect(verifyResult.body.contractVerdict).toBe("success");
       expect(verifyResult.body.modelClass).toBe("local_quantized");
     }

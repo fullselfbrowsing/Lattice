@@ -224,6 +224,7 @@ export type {
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   LatticeConfig,
   LatticeRunError,
   MatchesInvariant,
@@ -280,6 +281,7 @@ export type {
   ReceiptModel,
   ReceiptRedaction,
   ReceiptRoute,
+  ReceiptSignatureProfile,
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
@@ -305,10 +307,12 @@ export type {
   TripwireViolationError,
   Usage,
   ValidationIssue,
+  VerificationProfile,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "./runtime/public-types.js";
 

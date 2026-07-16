@@ -137,7 +137,10 @@ describe("createCheckpointHook -- signer mode (mint + verify round-trip)", () =>
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
+      expect(result.verificationProfile).toBe("dsse-v1");
+      expect(result.deprecated).toBe(false);
       expect(result.body.modelClass).toBeUndefined();
       expect(result.body.stepName).toBe("do-thing");
       expect(result.body.stepIndex).toBe(7);

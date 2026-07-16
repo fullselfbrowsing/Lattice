@@ -46,12 +46,14 @@ import type {
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   MatchesInvariant,
   MaterializationError,
   MustCiteInvariant,
   NoPiiInvariant,
   QualityFloorInvariant,
   ReceiptEnvelope,
+  ReceiptSignatureProfile,
   ReceiptSigner,
   RemoteReceiptSignRequest,
   RemoteReceiptSignerOptions,
@@ -62,7 +64,9 @@ import type {
   TripwireResult,
   TripwireViolationError,
   Usage,
+  VerificationProfile,
   VerifyError,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "../src/index.js";
 
@@ -484,6 +488,10 @@ describe("Phase 9 public surface", () => {
     ]);
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.verificationProfile).toBe("dsse-v1");
+      expect(verifyResult.deprecated).toBe(false);
+    }
   });
 
   it("type-only: Phase 9 types compile and are reachable from the consumer-visible path", () => {
@@ -496,6 +504,13 @@ describe("Phase 9 public surface", () => {
     const _remoteRequest: RemoteReceiptSignRequest | undefined = undefined;
     const _remoteOptions: RemoteReceiptSignerOptions | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
+    const _legacyPolicy: LegacyReceiptPolicy = "reject";
+    const _signatureProfile: ReceiptSignatureProfile = "dsse-v1";
+    const _verificationProfile: VerificationProfile =
+      "lattice-legacy-base64-pae";
+    const _verifyOptions: VerifyReceiptOptions = {
+      legacyPolicy: _legacyPolicy,
+    };
     const _verifyResult: VerifyResult | undefined = undefined;
     const _verifyError: VerifyError | undefined = undefined;
     const _verdict: ContractVerdict | undefined = undefined;
@@ -507,6 +522,9 @@ describe("Phase 9 public surface", () => {
     void _remoteRequest;
     void _remoteOptions;
     void _keyState;
+    void _signatureProfile;
+    void _verificationProfile;
+    void _verifyOptions;
     void _verifyResult;
     void _verifyError;
     void _verdict;
