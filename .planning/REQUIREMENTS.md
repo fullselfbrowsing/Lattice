@@ -110,12 +110,54 @@ Roadmap creation maps each requirement to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SIGBR-01 | Phase 57 | Pending |
+| SIGBR-02 | Phase 57 | Pending |
+| SIGBR-03 | Phase 57 | Pending |
+| SIGBR-04 | Phase 57 | Pending |
+| SIGBR-05 | Phase 57 | Pending |
+| SIGBR-06 | Phase 57 | Pending |
+| CONF16-01 | Phase 58 | Pending |
+| CONF16-02 | Phase 58 | Pending |
+| CONF16-03 | Phase 58 | Pending |
+| CONF16-04 | Phase 58 | Pending |
+| CONF16-05 | Phase 58 | Pending |
+| CONF16-06 | Phase 58 | Pending |
+| CTXAUTH-01 | Phase 59 | Pending |
+| CTXAUTH-02 | Phase 59 | Pending |
+| CTXAUTH-03 | Phase 59 | Pending |
+| CTXAUTH-04 | Phase 59 | Pending |
+| CTXAUTH-05 | Phase 59 | Pending |
+| CTXAUTH-06 | Phase 59 | Pending |
+| PERSIST-01 | Phase 59 | Pending |
+| PERSIST-02 | Phase 59 | Pending |
+| PERSIST-03 | Phase 59 | Pending |
+| PERSIST-04 | Phase 59 | Pending |
+| AUDIT16-01 | Phase 60 | Pending |
+| AUDIT16-02 | Phase 60 | Pending |
+| AUDIT16-03 | Phase 60 | Pending |
+| AUDIT16-04 | Phase 60 | Pending |
+| EVAL16-01 | Phase 60 | Pending |
+| EVAL16-02 | Phase 60 | Pending |
+| PRICE-01 | Phase 60 | Pending |
+| PRICE-02 | Phase 60 | Pending |
+| PRICE-03 | Phase 60 | Pending |
+| PRICE-04 | Phase 60 | Pending |
+| AGREC-01 | Phase 61 | Pending |
+| AGREC-02 | Phase 61 | Pending |
+| AGREC-03 | Phase 61 | Pending |
+| AGREC-04 | Phase 61 | Pending |
+| OPSVAL-01 | Phase 62 | Pending |
+| OPSVAL-02 | Phase 62 | Pending |
+| OPSVAL-03 | Phase 62 | Pending |
+| DOC16-01 | Phase 62 | Pending |
+| HYGIENE-01 | Phase 62 | Pending |
+| HYGIENE-02 | Phase 62 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 42 total
-- Mapped to phases: 0
-- Unmapped: 42
+- Mapped to phases: 42
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-16*
-*Last updated: 2026-07-16 after requirements approval*
+*Last updated: 2026-07-16 after roadmap creation*

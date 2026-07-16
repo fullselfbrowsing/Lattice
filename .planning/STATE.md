@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: planning
-last_updated: "2026-07-16T17:14:00.094Z"
+last_updated: "2026-07-16T13:31:38-05:00"
 last_activity: 2026-07-16
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-06)
+See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Planning next milestone.
+**Current focus:** Phase 57 - Protocol Semantics.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 57 (1 of 6) - Protocol Semantics
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-16 — Milestone v1.6 started
+Status: Ready to plan
+Last activity: 2026-07-16 — v1.6 roadmap created with 42/42 requirements mapped
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Recent Milestone Snapshot
 
@@ -49,20 +51,25 @@ Last activity: 2026-07-16 — Milestone v1.6 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Key v1.5 outcomes:
+Recent decisions affecting v1.6:
 
 - The receipt protocol is now language-neutral while the runtime SDK remains TypeScript-first.
 - The committed conformance vector set is the drift anchor for TypeScript and non-TypeScript clients.
 - The Python client ships in-repo first; PyPI publishing is deferred until the client surface stabilizes.
 - Canonical mainline also shipped modular package subpaths, native provider execution, external audit helpers, standalone core preparation, and external-consumer validation at package version 1.5.1.
+- v1.6 follows protocol -> conformance -> runtime state -> audit/cost -> agent evidence -> operational closure.
+- Reconcile and validate `origin/main` before Phase 57 implementation; the six product phases begin at 57 so neither v1.5 history's phase numbers are reused.
 
 ### Pending Todos
 
-- Start the next milestone with `$gsd-new-milestone`.
+- Plan Phase 57 with `$gsd-plan-phase 57` after confirming the repository precondition.
 
 ### Blockers / Concerns
 
-- None open.
+- Repository precondition: reconcile and validate `origin/main` before Phase 57 implementation.
+- Phase 57 planning must lock exact profile fields/literals and entrypoint-specific legacy defaults.
+- Phase 59 planning must audit tenant/privacy/retention, fallback budgets, summarizer eligibility, and storage failure semantics.
+- Phase 61 planning must define stable iteration identity and crew receipt ownership; Phase 62 planning must select bounded canary credentials and spend policy.
 
 ## Deferred Items
 
@@ -80,4 +87,5 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 
 ## Operator Next Steps
 
-- `$gsd-new-milestone` - start the next milestone.
+- Reconcile and validate `origin/main` against the working branch.
+- `$gsd-plan-phase 57` - plan Protocol Semantics after the repository precondition passes.
