@@ -57,7 +57,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 ## Phases
 
 - [x] **Phase 57: Protocol Semantics** - Make every new receipt standards-compliant while quarantining historical verification behind an explicit, observable bridge. (completed 2026-07-16)
-- [ ] **Phase 58: Conformance and Client Migration** - Move the specification, vectors, TypeScript, Python, CLI, and CI to the corrected protocol as one interoperability surface.
+- [x] **Phase 58: Conformance and Client Migration** - Move the specification, vectors, TypeScript, Python, CLI, and CI to the corrected protocol as one interoperability surface. (completed 2026-07-16)
 - [ ] **Phase 59: Authoritative Runtime State** - Make one materialized context projection and real persistence lifecycle authoritative for provider execution and evidence.
 - [ ] **Phase 60: Audit, Evaluation, and Cost Integrity** - Enforce truthful receipt, evaluation, and budget outcomes through shared policies and estimation semantics.
 - [ ] **Phase 61: Agent Receipt Closure** - Attach the actual receipt envelopes to iteration, terminal, resume, and crew results without duplication.
@@ -92,7 +92,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   4. CI checks PAE behavior against `securesystemslib==1.4.0` as a test-only oracle and rejects stale manifests, generated artifacts, language drift, oracle failures, and packed-consumer incompatibility.
   5. CLI verify and replay report the profile that verified and can enforce standard-only operation.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 ### Phase 59: Authoritative Runtime State
 
@@ -160,7 +160,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | --- | --- | --- |
 | 57. Protocol Semantics | v1.6 | 2/2 | Complete    | 2026-07-16 |
-| 58. Conformance and Client Migration | v1.6 | 5/6 | In Progress|  |
+| 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
 | 59. Authoritative Runtime State | v1.6 | 0/TBD | Not started | - |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |
 | 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |

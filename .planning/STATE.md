@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
-status: executing
-last_updated: "2026-07-16T22:18:31.978Z"
+status: verifying
+last_updated: "2026-07-16T22:29:19.998Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 17
+  completed_plans: 8
+  percent: 33
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 Phase: 58 (Conformance and Client Migration) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-16
 
 Progress: [██████████] 100%
@@ -69,6 +69,9 @@ Recent decisions affecting v1.6:
 - [Phase 58]: CLI compatibility remains allow-by-default while --standard-only maps to the shared reject policy at every verification boundary. — One derived policy keeps verify and replay behavior consistent and prevents strict-mode side effects.
 - [Phase 58]: Profile and deprecation output comes directly from VerifyOk; commands never infer cryptographic semantics from receipt versions. — Verifier-owned metadata keeps migration automation exact as receipt versions and accepted profiles evolve.
 - [Phase 58]: Release smoke tests install runtime and CLI tarballs into a clean ESM project and exercise only declared public exports and the packed binary. — Workspace resolution can mask missing exports, dependency rewrites, and binary wiring defects.
+- [Phase 58]: Conformance remains one least-privilege Node 24/Python 3.13 job; ordered named steps provide drift attribution without a broader runtime matrix. — Phase 58 needs identifiable protocol failures, while Phase 62 owns cross-version and provider-wire coverage.
+- [Phase 58]: Python product conformance and the exact securesystemslib oracle run as separate CI steps. — Separate steps distinguish Lattice behavior drift from upstream DSSE PAE/signature drift.
+- [Phase 58]: Reciprocal minting and exact aggregate coverage use dedicated non-watch package scripts. — Stable command names keep local and CI validation identical and prevent accidental watch-mode gates.
 
 ### Pending Todos
 
@@ -109,3 +112,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P03 | 8min | 2 tasks | 7 files |
 | Phase 58 P04 | 15min | 3 tasks | 11 files |
 | Phase 58 P05 | 15min | 3 tasks | 9 files |
+| Phase 58 P06 | 9min | 3 tasks | 5 files |
