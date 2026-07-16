@@ -1,93 +1,195 @@
-/**
- * conformance/verify-ts/src/positive.test.ts
- *
- * TSCONF-01 — positive vector 4-step byte-identity re-derivation.
- *
- * For each of the 3 committed positive vectors (conformance/vectors/positive/),
- * re-derives every pipeline output using the SAME reference-implementation
- * functions the Phase 51 generator called, and asserts byte-identity/verdict
- * match at every step:
- *   1. canonicalizeReceiptBody(body)      === vector.canonicalBytesHex
- *   2. buildPae(PAYLOAD_TYPE, payload)    === vector.paeHex
- *   3. verifyEd25519Signature(...)        === true
- *   4. verifyReceipt(envelope, keySet)    === { ok: true }
- *
- * All 4 reference-implementation calls import directly from
- * packages/lattice/src/receipts/*.ts source (never dist/published) — this
- * package never reimplements canonicalization, PAE, or signature logic.
- */
-
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import type { StandardConformanceVector } from "../../generate/src/types.js";
 import { canonicalizeReceiptBody } from "../../../packages/lattice/src/receipts/canonical.js";
-import { PAYLOAD_TYPE, buildPae } from "../../../packages/lattice/src/receipts/envelope.js";
+import { receiptCid } from "../../../packages/lattice/src/receipts/cid.js";
+import {
+  PAYLOAD_TYPE,
+  buildPae,
+} from "../../../packages/lattice/src/receipts/envelope.js";
 import { createMemoryKeySet } from "../../../packages/lattice/src/receipts/keyset.js";
 import { verifyEd25519Signature } from "../../../packages/lattice/src/receipts/sign.js";
 import type {
   CapabilityReceiptBody,
   ReceiptEnvelope,
+  VerifyErrorKind,
 } from "../../../packages/lattice/src/receipts/types.js";
 import { verifyReceipt } from "../../../packages/lattice/src/receipts/verify.js";
 
-import type { ConformanceVector } from "@lattice-conformance/generate/src/types.js";
-
-const POSITIVE_DIR = join(__dirname, "..", "..", "vectors", "positive");
-
-/** Copied verbatim from conformance/generate/src/positive.ts lines 83-85. */
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+interface LegacyConformanceVector {
+  readonly WARNING: string;
+  readonly body: Record<string, unknown>;
+  readonly canonicalBytesHex: string;
+  readonly payloadBase64: string;
+  readonly paeHex: string;
+  readonly signatureHex: string;
+  readonly publicKeyJwk: JsonWebKey;
+  readonly kid: string;
+  readonly expectedResult: "ok" | VerifyErrorKind;
 }
 
-interface LoadedVector {
+interface LoadedVector<T> {
   readonly id: string;
-  readonly vector: ConformanceVector;
+  readonly vector: T;
 }
 
-const vectors: LoadedVector[] = readdirSync(POSITIVE_DIR)
-  .filter((f) => f.endsWith(".json"))
-  .sort()
-  .map((f) => ({
-    id: f,
-    vector: JSON.parse(readFileSync(join(POSITIVE_DIR, f), "utf8")) as ConformanceVector,
-  }));
+interface EnvelopeFields {
+  readonly payloadBase64: string;
+  readonly signatureHex: string;
+  readonly kid: string;
+}
 
-describe.each(vectors)("positive vector: $id", ({ vector }: LoadedVector) => {
-  it("Step 1 — canonicalizeReceiptBody(body) matches canonicalBytesHex", () => {
-    const bytes = canonicalizeReceiptBody(vector.body as unknown as CapabilityReceiptBody);
-    expect(toHex(bytes)).toBe(vector.canonicalBytesHex);
+const sourceDir = dirname(fileURLToPath(import.meta.url));
+const vectorsRoot = resolve(sourceDir, "..", "..", "vectors");
+
+function loadVectors<T>(directory: string): Array<LoadedVector<T>> {
+  return readdirSync(directory)
+    .filter((name) => name.endsWith(".json"))
+    .sort()
+    .map((name) => ({
+      id: name,
+      vector: JSON.parse(readFileSync(join(directory, name), "utf8")) as T,
+    }));
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("hex");
+}
+
+function buildHistoricalPae(payloadType: string, payloadBase64: string): Uint8Array {
+  const typeBytes = Buffer.from(payloadType, "utf8");
+  const transportBytes = Buffer.from(payloadBase64, "utf8");
+  return Buffer.concat([
+    Buffer.from(`DSSEv1 ${typeBytes.byteLength} `, "utf8"),
+    typeBytes,
+    Buffer.from(` ${transportBytes.byteLength} `, "utf8"),
+    transportBytes,
+  ]);
+}
+
+function buildEnvelope(vector: EnvelopeFields): ReceiptEnvelope {
+  return {
+    payloadType: PAYLOAD_TYPE,
+    payload: vector.payloadBase64,
+    signatures: [
+      {
+        keyid: vector.kid,
+        sig: Buffer.from(vector.signatureHex, "hex").toString("base64"),
+      },
+    ],
+  };
+}
+
+function buildKeySet(vector: {
+  readonly kid: string;
+  readonly publicKeyJwk: JsonWebKey;
+}) {
+  return createMemoryKeySet([
+    { kid: vector.kid, publicKeyJwk: vector.publicKeyJwk, state: "active" },
+  ]);
+}
+
+const legacyVectors = loadVectors<LegacyConformanceVector>(
+  join(vectorsRoot, "legacy", "positive"),
+);
+const standardVectors = loadVectors<StandardConformanceVector>(
+  join(vectorsRoot, "standard", "positive"),
+);
+
+describe("explicit positive corpus profiles", () => {
+  it("loads three immutable legacy and three current standard vectors", () => {
+    expect(legacyVectors).toHaveLength(3);
+    expect(standardVectors).toHaveLength(3);
+  });
+});
+
+describe.each(legacyVectors)("legacy positive: $id", ({ vector }) => {
+  it("matches canonical bytes and historical PAE bytes", async () => {
+    const canonical = canonicalizeReceiptBody(
+      vector.body as unknown as CapabilityReceiptBody,
+    );
+    expect(toHex(canonical)).toBe(vector.canonicalBytesHex);
+
+    const historicalPae = buildHistoricalPae(PAYLOAD_TYPE, vector.payloadBase64);
+    expect(toHex(historicalPae)).toBe(vector.paeHex);
+    await expect(
+      verifyEd25519Signature(
+        vector.publicKeyJwk,
+        historicalPae,
+        Buffer.from(vector.signatureHex, "hex"),
+      ),
+    ).resolves.toBe(true);
   });
 
-  it("Step 2 — buildPae(PAYLOAD_TYPE, payloadBase64) matches paeHex", () => {
-    const paeBytes = buildPae(PAYLOAD_TYPE, vector.payloadBase64);
-    expect(toHex(paeBytes)).toBe(vector.paeHex);
+  it("selects the deprecated profile by default and rejects it strictly", async () => {
+    const envelope = buildEnvelope(vector);
+    const keySet = buildKeySet(vector);
+    const allowed = await verifyReceipt(envelope, keySet);
+    expect(allowed.ok).toBe(true);
+    if (allowed.ok) {
+      expect(allowed.body.kid).toBe(vector.kid);
+      expect(allowed.verificationProfile).toBe("lattice-legacy-base64-pae");
+      expect(allowed.deprecated).toBe(true);
+    }
+
+    const rejected = await verifyReceipt(envelope, keySet, {
+      legacyPolicy: "reject",
+    });
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.error.kind).toBe("legacy-profile-rejected");
+    }
+  });
+});
+
+describe.each(standardVectors)("standard positive: $id", ({ vector }) => {
+  it("rederives canonical bytes, raw-byte PAE, signature, and CID", async () => {
+    expect(vector).toMatchObject({
+      corpusProfile: "standard",
+      schema: "spec/schema/v1.4.json",
+      expectedSchemaResult: "valid",
+      expectedVerificationProfile: "dsse-v1",
+      expectedDeprecated: false,
+      expectedResult: "ok",
+    });
+
+    const canonical = canonicalizeReceiptBody(
+      vector.body as unknown as CapabilityReceiptBody,
+    );
+    expect(toHex(canonical)).toBe(vector.canonicalBytesHex);
+    expect(Buffer.from(vector.payloadBase64, "base64")).toEqual(
+      Buffer.from(canonical),
+    );
+
+    const pae = buildPae(PAYLOAD_TYPE, canonical);
+    expect(toHex(pae)).toBe(vector.paeHex);
+    await expect(
+      verifyEd25519Signature(
+        vector.publicKeyJwk,
+        pae,
+        Buffer.from(vector.signatureHex, "hex"),
+      ),
+    ).resolves.toBe(true);
+
+    const envelope = buildEnvelope(vector);
+    const expectedCid = `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
+    await expect(receiptCid(envelope)).resolves.toBe(expectedCid);
   });
 
-  it("Step 3 — verifyEd25519Signature(publicKeyJwk, pae, sig) === true", async () => {
-    const paeBytes = buildPae(PAYLOAD_TYPE, vector.payloadBase64);
-    const sigBytes = Buffer.from(vector.signatureHex, "hex");
-    const valid = await verifyEd25519Signature(vector.publicKeyJwk, paeBytes, sigBytes);
-    expect(valid).toBe(true);
-  });
-
-  it("Step 4 — verifyReceipt(envelope, keySet) verdict === 'ok'", async () => {
-    const envelope: ReceiptEnvelope = {
-      payloadType: PAYLOAD_TYPE,
-      payload: vector.payloadBase64,
-      signatures: [
-        {
-          keyid: vector.kid,
-          sig: Buffer.from(vector.signatureHex, "hex").toString("base64"),
-        },
-      ],
-    };
-    const keySet = createMemoryKeySet([
-      { kid: vector.kid, publicKeyJwk: vector.publicKeyJwk, state: "active" },
-    ]);
-    const result = await verifyReceipt(envelope, keySet);
+  it("verifies only as current dsse-v1 under strict policy", async () => {
+    const result = await verifyReceipt(buildEnvelope(vector), buildKeySet(vector), {
+      legacyPolicy: "reject",
+    });
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.verificationProfile).toBe("dsse-v1");
+      expect(result.deprecated).toBe(false);
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.kid).toBe(vector.kid);
     }
   });

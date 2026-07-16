@@ -7,12 +7,19 @@ import { createMemoryKeySet } from "../../../packages/lattice/src/receipts/keyse
 import type { ReceiptEnvelope } from "../../../packages/lattice/src/receipts/types.js";
 import { verifyReceipt } from "../../../packages/lattice/src/receipts/verify.js";
 
-import type { ConformanceVector } from "@lattice-conformance/generate/src/types.js";
+import type { StandardConformanceVector } from "@lattice-conformance/generate/src/types.js";
 
 const RUN_CROSS_MINT = process.env.LATTICE_RUN_CROSS_MINT === "1";
 
 const REPO_ROOT = join(__dirname, "..", "..", "..");
-const VECTOR_PATH = join(REPO_ROOT, "conformance", "vectors", "positive", "vec-00-v1.3.json");
+const VECTOR_PATH = join(
+  REPO_ROOT,
+  "conformance",
+  "vectors",
+  "standard",
+  "positive",
+  "vec-00-v1.4-unicode-redaction.json",
+);
 const PYTHON_SRC = join(REPO_ROOT, "clients", "python", "src");
 
 const EXAMPLE_PRIVATE_KEY_JWK: JsonWebKey = {
@@ -35,7 +42,9 @@ interface PythonMintResult {
 
 describe.skipIf(!RUN_CROSS_MINT)("cross-mint parity", () => {
   it("TypeScript verifyReceipt accepts a Python-minted receipt", async () => {
-    const vector = JSON.parse(readFileSync(VECTOR_PATH, "utf8")) as ConformanceVector;
+    const vector = JSON.parse(
+      readFileSync(VECTOR_PATH, "utf8"),
+    ) as StandardConformanceVector;
     const python = process.env.PYTHON ?? "python3";
     const pythonPath =
       process.env.PYTHONPATH === undefined || process.env.PYTHONPATH === ""
@@ -77,4 +86,3 @@ describe.skipIf(!RUN_CROSS_MINT)("cross-mint parity", () => {
     expect(result.ok).toBe(true);
   });
 });
-
