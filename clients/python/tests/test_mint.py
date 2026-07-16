@@ -14,18 +14,16 @@ from lattice_receipt import (
     verify,
 )
 
-from .conftest import EXAMPLE_PRIVATE_KEY_JWK, positive_vectors
+from .conftest import EXAMPLE_PRIVATE_KEY_JWK, standard_positive_vectors
 
 
 def _vec00() -> dict:
-    return dict(positive_vectors()[0][1])
+    return dict(standard_positive_vectors()[0][1])
 
 
 def _v14_body() -> dict:
     vector = _vec00()
     body = copy.deepcopy(vector["body"])
-    body["version"] = "lattice-receipt/v1.4"
-    body["signatureProfile"] = "dsse-v1"
     return body
 
 

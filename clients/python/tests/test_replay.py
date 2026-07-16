@@ -6,7 +6,7 @@ import pytest
 
 from lattice_receipt import KeyEntry, VerifyError, create_memory_keyset, mint, output_hash, replay
 
-from .conftest import EXAMPLE_PRIVATE_KEY_JWK, positive_vectors
+from .conftest import EXAMPLE_PRIVATE_KEY_JWK, standard_positive_vectors
 
 
 def _keyset(vector: dict):
@@ -22,10 +22,8 @@ def _keyset(vector: dict):
 
 
 def _mint_with_output_hash(outputs):
-    vector = positive_vectors()[0][1]
+    vector = standard_positive_vectors()[0][1]
     body = copy.deepcopy(vector["body"])
-    body["version"] = "lattice-receipt/v1.4"
-    body["signatureProfile"] = "dsse-v1"
     body["outputHash"] = output_hash(outputs)
     return vector, mint(body, EXAMPLE_PRIVATE_KEY_JWK)
 
@@ -62,7 +60,7 @@ class UnhashableOutput:
 
 
 def test_replay_preserves_verify_first_ordering() -> None:
-    vector = positive_vectors()[0][1]
+    vector = standard_positive_vectors()[0][1]
     malformed = {
         "payloadType": "application/json",
         "payload": "not checked first",

@@ -22,16 +22,27 @@ def load_vector(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def positive_vectors() -> list[tuple[str, dict[str, Any]]]:
+def _profile_vectors(
+    profile: str, outcome: str
+) -> list[tuple[str, dict[str, Any]]]:
+    directory = VECTORS_DIR / profile / outcome
     return [
         (path.name, load_vector(path))
-        for path in sorted((VECTORS_DIR / "positive").glob("*.json"))
+        for path in sorted(directory.glob("*.json"))
     ]
 
 
-def negative_vectors() -> list[tuple[str, dict[str, Any]]]:
-    return [
-        (path.name, load_vector(path))
-        for path in sorted((VECTORS_DIR / "negative").glob("*.json"))
-    ]
+def legacy_positive_vectors() -> list[tuple[str, dict[str, Any]]]:
+    return _profile_vectors("legacy", "positive")
 
+
+def legacy_negative_vectors() -> list[tuple[str, dict[str, Any]]]:
+    return _profile_vectors("legacy", "negative")
+
+
+def standard_positive_vectors() -> list[tuple[str, dict[str, Any]]]:
+    return _profile_vectors("standard", "positive")
+
+
+def standard_negative_vectors() -> list[tuple[str, dict[str, Any]]]:
+    return _profile_vectors("standard", "negative")
