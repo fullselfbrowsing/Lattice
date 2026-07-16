@@ -75,7 +75,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   2. No public or internal production API can mint the historical base64-PAE profile.
   3. Verifiers accept or reject historical receipts through explicit policy and report the profile and deprecation state that actually verified.
   4. A corrected-profile signature failure cannot fall back to legacy verification, and schema version, profile, CID, key selection, and downgrade checks remain independently observable.
-**Plans:** TBD
+**Plans:** 1/2 plans executed
 
 ### Phase 58: Conformance and Client Migration
 
@@ -147,7 +147,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | --- | --- | --- |
-| 57. Protocol Semantics | v1.6 | 0/TBD | Not started | - |
+| 57. Protocol Semantics | v1.6 | 1/2 | In Progress|  |
 | 58. Conformance and Client Migration | v1.6 | 0/TBD | Not started | - |
 | 59. Authoritative Runtime State | v1.6 | 0/TBD | Not started | - |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |

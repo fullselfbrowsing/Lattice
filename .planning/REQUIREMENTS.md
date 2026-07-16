@@ -8,12 +8,12 @@
 
 ### Receipt Bridge
 
-- [ ] **SIGBR-01**: A TypeScript or Python caller can mint a new receipt whose signature uses standard DSSE PAE over the canonical payload bytes.
-- [ ] **SIGBR-02**: A caller can identify every corrected write by the signed `lattice-receipt/v1.4` body version and `dsse-v1` signature profile.
-- [ ] **SIGBR-03**: A verifier can allow or reject legacy base64-PAE receipts through explicit policy and receives the profile and deprecation state that actually verified.
-- [ ] **SIGBR-04**: A corrected-profile receipt cannot enter the legacy verification branch after standard signature failure.
-- [ ] **SIGBR-05**: A caller cannot mint a legacy base64-PAE receipt through any public or internal production API.
-- [ ] **SIGBR-06**: A verifier evaluates schema version, signature profile, CID, key selection, and downgrade rules as independent security checks.
+- [x] **SIGBR-01**: A TypeScript or Python caller can mint a new receipt whose signature uses standard DSSE PAE over the canonical payload bytes.
+- [x] **SIGBR-02**: A caller can identify every corrected write by the signed `lattice-receipt/v1.4` body version and `dsse-v1` signature profile.
+- [x] **SIGBR-03**: A verifier can allow or reject legacy base64-PAE receipts through explicit policy and receives the profile and deprecation state that actually verified.
+- [x] **SIGBR-04**: A corrected-profile receipt cannot enter the legacy verification branch after standard signature failure.
+- [x] **SIGBR-05**: A caller cannot mint a legacy base64-PAE receipt through any public or internal production API.
+- [x] **SIGBR-06**: A verifier evaluates schema version, signature profile, CID, key selection, and downgrade rules as independent security checks.
 
 ### Conformance
 
@@ -110,12 +110,12 @@ Roadmap creation maps each requirement to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIGBR-01 | Phase 57 | Pending |
-| SIGBR-02 | Phase 57 | Pending |
-| SIGBR-03 | Phase 57 | Pending |
-| SIGBR-04 | Phase 57 | Pending |
-| SIGBR-05 | Phase 57 | Pending |
-| SIGBR-06 | Phase 57 | Pending |
+| SIGBR-01 | Phase 57 | Complete |
+| SIGBR-02 | Phase 57 | Complete |
+| SIGBR-03 | Phase 57 | Complete |
+| SIGBR-04 | Phase 57 | Complete |
+| SIGBR-05 | Phase 57 | Complete |
+| SIGBR-06 | Phase 57 | Complete |
 | CONF16-01 | Phase 58 | Pending |
 | CONF16-02 | Phase 58 | Pending |
 | CONF16-03 | Phase 58 | Pending |
