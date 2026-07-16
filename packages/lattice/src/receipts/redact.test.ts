@@ -37,7 +37,7 @@ function makeBody(
     redactionPolicyId: "lattice.default.v1",
     redactions: [],
     ...overrides,
-  };
+  } as CapabilityReceiptBody;
 }
 
 describe("DEFAULT_REDACTION_POLICY_ID", () => {

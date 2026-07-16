@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PAYLOAD_TYPE, buildPae } from "./envelope.js";
+import { PAYLOAD_TYPE, base64Decode, buildPae } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
 import { createReceipt, type CreateReceiptInput } from "./receipt.js";
 import { createRemoteReceiptSigner } from "./remote-signer.js";
@@ -58,7 +58,7 @@ describe("createRemoteReceiptSigner", () => {
     });
 
     const envelope = await createReceipt(minimalInput(), signer);
-    const expectedPae = buildPae(PAYLOAD_TYPE, envelope.payload);
+    const expectedPae = buildPae(PAYLOAD_TYPE, base64Decode(envelope.payload));
 
     expect(captured).toBeDefined();
     expect(captured?.payloadFormat).toBe("dsse-pae");

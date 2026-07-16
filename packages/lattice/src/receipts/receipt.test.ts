@@ -66,11 +66,12 @@ describe("receipt.ts — createReceipt envelope shape", () => {
 });
 
 describe("receipt.ts — defaults", () => {
-  it("mints v1.3 by default and omits modelClass when none is supplied", async () => {
+  it("mints v1.4/dsse-v1 and omits modelClass when none is supplied", async () => {
     const { signer } = await makeSigner();
     const env = await createReceipt(minimalInput(), signer);
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
+    expect(body.signatureProfile).toBe("dsse-v1");
     expect(body.modelClass).toBeUndefined();
   });
 
@@ -285,13 +286,14 @@ describe("receipt.ts — modelClass", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
+    expect(body.signatureProfile).toBe("dsse-v1");
     expect(body.modelClass).toBe("local_quantized");
   });
 });
 
 describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
-  it("mints a v1.3 body containing parentReceiptCid when supplied", async () => {
+  it("mints a v1.4 body containing parentReceiptCid when supplied", async () => {
     const { signer } = await makeSigner();
     const parentCid = `sha256:${"ab".repeat(32)}`;
     const env = await createReceipt(
@@ -299,7 +301,8 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
+    expect(body.signatureProfile).toBe("dsse-v1");
     expect(body.parentReceiptCid).toBe(parentCid);
   });
 
@@ -346,7 +349,8 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
     const result = await verifyReceipt(revived, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.parentReceiptCid).toBe(rootCid);
     }
 
@@ -364,7 +368,8 @@ describe("receipt.ts — lineageMerkleRoot (Phase 46 / REC-01)", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
+    expect(body.signatureProfile).toBe("dsse-v1");
     expect(body.lineageMerkleRoot).toBe(lineageMerkleRoot);
   });
 
@@ -460,7 +465,8 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.stepName).toBe("click-link");
       expect(result.body.stepIndex).toBe(3);
       expect(result.body.sessionId).toBe("session-1");
@@ -498,7 +504,8 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.stepName).toBeUndefined();
       expect(result.body.stepIndex).toBeUndefined();
       expect(result.body.sessionId).toBeUndefined();
@@ -536,7 +543,8 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.stepName).toBe("single-field-bump");
     }
   });

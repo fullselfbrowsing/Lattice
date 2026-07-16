@@ -40,12 +40,19 @@ export interface ReceiptRedaction {
   readonly reason: string;
 }
 
-export interface CapabilityReceiptBody {
-  readonly version:
-    | "lattice-receipt/v1"
-    | "lattice-receipt/v1.1"
-    | "lattice-receipt/v1.2"
-    | "lattice-receipt/v1.3";
+export type ReceiptSignatureProfile = "dsse-v1";
+
+export type VerificationProfile =
+  | ReceiptSignatureProfile
+  | "lattice-legacy-base64-pae";
+
+export type LegacyReceiptPolicy = "allow" | "reject";
+
+export interface VerifyReceiptOptions {
+  readonly legacyPolicy?: LegacyReceiptPolicy;
+}
+
+interface CapabilityReceiptBodyFields {
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
@@ -87,6 +94,24 @@ export interface CapabilityReceiptBody {
   readonly timestamp?: string;
 }
 
+type HistoricalReceiptVersion =
+  | "lattice-receipt/v1"
+  | "lattice-receipt/v1.1"
+  | "lattice-receipt/v1.2"
+  | "lattice-receipt/v1.3";
+
+export type CapabilityReceiptBody = CapabilityReceiptBodyFields &
+  (
+    | {
+        readonly version: HistoricalReceiptVersion;
+        readonly signatureProfile?: never;
+      }
+    | {
+        readonly version: "lattice-receipt/v1.4";
+        readonly signatureProfile: ReceiptSignatureProfile;
+      }
+  );
+
 export interface ReceiptSignature {
   readonly keyid: string;
   readonly sig: string;
@@ -123,7 +148,9 @@ export type VerifyErrorKind =
   | "signature-invalid"
   | "envelope-malformed"
   | "version-mismatch"
-  | "schema-version-too-low";
+  | "schema-version-too-low"
+  | "signature-profile-mismatch"
+  | "legacy-profile-rejected";
 
 export interface VerifyError {
   readonly kind: VerifyErrorKind;
@@ -134,6 +161,8 @@ export interface VerifyOk {
   readonly ok: true;
   readonly body: CapabilityReceiptBody;
   readonly keyState: KeyState;
+  readonly verificationProfile: VerificationProfile;
+  readonly deprecated: boolean;
 }
 
 export interface VerifyFail {
