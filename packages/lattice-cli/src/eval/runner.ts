@@ -95,9 +95,9 @@ export interface EvalRunnerDeps {
  * structural probe keeps the runner forward-compat without touching the
  * lattice package.
  */
-interface ReceiptBodyMaybeQualityFloor extends CapabilityReceiptBody {
+type ReceiptBodyMaybeQualityFloor = CapabilityReceiptBody & {
   readonly qualityFloor?: { readonly score: number } | null;
-}
+};
 
 function readQualityFloor(
   body: CapabilityReceiptBody,

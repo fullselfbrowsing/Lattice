@@ -26,9 +26,12 @@ import {
   type ArtifactInput,
   type KeyEntry,
   type ReceiptEnvelope,
+  type ReceiptSigner,
 } from "@full-self-browsing/lattice";
 
-import { runRepro } from "../src/commands/repro.js";
+import { reproCommand, runRepro } from "../src/commands/repro.js";
+
+const payloadType = "application/vnd.lattice.receipt+json" as const;
 
 interface CaptureBag {
   readonly stdout: string[];
@@ -62,6 +65,7 @@ interface ReproFixture {
   readonly outputs: Record<string, unknown>;
   readonly publicKeyJwk: JsonWebKey;
   readonly kid: string;
+  readonly signer: ReceiptSigner;
 }
 
 async function makeReproFixture(
@@ -89,6 +93,37 @@ async function makeReproFixture(
     outputs: result.outputs as Record<string, unknown>,
     publicKeyJwk,
     kid,
+    signer,
+  };
+}
+
+async function makeLegacyReproFixture(
+  kid: string,
+  artifacts: readonly ArtifactInput[] = [],
+): Promise<ReproFixture> {
+  const fixture = await makeReproFixture(kid, artifacts);
+  const body = JSON.parse(
+    Buffer.from(fixture.envelope.payload, "base64").toString("utf8"),
+  ) as Record<string, unknown>;
+  body["version"] = "lattice-receipt/v1.3";
+  delete body["signatureProfile"];
+
+  const canonical = Buffer.from(JSON.stringify(body), "utf8");
+  const payload = canonical.toString("base64");
+  const pae = Buffer.from(
+    `DSSEv1 ${Buffer.byteLength(payloadType, "utf8")} ${payloadType} ${Buffer.byteLength(payload, "utf8")} ${payload}`,
+    "utf8",
+  );
+  const signature = await fixture.signer.sign(pae);
+  return {
+    ...fixture,
+    envelope: {
+      payloadType,
+      payload,
+      signatures: [
+        { keyid: fixture.kid, sig: Buffer.from(signature).toString("base64") },
+      ],
+    },
   };
 }
 
@@ -188,7 +223,12 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
 
     const { deps, bag } = captureDeps();
     await mockedRunRepro(
-      { target: receiptPath, key: keysetPath, fixtures: fixturesDir },
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        standardOnly: true,
+      },
       deps,
     );
 
@@ -202,7 +242,82 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
     expect(stdout).toMatch(/route\.providerId=/);
     expect(stdout).toMatch(/route\.capabilityId=/);
     expect(stdout).toMatch(/usage\.costUsd=/);
+    expect(stdout).toMatch(/profile=dsse-v1/);
+    expect(stdout).toMatch(/deprecated=false/);
     expect(stdout).toMatch(/verdict=match/);
+  });
+
+  it("reports the deprecated profile for a default legacy replay", async () => {
+    const fixture = await makeLegacyReproFixture("legacy-repro-kid");
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture);
+
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
+      return {
+        ...mod,
+        replayOffline: vi.fn(async () => ({
+          ok: true,
+          outputs: fixture.outputs,
+          artifacts: [],
+          usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+          plan: { kind: "execution-plan" },
+          events: [],
+        })),
+      };
+    });
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+    const { deps, bag } = captureDeps();
+
+    await mockedRunRepro(
+      { target: receiptPath, key: keysetPath, fixtures: fixturesDir },
+      deps,
+    );
+
+    expect(bag.exitCode).toBe(0);
+    expect(bag.stderr).toEqual([]);
+    expect(bag.stdout).toContain("profile=lattice-legacy-base64-pae");
+    expect(bag.stdout).toContain("deprecated=true");
+    expect(bag.stdout).toContain("verdict=match");
+  });
+
+  it("rejects legacy replay strictly before artifact loading or replay", async () => {
+    const fixture = await makeLegacyReproFixture("strict-legacy-repro-kid", [
+      artifact.text("strict legacy input"),
+    ]);
+    const { keysetPath, fixturesDir, receiptPath } = await seedSandbox(fixture, {
+      fixtureBytes: null,
+    });
+    const replaySpy = vi.fn();
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
+      return { ...mod, replayOffline: replaySpy };
+    });
+    const { runRepro: mockedRunRepro } = await import("../src/commands/repro.js");
+    const { deps, bag } = captureDeps();
+
+    await mockedRunRepro(
+      {
+        target: receiptPath,
+        key: keysetPath,
+        fixtures: fixturesDir,
+        standardOnly: true,
+      },
+      deps,
+    );
+
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stdout).toEqual([]);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=verify-failed reason=legacy-profile-rejected:/,
+    );
+    expect(bag.stderr[0]).not.toContain("artifact-load-failed");
+    expect(replaySpy).not.toHaveBeenCalled();
+  });
+
+  it("defines the --standard-only boolean parser argument", () => {
+    expect(reproCommand).toMatchObject({
+      args: { "standard-only": { type: "boolean" } },
+    });
   });
 
   it("Test 2 (drift): mocked replayOffline returns different outputs -> verdict=drift, exit 1", async () => {
@@ -414,6 +529,8 @@ describe("lattice repro handler — runRepro(args, deps)", () => {
             redactions: [] as readonly { path: string; reason: string }[],
           },
           keyState: "active" as const,
+          verificationProfile: "dsse-v1" as const,
+          deprecated: false,
         })),
         materializeReplayEnvelope: vi.fn(async () => ({
           kind: "replay-envelope",
