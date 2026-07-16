@@ -1,9 +1,13 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type {
   ProviderAdapter,
+  ProviderFinishMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
+  ProviderStructuredOutputRequest,
+  ProviderToolChoice,
+  ProviderToolDefinition,
   Usage,
 } from "./provider.js";
 import type { AnthropicQuirks } from "./quirks.js";
@@ -14,8 +18,8 @@ import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } fr
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
 import { createRunEvent } from "../tracing/tracing.js";
-import type { ToolUseRequest } from "../agent/types.js";
-import { parseToolUseEnvelope } from "../agent/format-tools.js";
+import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
+import { standardSchemaToJsonSchema } from "../tools/schema.js";
 import {
   validateToolCallRequests,
   type ValidateToolCallsOption,
@@ -131,6 +135,15 @@ async function createAnthropicMessagesBody(input: {
       : "";
 
   const content = await createAnthropicUserContent(input.request);
+  const nativeTools = anthropicToolDefinitions(input.request.nativeTools);
+  const structuredTool = anthropicStructuredOutputTool(input.request.nativeStructuredOutput);
+  const tools = [
+    ...nativeTools,
+    ...(structuredTool !== undefined ? [structuredTool] : []),
+  ];
+  const toolChoice = structuredTool !== undefined
+    ? { type: "tool", name: structuredTool.name }
+    : anthropicToolChoice(input.request.nativeToolChoice);
 
   return {
     body: {
@@ -146,8 +159,48 @@ async function createAnthropicMessagesBody(input: {
       ],
       max_tokens: DEFAULT_MAX_TOKENS,
       ...(input.stream === true ? { stream: true } : {}),
+      ...(tools.length > 0 ? { tools } : {}),
+      ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
     },
     usesFilesApi: content.usesFilesApi,
+  };
+}
+
+function anthropicToolDefinitions(
+  tools: readonly ProviderToolDefinition[] | undefined,
+): readonly Record<string, unknown>[] {
+  return (tools ?? []).map((tool) => ({
+    name: tool.name,
+    ...(tool.description !== undefined ? { description: tool.description } : {}),
+    input_schema: standardSchemaToJsonSchema(tool.inputSchema),
+  }));
+}
+
+function anthropicToolChoice(choice: ProviderToolChoice | undefined): Record<string, unknown> | undefined {
+  if (choice === undefined) {
+    return undefined;
+  }
+  if (choice === "required") {
+    return { type: "any" };
+  }
+  if (choice === "auto" || choice === "none") {
+    return { type: choice };
+  }
+
+  return { type: "tool", name: choice.name };
+}
+
+function anthropicStructuredOutputTool(
+  request: ProviderStructuredOutputRequest | undefined,
+): Record<string, unknown> | undefined {
+  if (request === undefined) {
+    return undefined;
+  }
+
+  return {
+    name: anthropicStructuredOutputToolName(request),
+    description: `Return structured output for ${request.output}.`,
+    input_schema: standardSchemaToJsonSchema(request.schema),
   };
 }
 
@@ -544,28 +597,55 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       }
 
       const body = (await response.json()) as {
-        content?: readonly { text?: unknown }[];
+        content?: readonly unknown[];
         usage?: unknown;
+        stop_reason?: unknown;
       };
 
-      const text = String(body.content?.[0]?.text ?? "");
-      const rawOutputs = Object.fromEntries(request.outputs.map((name) => [name, text]));
+      const text = anthropicTextFromContent(body.content);
+      const structuredOutput = anthropicStructuredOutputFromContent(
+        body.content,
+        request.nativeStructuredOutput,
+      );
+      const rawOutputs = rawOutputsForRequest({
+        outputs: request.outputs,
+        text,
+        structuredOutputRequest: request.nativeStructuredOutput,
+        structuredOutput,
+      });
       const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, options.sanitizeOutput, {
         providerId: id,
         modelId: options.model,
       });
       const parsedToolCalls = parseToolUseEnvelope(text);
-      const toolCalls = parsedToolCalls === null
+      const promptToolCalls = parsedToolCalls === null
         ? undefined
         : await validateToolCallRequests(parsedToolCalls, options.validateToolCalls);
+      const nativeToolRequests = anthropicToolUseRequestsFromContent(
+        body.content,
+        request.nativeStructuredOutput,
+      );
+      const nativeToolCalls = nativeToolRequests.length === 0
+        ? undefined
+        : await validateToolCallRequests(nativeToolRequests, options.validateToolCalls);
+      const hasToolCallResult = promptToolCalls !== undefined || nativeToolCalls !== undefined;
+      const toolCalls = [
+        ...(promptToolCalls ?? []),
+        ...(nativeToolCalls ?? []),
+      ];
       const usage = normalizeAnthropicUsage(body.usage);
       const normalizedUsage = normalizeAnthropicUsageToRunUsage(body.usage, options.pricing);
+      const finish = finishMetadata({
+        reason: typeof body.stop_reason === "string" ? body.stop_reason : undefined,
+        toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+      });
 
       return {
         rawOutputs: sanitizedOutputs,
         ...(usage !== undefined ? { usage } : {}),
         normalizedUsage,
-        ...(toolCalls !== undefined ? { toolCalls } : {}),
+        ...(hasToolCallResult ? { toolCalls } : {}),
+        ...(finish !== undefined ? { finish } : {}),
         rawResponse: body,
       };
     },
@@ -633,6 +713,7 @@ async function* streamAnthropicResponse(input: {
   const toolBlocks = new Map<number, AnthropicToolBlock>();
   const nativeToolRequests: ToolUseRequest[] = [];
   let usagePayload: Record<string, unknown> | undefined;
+  let finishReason: string | undefined;
 
   for await (const event of readSseEvents(response)) {
     const data = event.data.trim();
@@ -646,6 +727,7 @@ async function* streamAnthropicResponse(input: {
     const chunk = parseJsonObject(data, "Anthropic");
     rawChunks.push(event.event === undefined ? chunk : { event: event.event, data: chunk });
     usagePayload = mergeAnthropicUsage(usagePayload, usageFromAnthropicChunk(chunk));
+    finishReason = anthropicStopReason(chunk) ?? finishReason;
 
     const eventType = eventTypeFromAnthropicChunk(chunk) ?? event.event;
     if (eventType === "content_block_start") {
@@ -672,7 +754,21 @@ async function* streamAnthropicResponse(input: {
   }
 
   const text = textParts.join("");
-  const rawOutputs = Object.fromEntries(input.request.outputs.map((name) => [name, text]));
+  const structuredToolName = anthropicStructuredOutputToolName(
+    input.request.nativeStructuredOutput,
+  );
+  const providerToolRequests = structuredToolName === undefined
+    ? nativeToolRequests
+    : nativeToolRequests.filter((request) => request.name !== structuredToolName);
+  const structuredOutput = structuredToolName === undefined
+    ? undefined
+    : nativeToolRequests.find((request) => request.name === structuredToolName)?.args;
+  const rawOutputs = rawOutputsForRequest({
+    outputs: input.request.outputs,
+    text,
+    structuredOutputRequest: input.request.nativeStructuredOutput,
+    structuredOutput,
+  });
   const sanitizedOutputs = await applyOutputSanitizers(rawOutputs, input.sanitizeOutput, {
     providerId: input.id,
     modelId: input.model,
@@ -681,15 +777,19 @@ async function* streamAnthropicResponse(input: {
   const promptToolCalls = parsedToolCalls === null
     ? undefined
     : await validateToolCallRequests(parsedToolCalls, input.validateToolCalls);
-  const nativeToolCalls = nativeToolRequests.length === 0
+  const nativeToolCalls = providerToolRequests.length === 0
     ? undefined
-    : await validateToolCallRequests(nativeToolRequests, input.validateToolCalls);
+    : await validateToolCallRequests(providerToolRequests, input.validateToolCalls);
   const toolCalls = [
     ...(promptToolCalls ?? []),
     ...(nativeToolCalls ?? []),
   ];
   const usage = normalizeAnthropicUsage(usagePayload);
   const normalizedUsage = normalizeAnthropicUsageToRunUsage(usagePayload, input.pricing);
+  const finish = finishMetadata({
+    reason: finishReason,
+    toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+  });
 
   yield {
     kind: "complete",
@@ -697,6 +797,7 @@ async function* streamAnthropicResponse(input: {
     ...(usage !== undefined ? { usage } : {}),
     normalizedUsage,
     ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(finish !== undefined ? { finish } : {}),
     rawResponse: {
       kind: "anthropic-stream",
       chunks: rawChunks,
@@ -721,6 +822,20 @@ function parseJsonObject(data: string, providerName: string): unknown {
 
 function eventTypeFromAnthropicChunk(chunk: unknown): string | undefined {
   return isRecord(chunk) && typeof chunk.type === "string" ? chunk.type : undefined;
+}
+
+function anthropicStopReason(chunk: unknown): string | undefined {
+  if (!isRecord(chunk)) {
+    return undefined;
+  }
+  if (typeof chunk.stop_reason === "string") {
+    return chunk.stop_reason;
+  }
+  if (isRecord(chunk.delta) && typeof chunk.delta.stop_reason === "string") {
+    return chunk.delta.stop_reason;
+  }
+
+  return undefined;
 }
 
 function usageFromAnthropicChunk(chunk: unknown): unknown {
@@ -841,6 +956,113 @@ function parseAnthropicToolInput(block: AnthropicToolBlock): unknown {
     const message = error instanceof Error ? error.message : "Invalid JSON.";
     throw new Error(`Anthropic stream returned invalid tool input JSON: ${message}`);
   }
+}
+
+function anthropicTextFromContent(content: readonly unknown[] | undefined): string {
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .flatMap((block) => isRecord(block) && block.type === "text" && typeof block.text === "string"
+      ? [block.text]
+      : [])
+    .join("");
+}
+
+function anthropicToolUseRequestsFromContent(
+  content: readonly unknown[] | undefined,
+  structuredOutput: ProviderStructuredOutputRequest | undefined,
+): readonly ToolUseRequest[] {
+  if (!Array.isArray(content)) {
+    return [];
+  }
+
+  const structuredToolName = anthropicStructuredOutputToolName(structuredOutput);
+  return content.flatMap((block, index) => {
+    if (
+      !isRecord(block) ||
+      block.type !== "tool_use" ||
+      typeof block.name !== "string" ||
+      block.name === structuredToolName
+    ) {
+      return [];
+    }
+
+    return [{
+      id: typeof block.id === "string" ? block.id : `anthropic-tool-use-${index}`,
+      name: block.name,
+      args: block.input ?? {},
+    }];
+  });
+}
+
+function anthropicStructuredOutputFromContent(
+  content: readonly unknown[] | undefined,
+  request: ProviderStructuredOutputRequest | undefined,
+): unknown {
+  const toolName = anthropicStructuredOutputToolName(request);
+  if (toolName === undefined || !Array.isArray(content)) {
+    return undefined;
+  }
+
+  const block = content.find((item) =>
+    isRecord(item) &&
+    item.type === "tool_use" &&
+    item.name === toolName &&
+    "input" in item,
+  );
+
+  return isRecord(block) ? block.input : undefined;
+}
+
+function anthropicStructuredOutputToolName(
+  request: ProviderStructuredOutputRequest | undefined,
+): string | undefined {
+  if (request === undefined) {
+    return undefined;
+  }
+
+  return sanitizeToolName(request.name ?? `lattice_${request.output}`);
+}
+
+function sanitizeToolName(name: string): string {
+  const sanitized = name.replace(/[^A-Za-z0-9_-]/gu, "_").slice(0, 64);
+  return sanitized.length > 0 ? sanitized : "lattice_output";
+}
+
+function rawOutputsForRequest(input: {
+  readonly outputs: readonly string[];
+  readonly text: string;
+  readonly structuredOutputRequest: ProviderStructuredOutputRequest | undefined;
+  readonly structuredOutput: unknown;
+}): Record<string, unknown> {
+  const rawOutputs: Record<string, unknown> = Object.fromEntries(
+    input.outputs.map((name) => [name, input.text]),
+  );
+  if (
+    input.structuredOutputRequest !== undefined &&
+    input.structuredOutput !== undefined
+  ) {
+    rawOutputs[input.structuredOutputRequest.output] = input.structuredOutput;
+  }
+
+  return rawOutputs;
+}
+
+function finishMetadata(input: {
+  readonly reason: string | undefined;
+  readonly toolCallIds: readonly string[];
+}): ProviderFinishMetadata | undefined {
+  const toolCallIds = input.toolCallIds.filter((id) => id.length > 0);
+  if (input.reason === undefined && toolCallIds.length === 0) {
+    return undefined;
+  }
+
+  return {
+    ...(input.reason !== undefined ? { reason: input.reason } : {}),
+    ...(toolCallIds.length > 0 ? { toolCallIds } : {}),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

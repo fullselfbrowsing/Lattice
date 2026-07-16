@@ -115,7 +115,7 @@ export interface AI {
    *
    * See `packages/lattice/src/agent/runtime.ts` for orchestration details.
    */
-  runAgent<const TOutputs extends OutputContractMap>(
+  runAgent<const TOutputs extends OutputContractMap = import("../agent/types.js").DefaultAgentOutputs>(
     intent: import("../agent/types.js").AgentIntent<TOutputs>,
   ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
   /**

@@ -74,6 +74,24 @@
 
 ---
 
+## Milestone: v1.5.0 — Modular Adoption + Execution Parity
+
+**Shipped:** 2026-06-20
+**Phases:** 6 (50-55 in the canonical mainline history) | **Plans:** 6 | **REQ-IDs:** 30/30
+
+### What Was Built
+- Modular package subpaths with machine-readable compatibility metadata and source-boundary enforcement.
+- Provider-native tools and structured outputs without requiring full runtime or agent adoption.
+- External execution audit and standalone core preparation helpers.
+- Optional tools/MCP and typed-agent adoption paths, Node 20 modular checks, and external-consumer dogfood.
+
+### Key Lessons
+1. Modular entrypoints let consumers adopt routing, audit, tools, storage, or agent capabilities independently without splitting the implementation into unrelated packages.
+2. Package-shape and external-consumer tests catch adoption failures that workspace tests cannot.
+3. Parallel milestone histories must be reconciled semantically, not by discarding one planning record when Git resolves the code successfully.
+
+---
+
 ## Milestone: v1.5 — Polyglot Receipt Protocol + Conformance Vectors + Python Client
 
 **Shipped:** 2026-07-06
@@ -122,6 +140,7 @@
 | v1.2 | 14–22 | FSB integration (retro) + agent capability (forward); 7-adapter parity contract. |
 | v1.3 | 24–39 | First public npm release + model-aware SDK + multi-agent crew; first use of `superseded` to descope a planned sub-scope (canary) for a cheaper real-consumer path. |
 | v1.4 | 40–49 | Provider/gateway breadth, streaming/multimodal, OTel/eval diagnostics, and package-candidate downstream dogfood became the release-validation pattern. |
+| v1.5.0 | 50–55 | Modular adoption paths, provider execution parity, external audit, standalone core preparation, and consumer dogfood shipped on canonical mainline. |
 | v1.5 | 50–56 | Receipt audit trail became language-neutral with shared conformance vectors, Python verify/replay/mint, and cross-language parity CI. |
 
 ### Top Lessons (Verified Across Milestones)

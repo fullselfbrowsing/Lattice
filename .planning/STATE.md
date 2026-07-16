@@ -38,6 +38,7 @@ v1.5 Progress: [========================================] 100% (11/11 plans, 7/7
 | Milestone | Status | Requirements | Audit |
 |-----------|--------|--------------|-------|
 | v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client | Shipped 2026-07-06 | 26/26 complete | passed |
+| v1.5.0 Modular Adoption + Execution Parity | Shipped 2026-06-20 | 30/30 complete | passed |
 
 ## Quick Tasks Completed
 
@@ -57,6 +58,7 @@ Key v1.5 outcomes:
 - The receipt protocol is now language-neutral while the runtime SDK remains TypeScript-first.
 - The committed conformance vector set is the drift anchor for TypeScript and non-TypeScript clients.
 - The Python client ships in-repo first; PyPI publishing is deferred until the client surface stabilizes.
+- Canonical mainline also shipped modular package subpaths, native provider execution, external audit helpers, standalone core preparation, and external-consumer validation at package version 1.5.1.
 
 ### Pending Todos
 

@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.5.1
+
+### Patch Changes
+
+* Add `createNobleEd25519Signer` for Node 20 audit signing paths that need stable receipt signing without WebCrypto Ed25519 signing warnings.
+* Export the noble signer from the package root and audit subpath for modular audit consumers.
+* Move `@noble/ed25519` into runtime dependencies because the noble signer is a public package surface.
+* Document the Node 20 signing path for downstream consumers that adopt Lattice audit receipts without the full runtime.
+
+### Validation
+
+* Runtime focused gate passed with 84 test files and 1095 tests.
+* CLI showcase gate passed with 17 test files and 162 tests.
+* Recursive workspace test gate passed across runtime and CLI packages.
+
+## 1.5.0
+
+### Minor Changes
+
+* Add modular package entrypoints for provider, audit, context, artifact, routing, tools, storage, eval, agents, and core adoption paths.
+* Add provider native tool and structured output execution parity for provider only consumers.
+* Add external execution audit helpers that mint signed receipts, sidecars, replay envelopes, raw request hashes, raw response hashes, input hashes, and output hashes for external executors.
+* Add standalone core preparation helpers for external runtimes that need artifact refs, storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider execution.
+* Add tools and MCP artifact helpers that convert tool results into replayable artifacts without importing the agent runtime.
+* Add compatibility dogfood evidence for built package subpaths, Node 20 modular consumers, and GitFly style external consumer flows.
+
+### Fixes
+
+* Preserve external audit failure replay semantics. Failed verdicts keep sidecar and receipt evidence, while replay envelopes omit outputs and inspect as failed plans and failed attempts.
+* Preserve custom storage reference hashes when standalone core runs prepare externally stored artifacts.
+* Keep eval facade imports behind the public eval subpath boundary.
+
+### Validation
+
+* Runtime focused gate passed with 83 test files and 1086 tests.
+* CLI showcase gate passed with 17 test files and 162 tests.
+* Recursive workspace test gate passed across runtime and CLI packages.
+
 ## 1.4.0
 
 ### Minor Changes

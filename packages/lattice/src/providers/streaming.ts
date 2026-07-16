@@ -3,6 +3,7 @@ import type { UsageRecord } from "../plan/plan.js";
 import type { ValidatedToolCall } from "../tools/tool-call-validation.js";
 import type {
   ProviderGatewayMetadata,
+  ProviderFinishMetadata,
   ProviderRunResponse,
   ProviderStream,
   Usage,
@@ -23,6 +24,7 @@ export async function collectStream(
   let usage: UsageRecord | undefined;
   let normalizedUsage: Usage | undefined;
   let gateway: ProviderGatewayMetadata | undefined;
+  let finish: ProviderFinishMetadata | undefined;
   let rawResponse: unknown;
   let rawResponseProvided = false;
   let chunkCount = 0;
@@ -81,6 +83,9 @@ export async function collectStream(
         if (chunk.toolCalls !== undefined) {
           toolCalls.push(...chunk.toolCalls);
         }
+        if (chunk.finish !== undefined) {
+          finish = chunk.finish;
+        }
         if ("rawResponse" in chunk) {
           rawResponse = chunk.rawResponse;
           rawResponseProvided = true;
@@ -103,6 +108,7 @@ export async function collectStream(
     ...(normalizedUsage !== undefined ? { normalizedUsage } : {}),
     ...(toolCalls.length > 0 ? { toolCalls } : {}),
     ...(gateway !== undefined ? { gateway } : {}),
+    ...(finish !== undefined ? { finish } : {}),
     rawResponse: rawResponseProvided
       ? rawResponse
       : {

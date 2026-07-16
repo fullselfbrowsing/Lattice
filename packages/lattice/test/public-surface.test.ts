@@ -4,10 +4,12 @@ import {
   collectStream,
   contract,
   createAI,
+  createExternalExecutionAudit,
   createInMemorySigner,
   createLangfuseOtlpConfig,
   createLiteLLMProvider,
   createMemoryKeySet,
+  createNobleEd25519Signer,
   createOpenRouterProvider,
   createOtelRunEventSink,
   createPhoenixOtlpConfig,
@@ -88,6 +90,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createAnthropicProvider",
   "createCheckpointHook",
   "createCostTracker",
+  "createExternalExecutionAudit",
   "createFakeProvider",
   "createGeminiProvider",
   "createGoalProgressTracker",
@@ -100,6 +103,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "createMemoryArtifactStore",
   "createMemoryKeySet",
   "createMemorySessionStore",
+  "createNobleEd25519Signer",
   "createNoopAgentHost",
   "createNoopSurvivabilityAdapter",
   "createOpenAICompatibleProvider",
@@ -168,6 +172,12 @@ describe("public-surface inventory", () => {
     const mod = await import("../src/index.js");
     expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
     expect("default" in mod).toBe(false);
+  });
+});
+
+describe("Phase 52 public surface", () => {
+  it("exports external execution audit helper", () => {
+    expect(typeof createExternalExecutionAudit).toBe("function");
   });
 });
 
@@ -402,6 +412,17 @@ describe("Phase 9 public surface", () => {
     expect(typeof signer.sign).toBe("function");
     expect(typeof signer.publicKeyJwk).toBe("object");
     expect((signer.publicKeyJwk as { kty?: string }).kty).toBe("OKP");
+  });
+
+  it("createNobleEd25519Signer returns a ReceiptSigner shape", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer: ReceiptSigner = createNobleEd25519Signer(privateKeyJwk, {
+      kid: "noble-x",
+      publicKeyJwk,
+    });
+    expect(signer.kid).toBe("noble-x");
+    expect(typeof signer.sign).toBe("function");
+    expect(typeof signer.publicKeyJwk).toBe("object");
   });
 
   it("createRemoteReceiptSigner returns a ReceiptSigner shape", async () => {

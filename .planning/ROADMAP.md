@@ -9,6 +9,7 @@
 | v1.2 FSB Integration + Agent Capability | Shipped | 2026-05-31 | `.planning/milestones/v1.2-ROADMAP.md` |
 | v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface | Shipped | 2026-06-15 | `.planning/milestones/v1.3-ROADMAP.md` |
 | v1.4 Provider Breadth + Live Multimodal + Observability Export | Shipped | 2026-06-16 | `.planning/milestones/v1.4-ROADMAP.md` |
+| v1.5.0 Modular Adoption + Execution Parity | Shipped | 2026-06-20 | `.planning/milestones/v1.5.0-ROADMAP.md` |
 | v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client | Shipped | 2026-07-06 | `.planning/milestones/v1.5-ROADMAP.md` |
 
 ## Phases
@@ -35,6 +36,10 @@ Phases 24 to 39. First public npm release under `@full-self-browsing/*`, model c
 ### v1.4 Provider Breadth + Live Multimodal + Observability Export (shipped 2026-06-16)
 
 Phases 40 to 49. LiteLLM/OpenRouter gateway delegation, streaming, multimodal request shaping, realtime direction, receipt lineage, OpenTelemetry export, diagnostics CLI, package checks, and dogfood validation.
+
+### v1.5.0 Modular Adoption + Execution Parity (shipped 2026-06-20)
+
+Phases 50 to 55 in the canonical mainline history. Modular package subpaths, provider-native execution, external audit helpers, standalone core preparation, optional tools/MCP and agent adoption, Node 20 smoke coverage, and external-consumer dogfood. 30 / 30 requirements satisfied; milestone audit passed.
 
 ### v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client (shipped 2026-07-06)
 

@@ -34,10 +34,12 @@
  *   }
  */
 
-import type { StandardSchemaV1 } from "@standard-schema/spec";
-
+import { parseToolUseEnvelope, type ToolUseRequest } from "../tools/tool-use.js";
+import { standardSchemaToJsonSchema } from "../tools/schema.js";
 import type { ToolDefinition } from "../tools/tools.js";
-import type { ToolUseRequest } from "./types.js";
+
+export { parseToolUseEnvelope };
+export type { ToolUseRequest };
 
 /**
  * One turn in the running conversation.
@@ -111,39 +113,7 @@ export interface FormattedToolsHandle {
   readonly mode: "prompt-reencoded";
 }
 
-/**
- * Convert a Standard Schema to a JSON Schema-shaped descriptor suitable for
- * inclusion in an LLM tool description. Standard Schema vendors can
- * optionally expose `toJSONSchema` on their schema objects; when absent,
- * we fall back to a minimal structural description that lists the schema
- * vendor + version + a placeholder. Models tolerate placeholder schemas in
- * practice because the tool description is supplementary — what matters
- * is the envelope contract (`{tool_call: {name, args}}`).
- */
-export function toolSchemaToJsonSchema(schema: StandardSchemaV1): unknown {
-  const standardSchema = (schema as unknown as { readonly "~standard"?: unknown })["~standard"];
-  if (
-    typeof standardSchema === "object" &&
-    standardSchema !== null &&
-    "vendor" in standardSchema
-  ) {
-    const vendor = standardSchema as { readonly vendor: string };
-    const maybeToJson = (schema as unknown as { readonly toJSONSchema?: () => unknown })
-      .toJSONSchema;
-    if (typeof maybeToJson === "function") {
-      try {
-        return maybeToJson();
-      } catch {
-        // fall through to placeholder
-      }
-    }
-    return {
-      $comment: `standard-schema vendor: ${vendor.vendor}; toJSONSchema not available`,
-      type: "object",
-    };
-  }
-  return { $comment: "non-standard-schema input", type: "object" };
-}
+export const toolSchemaToJsonSchema = standardSchemaToJsonSchema;
 
 /**
  * Builds the prompt-reencoded tool-use protocol handle for any provider.
@@ -155,7 +125,7 @@ export function toolSchemaToJsonSchema(schema: StandardSchemaV1): unknown {
  */
 export function formatToolsForProvider(
   providerName: string,
-  tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>,
+  tools: ReadonlyArray<ToolDefinition>,
   options: FormatToolsOptions = {},
 ): FormattedToolsHandle {
   // mode is currently a forward-compat field — v1.2 resolves all modes to
@@ -245,80 +215,4 @@ export function formatToolsForProvider(
     describeForSystem,
     mode: "prompt-reencoded",
   };
-}
-
-export function parseToolUseEnvelope(responseText: string): ReadonlyArray<ToolUseRequest> | null {
-  if (typeof responseText !== "string" || responseText.length === 0) {
-    return null;
-  }
-  const candidates = extractJsonCandidates(responseText);
-  for (const candidate of candidates) {
-    const parsed = tryParseEnvelope(candidate);
-    if (parsed !== null) {
-      return parsed;
-    }
-  }
-  return null;
-}
-
-/**
- * Extracts JSON-looking candidate substrings from a response text.
- *
- * Models routinely wrap JSON in markdown code fences (```json ... ```),
- * prepend explanatory prose ("I'll call the search tool: { ... }"), or
- * produce multiple JSON-shaped blobs. This extractor scans for plausible
- * candidates ordered by likelihood.
- */
-function extractJsonCandidates(text: string): readonly string[] {
-  const candidates: string[] = [];
-  // 1) Fenced code blocks (most common formatting).
-  const fenceRegex = /```(?:json)?\s*([\s\S]*?)```/g;
-  let fenceMatch: RegExpExecArray | null;
-  while ((fenceMatch = fenceRegex.exec(text)) !== null) {
-    const inner = fenceMatch[1];
-    if (inner !== undefined) {
-      candidates.push(inner.trim());
-    }
-  }
-  // 2) Top-level braced blobs (greedy match from first '{' to last '}').
-  const braceStart = text.indexOf("{");
-  const braceEnd = text.lastIndexOf("}");
-  if (braceStart !== -1 && braceEnd > braceStart) {
-    candidates.push(text.slice(braceStart, braceEnd + 1));
-  }
-  // 3) Whole text as a candidate (envelope-only response).
-  candidates.push(text.trim());
-  return candidates;
-}
-
-function tryParseEnvelope(jsonLike: string): ReadonlyArray<ToolUseRequest> | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonLike);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null) {
-    return null;
-  }
-  const envelope = parsed as Record<string, unknown>;
-  const toolCalls = envelope["tool_calls"];
-  if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
-    return null;
-  }
-  const requests: ToolUseRequest[] = [];
-  for (const call of toolCalls) {
-    if (typeof call !== "object" || call === null) {
-      return null;
-    }
-    const callRecord = call as Record<string, unknown>;
-    const id = callRecord["id"];
-    const name = callRecord["name"];
-    const args = callRecord["args"];
-    if (typeof id !== "string" || typeof name !== "string") {
-      return null;
-    }
-    requests.push({ id, name, args });
-  }
-  return requests;
 }
