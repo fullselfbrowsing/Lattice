@@ -111,7 +111,7 @@ use `additionalProperties: false` (§ 3.4), v1.1 bodies MUST NOT carry `modelCla
 `parentReceiptCid`, `lineageMerkleRoot`, or `signatureProfile`; and v1.3 bodies MUST NOT
 carry `signatureProfile`.
 
-**Optional fields present in all versions (v1.1, v1.2, v1.3):**
+**Optional fields present in all versions (v1.1, v1.2, v1.3, v1.4):**
 
 | Field | Type (JSON) | Description |
 |-------|-------------|-------------|
@@ -124,13 +124,13 @@ carry `signatureProfile`.
 | `noRouteReasons` | array | Reasons why no provider route was found, when applicable. |
 | `tripwireEvidence` | object | Evidence collected when a tripwire invariant fired. |
 
-**Fields added in v1.2 (optional, carried forward into v1.3):**
+**Fields added in v1.2 (optional, carried forward into v1.3 and v1.4):**
 
 | Field | Type (JSON) | Description |
 |-------|-------------|-------------|
 | `modelClass` | string | Model training-class audit tag. One of: `"frontier_rlhf"`, `"mid_tier_rlhf"`, `"open_weight_instruct"`, `"open_weight_base"`, `"local_quantized"`. |
 
-**Fields added in v1.3 (optional):**
+**Fields added in v1.3 (optional, carried forward into v1.4):**
 
 | Field | Type (JSON) | Description |
 |-------|-------------|-------------|
