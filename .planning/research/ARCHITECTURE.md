@@ -1,439 +1,401 @@
 # Architecture Research
 
-**Domain:** Polyglot receipt protocol — spec, conformance vectors, Python client integration into an existing pnpm/TS monorepo
-**Researched:** 2026-06-24
-**Confidence:** HIGH (derived entirely from the live codebase; no speculation)
-
----
+**Domain:** Lattice v1.6 protocol and runtime integrity bridge
+**Researched:** 2026-07-16
+**Confidence:** HIGH for current-code findings; MEDIUM-HIGH for compatibility defaults pending requirements sign-off
 
 ## Standard Architecture
 
 ### System Overview
 
+v1.6 should add two explicit integrity boundaries without redesigning the public runtime:
+
+1. A **protocol boundary** that always issues standards-compliant DSSE and isolates legacy verification behind an observable compatibility policy.
+2. An **execution boundary** that turns a context plan into provider-visible artifacts before packaging, while owning artifact persistence and session resolution.
+
+```text
+Public APIs / CLI
+       |
+       v
+intent -> artifact preparation -> persistence -> routing -> context plan
+                                                    |
+                                                    v
+                                      context materialization
+                                      - included current inputs
+                                      - stored session inputs
+                                      - generated summaries
+                                      - omitted/archived excluded
+                                                    |
+                                                    v
+                                      provider packaging -> adapter -> result
+                                                    |                    |
+                                                    +------ storage -----+
+                                                                         |
+                                                                         v
+                                                            receipt policy
+                                                            - off
+                                                            - best effort
+                                                            - required
+                                                                         |
+                                                                         v
+                                                        standard DSSE issuer
+
+Receipt verification
+  decode/schema/canonical/key checks
+                    |
+                    v
+           standard DSSE PAE first
+                    |
+          explicit bridge policy only
+                    v
+         quarantined legacy PAE verifier
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                   SINGLE SOURCE OF TRUTH                            │
-│   spec/SPEC.md  (normative)    spec/CHANGELOG.md                    │
-│   spec/schema/v1.1.json  v1.2.json  v1.3.json  (locked schemas)    │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ referenced by
-          ┌────────────────────┼────────────────────┐
-          ▼                    ▼                    ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
-│  packages/       │  │  conformance/    │  │  clients/python/     │
-│  lattice/src/    │  │  vectors/        │  │  (non-pnpm package)  │
-│  receipts/ +     │  │  (committed      │  │  verify + replay     │
-│  replay/         │  │   golden files)  │  │  + mint              │
-└──────────┬───────┘  └───────┬──────────┘  └──────────┬───────────┘
-           │                  │                         │
-           │ generates        │ consumed by both        │ consumes
-           ▼                  ▼                         ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                  CI: conformance gate job                            │
-│  1. pnpm run conformance:verify   (TS consumes own vectors)         │
-│  2. python -m pytest clients/python/tests/test_conformance.py       │
-│  both must pass; byte-comparison failure = drift                    │
-│  3. python mint → TS verify round-trip (cross-mint parity check)    │
-└──────────────────────────────────────────────────────────────────────┘
-```
+
+The context plan remains useful audit metadata, but it is not evidence of execution. The materialized artifact set passed to provider packaging is the execution truth.
 
 ### Component Responsibilities
 
-| Component | Responsibility | Status |
-|-----------|----------------|--------|
-| `spec/SPEC.md` | Normative, versioned, language-neutral description of the receipt protocol | NEW |
-| `spec/schema/v1.x.json` | Locked JSON Schema snapshots of each `lattice-receipt/v1.x` body | NEW |
-| `spec/CHANGELOG.md` | Tracks which spec section changed for which receipt version | NEW |
-| `conformance/vectors/` | Committed golden files (input + canonical bytes + envelope + pubkey) | NEW |
-| `conformance/generate/` | TS generator script that emits golden files from the live TS impl | NEW |
-| `conformance/verify-ts/` | TS test entry-point consuming vectors against the live TS impl | NEW |
-| `clients/python/` | Python reference client: verify + replay + mint | NEW |
-| `clients/python/tests/test_conformance.py` | Python conformance harness consuming the same golden files | NEW |
-| `packages/lattice/src/receipts/` | TS implementation (canonical, envelope, sign, verify, cid, keyset) | EXISTING |
-| `packages/lattice/src/replay/` | TS replay (materialize, replayOffline) | EXISTING |
-| `scripts/check-tarball-leak.mjs` | Enforces `packages/` whitelist; `clients/` is outside publishable set | EXISTING — no change needed |
-| `scripts/check-core-package-boundary.mjs` | Scans only `packages/lattice/dist`; `clients/` + `conformance/` not scanned | EXISTING — no change needed |
-| `.github/workflows/ci.yml` | Existing gate; add `conformance` job as a separate parallel step | MODIFY |
-
----
+| Component | Status | Responsibility | Primary integration points |
+|---|---|---|---|
+| `receipts/pae.ts` | **New** | Build standard DSSE PAE from raw payload bytes; contain a separately named legacy base64-PAE helper for verification only | Receipt issuer, verifier, conformance generators |
+| `receipts/verify.ts` | **Modified** | Verify standard PAE first; invoke legacy verification only under policy; report which profile succeeded | Public `verifyReceipt`, CLI, conformance harnesses |
+| `receipts/policy.ts` | **New** | Normalize `off`, `best-effort`, and `required` issuance behavior and emit observable failures | Runtime, agent loop, checkpoints, crew, external audit |
+| `context/materialize.ts` | **New** | Resolve the context plan into actual provider-visible artifacts, including stored session content and summaries | Context packer, artifact store, session store, provider packaging |
+| Runtime preparation pipeline | **Modified/extracted** | Persist prepared artifacts, route, plan context, materialize it once, then package the authoritative set | `create-ai.ts`, standalone core, fallback attempts |
+| Artifact/session stores | **Modified usage** | Persist current, derived, summary, and output artifacts; store references that can later be resolved | `ArtifactStore`, `SessionStore.save/appendTurn` |
+| `routing/cost.ts` | **New** | One cost calculation from normalized per-token pricing | Router scoring and contract preflight |
+| Agent receipt collector | **New internal** | Associate checkpoint receipts with iterations and mint one terminal result receipt | `agent/runtime.ts`, checkpoint hook, crew runtime |
+| CLI eval reporting | **Modified** | Count fixture load failures and map them to exit code 2; prevent partial baseline writes | Eval runner, command, JSON/human reporters |
+| Conformance/package/canary workflows | **Modified/new** | Prove standard DSSE independently, verify legacy bridge behavior, exercise packed artifacts, and validate published tarballs | CI, release workflow, scheduled secret-backed canary |
 
 ## Recommended Project Structure
 
-```
-lattice/                              # repo root
-├── spec/
-│   ├── SPEC.md                       # normative language-neutral spec
-│   ├── CHANGELOG.md                  # per-version change log for the spec
-│   └── schema/
-│       ├── lattice-receipt-v1.1.json # locked JSON Schema (v1.1 body shape)
-│       ├── lattice-receipt-v1.2.json # locked JSON Schema (v1.2 body shape)
-│       └── lattice-receipt-v1.3.json # locked JSON Schema (v1.3 body shape, current)
-│
-├── conformance/
-│   ├── vectors/
-│   │   ├── README.md                 # format documentation
-│   │   ├── v1.1/
-│   │   │   └── <id>.vector.json      # one file per vector (see format below)
-│   │   ├── v1.2/
-│   │   │   └── <id>.vector.json
-│   │   └── v1.3/
-│   │       └── <id>.vector.json      # current version vectors
-│   ├── generate/
-│   │   ├── package.json              # private, no publish
-│   │   └── generate-vectors.ts       # TS generator; run: pnpm --filter conformance-generate run generate
-│   └── verify-ts/
-│       ├── package.json              # private, no publish
-│       └── verify-vectors.test.ts    # vitest harness consuming conformance/vectors/
-│
-├── clients/
-│   └── python/
-│       ├── pyproject.toml            # Python packaging (hatchling, no npm involvement)
-│       ├── lattice_receipt/
-│       │   ├── __init__.py
-│       │   ├── canonical.py          # RFC 8785 JCS canonicalization
-│       │   ├── envelope.py           # DSSE PAE, base64
-│       │   ├── verify.py             # verifyReceipt equivalent
-│       │   ├── replay.py             # replay (re-hash outputHash)
-│       │   └── mint.py               # sign new receipts (Ed25519)
-│       └── tests/
-│           ├── test_conformance.py   # consumes conformance/vectors/ golden files
-│           └── test_round_trip.py    # python mint → bytes → TS verify cross-check
-│
-├── packages/
-│   ├── lattice/                      # unchanged
-│   └── lattice-cli/                  # unchanged
-│
-├── pnpm-workspace.yaml               # add conformance/* to packages list
-├── package.json                      # add conformance scripts
-└── .github/
-    └── workflows/
-        ├── ci.yml                    # MODIFY: add conformance job
-        └── release.yml               # unchanged
+```text
+packages/lattice/src/
+  receipts/
+    pae.ts                       # NEW: standard and quarantined legacy PAE
+    policy.ts                    # NEW: issuance policy and typed failure
+    envelope.ts                  # MODIFY: envelope encoding only
+    receipt.ts                   # MODIFY: standard PAE issuance only
+    verify.ts                    # MODIFY: standards-first bridge verification
+  context/
+    context-pack.ts              # KEEP: pure inclusion/summarization plan
+    materialize.ts               # NEW: authoritative artifact resolution
+  runtime/
+    create-ai.ts                 # MODIFY: call shared preparation pipeline
+    prepare-run.ts               # NEW/EXTRACT: persist -> route -> plan -> materialize
+  routing/
+    cost.ts                      # NEW: normalized estimator
+    router.ts                    # MODIFY: use shared estimator
+  contract/
+    preflight.ts                 # MODIFY: preserve public wrapper, use estimator
+  agent/
+    receipt-collector.ts         # NEW internal
+    checkpoint-hook.ts           # MODIFY: callback/policy support
+    runtime.ts                   # MODIFY: populate documented receipt fields
+
+packages/lattice-cli/src/
+  eval/runner.ts                 # MODIFY: loadFailed summary
+  commands/eval.ts               # MODIFY: exit precedence and baseline safety
+
+spec/                            # MODIFY: standards-compliant envelope profile
+conformance/vectors/
+  standard/                      # NEW current golden vectors
+  legacy/                        # NEW frozen compatibility vectors
+conformance/{typescript,python}/ # MODIFY: assert verification profile
+
+scripts/
+  package-consumer-check.mjs     # NEW: clean tarball consumers
+.github/workflows/
+  conformance.yml                # MODIFY: independent standard interop
+  release-candidate.yml          # NEW reusable deterministic gate
+  provider-canary.yml            # NEW scheduled/manual live gate
 ```
 
 ### Structure Rationale
 
-- **`spec/` at repo root:** The spec is peer to the TS implementation, not subordinate to it. Placing it under `packages/` would imply it is an npm-publishable artifact; it is not. A root-level `spec/` is the established pattern for language-neutral protocol documents (DSSE, SLSA, OpenID Connect all use root-level `spec/` directories in their repos).
-
-- **`conformance/` at repo root:** Conformance vectors are neither TS source nor Python source; they are protocol-level test fixtures. Placing them at root keeps them accessible to all consumers with a relative path that does not change when packages restructure. The `generate/` and `verify-ts/` sub-packages are private pnpm workspace members (no `publishConfig`), so they benefit from the pnpm catalog but never enter an npm tarball.
-
-- **`clients/python/` not under `packages/`:** `packages/` is the pnpm workspace glob (`packages/*`). Adding Python there would require either making it a pnpm package (which requires a `package.json` and pollutes pnpm's resolution) or making the glob more restrictive. Placing Python under `clients/` keeps it entirely outside the pnpm surface — `pnpm-workspace.yaml` lists only `packages/*` and `conformance/*`. The `check-tarball-leak.mjs` hard-codes `PACKAGES = [packages/lattice, packages/lattice-cli]`, so `clients/` is never packed. The `check-core-package-boundary.mjs` scans only `packages/lattice/dist`, so `clients/` is not scanned.
-
-- **`spec/schema/` JSON Schema files:** These are the machine-checkable complement to the prose spec. The generator in `conformance/generate/` validates each vector's body against the schema for its declared `version` field before writing it, preventing spec drift.
-
----
+- DSSE encoding and compatibility detection are protocol concerns, not envelope serialization concerns. Separating them prevents an issuer from accidentally calling the legacy algorithm.
+- Context selection is a pure planning function; storage resolution and summarization are effectful materialization. Keeping those stages separate makes plan/run drift testable.
+- Cost arithmetic should be shared while policy remains local. Routing may tolerate unknown cost while a strict contract rejects it, but both must calculate known cost identically.
+- Receipt strictness is a cross-runtime policy. A shared helper prevents the core run, agent loop, checkpoints, and crew path from silently diverging again.
 
 ## Architectural Patterns
 
-### Pattern 1: Generator-Driven Golden Files (Vectors-From-Impl)
+### Pattern 1: Compatibility at the Verifier Boundary
 
-**What:** The TS implementation is the canonical authority for what the protocol does. The `conformance/generate/generate-vectors.ts` script imports directly from `packages/lattice/src/receipts/` to produce committed golden files. Each golden file records: the deterministic body input, the JCS canonical bytes (hex), the DSSE envelope, and the public key used to sign. The generator is run intentionally (not on every CI invocation) and its output is committed to git. CI then checks the committed vectors against the live TS implementation.
+All v1.6 issuers sign standard DSSE PAE over raw canonical payload bytes and UTF-8 byte lengths. No public or internal option may mint the legacy base64-string PAE.
 
-**When to use:** Anytime the source of truth for a binary protocol is an existing implementation rather than a written spec. This pattern gives "the spec is the code" semantics while still making the expected bytes observable and independently verifiable.
+```ts
+type ReceiptVerificationProfile =
+  | "dsse-v1"
+  | "lattice-legacy-base64-pae";
 
-**Trade-offs:** The generator must be re-run and re-committed every time the signing logic changes. A stale vector set will cause CI to fail — which is exactly the desired drift-detection signal. The generator itself must be deterministic: fixed key material, fixed timestamps, and fixed entropy.
-
-**Generator contract:**
-```typescript
-// conformance/generate/generate-vectors.ts
-// Called: pnpm --filter conformance-generate run generate
-import { canonicalizeReceiptBody } from "../../packages/lattice/src/receipts/canonical.js";
-import { buildPae, encodeEnvelope, base64Encode } from "../../packages/lattice/src/receipts/envelope.js";
-import { createInMemorySigner } from "../../packages/lattice/src/receipts/sign.js";
-
-// MUST use a FIXED private key (embedded in the generator, never in the vector file).
-// MUST use a FIXED issuedAt timestamp per vector ID so the output is reproducible.
-// Writes conformance/vectors/v1.3/<id>.vector.json for each vector fixture.
-```
-
-**Vector file format** (`.vector.json`):
-```json
-{
-  "id": "v1.3-basic-success-001",
-  "specVersion": "lattice-receipt/v1.3",
-  "description": "basic success receipt, single Ed25519 key, no redactions",
-  "input": {
-    "body": { /* full CapabilityReceiptBody, all required fields */ }
-  },
-  "expected": {
-    "canonicalBytes": "<hex-encoded JCS UTF-8 bytes of body>",
-    "payloadBase64": "<standard base64 of canonicalBytes>",
-    "paeBytes": "<hex-encoded DSSE PAE bytes>",
-    "signatureBytes": "<hex-encoded Ed25519 signature over PAE>",
-    "envelope": {
-      "payloadType": "application/vnd.lattice.receipt+json",
-      "payload": "<same as payloadBase64>",
-      "signatures": [{ "keyid": "test-key-1", "sig": "<base64 signatureBytes>" }]
-    }
-  },
-  "publicKeyJwk": { /* Ed25519 public key in JWK format */ }
+interface VerifyReceiptOptions {
+  legacy?: "accept" | "reject";
 }
 ```
 
-The vector captures every intermediate step in the sign/verify pipeline: canonical bytes, PAE bytes, and the final envelope. This lets each client implementation verify at the step level, not just end-to-end, which makes debugging cross-language failures tractable.
+`verifyReceipt(envelope, keySet, options?)` should perform common decode, schema, canonical-payload, and key checks once. It then attempts standard PAE verification. Only a cryptographic mismatch may enter the legacy branch, and only when legacy acceptance is enabled. A successful result reports `verificationProfile`; a legacy success also produces a warning/event.
 
-### Pattern 2: Shared-Vector Dual-Harness CI Gate
+For the v1.6 bridge, preserve existing callers with `legacy: "accept"` as the temporary default and provide strict rejection for CI, audit, and newly minted receipts. Time-box removal in a future major release using telemetry and vector usage, not heuristic receipt-body detection.
 
-**What:** Both the TS harness (`conformance/verify-ts/verify-vectors.test.ts`) and the Python harness (`clients/python/tests/test_conformance.py`) consume the exact same committed vector files at `conformance/vectors/`. Neither generates vectors at CI time — they only consume and assert. CI runs both in a single GitHub Actions job (or two parallel jobs in a matrix) and fails if either harness fails.
+The receipt body schema and CID need not change solely for this correction: the envelope payload remains the same and the CID is derived from payload bytes. The protocol specification must nevertheless identify the signing profile and the bounded legacy bridge.
 
-**When to use:** Whenever byte-level parity between two implementations must be proven continuously, not just at development time.
+### Pattern 2: Plan, Materialize, Then Package
 
-**Trade-offs:** Both harnesses are coupled to the vector file format. The format must be stable enough to serve both languages without transformation. The JSON format chosen above is intentionally simple (hex strings, base64 strings, plain JSON) so Python's `json` stdlib and Node's built-ins can both parse it without special libraries.
+`buildContextPack` should remain a deterministic classifier. A new materializer consumes its IDs and returns concrete artifacts:
 
-**TS harness outline:**
-```typescript
-// conformance/verify-ts/verify-vectors.test.ts
-import { describe, it, expect } from "vitest";
-import { readdir, readFile } from "node:fs/promises";
-import { canonicalizeReceiptBody } from "../../packages/lattice/src/receipts/canonical.js";
-import { buildPae, base64Encode } from "../../packages/lattice/src/receipts/envelope.js";
-import { verifyReceipt } from "../../packages/lattice/src/receipts/verify.js";
-import { createMemoryKeySet } from "../../packages/lattice/src/receipts/keyset.js";
-
-// For each vector: verify canonicalBytes matches, verifyReceipt returns ok: true,
-// body.kid, contractVerdict match expected.
+```ts
+interface MaterializedContext {
+  artifacts: ArtifactInput[];
+  artifactRefs: ArtifactRef[];
+  summaryRefs: ArtifactRef[];
+  omittedIds: string[];
+  warnings: ContextMaterializationWarning[];
+}
 ```
 
-**Python harness outline:**
-```python
-# clients/python/tests/test_conformance.py
-import json, pathlib, pytest
-VECTORS_DIR = pathlib.Path(__file__).parents[3] / "conformance" / "vectors"
+The materializer must:
 
-@pytest.mark.parametrize("vector_path", list(VECTORS_DIR.rglob("*.vector.json")))
-def test_vector(vector_path):
-    v = json.loads(vector_path.read_text())
-    body = v["input"]["body"]
-    canonical = lattice_receipt.canonical.canonicalize_body(body)
-    assert canonical.hex() == v["expected"]["canonicalBytes"]
-    # ... verify PAE, verify signature, verify envelope round-trip
+1. Index persisted current and derived artifacts.
+2. Resolve included session artifact/output references through the configured store.
+3. Summarize only items classified as `summarized`, persist the resulting artifacts, and include their content.
+4. Resolve stored session summaries selected by policy.
+5. Stable-deduplicate by artifact ID.
+6. Exclude `omitted` and `archived` items by construction.
+7. Fail before provider execution when an item declared included cannot be resolved; a warning is insufficient because the plan would misrepresent execution.
+
+Provider adapters continue receiving `ProviderRunRequest.artifacts`, but that field now contains only `MaterializedContext.artifacts`. `contextPack` remains explanatory metadata and must not substitute for content.
+
+Fallback attempts must package the materialized set for the attempted route. If fallback models have different context limits, either plan against the minimum limit in the fallback chain or rematerialize per attempt and record the attempt-specific pack. Reusing a pack that exceeds a fallback model's limit is not valid.
+
+### Pattern 3: Explicit Storage Lifecycle
+
+Configured storage becomes part of the execution contract:
+
+```text
+prepared current/tool/transform artifacts
+  -> store.put before planning/materialization
+  -> session and context use stored refs
+  -> generated summary artifacts store.put
+  -> provider runs with resolved values
+  -> output artifacts store.put
+  -> session turn appends stored input/output refs
+  -> receipt and plan reflect completed/failed persistence
 ```
 
-### Pattern 3: Cross-Mint Parity Round-Trip
+With no configured store, persistence stages are `skipped`, not `completed`. With a configured store, a failed required write produces a typed storage failure. A provider success followed by output persistence failure cannot be represented as an ordinary fully persisted success.
 
-**What:** After the Python client can mint (sign new receipts), a dedicated test mints a receipt in Python and then calls the TS `verifyReceipt` to confirm the TS verifier accepts the Python-minted envelope. This closes the loop: it is not enough that Python can verify TS-minted receipts; the TS verifier must also accept Python-minted receipts.
+Do not add a required method to `SessionStore`; that would break external implementations. Persist summary updates through existing `load`/`save`, or add only an optional convenience method. Extract the artifact persistence behavior already used by `core/standalone.ts` so standalone and `createAI` cannot diverge.
 
-**When to use:** Any time two implementations must be interoperable at the protocol level, not just read-compatible.
+### Pattern 4: Policy-Driven Receipt Issuance
 
-**Implementation:** A CI step (or a vitest test that spawns a Python subprocess) that:
-1. Calls `python -c "import lattice_receipt.mint; ..."` with a known keypair to produce a receipt JSON.
-2. Passes that JSON to `verifyReceipt` in TS.
-3. Asserts `result.ok === true`.
+Add an optional receipt policy while preserving `signer` as shorthand:
 
-The simplest CI-safe implementation: `clients/python/tests/mint_fixture.py` writes a receipt to stdout as JSON. The TS test in `conformance/verify-ts/` spawns this script, parses the output, and calls `verifyReceipt`. This avoids needing a shared file path and works within the pnpm/Python dual-toolchain CI job.
+| Configuration | Effective behavior |
+|---|---|
+| no signer | `off` |
+| existing `signer` only | `best-effort` |
+| `receiptPolicy: "required"` plus signer | required; configuration rejects a missing signer |
 
----
+Best-effort issuance may omit a receipt, but must emit an observable warning/trace event. Required issuance returns a typed `receipt-issuance-failed` terminal result (or a documented typed exception) and must never return a normal success without a receipt.
+
+The same policy helper must serve `ai.run`, agent completion, checkpoint hooks, crew receipts, and external execution audits. Otherwise strict mode is only nominal.
+
+### Pattern 5: One Estimator, Separate Decisions
+
+Normalize modern per-1k pricing and deprecated per-1M pricing in `routing/cost.ts`; prefer explicit modern fields when both exist. Preserve the public `estimateRouteCost` export as a wrapper.
+
+Unknown pricing remains `null`, distinct from free cost `0`. Router and contract code may apply different rules to `null`, but any known route/input/output tuple must yield the same number in both paths.
+
+### Pattern 6: Aggregate Diagnostics, Strict Exit Status
+
+Eval should continue loading all fixtures so users receive a complete report. Add `summary.loadFailed` and use exit precedence:
+
+```text
+one or more load failures -> 2 (invalid evaluation input)
+otherwise regression      -> 1
+otherwise                 -> 0
+```
+
+`--init-baseline` must not write a partial baseline when any fixture fails to load. JSON output can still include the aggregated report before exiting 2.
 
 ## Data Flow
 
-### Build Order and Dependency Graph
+### Capability Run
 
-```
-Step 1: spec/SPEC.md is authored (human; no build dependency)
-        spec/schema/v1.x.json are locked alongside the spec
+1. Validate intent and prepare declared/tool-derived artifacts.
+2. Persist and fingerprint prepared artifacts when storage is configured.
+3. Load or create the session and route using declared capability/modality facts.
+4. Build the context plan for the selected route budget.
+5. Materialize actual context from current values, storage-backed session references, and generated summaries.
+6. Package only materialized artifacts for the selected provider; record omitted/archived entries in the plan.
+7. Execute the adapter and persist output artifacts.
+8. Append stored refs to the session.
+9. Create the terminal receipt under the normalized policy using the actual execution lineage.
+10. Return a result whose persistence and receipt stages match what occurred.
 
-Step 2: conformance/generate/generate-vectors.ts runs (manual + CI trigger)
-        Input:  packages/lattice/src/receipts/* (canonical, envelope, sign)
-        Output: conformance/vectors/v1.x/*.vector.json  [COMMITTED TO GIT]
-        Gate:   validates each body against spec/schema/v1.x.json before writing
+For receipt compatibility, keep declared source refs visible in the plan. Receipt `inputHashes` should commit to provider-visible materialized inputs; source-to-summary and packaging transforms belong in artifact lineage so the receipt proves the executed request rather than the unexecuted declaration.
 
-Step 3: TS self-verification  [runs on every PR via ci.yml]
-        conformance/verify-ts/verify-vectors.test.ts
-        Input:  conformance/vectors/**/*.vector.json + packages/lattice/src/receipts/*
-        Gate:   each step of sign/verify pipeline byte-matches the committed vector
-        Failure = TS impl drifted from committed vectors (must regenerate + commit)
+### DSSE Issue and Verify
 
-Step 4: Python verify  [runs on every PR via ci.yml conformance job]
-        clients/python/tests/test_conformance.py
-        Input:  conformance/vectors/**/*.vector.json
-        Gate:   Python implementation of canonical + PAE + verify matches all vectors
-        Failure = Python client drifted from the protocol
+```text
+receipt body -> redact -> canonical raw bytes
+             -> standard DSSE PAE(payloadType bytes, raw payload bytes)
+             -> signer -> envelope(payload = base64(raw bytes))
 
-Step 5: Python replay  [runs after Step 4 passes]
-        clients/python/tests/test_replay.py
-        Input:  a TS-minted ReceiptEnvelope (from conformance vector's envelope field)
-        Gate:   Python can decode the envelope, re-canonicalize the body, and compare outputHash
-
-Step 6: Python mint  [runs after Step 5 passes]
-        clients/python/tests/test_mint.py
-        Gate:   Python can produce a ReceiptEnvelope that passes Python's own verifyReceipt
-
-Step 7: Cross-mint parity  [runs after Step 6 passes]
-        conformance/verify-ts/cross_mint_parity.test.ts  (spawns Python mint as subprocess)
-        Gate:   TS verifyReceipt accepts a Python-minted envelope  →  full round-trip proven
-        This is the final parity assertion: the protocol is byte-identical across languages.
+envelope -> decode raw payload bytes -> common validation
+         -> standard PAE verify -> success(profile=dsse-v1)
+         -> [policy permits + signature mismatch only]
+              legacy base64-PAE verify
+              -> success(profile=legacy, warning)
 ```
 
-### Key Data Flows
+### Agent Run
 
-1. **Sign flow (both TS and Python must agree byte-for-byte):**
-   ```
-   CapabilityReceiptBody (JSON object)
-       → JCS canonicalize (RFC 8785) → canonical bytes (UTF-8)
-       → base64-encode canonical bytes → payloadBase64
-       → DSSE PAE: "DSSEv1 " + len(payloadType) + " " + payloadType + " " + len(payloadBase64) + " " + payloadBase64
-       → Ed25519 sign PAE bytes → 64-byte signature
-       → base64-encode signature → sig string
-       → ReceiptEnvelope { payloadType, payload: payloadBase64, signatures: [{ keyid, sig }] }
-   ```
+The auto-registered checkpoint hook should expose an additive `onReceipt` callback. An internal collector attaches successful checkpoint envelopes to the matching `IterationRecord.receipt`. At terminal success or failure, the agent mints a distinct cumulative receipt and assigns the already-documented `AgentSuccess.receipt` or `AgentFailure.receipt`.
 
-2. **Verify flow (identity of steps is the parity contract):**
-   ```
-   ReceiptEnvelope
-       → base64-decode payload → canonical bytes
-       → JSON.parse canonical bytes → body object
-       → structural shape check → typed body
-       → schema version check (must be >= v1.1)
-       → keyset lookup by keyid
-       → re-canonicalize body → compare byte-for-byte against decoded payload
-       → build PAE from payloadType + payloadBase64
-       → Ed25519 verify(PAE, sig, publicKey)
-       → VerifyResult
-   ```
+The terminal receipt is not an alias for the final step receipt: it covers cumulative usage, terminal verdict, output hashes, and full lineage. Crew execution should consume member result receipts rather than mint duplicate completion envelopes; parent CID context should be passed into the member run.
 
-3. **CID flow (used for parentReceiptCid chaining):**
-   ```
-   ReceiptEnvelope
-       → base64-decode payload → canonical bytes
-       → SHA-256(canonical bytes) → hex digest
-       → "sha256:" + hex  →  CID string
-   ```
-   Python must implement the same CID derivation. No signing key required.
+## Public API Compatibility
 
-4. **Replay flow:**
-   ```
-   ReceiptEnvelope
-       → verifyReceipt → CapabilityReceiptBody
-       → load artifacts by inputHash (from fixture store)
-       → re-run output transformation
-       → SHA-256(JSON.stringify(outputs)) → actualOutputHash
-       → compare actualOutputHash === body.outputHash  →  "match" | "drift"
-   ```
+| Surface | v1.6 treatment |
+|---|---|
+| `createReceipt`, `ReceiptEnvelope` | Same signature/wire fields; corrected standard signature bytes |
+| `verifyReceipt` | Add optional options argument and additive verification-profile success field |
+| Existing legacy receipts | Accepted by temporary default bridge, observable, rejectable in strict mode |
+| `LatticeConfig.signer` | Preserved as best-effort shorthand; new receipt policy is additive |
+| `ArtifactStore` / `SessionStore` | No new required interface members |
+| `ProviderRunRequest` | Same shape; `artifacts` semantics become authoritative by fixing behavior |
+| `AgentSuccess.receipt`, `AgentFailure.receipt`, iteration receipt | Existing optional fields are populated; no type removal |
+| `estimateRouteCost` | Existing export preserved through shared implementation |
+| Eval report | Additive `loadFailed`; exit 2 on invalid inputs is intentional CLI behavior correction |
 
----
+## Migration Boundaries
 
-## Integration Points
+### DSSE Vectors and Independent Interop
 
-### pnpm Workspace Integration
+- Freeze existing v1.1-v1.3 vectors under `conformance/vectors/legacy`; do not silently regenerate them.
+- Generate new standard vectors from the corrected issuer and identify expected verification profile in manifests.
+- Make strict conformance reject legacy signatures for newly generated artifacts.
+- Keep bridge tests proving frozen legacy vectors still verify only when enabled.
+- Add at least one verifier/minter that does not import Lattice's TypeScript PAE helper. Cross-mint and cross-verify both directions against a standards-compliant DSSE implementation or independently written harness.
+- Update TypeScript, Python, schemas, generator scripts, protocol specification, and conformance CI in one protocol phase. A partial migration would create mutually unverifiable receipts.
 
-The `conformance/generate/` and `conformance/verify-ts/` packages must be added to `pnpm-workspace.yaml`. The current file lists only `packages/*`. The required change:
+### Context and Storage
 
-```yaml
-# pnpm-workspace.yaml (modified)
-packages:
-  - "packages/*"
-  - "conformance/*"   # adds generate/ and verify-ts/ as private workspace packages
-```
+- Introduce materialization behind existing runtime APIs; do not ask provider adapters to independently interpret session refs or omissions.
+- Do not mark a summarized item as included unless a concrete summary artifact exists.
+- Do not silently drop an included but unavailable stored ref.
+- Keep `ai.plan()` and `ai.run()` on one preparation pipeline. Because planning already invokes tools/summarizers/session creation, either document storage writes during planning or add an explicit dry-run mode later; duplicating the pipeline is worse than the side effect.
 
-Both new packages have `"private": true` and no `publishConfig` in their `package.json`. They will never be picked up by `check-tarball-leak.mjs` because that script hard-codes its `PACKAGES` array to `packages/lattice` and `packages/lattice-cli`. No modification to `check-tarball-leak.mjs` is needed.
+## Testing Strategy
 
-The `check-core-package-boundary.mjs` script scans only `packages/lattice/dist/`. The new `conformance/` packages and `clients/python/` are outside that path and require no changes to that script.
+| Boundary | Required tests |
+|---|---|
+| Standard DSSE | Golden PAE bytes, UTF-8 byte lengths, standard TS/Python cross-verification, tamper/key/canonical failures |
+| Legacy bridge | Standards-first behavior, explicit accept/reject, reported legacy profile, no legacy mint path |
+| Context authority | Fake provider captures included current/session/summary content; omitted and archived IDs are absent |
+| Storage lifecycle | Spy store verifies write order and stored session refs; missing refs and input/summary/output write failures are explicit |
+| Provider parity | First-party adapters receive the same authoritative artifact set before provider-specific packaging |
+| Plan/run consistency | Stable context membership and lineage for equivalent plan/run preparation |
+| Receipt policy | Best-effort warning, required-mode terminal failure, no success without required receipt |
+| Cost consistency | Per-1k, per-1M, precedence, partial/unknown/free pricing produce identical router/preflight estimates |
+| Agent receipts | Iteration and terminal receipts verify; terminal receipt has cumulative usage/output/verdict; crews do not duplicate |
+| Eval exits | Mixed valid/load-failed fixtures report all failures and exit 2; baseline file remains untouched |
+| Package gates | Clean Node 20 and Node 24 tarball consumers import public subpaths and execute mint/verify/runtime/CLI smoke tests |
 
-### Python Toolchain in CI
+## Build Order
 
-The existing `ci.yml` uses a single job on `ubuntu-latest` with Node 24. The conformance gate requires Python. Two implementation options:
+1. **Lock regressions and protocol contract.** Add failing DSSE, context-authority, storage, cost, eval, and agent-result tests against the reconciled `origin/main` tree.
+2. **Correct DSSE end-to-end.** Implement standard PAE, explicit legacy verification, spec/schema/vector/Python updates, and independent interop before producing more receipts elsewhere.
+3. **Unify cost estimation.** Small isolated change that removes router/contract disagreement and stabilizes budget tests.
+4. **Build the shared preparation boundary.** Persist artifacts, plan context, materialize it, and feed only the materialized set to packaging; then persist outputs/session refs.
+5. **Add receipt policy.** Centralize off/best-effort/required semantics over the corrected issuer and integrate core runs/checkpoints/audits.
+6. **Complete agent result receipts.** Collect iteration receipts, mint terminal receipts, and remove duplicate crew completion paths.
+7. **Correct eval exit behavior.** Add load-failure accounting and atomic baseline initialization.
+8. **Harden delivery gates.** Run deterministic conformance and clean-package consumers before release; add scheduled/manual real-provider canaries; finish docs and durable comment-hygiene checks.
 
-**Option A (recommended): Add a separate `conformance` job to `ci.yml`.**
+This order places protocol and execution truth beneath every later audit feature. Cost and eval work can proceed in parallel after the protocol contract is fixed.
 
-```yaml
-conformance:
-  name: conformance
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@<sha>
-    - uses: pnpm/action-setup@<sha>
-    - uses: actions/setup-node@<sha>
-      with: { node-version: '24', cache: 'pnpm' }
-    - uses: actions/setup-python@<sha>
-      with: { python-version: '3.12' }
-    - run: pnpm install --frozen-lockfile
-    - run: pnpm -r build        # build packages/lattice so conformance/verify-ts can import it
-    - name: Run TS conformance vectors
-      run: pnpm --filter conformance-verify-ts run test
-    - name: Install Python client
-      run: pip install -e clients/python[dev]
-    - name: Run Python conformance vectors
-      run: pytest clients/python/tests/test_conformance.py -v
-    - name: Cross-mint parity (Python mint -> TS verify)
-      run: pnpm --filter conformance-verify-ts run test:cross-mint
-```
+## Delivery Gates
 
-This job runs in parallel with the existing `ci` job (which covers build, typecheck, unit tests, lint:packages, tarball checks). Both must pass for a PR to merge.
+### Pull Request Gate
 
-**Option B:** Extend the existing `ci` job with Python steps. This is simpler but adds Python setup time to every PR's main gate. Not recommended because Python setup adds ~30s to what is currently a fast gate.
+- Build, typecheck, unit/integration tests, type tests, lint, `publint`, and `@arethetypeswrong/cli`.
+- Standard and legacy conformance on every relevant protocol/runtime/CLI change, not only vector-directory changes.
+- Pack real tarballs and install them into clean Node 20 and Node 24 consumers; tests must use package exports, never workspace source imports.
+- Exercise root and modular exports, standard mint/verify, strict legacy rejection, one storage/context run, and CLI eval exit codes.
 
-The `actions/setup-python` action must be SHA-pinned at 40 chars per the existing CI-02 / D-12 rule.
+### Release Gate
 
-### Spec Versioning Without Drift
+The release job must depend on or rerun the exact-commit deterministic gate. It must not publish after build/lint/version checks alone. Conformance manifests, clean tarball consumers, package metadata checks, and protocol smoke tests must all pass for the publish candidate.
 
-The spec is kept in sync with the implementation via three mechanisms:
+### Real-Provider Canary
 
-1. **Schema JSON files are generated from the TS types.** The `generate-vectors.ts` script, after generating vectors, also validates each body against the corresponding `spec/schema/v1.x.json` using a JSON Schema validator. If the TS implementation uses a field that the schema does not describe, generation fails. This makes the schema the spec and the impl the validator — not the other way around.
-
-2. **The `version` field in `CapabilityReceiptBody` is the authoritative schema discriminant.** When a new field is added (e.g., `lattice-receipt/v1.4`), a new JSON Schema file and new vectors must be added before any code ships the new version string. The vector generator enforces this by matching `body.version` to `spec/schema/<version>.json`.
-
-3. **The spec CHANGELOG records which spec sections changed for which receipt version.** This is a manual discipline but the CI gate on vectors means the implementation cannot advance a version string without vectors for that version also passing. The roadmap phase for adding a new receipt version therefore has three mandatory deliverables: spec section update, schema JSON, new vectors.
-
----
+Use a scheduled/manual, secret-backed workflow rather than a required PR job. Keep prompts and budgets minimal and bound retries/concurrency. For each supported credential, assert successful transport/stream or structured result, provider usage/model metadata, standard-profile receipt verification, and contract limits. Record the exact commit and package candidate; do not let a canary silently test workspace source while release publishes a tarball.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Generating Vectors at CI Time
-
-**What people do:** Run the TS generator in CI and compare the output to a reference, or generate vectors on-the-fly during each test run.
-
-**Why it's wrong:** If generation and verification run in the same process with the same code, they cannot detect drift — a bug in canonicalization would affect both generation and verification identically. The value of committed vectors is that they represent a historical snapshot of the protocol behavior; a current bug does not retroactively change them.
-
-**Do this instead:** Vectors are committed to git. The CI gate only consumes them, never regenerates them. The generator is a developer tool run manually before committing a protocol change, with a deliberate "commit the new vectors" step.
-
-### Anti-Pattern 2: Putting the Python Client Under `packages/`
-
-**What people do:** Place `packages/python/` to keep everything in one glob.
-
-**Why it's wrong:** The `pnpm-workspace.yaml` glob `packages/*` causes pnpm to treat every directory under `packages/` as a pnpm package, requiring a `package.json`. The `check-tarball-leak.mjs` script would need a negative exclusion for `packages/python`. More subtly, `check-core-package-boundary.mjs` would scan `packages/python/` looking for forbidden Node imports in Python files, producing false positives. The Python packaging system (pyproject.toml / hatchling) is orthogonal to pnpm.
-
-**Do this instead:** Place the Python client under `clients/python/`. The `clients/` directory is not in any pnpm workspace glob; pnpm ignores it entirely. All existing boundary scripts remain unchanged.
-
-### Anti-Pattern 3: Python Client Importing from `packages/lattice/src/`
-
-**What people do:** Use Node.js subprocess calls or FFI to call the TS implementation from Python to avoid reimplementing the protocol.
-
-**Why it's wrong:** The entire point of the Python client is to prove cross-language byte-parity via an independent implementation. A Python wrapper around TS code is not an independent implementation; it proves nothing about language portability. It also creates a Node.js runtime dependency for Python consumers.
-
-**Do this instead:** The Python client is a pure Python reimplementation of the three core algorithms: JCS canonicalization, DSSE PAE construction, and Ed25519 sign/verify. All three are straightforward pure-Python implementations using the `cryptography` library for Ed25519 and Python's built-in `json` and `hashlib` for the rest.
-
-### Anti-Pattern 4: Floating Spec (Prose Without Schema)
-
-**What people do:** Write `SPEC.md` as prose and trust that implementers read it correctly.
-
-**Why it's wrong:** Prose is ambiguous on edge cases: what happens to `costUsd` when the value is `Infinity`? Does `redactions: []` differ from omitting `redactions`? Is `null` allowed for `outputHash`? The TS implementation answers these questions by behavior; the spec must answer them by text + machine-checkable schema.
-
-**Do this instead:** Every `CapabilityReceiptBody` field is described in prose in `SPEC.md` and also declared in `spec/schema/v1.x.json`. The vector generator validates each golden body against the schema; this catches spec/impl divergence before vectors are committed.
-
----
+- **Dual-mode issuance:** new signers that choose standard or legacy perpetuate the migration indefinitely.
+- **Silent verifier fallback:** legacy acceptance without a reported profile makes deprecation immeasurable.
+- **Metadata-only context packing:** sending all artifacts while recording omissions is an integrity defect, not a harmless optimization.
+- **Adapter-specific context resolution:** seven implementations will drift and make receipts incomparable.
+- **Ephemeral session refs:** recording IDs without a resolvable store value creates sessions that cannot continue.
+- **Required-but-best-effort receipts:** swallowing signer errors under a strict policy invalidates the audit promise.
+- **Duplicated price math:** shared pricing types do not guarantee shared semantics.
+- **Partial eval baselines:** skipping malformed fixtures can bless an incomplete baseline.
+- **Source-only package tests:** they cannot validate exports, declarations, bundled files, or installation constraints.
 
 ## Scaling Considerations
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| v1.5 (1 language) | Current layout: `conformance/` + `clients/python/` + single CI job |
-| v1.6 (2-3 languages) | Add `clients/go/` and `clients/rust/` under `clients/`; add each to the conformance CI matrix; vectors are shared and require no changes |
-| v1.7+ (N languages) | The `conformance` CI job becomes a matrix (`strategy.matrix.language: [ts, python, go, rust]`); each language runs the same vector set; parity is proven by the same mechanism at any N |
+| Concern | Current milestone design | Later pressure point |
+|---|---|---|
+| Artifact count/size | Stream/load only selected artifacts; stable-dedupe by ID | Batched store reads and streaming transforms |
+| Session history | Context plan archives old turns; materializer resolves selected refs | Incremental durable summaries and indexed stores |
+| Receipt verification volume | Shared parsing plus one standard attempt; legacy retry only on signature mismatch | Cache key resolution and remove legacy branch |
+| Provider fallback | Attempt-specific packaging and recorded context pack | Precomputed compatible packs by model family |
+| CI cost | Deterministic local gates on every PR; live canaries scheduled/manual | Credential matrix and release promotion environments |
 
-The architecture does not need to change to add languages. Only two things change per new language: a new `clients/<lang>/` directory and a new matrix entry in the CI conformance job. The spec, schema, and vectors are shared and language-agnostic by design.
+## Integration Points
 
----
+### Internal
+
+- `runtime/create-ai.ts` is the central integration point for preparation, materialization, packaging, persistence, session updates, and terminal issuance.
+- `core/standalone.ts` supplies the existing artifact-persistence precedent and should share helpers with the main runtime.
+- `providers/packaging.ts` must receive the materialized artifact set; provider adapters remain transport-specific.
+- `agent/runtime.ts`, checkpoint hooks, and crew runtime must share receipt policy and parent-CID context.
+- The CLI eval runner owns classification; the command owns process exit behavior and baseline write atomicity.
+
+### External
+
+- Receipt signers/KMS continue signing provided bytes; those bytes become standards-compliant PAE without a signer API change.
+- Python clients and independent harnesses must migrate in the same DSSE phase.
+- External artifact/session stores retain their existing interfaces but now observe the documented lifecycle.
+- GitHub Actions release permissions and provider secrets remain isolated from PR workflows.
 
 ## Sources
 
-- Live codebase: `packages/lattice/src/receipts/canonical.ts`, `envelope.ts`, `sign.ts`, `verify.ts`, `cid.ts`, `keyset.ts`, `types.ts`
-- Live codebase: `packages/lattice/src/replay/materialize.ts`
-- Live codebase: `packages/lattice-cli/src/commands/verify.ts`, `repro.ts`, `receipt.ts`
-- Live codebase: `scripts/check-tarball-leak.mjs`, `scripts/check-core-package-boundary.mjs`
-- Live codebase: `.github/workflows/ci.yml`, `.github/workflows/release.yml`
-- Live codebase: `pnpm-workspace.yaml`, root `package.json`, `packages/lattice/package.json`
-- `.planning/PROJECT.md` — v1.5 milestone goals and key decisions
+### Current code and planning
+
+- `.planning/PROJECT.md` - v1.6 milestone goal and target corrections
+- `packages/lattice/src/receipts/{envelope,receipt,verify}.ts` - current base64-string PAE and verification flow
+- `clients/python/src/lattice_receipt/_core.py` - matching legacy Python algorithm
+- `spec/SPEC.md`, `spec/generate-vector0.ts`, `conformance/` - protocol contract and vectors
+- `packages/lattice/src/runtime/{config,create-ai}.ts` - normalized storage, context planning, provider request construction, best-effort receipt handling
+- `packages/lattice/src/context/context-pack.ts` - planning-only context classification
+- `packages/lattice/src/storage/storage.ts`, `packages/lattice/src/core/standalone.ts` - store contract and existing persistence behavior
+- `packages/lattice/src/sessions/session.ts` - reference-only session turns and summary model
+- `packages/lattice/src/providers/{provider,packaging}.ts` - provider request and packaging boundary
+- `packages/lattice/src/routing/router.ts`, `packages/lattice/src/contract/preflight.ts` - divergent cost estimators
+- `packages/lattice/src/agent/{types,runtime}.ts` - documented but unpopulated result receipt fields
+- `packages/lattice-cli/src/eval/runner.ts`, `packages/lattice-cli/src/commands/eval.ts` - load-failed verdict and current exit semantics
+- `.github/workflows/{ci,conformance,release}.yml` - current deterministic and publish gates
+
+### Protocol references
+
+- DSSE protocol: https://github.com/secure-systems-lab/dsse/blob/master/protocol.md
+- In-toto attestation framework: https://github.com/in-toto/attestation
 
 ---
-*Architecture research for: Lattice v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client*
-*Researched: 2026-06-24*
+*Architecture research for Lattice v1.6 Protocol and Runtime Integrity Bridge.*
