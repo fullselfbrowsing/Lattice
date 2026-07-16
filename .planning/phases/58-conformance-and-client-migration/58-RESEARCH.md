@@ -198,20 +198,22 @@ consumer boundary failed.
 
 ## Planning Implications
 
-Use four plans:
+Use six plans after applying the plan-checker's scope threshold:
 
-1. Establish the normative v1.4 specification/schema, frozen legacy layout, standalone
-   standard generator, deterministic corpus, and exact manifests.
-2. Migrate TypeScript and Python harnesses, reciprocal mint verification, and the exact
+1. Establish the normative v1.4 specification/schema and byte-frozen legacy layout.
+2. Build the standalone standard generator and deterministic semantic corpus.
+3. Enforce exact manifests, non-mutating regeneration, and normative fixture binding.
+4. Migrate TypeScript and Python harnesses, reciprocal mint verification, and the exact
    test-only securesystemslib oracle.
-3. Thread standard-only policy through replay materialization and both CLI commands, then
+5. Thread standard-only policy through replay materialization and both CLI commands, then
    add focused packed runtime/CLI consumer coverage.
-4. Wire every gate into conformance CI, run the complete validation matrix, and reconcile
+6. Wire every gate into conformance CI, run the complete validation matrix, and reconcile
    documentation and generated artifacts as one release surface.
 
-Plans 2 and 3 depend on Plan 1 and may share a wave. Plan 4 depends on both. This keeps
-the vector/schema contract stable before consumers are migrated and leaves one explicit
-closure gate for all six requirements.
+Plans 2 and 3 form a sequential generator/integrity boundary after Plan 1. Plans 4 and 5
+depend on Plan 3 and may share a wave. Plan 6 depends on both. This keeps every plan below
+GSD's warning threshold while stabilizing the vector/schema contract before consumers
+migrate and retaining one explicit closure gate.
 
 ## Sources
 
