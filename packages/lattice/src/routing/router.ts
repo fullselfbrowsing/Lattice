@@ -63,6 +63,7 @@ export function routeDeterministically(
             modelId: selected.modelId,
             score: selected.score,
             estimates: selected.estimates,
+            contextWindow: selected.capability.contextWindow,
             inputModalities: selected.capability.inputModalities,
             outputModalities: selected.capability.outputModalities,
             fileTransport: selected.capability.fileTransport,

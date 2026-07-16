@@ -176,4 +176,26 @@ describe("Phase 7 contract preflight integration", () => {
     );
     expect(rejectedBuffered?.reasons.some((r) => r.code === "streaming-unsupported")).toBe(true);
   });
+
+  it("copies the selected capability context window into route evidence", () => {
+    const capability: ModelCapability = {
+      ...defaultCapabilityForProvider("windowed"),
+      modelId: "windowed:model",
+      contextWindow: 32_768,
+    };
+    const decision = routeDeterministically(
+      createCapabilityCatalog([adapter("windowed", capability)]),
+      {
+        task: "route",
+        artifacts: [],
+        outputs: { answer: "text" },
+      },
+    );
+
+    expect(decision.selected).toMatchObject({
+      providerId: "windowed",
+      modelId: "windowed:model",
+      contextWindow: 32_768,
+    });
+  });
 });
