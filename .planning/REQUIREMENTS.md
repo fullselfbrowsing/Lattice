@@ -26,11 +26,11 @@
 
 ### Context Authority
 
-- [ ] **CTXAUTH-01**: A provider receives exactly the materialized context projection selected by the execution plan.
-- [ ] **CTXAUTH-02**: A provider never receives omitted, archived, or raw summarized artifacts.
-- [ ] **CTXAUTH-03**: A summarizer receives only selected source artifacts, and each resulting summary preserves source lineage, privacy, and trust metadata.
+- [x] **CTXAUTH-01**: A provider receives exactly the materialized context projection selected by the execution plan.
+- [x] **CTXAUTH-02**: A provider never receives omitted, archived, or raw summarized artifacts.
+- [x] **CTXAUTH-03**: A summarizer receives only selected source artifacts, and each resulting summary preserves source lineage, privacy, and trust metadata.
 - [x] **CTXAUTH-04**: A caller can include policy-permitted session turns and stored artifact references in provider context with explicit missing-reference behavior.
-- [ ] **CTXAUTH-05**: Each fallback attempt materializes and packages context against that route's limits and capabilities before its provider call.
+- [x] **CTXAUTH-05**: Each fallback attempt materializes and packages context against that route's limits and capabilities before its provider call.
 - [x] **CTXAUTH-06**: Plans, hashes, receipts, traces, and events describe the same provider-visible context projection.
 
 ### Persistence
@@ -122,11 +122,11 @@ Roadmap creation maps each requirement to exactly one phase.
 | CONF16-04 | Phase 58 | Complete |
 | CONF16-05 | Phase 58 | Complete |
 | CONF16-06 | Phase 58 | Complete |
-| CTXAUTH-01 | Phase 59 | Pending |
-| CTXAUTH-02 | Phase 59 | Pending |
-| CTXAUTH-03 | Phase 59 | Pending |
+| CTXAUTH-01 | Phase 59 | Complete |
+| CTXAUTH-02 | Phase 59 | Complete |
+| CTXAUTH-03 | Phase 59 | Complete |
 | CTXAUTH-04 | Phase 59 | Complete |
-| CTXAUTH-05 | Phase 59 | Pending |
+| CTXAUTH-05 | Phase 59 | Complete |
 | CTXAUTH-06 | Phase 59 | Complete |
 | PERSIST-01 | Phase 59 | Complete |
 | PERSIST-02 | Phase 59 | Complete |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T23:40:26.676Z"
+last_updated: "2026-07-16T23:58:44.749Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 10
+  completed_plans: 11
   percent: 33
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-07-16
 
-Progress: [██████░░░░] 59%
+Progress: [███████░░░] 65%
 
 ## Recent Milestone Snapshot
 
@@ -77,6 +77,9 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Context materialization and persistence failures are terminal bounded public variants. — Fallback cannot repair policy/storage failures and must not expose raw causes.
 - [Phase 59]: Store-returned artifact refs are authoritative and hashes remain separate evidence. — This prevents the runtime from fabricating storage scope or fingerprints after persistence.
 - [Phase 59]: Reference-only artifacts bypass writes only after exact store, tenant, and retention checks plus non-downgraded privacy validation. — Existing refs must not cross scope boundaries or silently weaken policy.
+- [Phase 59]: Context classification is stable-first and materialization loads only IDs named by included items. — This prevents summarized, archived, or unselected session artifacts from re-entering the provider projection.
+- [Phase 59]: Missing stored context fails by default; explicit omit rewrites the final pack atomically with bounded warnings. — Plans and provider-visible content must agree even when compatibility policy permits unavailable refs to be skipped.
+- [Phase 59]: Projection identity hashes route identity plus ordered artifact ID and input-hash pairs. — Plans and events can correlate exact provider-visible evidence without carrying raw content.
 
 ### Pending Todos
 
@@ -120,3 +123,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P06 | 9min | 3 tasks | 5 files |
 | Phase 59 P01 | 12 min | 1 tasks | 9 files |
 | Phase 59 P02 | 9 min | 1 tasks | 8 files |
+| Phase 59 P03 | 17 min | 2 tasks | 6 files |
