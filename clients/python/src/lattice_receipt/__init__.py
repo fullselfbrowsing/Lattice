@@ -1,10 +1,13 @@
 from ._core import (
     PAYLOAD_TYPE,
     KeyEntry,
+    LegacyReceiptPolicy,
     MemoryKeySet,
     MintError,
     MintResult,
     ReplayResult,
+    ReceiptSignatureProfile,
+    VerificationProfile,
     VerifyError,
     VerifyFail,
     VerifyOk,
@@ -20,10 +23,13 @@ from ._core import (
 __all__ = [
     "PAYLOAD_TYPE",
     "KeyEntry",
+    "LegacyReceiptPolicy",
     "MemoryKeySet",
     "MintError",
     "MintResult",
     "ReplayResult",
+    "ReceiptSignatureProfile",
+    "VerificationProfile",
     "VerifyError",
     "VerifyFail",
     "VerifyOk",
@@ -35,4 +41,3 @@ __all__ = [
     "replay",
     "verify",
 ]
-

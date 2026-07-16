@@ -24,6 +24,8 @@ def _keyset(vector: dict):
 def _mint_with_output_hash(outputs):
     vector = positive_vectors()[0][1]
     body = copy.deepcopy(vector["body"])
+    body["version"] = "lattice-receipt/v1.4"
+    body["signatureProfile"] = "dsse-v1"
     body["outputHash"] = output_hash(outputs)
     return vector, mint(body, EXAMPLE_PRIVATE_KEY_JWK)
 
@@ -71,4 +73,3 @@ def test_replay_preserves_verify_first_ordering() -> None:
         replay(malformed, _keyset(vector), UnhashableOutput())
 
     assert exc.value.kind == "envelope-malformed"
-

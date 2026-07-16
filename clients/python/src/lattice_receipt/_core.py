@@ -25,19 +25,20 @@ VerifyErrorKind = Literal[
     "envelope-malformed",
     "version-mismatch",
     "schema-version-too-low",
+    "signature-profile-mismatch",
+    "legacy-profile-rejected",
 ]
 KeyState = Literal["active", "retired", "revoked"]
+ReceiptSignatureProfile = Literal["dsse-v1"]
+VerificationProfile = Literal["dsse-v1", "lattice-legacy-base64-pae"]
+LegacyReceiptPolicy = Literal["allow", "reject"]
 
 _ACCEPTED_OR_TOO_LOW_VERSIONS = {
     "lattice-receipt/v1",
     "lattice-receipt/v1.1",
     "lattice-receipt/v1.2",
     "lattice-receipt/v1.3",
-}
-_ACCEPTED_MINT_VERSIONS = {
-    "lattice-receipt/v1.1",
-    "lattice-receipt/v1.2",
-    "lattice-receipt/v1.3",
+    "lattice-receipt/v1.4",
 }
 
 
@@ -59,6 +60,8 @@ class MintError(ValueError):
 class VerifyOk:
     body: dict[str, Any]
     key_state: KeyState
+    verification_profile: VerificationProfile
+    deprecated: bool
     ok: Literal[True] = True
 
 
@@ -117,6 +120,7 @@ class _DecodedSignature:
 
 @dataclass(frozen=True)
 class _DecodedEnvelope:
+    payload_base64: str
     payload_bytes: bytes
     signatures: list[_DecodedSignature]
 
@@ -129,14 +133,30 @@ def canonicalize_body(body: Mapping[str, Any]) -> bytes:
     return rfc8785.dumps(body)
 
 
-def build_pae(payload_type: str, payload_base64: str) -> bytes:
-    return (
-        f"DSSEv1 {len(payload_type)} {payload_type} "
-        f"{len(payload_base64)} {payload_base64}"
-    ).encode("utf-8")
+def build_pae(payload_type: str, payload_bytes: bytes) -> bytes:
+    if not isinstance(payload_bytes, bytes):
+        raise TypeError("payload_bytes must be bytes")
+    payload_type_bytes = payload_type.encode("utf-8")
+    return b"".join(
+        [
+            b"DSSEv1 ",
+            str(len(payload_type_bytes)).encode("ascii"),
+            b" ",
+            payload_type_bytes,
+            b" ",
+            str(len(payload_bytes)).encode("ascii"),
+            b" ",
+            payload_bytes,
+        ]
+    )
 
 
-def verify(envelope: Mapping[str, Any], keyset: KeySet | Mapping[str, Any]) -> VerifyResult:
+def verify(
+    envelope: Mapping[str, Any],
+    keyset: KeySet | Mapping[str, Any],
+    *,
+    legacy_policy: LegacyReceiptPolicy = "allow",
+) -> VerifyResult:
     try:
         decoded = _decode_envelope(envelope)
     except Exception as exc:
@@ -153,14 +173,25 @@ def verify(envelope: Mapping[str, Any], keyset: KeySet | Mapping[str, Any]) -> V
     if not _is_receipt_body_shape(parsed):
         return _fail(
             "version-mismatch",
-            "receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, or lattice-receipt/v1.3 shape",
+            "receipt body is not a supported lattice receipt shape",
         )
 
     body = parsed
     if "version" not in body or body.get("version") == "lattice-receipt/v1":
         return _fail(
             "schema-version-too-low",
-            "Receipt body.version must be 'lattice-receipt/v1.1', 'lattice-receipt/v1.2', or 'lattice-receipt/v1.3' - v1 receipts are not accepted (CRYPTO-01).",
+            "Receipt body.version must be lattice-receipt/v1.1 or newer - v1 receipts are not accepted (CRYPTO-01).",
+        )
+
+    if not _has_valid_signature_profile(body):
+        if body.get("version") == "lattice-receipt/v1.4":
+            return _fail(
+                "signature-profile-mismatch",
+                'lattice-receipt/v1.4 requires signatureProfile "dsse-v1"',
+            )
+        return _fail(
+            "signature-profile-mismatch",
+            "historical receipt versions must not declare signatureProfile",
         )
 
     first_sig = decoded.signatures[0]
@@ -184,18 +215,44 @@ def verify(envelope: Mapping[str, Any], keyset: KeySet | Mapping[str, Any]) -> V
             "re-canonicalized body does not match signed payload bytes",
         )
 
-    payload_base64 = _base64_encode(decoded.payload_bytes)
-    pae = build_pae(PAYLOAD_TYPE, payload_base64)
-    if not _verify_ed25519(_entry_public_key_jwk(entry), pae, first_sig.sig):
-        return _fail("signature-invalid", "Ed25519 signature does not verify")
-
-    if body.get("kid") != entry_kid:
-        return _fail(
-            "signature-invalid",
-            f'body.kid "{body.get("kid")}" does not match envelope keyid "{entry_kid}"',
+    standard_pae = build_pae(PAYLOAD_TYPE, decoded.payload_bytes)
+    if _verify_ed25519(_entry_public_key_jwk(entry), standard_pae, first_sig.sig):
+        mismatch = _kid_mismatch(body, entry_kid)
+        if mismatch is not None:
+            return mismatch
+        return VerifyOk(
+            body=body,
+            key_state=entry_state,
+            verification_profile="dsse-v1",
+            deprecated=False,
         )
 
-    return VerifyOk(body=body, key_state=entry_state)
+    if body.get("version") == "lattice-receipt/v1.4":
+        return _fail("signature-invalid", "Ed25519 signature does not verify")
+
+    if legacy_policy == "reject":
+        return _fail(
+            "legacy-profile-rejected",
+            "standard DSSE verification failed and legacy receipt verification is disabled",
+        )
+
+    legacy_pae = _build_legacy_pae_for_verification(
+        PAYLOAD_TYPE, decoded.payload_base64
+    )
+    if not _verify_ed25519(
+        _entry_public_key_jwk(entry), legacy_pae, first_sig.sig
+    ):
+        return _fail("signature-invalid", "Ed25519 signature does not verify")
+
+    mismatch = _kid_mismatch(body, entry_kid)
+    if mismatch is not None:
+        return mismatch
+    return VerifyOk(
+        body=body,
+        key_state=entry_state,
+        verification_profile="lattice-legacy-base64-pae",
+        deprecated=True,
+    )
 
 
 def replay(
@@ -245,7 +302,7 @@ def mint(body: Mapping[str, Any], private_key_jwk: Mapping[str, Any]) -> MintRes
 
     canonical = canonicalize_body(body_copy)
     payload_base64 = _base64_encode(canonical)
-    pae = build_pae(PAYLOAD_TYPE, payload_base64)
+    pae = build_pae(PAYLOAD_TYPE, canonical)
     private_key = _private_key_from_jwk(private_key_jwk)
     signature = private_key.sign(pae)
     signature_base64 = _base64_encode(signature)
@@ -300,7 +357,11 @@ def _decode_envelope(envelope: Mapping[str, Any]) -> _DecodedEnvelope:
         if not isinstance(sig, str):
             raise ValueError("envelope signature sig must be a string")
         decoded_signatures.append(_DecodedSignature(keyid=keyid, sig=_base64_decode(sig)))
-    return _DecodedEnvelope(payload_bytes=payload_bytes, signatures=decoded_signatures)
+    return _DecodedEnvelope(
+        payload_base64=payload,
+        payload_bytes=payload_bytes,
+        signatures=decoded_signatures,
+    )
 
 
 def _is_receipt_body_shape(value: Any) -> bool:
@@ -329,6 +390,32 @@ def _is_receipt_body_shape(value: Any) -> bool:
     if not isinstance(value.get("redactions"), list):
         return False
     return True
+
+
+def _has_valid_signature_profile(body: Mapping[str, Any]) -> bool:
+    if body.get("version") == "lattice-receipt/v1.4":
+        return body.get("signatureProfile") == "dsse-v1"
+    return "signatureProfile" not in body
+
+
+def _build_legacy_pae_for_verification(
+    payload_type: str, payload_base64: str
+) -> bytes:
+    return (
+        f"DSSEv1 {len(payload_type)} {payload_type} "
+        f"{len(payload_base64)} {payload_base64}"
+    ).encode("utf-8")
+
+
+def _kid_mismatch(
+    body: Mapping[str, Any], entry_kid: str
+) -> VerifyFail | None:
+    if body.get("kid") == entry_kid:
+        return None
+    return _fail(
+        "signature-invalid",
+        f'body.kid "{body.get("kid")}" does not match envelope keyid "{entry_kid}"',
+    )
 
 
 def _lookup_key(keyset: KeySet | Mapping[str, Any], kid: str) -> KeyEntry | Mapping[str, Any] | None:
@@ -396,9 +483,10 @@ def _private_key_from_jwk(jwk: Mapping[str, Any]) -> Ed25519PrivateKey:
 def _validate_mint_body(body: Mapping[str, Any]) -> None:
     if not _is_receipt_body_shape(body):
         raise MintError("body is not a valid Lattice receipt shape")
-    version = body.get("version")
-    if version not in _ACCEPTED_MINT_VERSIONS:
-        raise MintError("mint body.version must be lattice-receipt/v1.1, v1.2, or v1.3")
+    if body.get("version") != "lattice-receipt/v1.4":
+        raise MintError("mint body.version must be lattice-receipt/v1.4")
+    if body.get("signatureProfile") != "dsse-v1":
+        raise MintError('mint body.signatureProfile must be "dsse-v1"')
 
     usage = body.get("usage")
     route = body.get("route")
@@ -447,4 +535,3 @@ def _base64_decode(value: str) -> bytes:
 def _base64url_decode(value: str) -> bytes:
     padding = "=" * ((4 - len(value) % 4) % 4)
     return base64.urlsafe_b64decode((value + padding).encode("ascii"))
-
