@@ -1,11 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: planning_next_milestone
-stopped_at: v1.5 milestone archived
-last_updated: "2026-07-07"
-last_activity: 2026-07-07
+milestone: v1.6
+milestone_name: Protocol and Runtime Integrity Bridge
+status: planning
+last_updated: "2026-07-16T17:14:00.094Z"
+last_activity: 2026-07-16
 progress:
   total_phases: 0
   completed_phases: 0
@@ -25,13 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-No active milestone is open.
-
-The v1.5 milestone, **Polyglot Receipt Protocol + Conformance Vectors + Python Client**, shipped on 2026-07-06 and is archived under `.planning/milestones/`.
-
-```
-v1.5 Progress: [========================================] 100% (11/11 plans, 7/7 phases complete)
-```
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-16 — Milestone v1.6 started
 
 ## Recent Milestone Snapshot
 

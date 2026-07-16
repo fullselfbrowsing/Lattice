@@ -10,6 +10,16 @@ The product is for developers building multimodal AI features who do not want to
 
 Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
 
+## Current Milestone: v1.6 Protocol and Runtime Integrity Bridge
+
+**Goal:** Correct Lattice's protocol and execution semantics while preserving bounded compatibility for existing receipts.
+
+**Target features:**
+- Standards-compliant DSSE issuance with an explicit, observable legacy-receipt verification bridge across TypeScript, Python, schemas, vectors, and conformance CI.
+- Execution-authoritative context packing, summarization, session continuity, artifact omission, and configured artifact storage.
+- Strict audit modes for required receipt issuance and evaluation input failures, plus unified routing and contract cost estimation.
+- Closure of agent receipt/result and documentation mismatches, independent interoperability coverage, real-provider canaries, package validation, and durable comment hygiene.
+
 ## Current State
 
 **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
@@ -61,7 +71,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 
 ### Active
 
-No active milestone is open. Start the next milestone with `$gsd-new-milestone`.
+v1.6 is active. Requirements and phase sequencing will be defined from the repository audit and milestone research before implementation begins.
 
 Carryforward considerations not yet scheduled:
 
@@ -162,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 after v1.5 milestone*
+*Last updated: 2026-07-16 for v1.6 milestone initialization*
