@@ -20,13 +20,9 @@
  *     Expected output: [56,{"1":[],"10":null,"d":true}]
  *     This is an RFC author's published fixture — independent from our codebase.
  *
- * These two cross-checks prove LIBRARY compliance. They do NOT directly prove
- * the project's `canonicalizeReceiptBody` wrapper — that is proved separately
- * by the vec-00 byte-identity assertion in positive.ts, which compares
- * `canonicalizeReceiptBody(redactedBody)` output against the committed
- * spec/vector0-fixture.json bytes. Both proofs are required:
- *   - Cross-checks A+B: the canonicalize library is RFC 8785-compliant.
- *   - vec-00 byte-identity: canonicalizeReceiptBody (wrapper) is faithful.
+ * These two cross-checks prove the library used by the standalone protocol
+ * generator is RFC 8785-compliant. Positive-corpus determinism and schema
+ * tests separately cover its integration into vector generation.
  *
  * runRFC8785CrossChecks() is called BEFORE any vector files are written,
  * so a wrong hex constant causes the generator to halt with a clear error.
