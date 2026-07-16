@@ -8,7 +8,20 @@ on:
       - "conformance/**"
       - "clients/python/**"
       - "packages/lattice/src/receipts/**"
+      - "packages/lattice/src/replay/materialize.ts"
+      - "packages/lattice/src/replay/materialize.test.ts"
       - "packages/lattice/src/storage/fingerprint.ts"
+      - "packages/lattice/src/index.ts"
+      - "packages/lattice/src/audit.ts"
+      - "packages/lattice/package.json"
+      - "packages/lattice/tsdown.config.ts"
+      - "packages/lattice-cli/**"
+      - "scripts/check-protocol-package-consumer.mjs"
+      - "scripts/check-package-version-surfaces.mjs"
+      - "scripts/stamp-package-version.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/conformance.yml"
   push:
     branches: [main]
@@ -17,7 +30,20 @@ on:
       - "conformance/**"
       - "clients/python/**"
       - "packages/lattice/src/receipts/**"
+      - "packages/lattice/src/replay/materialize.ts"
+      - "packages/lattice/src/replay/materialize.test.ts"
       - "packages/lattice/src/storage/fingerprint.ts"
+      - "packages/lattice/src/index.ts"
+      - "packages/lattice/src/audit.ts"
+      - "packages/lattice/package.json"
+      - "packages/lattice/tsdown.config.ts"
+      - "packages/lattice-cli/**"
+      - "scripts/check-protocol-package-consumer.mjs"
+      - "scripts/check-package-version-surfaces.mjs"
+      - "scripts/stamp-package-version.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/conformance.yml"
 
 permissions:
@@ -55,18 +81,54 @@ jobs:
       - name: Install Python client
         run: python -m pip install -e "clients/python[test]"
 
-      - name: Verify vector manifest
-        run: cd conformance/vectors && sha256sum --check MANIFEST.sha256
+      - name: Verify unchanged nested legacy manifest
+        working-directory: conformance/vectors/legacy
+        run: sha256sum --check MANIFEST.sha256
+
+      - name: Verify aggregate exact manifest coverage
+        run: pnpm --filter @lattice-conformance/verify-ts exec vitest run src/manifest.test.ts
+
+      - name: Typecheck conformance generator
+        run: pnpm --filter @lattice-conformance/generate typecheck
+
+      - name: Test conformance generator
+        run: pnpm --filter @lattice-conformance/generate test
+
+      - name: Verify generated artifacts without mutation
+        run: pnpm --filter @lattice-conformance/generate check:generated
+
+      - name: Assert generated evidence remains clean
+        run: >-
+          git diff --exit-code --
+          spec/vector0-fixture.json
+          conformance/vectors/legacy/MANIFEST.sha256
+          conformance/vectors/standard
+          conformance/vectors/MANIFEST.sha256
+
+      - name: Typecheck TypeScript conformance harness
+        run: pnpm --filter @lattice-conformance/verify-ts typecheck
 
       - name: Run TypeScript receipt conformance harness
         run: pnpm --filter @lattice-conformance/verify-ts test
 
-      - name: Run Python receipt conformance harness
-        run: python -m pytest clients/python/tests -q
+      - name: Run Python receipt conformance harness without oracle
+        run: >-
+          python -m pytest clients/python/tests -q
+          --ignore=clients/python/tests/test_dsse_oracle.py
 
-      - name: Run cross-mint parity
+      - name: Run exact securesystemslib oracle
+        run: python -m pytest clients/python/tests/test_dsse_oracle.py -q
+
+      - name: Run reciprocal cross-mint parity
         env:
           LATTICE_RUN_CROSS_MINT: "1"
           PYTHON: python
         run: pnpm --filter @lattice-conformance/verify-ts test -- src/cross_mint_parity.test.ts
 
+      - name: Build runtime and CLI packages
+        run: |
+          pnpm --filter @full-self-browsing/lattice build
+          pnpm --filter @full-self-browsing/lattice-cli build
+
+      - name: Run clean packed protocol consumer
+        run: pnpm check:protocol-package
