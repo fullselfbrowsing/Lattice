@@ -36,6 +36,41 @@ export interface TimeoutError {
   readonly message: string;
 }
 
+export type ContextMaterializationFailureReason =
+  | "missing-reference"
+  | "load-failed"
+  | "policy-denied"
+  | "summary-failed";
+
+export interface ContextMaterializationError {
+  readonly kind: "context_materialization";
+  readonly message: string;
+  readonly reason: ContextMaterializationFailureReason;
+  readonly artifactId?: string;
+  readonly sessionId?: string;
+  readonly terminal: true;
+}
+
+export type PersistenceLifecycleKind =
+  | "input"
+  | "derived"
+  | "tool"
+  | "summary"
+  | "provider-output"
+  | "session";
+
+export interface PersistenceError {
+  readonly kind: "persistence";
+  readonly message: string;
+  readonly operation: "write" | "load";
+  readonly lifecycle: PersistenceLifecycleKind;
+  readonly artifactId?: string;
+  readonly storeId?: string;
+  readonly sessionId?: string;
+  readonly postProvider: boolean;
+  readonly terminal: true;
+}
+
 /**
  * Phase 7 addition: emitted by the runtime when no candidate route can
  * satisfy the caller-supplied `CapabilityContract` (budget, modality,
@@ -75,23 +110,34 @@ export type LatticeRunError =
   | NoRouteError
   | ProviderExecutionError
   | TimeoutError
+  | ContextMaterializationError
+  | PersistenceError
   | NoContractMatchError
   | TripwireViolationError;
 
 /**
  * Returns `true` for run errors that MUST NOT be retried by the fallback
- * chain. Phase 8 covers two kinds:
+ * chain:
  *
  *   - `tripwire-violated` — the contract's invariants rejected the output;
  *     a different provider will not change the verdict, so retry burns
  *     budget for no gain (T-08-06 in 08-02-PLAN threat register).
  *   - `no-contract-match` — no route satisfies the contract at all; the
  *     run never executed and no retry will help.
+ *   - `context_materialization` — the selected context could not be made
+ *     policy-safe before a provider call.
+ *   - `persistence` — replaying cannot repair storage and can duplicate a
+ *     provider call when the write failed after execution.
  *
  * All other error kinds return `false` and remain eligible for fallback.
  * The predicate is exported so Phase 12's eval gate and any user-side
  * retry wrappers can share one source of truth.
  */
 export function isTerminal(error: LatticeRunError): boolean {
-  return error.kind === "tripwire-violated" || error.kind === "no-contract-match";
+  return (
+    error.kind === "tripwire-violated" ||
+    error.kind === "no-contract-match" ||
+    error.kind === "context_materialization" ||
+    error.kind === "persistence"
+  );
 }

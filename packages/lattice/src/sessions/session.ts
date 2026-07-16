@@ -1,4 +1,8 @@
-import type { ArtifactRef } from "../artifacts/artifact.js";
+import type {
+  ArtifactPrivacy,
+  ArtifactRef,
+} from "../artifacts/artifact.js";
+import type { ArtifactRetentionPolicy } from "../policy/policy.js";
 
 export interface SessionRef {
   readonly id: string;
@@ -10,6 +14,9 @@ export interface SessionTurn {
   readonly task: string;
   readonly artifactRefs: readonly ArtifactRef[];
   readonly planId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
   readonly outputArtifactRefs: readonly ArtifactRef[];
   readonly createdAt: string;
 }
@@ -26,6 +33,9 @@ export interface SessionRecord extends SessionRef {
   readonly kind: "session-ref";
   readonly parentId?: string;
   readonly branchPointRunId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
   readonly turns: readonly SessionTurn[];
   readonly summaries: readonly SessionSummary[];
   readonly artifactRefs: readonly ArtifactRef[];
@@ -38,6 +48,9 @@ export interface CreateSessionOptions {
   readonly id?: string;
   readonly parentId?: string;
   readonly branchPointRunId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
 }
 
 export interface AppendSessionTurnInput {
@@ -46,6 +59,9 @@ export interface AppendSessionTurnInput {
   readonly artifactRefs: readonly ArtifactRef[];
   readonly outputArtifactRefs?: readonly ArtifactRef[];
   readonly planId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
 }
 
 export interface SessionStore {
@@ -81,6 +97,7 @@ export function createMemorySessionStore(
         ...(createOptions.branchPointRunId !== undefined
           ? { branchPointRunId: createOptions.branchPointRunId }
           : {}),
+        ...sessionScopeFields(createOptions),
         turns: [],
         summaries: [],
         artifactRefs: [],
@@ -108,14 +125,23 @@ export function createMemorySessionStore(
 
     async branch(parentId, branchOptions = {}) {
       const parent = sessions.get(parentId);
-      const branched = await this.create({
-        ...branchOptions,
-        parentId,
-      });
 
       if (parent === undefined) {
-        return branched;
+        return this.create({
+          ...branchOptions,
+          parentId,
+        });
       }
+
+      assertCompatibleSessionScope(parent, branchOptions, "branch");
+      const branched = await this.create({
+        ...(branchOptions.id !== undefined ? { id: branchOptions.id } : {}),
+        ...(branchOptions.branchPointRunId !== undefined
+          ? { branchPointRunId: branchOptions.branchPointRunId }
+          : {}),
+        parentId,
+        ...sessionScopeFields(parent),
+      });
 
       const inherited: SessionRecord = {
         ...branched,
@@ -131,13 +157,23 @@ export function createMemorySessionStore(
     },
 
     async appendTurn(input) {
-      const existing = sessions.get(input.sessionId) ?? await this.create({ id: input.sessionId });
+      const stored = sessions.get(input.sessionId);
+      const existing = stored ?? await this.create({
+        id: input.sessionId,
+        ...sessionScopeFields(input),
+      });
+
+      if (stored !== undefined) {
+        assertCompatibleSessionScope(existing, input, "append");
+      }
+
       const turn: SessionTurn = {
         id: createTurnId(),
         task: input.task,
         artifactRefs: clone(input.artifactRefs),
         outputArtifactRefs: clone(input.outputArtifactRefs ?? []),
         ...(input.planId !== undefined ? { planId: input.planId } : {}),
+        ...sessionScopeFields(existing),
         createdAt: new Date().toISOString(),
       };
       const artifactRefs = mergeArtifactRefs(
@@ -162,6 +198,33 @@ export function createMemorySessionStore(
       return clone(next);
     },
   };
+}
+
+type SessionScope = Pick<
+  SessionRecord,
+  "tenantId" | "privacy" | "retention"
+>;
+
+function sessionScopeFields(scope: SessionScope): SessionScope {
+  return {
+    ...(scope.tenantId !== undefined ? { tenantId: scope.tenantId } : {}),
+    ...(scope.privacy !== undefined ? { privacy: scope.privacy } : {}),
+    ...(scope.retention !== undefined ? { retention: scope.retention } : {}),
+  };
+}
+
+function assertCompatibleSessionScope(
+  current: SessionScope,
+  requested: SessionScope,
+  operation: "append" | "branch",
+): void {
+  for (const field of ["tenantId", "privacy", "retention"] as const) {
+    const requestedValue = requested[field];
+
+    if (requestedValue !== undefined && requestedValue !== current[field]) {
+      throw new Error(`Session ${operation} scope conflicts on ${field}.`);
+    }
+  }
 }
 
 function mergeArtifactRefs(

@@ -66,6 +66,9 @@ describe("phase 1 runtime contracts", () => {
       noUpload: true,
       noPublicUrl: true,
       noLogging: false,
+      tenantId: "tenant:default",
+      retention: "session",
+      missingArtifactRef: "error",
       metadata: {
         scope: "default",
       },
@@ -83,6 +86,8 @@ describe("phase 1 runtime contracts", () => {
     const runPolicy: PolicySpec = {
       maxCostUsd: 2,
       noLogging: true,
+      tenantId: "tenant:run",
+      missingArtifactRef: "omit",
       metadata: {
         scope: "run",
       },
@@ -104,6 +109,9 @@ describe("phase 1 runtime contracts", () => {
       noUpload: true,
       noPublicUrl: true,
       noLogging: true,
+      tenantId: "tenant:run",
+      retention: "session",
+      missingArtifactRef: "omit",
       metadata: {
         scope: "run",
       },

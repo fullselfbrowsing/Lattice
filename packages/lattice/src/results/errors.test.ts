@@ -1,7 +1,9 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
+  ContextMaterializationError,
   LatticeRunError,
   NoContractMatchError,
+  PersistenceError,
   TripwireViolationError,
 } from "./errors.js";
 import { isTerminal } from "./errors.js";
@@ -169,5 +171,36 @@ describe("Phase 8 isTerminal predicate and TripwireViolationError", () => {
         message: "x",
       }),
     ).toBe(false);
+  });
+
+  it("context materialization failures are bounded and terminal", () => {
+    const error: ContextMaterializationError = {
+      kind: "context_materialization",
+      message: "Selected context could not be materialized.",
+      reason: "missing-reference",
+      artifactId: "artifact:missing",
+      sessionId: "session:1",
+      terminal: true,
+    };
+
+    expect(isTerminal(error)).toBe(true);
+    expect(error).not.toHaveProperty("cause");
+  });
+
+  it("persistence failures are bounded and terminal before or after provider work", () => {
+    const error: PersistenceError = {
+      kind: "persistence",
+      message: "Artifact persistence failed.",
+      operation: "write",
+      lifecycle: "provider-output",
+      artifactId: "artifact:output",
+      storeId: "store:1",
+      postProvider: true,
+      terminal: true,
+    };
+
+    const union: LatticeRunError = error;
+    expect(isTerminal(union)).toBe(true);
+    expect(error).not.toHaveProperty("cause");
   });
 });
