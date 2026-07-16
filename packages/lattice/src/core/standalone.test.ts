@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { artifact, toArtifactRef } from "../artifacts/artifact.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
@@ -79,7 +79,11 @@ describe("prepareCoreRun", () => {
       stored: true,
       ref: {
         id: "artifact:text:stored",
-        storage: { storeId: "standalone", key: "artifact:text:stored" },
+        storage: {
+          storeId: "standalone",
+          key: "artifact:text:stored",
+          retention: "session",
+        },
       },
     });
     expect(prepared.artifacts[0]?.inputHash).toEqual(prepared.inputHashes[0]);
@@ -135,6 +139,65 @@ describe("prepareCoreRun", () => {
     expect(prepared.inputHashes[0]).toMatch(/^[a-f0-9]{64}$/u);
   });
 
+  it("does not write artifacts when retention is none", async () => {
+    const put = vi.fn<ArtifactStore["put"]>();
+    const store = createStore("custom-skip", put);
+    const prepared = await prepareCoreRun({
+      task: "Prepare without persistence",
+      artifacts: [artifact.text("ephemeral", { id: "artifact:text:ephemeral" })],
+      outputs: { answer: "text" as const },
+      policy: { retention: "none" },
+      storage: store,
+    });
+
+    expect(put).not.toHaveBeenCalled();
+    expect(prepared.artifacts[0]).toMatchObject({
+      stored: false,
+      ref: { id: "artifact:text:ephemeral" },
+      inputHash: expect.stringMatching(/^[a-f0-9]{64}$/u),
+    });
+    expect(prepared.artifacts[0]?.ref.storage).toBeUndefined();
+  });
+
+  it("uses the exact reference returned by custom storage", async () => {
+    const returnedRef = {
+      id: "artifact:text:authoritative",
+      kind: "text" as const,
+      source: "inline" as const,
+      privacy: "restricted" as const,
+      fingerprint: {
+        algorithm: "sha256" as const,
+        value: "authoritative-store-fingerprint",
+      },
+      storage: {
+        storeId: "custom-authoritative",
+        key: "custom/path",
+        tenantId: "tenant:a",
+        retention: "durable" as const,
+      },
+    };
+    const store = createStore(
+      "custom-authoritative",
+      vi.fn(async () => returnedRef),
+    );
+    const prepared = await prepareCoreRun({
+      task: "Prepare authoritatively",
+      artifacts: [
+        artifact.text("persist me", {
+          id: returnedRef.id,
+          privacy: "restricted",
+        }),
+      ],
+      outputs: { answer: "text" as const },
+      policy: { tenantId: "tenant:a", retention: "durable" },
+      storage: store,
+    });
+
+    expect(prepared.artifacts[0]?.ref).toBe(returnedRef);
+    expect(prepared.artifactRefs[0]).toBe(returnedRef);
+    expect(prepared.inputHashes).toEqual(["authoritative-store-fingerprint"]);
+  });
+
   it("packs optional session turns in standalone context", async () => {
     const prior = artifact.text("prior case", { id: "artifact:text:prior" });
     const session: SessionRecord = {
@@ -179,5 +242,28 @@ function capabilityFor(providerId: string, modelId: string): ModelCapability {
     modelId,
     outputModalities: ["text", "json"],
     structuredOutput: true,
+  };
+}
+
+function createStore(id: string, put: ArtifactStore["put"]): ArtifactStore {
+  return {
+    kind: "artifact-store",
+    id,
+    put,
+    async get() {
+      return undefined;
+    },
+    async load() {
+      return undefined;
+    },
+    async has() {
+      return false;
+    },
+    async delete() {
+      return false;
+    },
+    async list() {
+      return [];
+    },
   };
 }

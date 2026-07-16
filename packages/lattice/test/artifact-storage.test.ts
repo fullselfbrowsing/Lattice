@@ -54,6 +54,40 @@ describe("memory artifact store", () => {
     await expect(store.load(first.id)).resolves.toBeUndefined();
   });
 
+  it("preserves tenant, retention, and privacy scope across store reads", async () => {
+    const store = createMemoryArtifactStore({ id: "mem-scoped" });
+    const input = {
+      ...artifact.text("scoped", {
+        id: "artifact:text:scoped",
+        privacy: "restricted",
+      }),
+      storage: {
+        storeId: "lifecycle-hint",
+        key: "lifecycle-hint",
+        tenantId: "tenant:a",
+        retention: "durable" as const,
+      },
+    };
+
+    const ref = await store.put(input);
+
+    expect(ref).toMatchObject({
+      privacy: "restricted",
+      storage: {
+        storeId: "mem-scoped",
+        key: input.id,
+        tenantId: "tenant:a",
+        retention: "durable",
+      },
+    });
+    await expect(store.get(input.id)).resolves.toEqual(ref);
+    await expect(store.load(input.id)).resolves.toEqual({
+      ...ref,
+      value: "scoped",
+    });
+    await expect(store.list()).resolves.toEqual([ref]);
+  });
+
   it("uses memory as the default store id", () => {
     expect(createMemoryArtifactStore().id).toBe("memory");
     expect(createMemoryArtifactStore().kind).toBe("artifact-store");

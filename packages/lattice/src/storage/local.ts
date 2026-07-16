@@ -35,6 +35,12 @@ export function createLocalArtifactStore(
         storage: {
           storeId,
           key: artifact.id,
+          ...(artifact.storage?.tenantId !== undefined
+            ? { tenantId: artifact.storage.tenantId }
+            : {}),
+          ...(artifact.storage?.retention !== undefined
+            ? { retention: artifact.storage.retention }
+            : {}),
         },
         ...(fingerprint !== undefined ? { fingerprint } : {}),
       };

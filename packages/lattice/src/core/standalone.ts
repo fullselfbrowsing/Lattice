@@ -1,5 +1,4 @@
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
-import { toArtifactRef } from "../artifacts/artifact.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import type { BuildContextPackInput, ContextPack } from "../context/context-pack.js";
 import { buildContextPack } from "../context/context-pack.js";
@@ -9,8 +8,8 @@ import { createExecutionPlan } from "../plan/plan.js";
 import type { PolicySpec } from "../policy/policy.js";
 import type { CapabilityCatalog } from "../routing/catalog.js";
 import { routeDeterministically } from "../routing/router.js";
+import { persistArtifactLifecycleBatch } from "../runtime/artifact-lifecycle.js";
 import type { SessionRecord } from "../sessions/session.js";
-import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import type { ArtifactStore } from "../storage/storage.js";
 
 export interface PrepareCoreRunInput<TOutputs extends OutputContractMap = OutputContractMap> {
@@ -57,8 +56,25 @@ const EMPTY_STANDALONE_CATALOG: CapabilityCatalog = {
 export async function prepareCoreRun<TOutputs extends OutputContractMap>(
   input: PrepareCoreRunInput<TOutputs>,
 ): Promise<PreparedCoreRun<TOutputs>> {
-  const preparedArtifacts = await Promise.all(
-    (input.artifacts ?? []).map((artifact) => prepareArtifact(artifact, input.storage)),
+  const lifecycleResults = await persistArtifactLifecycleBatch(
+    (input.artifacts ?? []).map((artifact) => ({
+      artifact,
+      lifecycle: "input" as const,
+    })),
+    {
+      ...(input.storage !== undefined ? { storage: input.storage } : {}),
+      ...(input.policy !== undefined ? { policy: input.policy } : {}),
+    },
+  );
+  const preparedArtifacts: readonly PreparedArtifactInternal[] = lifecycleResults.map(
+    ({ artifact, report }) => ({
+      input: artifact,
+      artifact: {
+        ref: report.ref,
+        stored: report.status === "stored" || report.status === "preserved",
+        ...(report.inputHash !== undefined ? { inputHash: report.inputHash } : {}),
+      },
+    }),
   );
   const preparedInputs = preparedArtifacts.map((prepared) => prepared.input);
   const artifactRefs = preparedArtifacts.map((prepared) => prepared.artifact.ref);
@@ -115,46 +131,4 @@ export async function prepareCoreRun<TOutputs extends OutputContractMap>(
 interface PreparedArtifactInternal {
   readonly input: ArtifactInput;
   readonly artifact: PreparedCoreArtifact;
-}
-
-async function prepareArtifact(
-  input: ArtifactInput,
-  storage: ArtifactStore | undefined,
-): Promise<PreparedArtifactInternal> {
-  if (storage !== undefined) {
-    const ref = await storage.put(input);
-    const inputHash =
-      ref.fingerprint?.value ??
-      input.fingerprint?.value ??
-      (await fingerprintArtifactValue(input.value))?.value;
-    const preparedInput: ArtifactInput = {
-      ...input,
-      ...ref,
-    };
-
-    return {
-      input: preparedInput,
-      artifact: {
-        ref,
-        stored: true,
-        ...(inputHash !== undefined ? { inputHash } : {}),
-      },
-    };
-  }
-
-  const fingerprint = input.fingerprint ?? await fingerprintArtifactValue(input.value);
-  const preparedInput: ArtifactInput = {
-    ...input,
-    ...(fingerprint !== undefined ? { fingerprint } : {}),
-  };
-  const ref = toArtifactRef(preparedInput);
-
-  return {
-    input: preparedInput,
-    artifact: {
-      ref,
-      stored: false,
-      ...(fingerprint?.value !== undefined ? { inputHash: fingerprint.value } : {}),
-    },
-  };
 }
