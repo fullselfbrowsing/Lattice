@@ -36,6 +36,7 @@ import type { CapabilityModality } from "../providers/provider.js";
 import type {
   CapabilityReceiptBody,
   KeySet,
+  LegacyReceiptPolicy,
   ReceiptEnvelope,
 } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
@@ -91,6 +92,8 @@ export interface MaterializeReplayEnvelopeOptions<
 > {
   readonly artifactLoader: ArtifactLoader;
   readonly keySet: KeySet;
+  /** Receipt bridge policy applied before any artifact load. */
+  readonly legacyPolicy?: LegacyReceiptPolicy;
   /** Optional original task string. Defaults to "" when omitted. */
   readonly task?: string;
   /**
@@ -117,13 +120,18 @@ export async function materializeReplayEnvelope<
   options: MaterializeReplayEnvelopeOptions<TOutputs>,
 ): Promise<ReplayEnvelope<TOutputs>> {
   // Step 1: verify FIRST. No artifact loader call before this resolves.
-  const verifyResult = await verifyReceipt(receipt, options.keySet);
+  const verifyResult =
+    options.legacyPolicy === undefined
+      ? await verifyReceipt(receipt, options.keySet)
+      : await verifyReceipt(receipt, options.keySet, {
+          legacyPolicy: options.legacyPolicy,
+        });
   if (!verifyResult.ok) {
     throw fail(
       verifyResult.error.kind === "envelope-malformed"
         ? "envelope-malformed"
         : "verify-failed",
-      verifyResult.error.message,
+      `${verifyResult.error.kind}: ${verifyResult.error.message}`,
     );
   }
 
