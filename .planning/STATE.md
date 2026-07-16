@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T23:30:58.682Z"
+last_updated: "2026-07-16T23:40:26.676Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 9
+  completed_plans: 10
   percent: 33
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-07-16
 
-Progress: [█████░░░░░] 53%
+Progress: [██████░░░░] 59%
 
 ## Recent Milestone Snapshot
 
@@ -75,6 +75,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Session branches inherit parent tenant/privacy/retention exactly and reject explicit scope changes. — This prevents scoped runs from silently adopting legacy or mismatched history.
 - [Phase 59]: ExecutionPlan.artifactRefs remains declared history while ContextProjectionPlan records provider-visible evidence. — Compatibility and execution authority remain independently inspectable.
 - [Phase 59]: Context materialization and persistence failures are terminal bounded public variants. — Fallback cannot repair policy/storage failures and must not expose raw causes.
+- [Phase 59]: Store-returned artifact refs are authoritative and hashes remain separate evidence. — This prevents the runtime from fabricating storage scope or fingerprints after persistence.
+- [Phase 59]: Reference-only artifacts bypass writes only after exact store, tenant, and retention checks plus non-downgraded privacy validation. — Existing refs must not cross scope boundaries or silently weaken policy.
 
 ### Pending Todos
 
@@ -117,3 +119,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P05 | 15min | 3 tasks | 9 files |
 | Phase 58 P06 | 9min | 3 tasks | 5 files |
 | Phase 59 P01 | 12 min | 1 tasks | 9 files |
+| Phase 59 P02 | 9 min | 1 tasks | 8 files |

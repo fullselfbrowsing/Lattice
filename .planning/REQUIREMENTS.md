@@ -35,8 +35,8 @@
 
 ### Persistence
 
-- [ ] **PERSIST-01**: A configured artifact store receives lifecycle writes for input, summary, tool, derived, and provider-output artifacts.
-- [ ] **PERSIST-02**: Runtime results and session records expose store-returned references and fingerprints instead of fabricated storage metadata.
+- [x] **PERSIST-01**: A configured artifact store receives lifecycle writes for input, summary, tool, derived, and provider-output artifacts.
+- [x] **PERSIST-02**: Runtime results and session records expose store-returned references and fingerprints instead of fabricated storage metadata.
 - [x] **PERSIST-03**: A run reports unconfigured persistence as skipped and returns typed outcomes for configured write or load failures.
 - [x] **PERSIST-04**: Tenant, privacy, retention, and upload policy is enforced before an artifact is persisted or rehydrated.
 
@@ -128,8 +128,8 @@ Roadmap creation maps each requirement to exactly one phase.
 | CTXAUTH-04 | Phase 59 | Complete |
 | CTXAUTH-05 | Phase 59 | Pending |
 | CTXAUTH-06 | Phase 59 | Complete |
-| PERSIST-01 | Phase 59 | Pending |
-| PERSIST-02 | Phase 59 | Pending |
+| PERSIST-01 | Phase 59 | Complete |
+| PERSIST-02 | Phase 59 | Complete |
 | PERSIST-03 | Phase 59 | Complete |
 | PERSIST-04 | Phase 59 | Complete |
 | AUDIT16-01 | Phase 60 | Pending |
