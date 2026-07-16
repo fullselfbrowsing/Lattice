@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T22:02:19.597Z"
+last_updated: "2026-07-16T22:18:31.978Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 58 (Conformance and Client Migration) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-16
 
@@ -66,6 +66,9 @@ Recent decisions affecting v1.6:
 - [Phase 58]: The normative fixture is byte-identical to the designated independently generated standard vector. — A single artifact identity prevents prose examples and executable conformance evidence from drifting.
 - [Phase 58]: Cross-language conformance requires reciprocal minting with byte, CID, profile, and deprecation parity. — Shared static fixtures or boolean-only verification cannot detect one-sided issuance drift.
 - [Phase 58]: securesystemslib 1.4.0 is a test-only oracle for upstream PAE and Ed25519 signatures. — Lattice retains authority over canonical base64, schema, key state, signed kid, and legacy policy.
+- [Phase 58]: CLI compatibility remains allow-by-default while --standard-only maps to the shared reject policy at every verification boundary. — One derived policy keeps verify and replay behavior consistent and prevents strict-mode side effects.
+- [Phase 58]: Profile and deprecation output comes directly from VerifyOk; commands never infer cryptographic semantics from receipt versions. — Verifier-owned metadata keeps migration automation exact as receipt versions and accepted profiles evolve.
+- [Phase 58]: Release smoke tests install runtime and CLI tarballs into a clean ESM project and exercise only declared public exports and the packed binary. — Workspace resolution can mask missing exports, dependency rewrites, and binary wiring defects.
 
 ### Pending Todos
 
@@ -105,3 +108,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 58 P02 | 12min | 2 tasks | 23 files |
 | Phase 58 P03 | 8min | 2 tasks | 7 files |
 | Phase 58 P04 | 15min | 3 tasks | 11 files |
+| Phase 58 P05 | 15min | 3 tasks | 9 files |
