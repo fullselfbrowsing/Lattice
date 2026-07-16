@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T21:23:25.700Z"
+last_updated: "2026-07-16T21:37:33.329Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 58 (Conformance and Client Migration) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-16
 
@@ -61,6 +61,7 @@ Recent decisions affecting v1.6:
 - Reconcile and validate `origin/main` before Phase 57 implementation; the six product phases begin at 57 so neither v1.5 history's phase numbers are reused.
 - [Phase 57]: Python mint accepts only lattice-receipt/v1.4 with signed signatureProfile dsse-v1. — This keeps historical base64-PAE support read-only and prevents algorithm downgrade through issuance.
 - [Phase 58]: Versioned specification and schemas are normative; production TypeScript source is non-normative. — External implementers must reproduce protocol behavior without reading production source.
+- [Phase 58]: Standard vectors carry explicit schema, profile, deprecation, result, and adversarial-axis metadata. — Harnesses must not infer cryptographic semantics from directory names or filenames.
 
 ### Pending Todos
 
@@ -97,3 +98,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase | Plan | Duration | Notes |
 |-------|------|----------|-------|
 | Phase 58 P01 | 9min | 2 tasks | 17 files |
+| Phase 58 P02 | 12min | 2 tasks | 23 files |
