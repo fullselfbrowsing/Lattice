@@ -70,11 +70,11 @@ This phase does not change production signing semantics or remove compatibility.
 ### Current Specification and Conformance Surface
 - `spec/SPEC.md` - Existing normative receipt document requiring v1.4 migration.
 - `spec/CHANGELOG.md` - Protocol change history to extend for v1.4.
-- `spec/schema/lattice-receipt-v1.1.schema.json` - First historical schema.
-- `spec/schema/lattice-receipt-v1.2.schema.json` - Historical lineage schema.
-- `spec/schema/lattice-receipt-v1.3.schema.json` - Historical agent schema.
-- `conformance/generate/generate-vector0.ts` - Existing generator with obsolete historical framing.
-- `conformance/verify-ts/verify.ts` - Existing TypeScript corpus harness.
+- `spec/schema/v1.1.json` - First historical schema.
+- `spec/schema/v1.2.json` - Historical lineage schema.
+- `spec/schema/v1.3.json` - Historical agent schema.
+- `conformance/generate/src/main.ts` - Existing generator entrypoint with obsolete historical framing.
+- `conformance/verify-ts/src/positive.test.ts` - Existing TypeScript positive-corpus harness.
 - `conformance/vectors/MANIFEST.sha256` - Current flat-corpus integrity manifest.
 - `conformance/vector0-fixture.json` - Existing historical worked fixture.
 
