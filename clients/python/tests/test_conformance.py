@@ -27,6 +27,18 @@ def _sig_hex_to_base64(signature_hex: str) -> str:
     return base64.b64encode(bytes.fromhex(signature_hex)).decode("ascii")
 
 
+def _set_noncanonical_pad_bits(value: str) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    if value.endswith("=="):
+        index = len(value) - 3
+    elif value.endswith("="):
+        index = len(value) - 2
+    else:
+        raise AssertionError("test input must contain base64 padding")
+    replacement = alphabet[alphabet.index(value[index]) + 1]
+    return f"{value[:index]}{replacement}{value[index + 1:]}"
+
+
 def _legacy_pae(payload_type: str, payload_base64: str) -> bytes:
     return (
         f"DSSEv1 {len(payload_type)} {payload_type} "
@@ -199,3 +211,47 @@ def test_historical_body_with_corrected_marker_is_rejected() -> None:
     result = verify(_signed_envelope(body), _keyset_for_vector(vector))
     assert result.ok is False
     assert result.error.kind == "signature-profile-mismatch"
+
+
+def test_noncanonical_payload_pad_bits_are_rejected_before_verification() -> None:
+    vector = positive_vectors()[0][1]
+    body = dict(vector["body"])
+    for suffix_length in range(3):
+        body["transportPad"] = "x" * suffix_length
+        envelope = _signed_envelope(body)
+        if envelope["payload"].endswith("="):
+            break
+    else:  # pragma: no cover - three consecutive byte lengths cover every remainder
+        raise AssertionError("could not construct padded payload")
+
+    envelope["payload"] = _set_noncanonical_pad_bits(envelope["payload"])
+    result = verify(envelope, _keyset_for_vector(vector))
+
+    assert result.ok is False
+    assert result.error.kind == "envelope-malformed"
+    assert "canonical standard base64" in result.error.message
+
+
+def test_noncanonical_signature_pad_bits_are_rejected_before_verification() -> None:
+    vector = positive_vectors()[0][1]
+    envelope = _signed_envelope(dict(vector["body"]))
+    envelope["signatures"][0]["sig"] = _set_noncanonical_pad_bits(
+        envelope["signatures"][0]["sig"]
+    )
+
+    result = verify(envelope, _keyset_for_vector(vector))
+
+    assert result.ok is False
+    assert result.error.kind == "envelope-malformed"
+    assert "canonical standard base64" in result.error.message
+
+
+def test_unhashable_version_value_returns_typed_mismatch() -> None:
+    vector = positive_vectors()[0][1]
+    body = dict(vector["body"])
+    body["version"] = []
+
+    result = verify(_signed_envelope(body), _keyset_for_vector(vector))
+
+    assert result.ok is False
+    assert result.error.kind == "version-mismatch"

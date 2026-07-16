@@ -367,8 +367,10 @@ def _decode_envelope(envelope: Mapping[str, Any]) -> _DecodedEnvelope:
 def _is_receipt_body_shape(value: Any) -> bool:
     if not isinstance(value, dict):
         return False
-    if "version" in value and value["version"] not in _ACCEPTED_OR_TOO_LOW_VERSIONS:
-        return False
+    if "version" in value:
+        version = value["version"]
+        if not isinstance(version, str) or version not in _ACCEPTED_OR_TOO_LOW_VERSIONS:
+            return False
     required_strings = [
         "receiptId",
         "runId",
@@ -529,7 +531,10 @@ def _base64_encode(data: bytes) -> str:
 
 
 def _base64_decode(value: str) -> bytes:
-    return base64.b64decode(value.encode("ascii"), validate=True)
+    decoded = base64.b64decode(value.encode("ascii"), validate=True)
+    if _base64_encode(decoded) != value:
+        raise ValueError("value is not canonical standard base64")
+    return decoded
 
 
 def _base64url_decode(value: str) -> bytes:
