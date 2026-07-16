@@ -23,7 +23,7 @@ export const EXAMPLE_PUBLIC_KEY_JWK: JsonWebKey = {
 
 export const EXAMPLE_KID = "spec-example-key-v0";
 export const WARNING_TEXT =
-  "EXAMPLE/TEST-ONLY KEY MATERIAL - DO NOT USE IN PRODUCTION. This keypair is committed for specification purposes only.";
+  "EXAMPLE/TEST-ONLY KEY MATERIAL — DO NOT USE IN PRODUCTION. This keypair is committed for specification purposes only.";
 
 const encoder = new TextEncoder();
 

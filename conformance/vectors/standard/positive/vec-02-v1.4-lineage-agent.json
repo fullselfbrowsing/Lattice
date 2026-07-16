@@ -1,5 +1,5 @@
 {
-  "WARNING": "EXAMPLE/TEST-ONLY KEY MATERIAL - DO NOT USE IN PRODUCTION. This keypair is committed for specification purposes only.",
+  "WARNING": "EXAMPLE/TEST-ONLY KEY MATERIAL — DO NOT USE IN PRODUCTION. This keypair is committed for specification purposes only.",
   "corpusProfile": "standard",
   "schema": "spec/schema/v1.4.json",
   "expectedSchemaResult": "valid",

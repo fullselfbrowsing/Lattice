@@ -1,7 +1,6 @@
 import {
   EXAMPLE_KID,
   EXAMPLE_PUBLIC_KEY_JWK,
-  PAYLOAD_TYPE,
   WARNING_TEXT,
   base64Encode,
   buildAdversarialBase64TextPae,
@@ -328,5 +327,3 @@ export async function generateNegativeVectors(): Promise<
   }
   return vectors;
 }
-
-export { PAYLOAD_TYPE };
