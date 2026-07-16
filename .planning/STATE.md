@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
-status: executing
-last_updated: "2026-07-16T20:22:23.008Z"
+status: verifying
+last_updated: "2026-07-16T20:28:49.472Z"
 last_activity: 2026-07-16
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 17
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 Phase: 57 (Protocol Semantics) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-16
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Recent Milestone Snapshot
 
@@ -59,6 +59,7 @@ Recent decisions affecting v1.6:
 - Canonical mainline also shipped modular package subpaths, native provider execution, external audit helpers, standalone core preparation, and external-consumer validation at package version 1.5.1.
 - v1.6 follows protocol -> conformance -> runtime state -> audit/cost -> agent evidence -> operational closure.
 - Reconcile and validate `origin/main` before Phase 57 implementation; the six product phases begin at 57 so neither v1.5 history's phase numbers are reused.
+- [Phase 57]: Python mint accepts only lattice-receipt/v1.4 with signed signatureProfile dsse-v1. — This keeps historical base64-PAE support read-only and prevents algorithm downgrade through issuance.
 
 ### Pending Todos
 

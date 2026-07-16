@@ -56,7 +56,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 
 ## Phases
 
-- [ ] **Phase 57: Protocol Semantics** - Make every new receipt standards-compliant while quarantining historical verification behind an explicit, observable bridge.
+- [x] **Phase 57: Protocol Semantics** - Make every new receipt standards-compliant while quarantining historical verification behind an explicit, observable bridge. (completed 2026-07-16)
 - [ ] **Phase 58: Conformance and Client Migration** - Move the specification, vectors, TypeScript, Python, CLI, and CI to the corrected protocol as one interoperability surface.
 - [ ] **Phase 59: Authoritative Runtime State** - Make one materialized context projection and real persistence lifecycle authoritative for provider execution and evidence.
 - [ ] **Phase 60: Audit, Evaluation, and Cost Integrity** - Enforce truthful receipt, evaluation, and budget outcomes through shared policies and estimation semantics.
@@ -75,7 +75,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   2. No public or internal production API can mint the historical base64-PAE profile.
   3. Verifiers accept or reject historical receipts through explicit policy and report the profile and deprecation state that actually verified.
   4. A corrected-profile signature failure cannot fall back to legacy verification, and schema version, profile, CID, key selection, and downgrade checks remain independently observable.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 ### Phase 58: Conformance and Client Migration
 
@@ -147,7 +147,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | --- | --- | --- |
-| 57. Protocol Semantics | v1.6 | 1/2 | In Progress|  |
+| 57. Protocol Semantics | v1.6 | 2/2 | Complete   | 2026-07-16 |
 | 58. Conformance and Client Migration | v1.6 | 0/TBD | Not started | - |
 | 59. Authoritative Runtime State | v1.6 | 0/TBD | Not started | - |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |
