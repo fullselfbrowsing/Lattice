@@ -1,7 +1,9 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
   ProviderFinishMetadata,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
@@ -14,6 +16,7 @@ import type { AnthropicQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { resolveUsageCostUsd } from "../routing/cost.js";
 import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } from "../capabilities/negotiate.js";
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
@@ -67,10 +70,7 @@ export interface AnthropicProviderOptions {
   /** Defaults to `2023-06-01`. Override only if the consumer has tested a newer pinned version. */
   readonly anthropicVersion?: string;
   readonly fetch?: typeof fetch;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
   /**
    * D-08: Per-instance TTL for the /v1/models response cache (milliseconds).
    * Default 300_000 (5 minutes). `0` disables caching (always re-fetch -- for testing).
@@ -528,12 +528,12 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     id,
     kind: "provider-adapter",
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
         streaming: true,
-      },
+      }, options.pricing),
     ],
     /**
      * QUIRK-02: Anthropic adapter quirks block -- values verified against
@@ -676,10 +676,7 @@ async function* streamAnthropicResponse(input: {
   readonly anthropicVersion: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
@@ -1072,32 +1069,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Anthropic uses `input_tokens` / `output_tokens` (not OpenAI's
  * `prompt_tokens` / `completion_tokens`). This helper maps to Lattice's
- * `Usage` shape and applies pricing when supplied (Phase 7 pattern).
+ * `Usage` shape, retaining reported cost before consulting static pricing.
  */
 function normalizeAnthropicUsageToRunUsage(
   rawUsage: unknown,
-  pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  },
+  pricing?: ProviderPricingHint,
 ): Usage {
   let promptTokens = 0;
   let completionTokens = 0;
+  let reportedCostUsd: number | undefined;
   if (typeof rawUsage === "object" && rawUsage !== null) {
     const record = rawUsage as Record<string, unknown>;
     promptTokens = numberField(record, "input_tokens") ?? numberField(record, "inputTokens") ?? 0;
     completionTokens =
       numberField(record, "output_tokens") ?? numberField(record, "outputTokens") ?? 0;
+    reportedCostUsd = reportedUsageCost(record);
   }
-  let costUsd: number | null = null;
-  if (
-    pricing !== undefined &&
-    (pricing.inputPer1kTokens !== undefined || pricing.outputPer1kTokens !== undefined)
-  ) {
-    const inputCost = ((pricing.inputPer1kTokens ?? 0) * promptTokens) / 1000;
-    const outputCost = ((pricing.outputPer1kTokens ?? 0) * completionTokens) / 1000;
-    costUsd = inputCost + outputCost;
-  }
+  const costUsd = resolveUsageCostUsd({
+    ...(pricing !== undefined ? { pricing } : {}),
+    ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
   return { promptTokens, completionTokens, costUsd };
 }
 
@@ -1112,14 +1105,36 @@ function normalizeAnthropicUsage(usage: unknown): UsageRecord | undefined {
     inputTokens !== undefined && outputTokens !== undefined
       ? inputTokens + outputTokens
       : undefined;
+  const costUsd = reportedUsageCost(record);
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
   };
+}
+
+function reportedUsageCost(record: Record<string, unknown>): number | undefined {
+  return (
+    numberField(record, "costUsd") ??
+    numberField(record, "cost_usd") ??
+    numberField(record, "total_cost") ??
+    numberField(record, "cost")
+  );
 }
 
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
   const value = record[key];
   return typeof value === "number" ? value : undefined;
+}
+
+function capabilityWithConfiguredPricing(
+  capability: ModelCapability,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  if (pricing !== undefined) {
+    return { ...capability, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = capability;
+  return inheritedPricing === undefined ? capability : unpriced;
 }

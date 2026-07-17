@@ -453,6 +453,60 @@ describe("Phase 4 Anthropic adapter", () => {
     expect(response2.normalizedUsage?.costUsd).toBeNull();
   });
 
+  it("normalizes legacy and partial pricing while retaining reported cost", async () => {
+    const { fetch: legacyFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500 },
+    });
+    const legacy = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputCostPer1M: 15, outputCostPer1M: 75 },
+      fetch: legacyFetch,
+    });
+    const legacyResponse = await legacy.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(legacyResponse.normalizedUsage?.costUsd).toBeCloseTo(0.0525, 12);
+
+    const { fetch: partialFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500 },
+    });
+    const partial = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputPer1kTokens: 0.015 },
+      fetch: partialFetch,
+    });
+    const partialResponse = await partial.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(partialResponse.normalizedUsage?.costUsd).toBeNull();
+
+    const { fetch: reportedFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500, costUsd: 0.75 },
+    });
+    const reported = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      fetch: reportedFetch,
+    });
+    const reportedResponse = await reported.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(reportedResponse.normalizedUsage?.costUsd).toBe(0.75);
+    expect(reportedResponse.usage?.costUsd).toBe(0.75);
+  });
+
   it("Test 7 (D-09.7): AbortSignal wiring -- request.signal propagates to fetch", async () => {
     const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
     const adapter = createAnthropicProvider({

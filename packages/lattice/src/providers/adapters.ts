@@ -1,10 +1,12 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
   ProviderFinishMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderPricingHint,
   ProviderStream,
   ProviderStructuredOutputRequest,
   ProviderToolChoice,
@@ -12,6 +14,7 @@ import type {
   Usage,
 } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { resolveUsageCostUsd } from "../routing/cost.js";
 import type { OpenAIQuirks, OpenAICompatQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import {
@@ -44,16 +47,8 @@ export interface OpenAICompatibleProviderOptions {
   readonly apiKey?: string;
   readonly gateway?: GatewayPolicy;
   readonly fetch?: typeof fetch;
-  /**
-   * Phase 7 addition: caller-supplied per-1k pricing. When provided, the
-   * adapter computes `normalizedUsage.costUsd` from the API-reported token
-   * counts. When omitted, `normalizedUsage.costUsd` is `null` so downstream
-   * consumers can distinguish "unmeasured" from "free" (per 07-CONTEXT.md).
-   */
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  /** Static pricing used only when the provider does not report a cost. */
+  readonly pricing?: ProviderPricingHint;
   /**
    * Phase 34 — D-05/D-06/D-08 — TTL for the per-instance models cache.
    * Default 300_000ms (5 minutes). Set to 0 to disable caching.
@@ -105,6 +100,8 @@ export interface SdkLikeProviderOptions {
     readonly task: string;
     readonly outputNames: readonly string[];
   }) => Promise<ProviderRunResponse> | ProviderRunResponse;
+  /** Static pricing used only when the generated response does not report a cost. */
+  readonly pricing?: ProviderPricingHint;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -477,12 +474,12 @@ export function createOpenAICompatibleProvider(
     } satisfies OpenAICompatQuirks,
     negotiateCapabilities: negotiate,
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
         streaming: true,
-      },
+      }, options.pricing),
     ],
     async execute(request) {
       const mergedGatewayPolicy = mergeGatewayPolicy(
@@ -599,10 +596,7 @@ async function* streamOpenAICompatibleResponse(input: {
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
   readonly providerGateway?: GatewayPolicy;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
@@ -952,22 +946,19 @@ function parseToolArguments(value: string): unknown {
 }
 
 /**
- * Phase 7 normalization: maps raw provider usage payloads (OpenAI's
+ * Maps raw provider usage payloads (OpenAI's
  * `prompt_tokens`/`completion_tokens`, the Responses API's
  * `input_tokens`/`output_tokens`, or camelCase variants) to the shared
- * `Usage` shape. When `pricing` is supplied, `costUsd` is computed from
- * the normalized token counts. Otherwise `costUsd` is `null` so consumers
- * can distinguish "unmeasured" from "zero".
+ * `Usage` shape. A non-null reported cost wins; otherwise static pricing
+ * delegates to the shared cost kernel.
  */
 function normalizeUsageToRunUsage(
   rawUsage: unknown,
-  pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  },
+  pricing?: ProviderPricingHint,
 ): Usage {
   let promptTokens = 0;
   let completionTokens = 0;
+  let reportedCostUsd: number | undefined;
   if (typeof rawUsage === "object" && rawUsage !== null) {
     const record = rawUsage as Record<string, unknown>;
     promptTokens =
@@ -980,16 +971,14 @@ function normalizeUsageToRunUsage(
       numberField(record, "output_tokens") ??
       numberField(record, "outputTokens") ??
       0;
+    reportedCostUsd = reportedUsageCost(record);
   }
-  let costUsd: number | null = null;
-  if (
-    pricing !== undefined &&
-    (pricing.inputPer1kTokens !== undefined || pricing.outputPer1kTokens !== undefined)
-  ) {
-    const inputCost = ((pricing.inputPer1kTokens ?? 0) * promptTokens) / 1000;
-    const outputCost = ((pricing.outputPer1kTokens ?? 0) * completionTokens) / 1000;
-    costUsd = inputCost + outputCost;
-  }
+  const costUsd = resolveUsageCostUsd({
+    ...(pricing !== undefined ? { pricing } : {}),
+    ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
   return { promptTokens, completionTokens, costUsd };
 }
 
@@ -1003,12 +992,23 @@ function normalizeUsage(usage: unknown): UsageRecord | undefined {
   const outputTokens =
     numberField(record, "completion_tokens") ?? numberField(record, "output_tokens");
   const totalTokens = numberField(record, "total_tokens");
+  const costUsd = reportedUsageCost(record);
 
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
   };
+}
+
+function reportedUsageCost(record: Record<string, unknown>): number | undefined {
+  return (
+    numberField(record, "costUsd") ??
+    numberField(record, "cost_usd") ??
+    numberField(record, "total_cost") ??
+    numberField(record, "cost")
+  );
 }
 
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
@@ -1291,24 +1291,46 @@ export function createAISdkProvider(options: SdkLikeProviderOptions): ProviderAd
     id,
     kind: "provider-adapter",
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         toolUse: true,
         streaming: true,
-      },
+      }, options.pricing),
     ],
     execute: async (request) => {
       const response = await options.generate({
         task: request.task,
         outputNames: request.outputs,
       });
+      const promptTokens =
+        response.normalizedUsage?.promptTokens ?? response.usage?.inputTokens ?? 0;
+      const completionTokens =
+        response.normalizedUsage?.completionTokens ?? response.usage?.outputTokens ?? 0;
+      const reportedCostUsd =
+        response.normalizedUsage?.costUsd ?? response.usage?.costUsd;
       const normalizedUsage: Usage = {
-        promptTokens: response.usage?.inputTokens ?? 0,
-        completionTokens: response.usage?.outputTokens ?? 0,
-        costUsd: null,
+        promptTokens,
+        completionTokens,
+        costUsd: resolveUsageCostUsd({
+          ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+          ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+          inputTokens: promptTokens,
+          outputTokens: completionTokens,
+        }),
       };
       return { ...response, normalizedUsage };
     },
   };
+}
+
+function capabilityWithConfiguredPricing(
+  capability: ModelCapability,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  if (pricing !== undefined) {
+    return { ...capability, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = capability;
+  return inheritedPricing === undefined ? capability : unpriced;
 }

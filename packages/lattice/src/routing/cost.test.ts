@@ -5,6 +5,7 @@ import {
   CANONICAL_PROJECTED_OUTPUT_TOKENS,
   COST_ESTIMATOR_VERSION,
   estimateCost,
+  resolveUsageCostUsd,
 } from "./cost.js";
 
 describe("estimateCost", () => {
@@ -167,6 +168,25 @@ describe("estimateCost", () => {
       outputTokens: 789,
     } as const;
     expect(estimateCost(input)).toEqual(estimateCost(input));
+  });
+
+  it("keeps reported usage cost authoritative and otherwise uses known static pricing", () => {
+    expect(
+      resolveUsageCostUsd({
+        pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+        inputTokens: 1_000,
+        outputTokens: 1_000,
+        reportedCostUsd: 0.25,
+      }),
+    ).toBe(0.25);
+    expect(
+      resolveUsageCostUsd({
+        pricing: { inputCostPer1M: 2, outputCostPer1M: 4 },
+        inputTokens: 1_000,
+        outputTokens: 500,
+      }),
+    ).toBe(0.004);
+    expect(resolveUsageCostUsd({ inputTokens: 0, outputTokens: 0 })).toBeNull();
   });
 
   it("property: equivalent modern and legacy units produce identical costs", async () => {

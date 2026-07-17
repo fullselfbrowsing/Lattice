@@ -41,6 +41,10 @@ export interface EstimateCostInput {
   readonly outputTokens: number;
 }
 
+export interface ResolveUsageCostInput extends EstimateCostInput {
+  readonly reportedCostUsd?: number | null;
+}
+
 interface SelectedRate {
   readonly value: number | undefined;
   readonly source: CostPricingSource;
@@ -89,6 +93,16 @@ export function estimateCost(input: EstimateCostInput): CostEstimate {
     totalCostUsd,
     unknownReasons,
   };
+}
+
+export function resolveUsageCostUsd(input: ResolveUsageCostInput): number | null {
+  if (input.reportedCostUsd !== undefined && input.reportedCostUsd !== null) {
+    return input.reportedCostUsd;
+  }
+  if (input.pricing === undefined) {
+    return null;
+  }
+  return estimateCost(input).totalCostUsd;
 }
 
 function selectRate(

@@ -502,6 +502,58 @@ describe("Phase 4 Gemini adapter", () => {
     expect(response2.normalizedUsage?.costUsd).toBeNull();
   });
 
+  it("normalizes legacy and partial pricing while retaining reported cost", async () => {
+    const body = {
+      candidates: [{ content: { parts: [{ text: "hi" }] } }],
+      usageMetadata: { promptTokenCount: 1_000, candidatesTokenCount: 500 },
+    };
+    const { fetch: legacyFetch } = makeFakeFetch(body);
+    const legacy = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputCostPer1M: 1.25, outputCostPer1M: 5 },
+      fetch: legacyFetch,
+    });
+    const legacyResponse = await legacy.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(legacyResponse.normalizedUsage?.costUsd).toBeCloseTo(0.00375, 12);
+
+    const { fetch: partialFetch } = makeFakeFetch(body);
+    const partial = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputPer1kTokens: 0.00125 },
+      fetch: partialFetch,
+    });
+    const partialResponse = await partial.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(partialResponse.normalizedUsage?.costUsd).toBeNull();
+
+    const { fetch: reportedFetch } = makeFakeFetch({
+      ...body,
+      usageMetadata: { ...body.usageMetadata, costUsd: 0.5 },
+    });
+    const reported = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      fetch: reportedFetch,
+    });
+    const reportedResponse = await reported.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(reportedResponse.normalizedUsage?.costUsd).toBe(0.5);
+    expect(reportedResponse.usage?.costUsd).toBe(0.5);
+  });
+
   it("Test 7 (D-09.7): AbortSignal wiring -- request.signal propagates to fetch", async () => {
     const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
     const adapter = createGeminiProvider({
