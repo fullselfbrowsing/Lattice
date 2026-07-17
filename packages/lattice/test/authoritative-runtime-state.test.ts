@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { artifact } from "../src/artifacts/artifact.js";
+import type { ArtifactRef } from "../src/artifacts/artifact.js";
 import type { ContextSummarizer } from "../src/context/context-pack.js";
 import type { ProviderAdapter, ProviderRunRequest } from "../src/providers/provider.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
@@ -8,6 +9,7 @@ import { createAI } from "../src/runtime/create-ai.js";
 import type { SessionRecord } from "../src/sessions/session.js";
 import { createMemorySessionStore } from "../src/sessions/session.js";
 import { createMemoryArtifactStore } from "../src/storage/memory.js";
+import type { ArtifactStore } from "../src/storage/storage.js";
 import { base64Decode } from "../src/receipts/envelope.js";
 import {
   createInMemorySigner,
@@ -375,6 +377,295 @@ describe("authoritative runtime state", () => {
   });
 });
 
+describe("provider output lifecycle", () => {
+  for (const failureIndex of [0, 1]) {
+    it(`returns partial evidence without fallback when output write ${failureIndex + 1} fails`, async () => {
+      const base = createMemoryArtifactStore({ id: `store:failure:${failureIndex}` });
+      let outputWriteIndex = 0;
+      const storage = overridePut(base, async (input) => {
+        if (input.lineage?.transform.kind === "model-output") {
+          if (outputWriteIndex === failureIndex) {
+            throw new Error("SECRET_OUTPUT_STORE_CAUSE");
+          }
+          outputWriteIndex += 1;
+        }
+        return base.put(input);
+      });
+      let primaryCalls = 0;
+      let fallbackCalls = 0;
+      const result = await createAI({
+        storage,
+        providers: [
+          outputProvider("output-primary", async () => {
+            primaryCalls += 1;
+            return {
+              rawOutputs: { answer: "validated output" },
+              artifactRefs: [
+                artifact.text("OUTPUT_ONE", { id: "artifact:output:one" }),
+                artifact.text("OUTPUT_TWO", { id: "artifact:output:two" }),
+                artifact.text("OUTPUT_THREE", { id: "artifact:output:three" }),
+              ],
+              normalizedUsage: {
+                promptTokens: 7,
+                completionTokens: 3,
+                costUsd: 0.01,
+              },
+            };
+          }),
+          outputProvider("output-fallback", async () => {
+            fallbackCalls += 1;
+            return { rawOutputs: { answer: "must not retry" } };
+          }),
+        ],
+      }).run({
+        task: "persist provider outputs",
+        outputs: { answer: "text" },
+      });
+
+      expect(result.ok).toBe(false);
+      expect(primaryCalls).toBe(1);
+      expect(fallbackCalls).toBe(0);
+      if (result.ok || result.plan.kind !== "execution-plan") {
+        throw new Error("Expected a post-provider persistence failure.");
+      }
+      expect(result.error).toMatchObject({
+        kind: "persistence",
+        lifecycle: "provider-output",
+        artifactId: `artifact:output:${failureIndex === 0 ? "one" : "two"}`,
+        postProvider: true,
+        terminal: true,
+      });
+      expect(result.partialOutputs).toEqual({ answer: "validated output" });
+      expect(result.artifacts?.map((ref) => ref.id)).toEqual(
+        failureIndex === 0 ? [] : ["artifact:output:one"],
+      );
+      expect(result.usage).toEqual({
+        promptTokens: 7,
+        completionTokens: 3,
+        costUsd: 0.01,
+      });
+      expect(result.plan.attempts).toHaveLength(1);
+      expect(result.plan.attempts[0]?.status).toBe("succeeded");
+      expect(result.plan.stages.find((stage) => stage.kind === "persistence"))
+        .toMatchObject({ status: "failed" });
+      expect(JSON.stringify(result)).not.toContain("SECRET_OUTPUT_STORE_CAUSE");
+    });
+  }
+
+  it("rejects malformed store-returned output refs before ordinary success", async () => {
+    const mutations: Array<{
+      readonly name: string;
+      readonly mutate: (ref: ArtifactRef) => ArtifactRef;
+    }> = [
+      {
+        name: "store",
+        mutate: (ref) => ({
+          ...ref,
+          storage: { ...requiredStorage(ref), storeId: "store:wrong" },
+        }),
+      },
+      {
+        name: "tenant",
+        mutate: (ref) => ({
+          ...ref,
+          storage: { ...requiredStorage(ref), tenantId: "tenant:wrong" },
+        }),
+      },
+      {
+        name: "retention",
+        mutate: (ref) => ({
+          ...ref,
+          storage: { ...requiredStorage(ref), retention: "session" },
+        }),
+      },
+      {
+        name: "privacy",
+        mutate: (ref) => ({ ...ref, privacy: "standard" }),
+      },
+      {
+        name: "payload",
+        mutate: (ref) => ({ ...ref, value: "INVALID_REF_PAYLOAD" }) as ArtifactRef,
+      },
+    ];
+
+    for (const mutation of mutations) {
+      const base = createMemoryArtifactStore({ id: `store:malformed:${mutation.name}` });
+      const storage = overridePut(base, async (input) =>
+        mutation.mutate(await base.put(input)));
+      let providerCalls = 0;
+      const result = await createAI({
+        storage,
+        providers: [
+          outputProvider(`malformed-${mutation.name}`, async () => {
+            providerCalls += 1;
+            return {
+              rawOutputs: { answer: "validated" },
+              artifactRefs: [
+                artifact.text("MALFORMED_OUTPUT", {
+                  id: `artifact:malformed:${mutation.name}`,
+                }),
+              ],
+            };
+          }),
+        ],
+      }).run({
+        task: "reject malformed output ref",
+        outputs: { answer: "text" },
+        policy: {
+          tenantId: "tenant:expected",
+          privacy: "sensitive",
+          retention: "durable",
+        },
+      });
+
+      expect(providerCalls, mutation.name).toBe(1);
+      expect(result.ok, mutation.name).toBe(false);
+      if (result.ok) {
+        throw new Error(`Expected ${mutation.name} output ref rejection.`);
+      }
+      expect(result.error).toMatchObject({
+        kind: "persistence",
+        lifecycle: "provider-output",
+        postProvider: true,
+        terminal: true,
+      });
+      expect(JSON.stringify(result)).not.toContain("INVALID_REF_PAYLOAD");
+    }
+  });
+
+  it("surfaces the exact custom output ref and fingerprint returned by storage", async () => {
+    const base = createMemoryArtifactStore({ id: "store:custom-output" });
+    const customFingerprint = { algorithm: "sha256" as const, value: "ab".repeat(32) };
+    let exactRef: ArtifactRef | undefined;
+    const storage = overridePut(base, async (input) => {
+      const stored = await base.put({ ...input, fingerprint: customFingerprint });
+      exactRef = {
+        ...stored,
+        fingerprint: customFingerprint,
+        storage: {
+          ...requiredStorage(stored),
+          key: "custom/provider/output/key",
+        },
+      };
+      return exactRef;
+    });
+    const result = await createAI({
+      storage,
+      providers: [
+        outputProvider("custom-output", async () => ({
+          rawOutputs: { answer: "ok" },
+          artifactRefs: [
+            artifact.text("CUSTOM_OUTPUT", { id: "artifact:custom-output" }),
+          ],
+        })),
+      ],
+    }).run({
+      task: "preserve store authority",
+      outputs: { answer: "text" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected custom output persistence success.");
+    }
+    expect(result.artifacts).toEqual([exactRef]);
+    expect(result.artifacts[0]?.storage?.key).toBe("custom/provider/output/key");
+    expect(result.artifacts[0]?.fingerprint).toEqual(customFingerprint);
+  });
+
+  for (const mode of ["unconfigured", "policy"] as const) {
+    it(`reports ${mode} output persistence as a truthful skip`, async () => {
+      const base = createMemoryArtifactStore({ id: `store:skip:${mode}` });
+      const put = vi.fn<ArtifactStore["put"]>((input) => base.put(input));
+      const result = await createAI({
+        ...(mode === "policy" ? { storage: overridePut(base, put) } : {}),
+        providers: [
+          outputProvider(`skip-${mode}`, async () => ({
+            rawOutputs: { answer: "ok" },
+            artifactRefs: [
+              artifact.text("SKIPPED_OUTPUT", { id: `artifact:skip:${mode}` }),
+            ],
+          })),
+        ],
+      }).run({
+        task: "truthful output skip",
+        outputs: { answer: "text" },
+        ...(mode === "policy" ? { policy: { retention: "none" as const } } : {}),
+      });
+
+      expect(result.ok).toBe(true);
+      expect(put).not.toHaveBeenCalled();
+      if (!result.ok || result.plan.kind !== "execution-plan") {
+        throw new Error("Expected skipped output persistence success.");
+      }
+      expect(result.artifacts[0]?.storage).toBeUndefined();
+      const persistence = result.plan.stages.find(
+        (stage) => stage.kind === "persistence",
+      );
+      expect(persistence?.status).toBe("skipped");
+      expect(persistence?.metadata?.reports).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            lifecycle: "provider-output",
+            status: "skipped",
+            reason: mode,
+          }),
+        ]),
+      );
+    });
+  }
+
+  it("does not reopen a stream or fallback after stream output persistence fails", async () => {
+    const base = createMemoryArtifactStore({ id: "store:stream-output" });
+    const storage = overridePut(base, async (input) => {
+      if (input.lineage?.transform.kind === "model-output") {
+        throw new Error("SECRET_STREAM_OUTPUT_CAUSE");
+      }
+      return base.put(input);
+    });
+    let primaryCalls = 0;
+    let fallbackCalls = 0;
+    const primary = outputProvider("stream-output-primary", undefined, true);
+    const primaryStream: ProviderAdapter = {
+      ...primary,
+      executeStream() {
+        primaryCalls += 1;
+        return completedOutputStream("artifact:stream-output");
+      },
+    };
+    const fallback = outputProvider("stream-output-fallback", undefined, true);
+    const fallbackStream: ProviderAdapter = {
+      ...fallback,
+      executeStream() {
+        fallbackCalls += 1;
+        return completedOutputStream("artifact:must-not-run");
+      },
+    };
+    const result = await createAI({
+      storage,
+      providers: [primaryStream, fallbackStream],
+    }).run({
+      task: "stream output persistence",
+      outputs: { answer: "text" },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(primaryCalls).toBe(1);
+    expect(fallbackCalls).toBe(0);
+    if (result.ok) {
+      throw new Error("Expected stream output persistence failure.");
+    }
+    expect(result.error).toMatchObject({
+      kind: "persistence",
+      lifecycle: "provider-output",
+      postProvider: true,
+    });
+    expect(result.partialOutputs).toEqual({ answer: "streamed" });
+    expect(JSON.stringify(result)).not.toContain("SECRET_STREAM_OUTPUT_CAUSE");
+  });
+});
+
 function sessionRecord(
   overrides: Partial<SessionRecord> = {},
 ): SessionRecord {
@@ -388,5 +679,46 @@ function sessionRecord(
     createdAt: "2026-07-16T00:00:00.000Z",
     updatedAt: "2026-07-16T00:00:00.000Z",
     ...overrides,
+  };
+}
+
+function outputProvider(
+  id: string,
+  execute?: NonNullable<ProviderAdapter["execute"]>,
+  streaming = false,
+): ProviderAdapter {
+  return {
+    id,
+    kind: "provider-adapter",
+    capabilities: [
+      {
+        ...defaultCapabilityForProvider(id),
+        modelId: `${id}:model`,
+        streaming,
+      },
+    ],
+    ...(execute !== undefined ? { execute } : {}),
+  };
+}
+
+function overridePut(
+  base: ArtifactStore,
+  put: ArtifactStore["put"],
+): ArtifactStore {
+  return { ...base, put };
+}
+
+function requiredStorage(ref: ArtifactRef): NonNullable<ArtifactRef["storage"]> {
+  if (ref.storage === undefined) {
+    throw new Error("Expected a stored artifact ref.");
+  }
+  return ref.storage;
+}
+
+async function* completedOutputStream(id: string) {
+  yield {
+    kind: "complete" as const,
+    rawOutputs: { answer: "streamed" },
+    artifactRefs: [artifact.text("STREAM_OUTPUT", { id })],
   };
 }

@@ -28,6 +28,7 @@ export interface RunFailure {
   readonly usage: Usage;
   readonly raw?: unknown;
   readonly partialOutputs?: Record<string, unknown>;
+  readonly artifacts?: readonly ArtifactRef[];
   readonly plan: ResultPlan;
   readonly events?: readonly RunEvent[];
   readonly gateway?: ProviderGatewayMetadata;
