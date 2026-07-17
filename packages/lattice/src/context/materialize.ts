@@ -105,7 +105,7 @@ export async function materializeContext(
   input: MaterializeContextInput,
 ): Promise<MaterializedContext> {
   if (input.session !== undefined) {
-    validateSessionScope(input.session, input.policy);
+    validateContextSessionScope(input.session, input.policy);
   }
 
   const state: MaterializationState = {
@@ -484,7 +484,7 @@ function unavailableArtifact(
   });
 }
 
-function validateSessionScope(
+export function validateContextSessionScope(
   session: SessionRecord,
   policy: PolicySpec | undefined,
 ): void {

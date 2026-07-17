@@ -6,15 +6,10 @@ import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { TrainingClass } from "../capabilities/profile.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
-import {
-  buildContextPack,
-  type ContextPack,
-  type ContextSummarizer,
-} from "../context/context-pack.js";
+import type { ContextSummarizer } from "../context/context-pack.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMap } from "../outputs/validate.js";
 import {
-  createExecutionPlan,
   markStage,
   withPlanStatus,
   type ExecutionPlan,
@@ -23,7 +18,7 @@ import {
   type SelectedRoute,
   type UsageRecord,
 } from "../plan/plan.js";
-import { mergePolicy, type GatewayMetadataValue, type PolicySpec } from "../policy/policy.js";
+import type { PolicySpec } from "../policy/policy.js";
 import { packageArtifactsForProvider } from "../providers/packaging.js";
 import { collectStream } from "../providers/streaming.js";
 import type {
@@ -40,18 +35,21 @@ import type {
   ReceiptModel,
   ReceiptRoute,
 } from "../receipts/types.js";
-import { createCapabilityCatalog } from "../routing/catalog.js";
-import { routeDeterministically } from "../routing/router.js";
 import type { RunResult } from "../results/result.js";
-import type { SessionRecord, SessionRef } from "../sessions/session.js";
+import type { SessionRef } from "../sessions/session.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
-import { runTool, type ToolCallResult, type ToolDefinition } from "../tools/tools.js";
+import type { ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
 import {
   normalizeConfig,
   type LatticeConfig,
   type NormalizedLatticeConfig,
 } from "./config.js";
+import {
+  gatewayMetadataForRoute,
+  prepareRun,
+  type PreparedRun,
+} from "./prepare-run.js";
 
 export interface RuntimeOverrides {
   readonly provider?: string;
@@ -131,96 +129,6 @@ export interface AI {
   ): Promise<import("../agent/crew/run-crew.js").CrewResult>;
 }
 
-interface BuiltPlan {
-  readonly plan: ExecutionPlan;
-  readonly artifacts: readonly ArtifactInput[];
-  readonly contextPack: ContextPack;
-  readonly packagedArtifacts: readonly ArtifactRef[];
-  readonly blockedPackaging: readonly string[];
-  readonly toolResults: readonly ToolCallResult[];
-  readonly mergedPolicy?: PolicySpec;
-  readonly sessionRecord?: SessionRecord;
-}
-
-function gatewayMetadataForRoute(
-  route: SelectedRoute,
-  policy: PolicySpec["gateway"] | undefined,
-): Record<string, unknown> | undefined {
-  if (policy === undefined) {
-    return undefined;
-  }
-
-  const sanitizedPolicy = sanitizeGatewayPolicyForEvents(policy);
-
-  return {
-    providerId: route.providerId,
-    selectedProviderId: route.providerId,
-    requestedModel: route.modelId,
-    ...(sanitizedPolicy !== undefined ? { policy: sanitizedPolicy } : {}),
-  };
-}
-
-function sanitizeGatewayPolicyForEvents(
-  policy: PolicySpec["gateway"] | undefined,
-): Record<string, unknown> | undefined {
-  if (policy === undefined) {
-    return undefined;
-  }
-
-  const metadata = sanitizeGatewayMetadataForEvents(policy.metadata);
-
-  return {
-    ...(policy.routeTags !== undefined && policy.routeTags.length > 0
-      ? { routeTags: [...policy.routeTags] }
-      : {}),
-    ...(policy.providerPreferences !== undefined && policy.providerPreferences.length > 0
-      ? { providerPreferences: [...policy.providerPreferences] }
-      : {}),
-    ...(metadata !== undefined ? { metadata } : {}),
-    ...(policy.allowFallbacks !== undefined ? { allowFallbacks: policy.allowFallbacks } : {}),
-  };
-}
-
-function sanitizeGatewayMetadataForEvents(
-  metadata: Record<string, GatewayMetadataValue> | undefined,
-): Record<string, unknown> | undefined {
-  if (metadata === undefined) {
-    return undefined;
-  }
-
-  const sanitized = Object.fromEntries(
-    Object.entries(metadata).flatMap(([key, value]) => {
-      if (isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(value)) {
-        return [];
-      }
-
-      return [[key, value]];
-    }),
-  );
-
-  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
-}
-
-function isSecretGatewayMetadataKey(key: string): boolean {
-  return /api[-_]?key|authorization|headers?|secret|token|password/iu.test(key);
-}
-
-function containsSecretGatewayMetadataValue(value: unknown): boolean {
-  if (typeof value === "string") {
-    return /^sk-[\w-]+/u.test(value);
-  }
-  if (Array.isArray(value)) {
-    return value.some(containsSecretGatewayMetadataValue);
-  }
-  if (typeof value === "object" && value !== null) {
-    return Object.entries(value).some(([key, nested]) => (
-      isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(nested)
-    ));
-  }
-
-  return false;
-}
-
 export function createAI(config: LatticeConfig = {}): AI {
   const normalized = normalizeConfig(config);
 
@@ -274,6 +182,41 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
   const built = await buildPlan(normalized, intent, runId, events);
   let plan = built.plan;
+
+  if (!built.ok) {
+    const selectedFailureRoute = plan.route.selected;
+    const receipt = await maybeIssueReceipt(normalized, {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: [],
+      contractVerdict: "execution-failed",
+      model: {
+        requested: selectedFailureRoute?.modelId ?? intent.overrides?.model ?? "",
+        observed: null,
+      },
+      route: {
+        providerId: selectedFailureRoute?.providerId ?? "",
+        capabilityId: selectedFailureRoute?.modelId ?? "",
+        attemptNumber: 0,
+      },
+      usage: ZERO_USAGE,
+    });
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: built.error.kind },
+    }));
+
+    return {
+      ok: false,
+      error: built.error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+      ...(receipt !== undefined ? { receipt } : {}),
+    };
+  }
+
   const selected = plan.route.selected;
 
   if (selected === undefined) {
@@ -288,7 +231,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const receipt = await maybeIssueReceipt(normalized, {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-      artifacts: intent.artifacts ?? [],
+      artifacts: [],
       contractVerdict: isContractFailure
         ? "no-contract-match"
         : "execution-failed",
@@ -335,6 +278,36 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
     return failure;
   }
+
+  const materialized = built.materialized;
+
+  if (materialized === undefined) {
+    const error = {
+      kind: "context_materialization" as const,
+      message: "Selected route has no provider-visible context projection.",
+      reason: "missing-reference" as const,
+      terminal: true as const,
+    };
+    plan = withPlanStatus(plan, "failed", {
+      stages: markStage(plan.stages, "context-packing", "failed"),
+      attempts: [],
+    });
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: error.kind },
+    }));
+
+    return {
+      ok: false,
+      error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+    };
+  }
+
+  const providerArtifacts = materialized.artifacts;
 
   const routes = [
     selected,
@@ -393,11 +366,16 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       }));
     }
 
-    const attemptPackaging = packageArtifactsForProvider({
-      artifacts: built.artifacts,
-      route,
-      ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
-    });
+    const attemptPackaging =
+      index === 0
+        ? built.packaging
+        : packageArtifactsForProvider({
+            artifacts: providerArtifacts,
+            route,
+            ...(built.mergedPolicy !== undefined
+              ? { policy: built.mergedPolicy }
+              : {}),
+          });
 
     if (attemptPackaging.blocked.length > 0) {
       const message = attemptPackaging.blocked.join("; ");
@@ -408,7 +386,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
     const request: ProviderRunRequest = {
       task: intent.task,
-      artifacts: built.artifacts,
+      artifacts: providerArtifacts,
       outputs: Object.keys(intent.outputs),
       outputContracts: intent.outputs,
       ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
@@ -418,7 +396,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       providerPackaging: attemptPackaging.plan,
       packagedArtifacts: attemptPackaging.packagedArtifacts,
     };
-    const gatewayMetadata = gatewayMetadataForRoute(route, built.mergedPolicy?.gateway);
+    const gatewayMetadata = gatewayMetadataForRoute(
+      route.providerId,
+      route.modelId,
+      built.mergedPolicy?.gateway,
+    );
 
     try {
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
@@ -443,6 +425,15 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             modelId: route.modelId,
             status: "running",
             startedAt,
+            context: built.contextPack,
+            ...(plan.contextProjection !== undefined
+              ? {
+                  contextProjection: plan.contextProjection,
+                  inputHashes: plan.contextProjection.inputHashes,
+                }
+              : {}),
+            providerPackaging: attemptPackaging.plan,
+            warnings: materialized.warnings,
           },
         ],
       });
@@ -509,8 +500,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
-            artifacts: built.artifacts,
-            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
+            artifacts: providerArtifacts,
+            lineageArtifacts: [
+              ...providerArtifacts,
+              ...attemptPackaging.packagedArtifacts,
+            ],
             contractVerdict: "validation-failed",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -587,8 +581,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
-            artifacts: built.artifacts,
-            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
+            artifacts: providerArtifacts,
+            lineageArtifacts: [
+              ...providerArtifacts,
+              ...attemptPackaging.packagedArtifacts,
+            ],
             contractVerdict: "tripwire-violated",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -649,9 +646,18 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         await normalized.sessions.appendTurn({
           sessionId: built.sessionRecord.id,
           task: intent.task,
-          artifactRefs: built.artifacts.map(toArtifactRef),
+          artifactRefs: built.preparedArtifactRefs,
           outputArtifactRefs: artifactRefs,
           planId: completedPlan.id,
+          ...(built.sessionRecord.tenantId !== undefined
+            ? { tenantId: built.sessionRecord.tenantId }
+            : {}),
+          ...(built.sessionRecord.privacy !== undefined
+            ? { privacy: built.sessionRecord.privacy }
+            : {}),
+          ...(built.sessionRecord.retention !== undefined
+            ? { retention: built.sessionRecord.retention }
+            : {}),
         });
       }
 
@@ -673,8 +679,12 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       const receipt = await maybeIssueReceipt(normalized, {
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-        artifacts: built.artifacts,
-        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
+        artifacts: providerArtifacts,
+        lineageArtifacts: [
+          ...providerArtifacts,
+          ...attemptPackaging.packagedArtifacts,
+          ...artifactRefs,
+        ],
         contractVerdict: "success",
         model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {
@@ -715,7 +725,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const receipt = await maybeIssueReceipt(normalized, {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-      artifacts: built.artifacts,
+      artifacts: providerArtifacts,
       contractVerdict: "execution-failed",
       model: { requested: selected.modelId, observed: null },
       route: {
@@ -753,7 +763,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const receipt = await maybeIssueReceipt(normalized, {
     runId,
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-    artifacts: built.artifacts,
+    artifacts: providerArtifacts,
     contractVerdict: "execution-failed",
     model: { requested: selected.modelId, observed: null },
     route: {
@@ -784,187 +794,11 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
   intent: RunIntent<TOutputs>,
   runId = createRunId(),
   events: RunEvent[] = [],
-): Promise<BuiltPlan> {
-  const prepared = await prepareArtifacts(intent);
-  const artifacts = prepared.artifacts;
-  const mergedPolicy = mergePolicy(
-    mergePolicy(normalized.defaults.policy, intent.policy),
-    intent.overrides?.routingPolicy,
-  );
-  const sessionRecord =
-    intent.session !== undefined && normalized.sessions !== undefined
-      ? await loadOrCreateSession(normalized, intent.session)
-      : undefined;
-  const catalog = createCapabilityCatalog(normalized.providers);
-  const route = routeDeterministically(catalog, {
-    task: intent.task,
-    artifacts,
-    outputs: intent.outputs,
-    ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-    ...(intent.overrides?.provider !== undefined
-      ? { provider: intent.overrides.provider }
-      : {}),
-    ...(intent.overrides?.model !== undefined ? { model: intent.overrides.model } : {}),
-    ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-  });
-  const contextPack = buildContextPack({
-    task: intent.task,
-    artifacts,
-    ...(route.selected !== undefined ? { route: route.selected } : {}),
-    ...(sessionRecord !== undefined ? { session: sessionRecord } : {}),
-    ...(intent.overrides?.tokenBudget !== undefined
-      ? { tokenBudget: intent.overrides.tokenBudget }
-      : {}),
-  });
-  const summaryRefs =
-    contextPack.summarized.length > 0 && intent.overrides?.summarizer !== undefined
-      ? await intent.overrides.summarizer.summarize({
-          artifacts: artifacts.map(toArtifactRef),
-          budgetTokens: contextPack.tokenBudget,
-        })
-      : [];
-  const packaging = packageArtifactsForProvider({
-    artifacts,
-    ...(route.selected !== undefined ? { route: route.selected } : {}),
-    ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-  });
-  const gatewayMetadata = route.selected !== undefined
-    ? gatewayMetadataForRoute(route.selected, mergedPolicy?.gateway)
-    : undefined;
-  let plan = createExecutionPlan({
-    task: intent.task,
-    artifacts: artifacts.map(toArtifactRef),
-    outputs: intent.outputs,
-    route,
-    context: contextPack,
-    providerPackaging: packaging.plan,
-    warnings: packaging.blocked,
-    metadata: {
-      ...(intent.tools !== undefined
-        ? { tools: intent.tools.map((tool) => tool.name) }
-        : {}),
-      ...(summaryRefs.length > 0
-        ? { summaryArtifactIds: summaryRefs.map((summary) => summary.id) }
-        : {}),
-      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
-    },
-  });
-  plan = withPlanStatus(plan, plan.status, {
-    stages: markStage(
-      plan.stages,
-      "tool-execution",
-      prepared.toolResults.length > 0 ? "completed" : "skipped",
-      prepared.toolResults.length > 0
-        ? {
-            toolNames: prepared.toolResults.map((result) => result.toolName),
-          }
-        : undefined,
-    ),
-  });
-
-  for (const result of prepared.toolResults) {
-    await emitEvent(normalized, events, createRunEvent("tool.call", {
-      runId,
-      planId: plan.id,
-      artifactId: result.artifact.id,
-      metadata: {
-        toolName: result.toolName,
-        callId: result.callId,
-      },
-    }));
-    await emitEvent(normalized, events, createRunEvent("artifact.created", {
-      runId,
-      planId: plan.id,
-      artifactId: result.artifact.id,
-      metadata: {
-        source: "tool",
-      },
-    }));
-  }
-
-  for (const artifactRef of artifacts.map(toArtifactRef)) {
-    await emitEvent(normalized, events, createRunEvent("artifact.ingested", {
-      runId,
-      planId: plan.id,
-      artifactId: artifactRef.id,
-    }));
-  }
-
-  await emitEvent(normalized, events, createRunEvent("context.packed", {
+): Promise<PreparedRun> {
+  return prepareRun(normalized, intent, {
     runId,
-    planId: plan.id,
-    metadata: {
-      estimatedTokens: contextPack.estimatedTokens,
-      included: contextPack.included.length,
-      summarized: contextPack.summarized.length,
-      omitted: contextPack.omitted.length,
-    },
-  }));
-  await emitEvent(normalized, events, createRunEvent("router.candidates", {
-    runId,
-    planId: plan.id,
-    metadata: {
-      selected: route.selected?.modelId,
-      rejected: route.rejected.length,
-      fallbacks: route.fallbackChain.length,
-      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
-    },
-  }));
-
-  return {
-    plan,
-    artifacts,
-    contextPack,
-    packagedArtifacts: packaging.packagedArtifacts,
-    blockedPackaging: packaging.blocked,
-    toolResults: prepared.toolResults,
-    ...(mergedPolicy !== undefined ? { mergedPolicy } : {}),
-    ...(sessionRecord !== undefined ? { sessionRecord } : {}),
-  };
-}
-
-async function prepareArtifacts<const TOutputs extends OutputContractMap>(
-  intent: RunIntent<TOutputs>,
-): Promise<{
-  readonly artifacts: readonly ArtifactInput[];
-  readonly toolResults: readonly ToolCallResult[];
-}> {
-  let artifacts = [...(intent.artifacts ?? [])];
-
-  for (const transform of intent.overrides?.transforms ?? []) {
-    const transformed = await transform.transform({
-      task: intent.task,
-      artifacts,
-    });
-    artifacts = artifacts.concat(Array.isArray(transformed) ? transformed : [transformed]);
-  }
-
-  const toolResults: ToolCallResult[] = [];
-
-  for (const tool of intent.tools ?? []) {
-    const result = await runTool(tool, intent.toolInputs?.[tool.name] ?? {});
-    toolResults.push(result);
-    artifacts.push(result.artifact);
-  }
-
-  return { artifacts, toolResults };
-}
-
-async function loadOrCreateSession(
-  normalized: NormalizedLatticeConfig,
-  session: SessionRef,
-): Promise<SessionRecord> {
-  const existing = await normalized.sessions?.load(session.id);
-
-  if (existing !== undefined) {
-    return existing;
-  }
-
-  if (normalized.sessions === undefined) {
-    throw new Error("Session storage is not configured.");
-  }
-
-  return normalized.sessions.create({ id: session.id });
+    emit: (event) => emitEvent(normalized, events, event),
+  });
 }
 
 function attemptSucceeded(

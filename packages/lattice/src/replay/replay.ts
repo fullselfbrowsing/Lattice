@@ -146,6 +146,32 @@ export function redactPlan(plan: ExecutionPlan): ExecutionPlan {
     ...plan,
     task: redactText(plan.task),
     artifactRefs: plan.artifactRefs.map(redactArtifactRef),
+    ...(plan.contextProjection !== undefined
+      ? {
+          contextProjection: {
+            ...plan.contextProjection,
+            artifactRefs: plan.contextProjection.artifactRefs.map(redactArtifactRef),
+            summaryArtifactRefs:
+              plan.contextProjection.summaryArtifactRefs.map(redactArtifactRef),
+            warnings: plan.contextProjection.warnings.map(redactText),
+          },
+        }
+      : {}),
+    attempts: plan.attempts.map((attempt) => ({
+      ...attempt,
+      ...(attempt.contextProjection !== undefined
+        ? {
+            contextProjection: {
+              ...attempt.contextProjection,
+              artifactRefs:
+                attempt.contextProjection.artifactRefs.map(redactArtifactRef),
+              summaryArtifactRefs:
+                attempt.contextProjection.summaryArtifactRefs.map(redactArtifactRef),
+              warnings: attempt.contextProjection.warnings.map(redactText),
+            },
+          }
+        : {}),
+    })),
     ...(plan.providerPackaging !== undefined
       ? {
           providerPackaging: {
