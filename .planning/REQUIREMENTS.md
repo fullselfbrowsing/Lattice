@@ -46,8 +46,8 @@
 - [x] **AUDIT16-02**: A required-receipt run without a signer fails before any provider execution.
 - [x] **AUDIT16-03**: A signing failure after provider execution returns a typed audit failure with safe diagnostics and never retries the provider.
 - [ ] **AUDIT16-04**: Runtime, agent, and crew terminal paths apply the selected receipt policy consistently.
-- [ ] **EVAL16-01**: Evaluation reports every load, verification, materialization, and replay failure and exits with code 2 when any is present.
-- [ ] **EVAL16-02**: Baseline initialization writes no baseline when any input fixture is invalid or unevaluable.
+- [x] **EVAL16-01**: Evaluation reports every load, verification, materialization, and replay failure and exits with code 2 when any is present.
+- [x] **EVAL16-02**: Baseline initialization writes no baseline when any input fixture is invalid or unevaluable.
 
 ### Cost Integrity
 
@@ -136,8 +136,8 @@ Roadmap creation maps each requirement to exactly one phase.
 | AUDIT16-02 | Phase 60 | Complete |
 | AUDIT16-03 | Phase 60 | Complete |
 | AUDIT16-04 | Phase 60 | Pending |
-| EVAL16-01 | Phase 60 | Pending |
-| EVAL16-02 | Phase 60 | Pending |
+| EVAL16-01 | Phase 60 | Complete |
+| EVAL16-02 | Phase 60 | Complete |
 | PRICE-01 | Phase 60 | Pending |
 | PRICE-02 | Phase 60 | Pending |
 | PRICE-03 | Phase 60 | Pending |
