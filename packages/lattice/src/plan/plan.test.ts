@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ArtifactRef } from "../artifacts/artifact.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
+import { COST_ESTIMATOR_VERSION, estimateCost } from "../routing/cost.js";
 import {
   createExecutionPlan,
   withPlanStatus,
@@ -16,13 +17,23 @@ const artifacts: readonly ArtifactRef[] = [];
 const outputs: OutputContractMap = { text: "text" as const };
 
 function selectedRoute(): RouteDecision {
+  const costEstimate = estimateCost({
+    pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+    inputTokens: 0,
+    outputTokens: 0,
+  });
   return {
     catalogVersion: "1",
     selected: {
       providerId: "fake",
       modelId: "fake:m",
       score: 1,
-      estimates: { inputTokens: 0, outputTokens: 0 },
+      estimates: {
+        inputTokens: 0,
+        outputTokens: 0,
+        costEstimate,
+        costUsd: 0,
+      },
       contextWindow: 8_192,
       inputModalities: ["text"],
       outputModalities: ["text"],
@@ -145,6 +156,11 @@ describe("authoritative context evidence", () => {
       inputHashes: ["sha256:input"],
     });
     expect(plan.route.selected?.contextWindow).toBe(8_192);
+    expect(plan.route.selected?.estimates.costEstimate).toMatchObject({
+      version: COST_ESTIMATOR_VERSION,
+      status: "known",
+      totalCostUsd: 0,
+    });
   });
 
   it("immutably replaces top-level route context and packaging evidence", () => {

@@ -379,7 +379,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         providerId: fallback.providerId,
         modelId: fallback.modelId,
         score: fallback.score,
-        estimates: selected.estimates,
+        estimates: fallback.estimates ?? selected.estimates,
         ...(selected.contextWindow !== undefined
           ? { contextWindow: selected.contextWindow }
           : {}),

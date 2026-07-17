@@ -11,6 +11,7 @@ import type {
   ProviderRunRequest,
 } from "../src/providers/provider.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
+import { COST_ESTIMATOR_VERSION } from "../src/routing/cost.js";
 import { createAI } from "../src/runtime/create-ai.js";
 import { fc } from "../src/test-support/fast-check.js";
 
@@ -45,6 +46,11 @@ describe("deterministic planning and execution spine", () => {
       expect.objectContaining({
         providerId: "second",
         reason: "policy-preserving-fallback",
+        estimates: expect.objectContaining({
+          costEstimate: expect.objectContaining({
+            version: COST_ESTIMATOR_VERSION,
+          }),
+        }),
       }),
     ]);
     expect(plan.context?.included.length).toBeGreaterThan(0);

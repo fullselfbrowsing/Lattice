@@ -8,6 +8,7 @@ import type {
   ProviderPackagingPlan,
 } from "../plan/plan.js";
 import type { RunEvent } from "../tracing/tracing.js";
+import { estimateCost } from "../routing/cost.js";
 import {
   redactPlan,
   redactReplayEnvelope,
@@ -85,6 +86,9 @@ describe("redactPlan", () => {
       reason: "redacted-packaging-reason",
       reference: { kind: "url" },
     });
+    expect(redacted.route.fallbackChain[0]?.estimates?.costEstimate).toEqual(
+      plan.route.fallbackChain[0]?.estimates?.costEstimate,
+    );
     expect(
       redacted.stages.find((stage) => stage.kind === "persistence")?.metadata,
     ).toEqual({
@@ -206,6 +210,7 @@ function unsafePlan(): ExecutionPlan {
           providerId: "fallback",
           modelId: "fallback:model",
           score: 1,
+          estimates: selectedRoute("fallback").estimates,
           reason: "policy-preserving-fallback",
         },
       ],
@@ -398,11 +403,21 @@ function packagingFor(providerId: string, artifactId: string): ProviderPackaging
 }
 
 function selectedRoute(providerId: string) {
+  const costEstimate = estimateCost({
+    pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+    inputTokens: 10,
+    outputTokens: 5,
+  });
   return {
     providerId,
     modelId: `${providerId}:model`,
     score: 1,
-    estimates: { inputTokens: 10, outputTokens: 5 },
+    estimates: {
+      inputTokens: 10,
+      outputTokens: 5,
+      costEstimate,
+      costUsd: costEstimate.totalCostUsd!,
+    },
     contextWindow: 4_096,
     inputModalities: ["text"] as const,
     outputModalities: ["text"] as const,

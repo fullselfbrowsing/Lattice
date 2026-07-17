@@ -5,6 +5,7 @@ import type {
   ModelCapability,
   ProviderTransportMode,
 } from "../providers/provider.js";
+import type { CostEstimate } from "../routing/cost.js";
 
 export type ExecutionPlanStatus =
   | "stub"
@@ -61,6 +62,7 @@ export interface RouteCandidate {
 export interface RouteEstimates {
   readonly inputTokens: number;
   readonly outputTokens: number;
+  readonly costEstimate?: CostEstimate;
   readonly costUsd?: number;
   readonly latencyMs?: number;
 }
@@ -80,6 +82,7 @@ export interface FallbackRoute {
   readonly providerId: string;
   readonly modelId: string;
   readonly score: number;
+  readonly estimates?: RouteEstimates;
   readonly reason: "policy-preserving-fallback";
 }
 

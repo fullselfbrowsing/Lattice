@@ -217,6 +217,9 @@ function redactRouteDecision(route: RouteDecision): RouteDecision {
       providerId: fallback.providerId,
       modelId: fallback.modelId,
       score: fallback.score,
+      ...(fallback.estimates !== undefined
+        ? { estimates: redactRouteEstimates(fallback.estimates) }
+        : {}),
       reason: fallback.reason,
     })),
     noRouteReasons: route.noRouteReasons.map((reason) => ({
@@ -304,6 +307,18 @@ function redactRouteEstimates(
   return {
     inputTokens: estimates.inputTokens,
     outputTokens: estimates.outputTokens,
+    ...(estimates.costEstimate !== undefined
+      ? {
+          costEstimate: {
+            version: estimates.costEstimate.version,
+            status: estimates.costEstimate.status,
+            input: { ...estimates.costEstimate.input },
+            output: { ...estimates.costEstimate.output },
+            totalCostUsd: estimates.costEstimate.totalCostUsd,
+            unknownReasons: [...estimates.costEstimate.unknownReasons],
+          },
+        }
+      : {}),
     ...(estimates.costUsd !== undefined ? { costUsd: estimates.costUsd } : {}),
     ...(estimates.latencyMs !== undefined ? { latencyMs: estimates.latencyMs } : {}),
   };
