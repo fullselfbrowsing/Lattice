@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T05:32:21.187Z"
+last_updated: "2026-07-17T05:40:48.829Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 67
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 61 (Agent Receipt Closure) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-17
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 93%
 
 ## Recent Milestone Snapshot
 
@@ -103,6 +103,8 @@ Recent decisions affecting v1.6:
 - [Phase 60]: Showcase baseline tests partition evaluable success receipts while separately proving the full mixed set exits 2 without writing. — Strict evaluation must reject failure-class receipts with null output hashes and must never initialize a baseline from invalid input.
 - [Phase 61]: Managed agent checkpoints execute after the caller pipeline through one invocation-local runner. — This preserves caller hook order while preventing automatic signer accumulation on reused pipelines.
 - [Phase 61]: Terminal finalization attaches the issued envelope before successful host state is cleared. — The returned result and durable boundary must expose the exact final evidence before completed state is discarded.
+- [Phase 61]: New agent-snapshot/v1 writes persist both executionId and the complete available iteration ledger. — A paired identity and ledger lets resume append without reminting while preserving historical v1 literals.
+- [Phase 61]: Invalid present snapshots remain stored and return bounded recovery failure without signing or transport. — Clearing invalid evidence would allow a later invocation to silently restart and duplicate completed work.
 
 ### Pending Todos
 
@@ -160,3 +162,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 60 P05 | 22min | 2 tasks | 18 files |
 | Phase 60 P06 | 18min | 1 tasks | 10 files |
 | Phase 61 P01 | 7min | 2 tasks | 4 files |
+| Phase 61 P02 | 8min | 2 tasks | 5 files |
