@@ -14,6 +14,11 @@ export {
   estimateRouteCost,
   evaluateContractAgainstRoute,
 } from "./contract/preflight.js";
+export {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
+} from "./routing/cost.js";
 export { evaluateTripwires } from "./contract/tripwire.js";
 export {
   createLangfuseOtlpConfig,
@@ -227,6 +232,11 @@ export type {
   CollectStreamOptions,
   ContractRejectReasonCode,
   ContractVerdict,
+  CostDimensionEstimate,
+  CostEstimate,
+  CostEstimateStatus,
+  CostPricingSource,
+  CostUnknownReason,
   ContextMaterializationError,
   ContextMaterializationFailureReason,
   ContextPackItemPlan,
@@ -237,6 +247,7 @@ export type {
   ExecutionPlan,
   ExecutionPlanStage,
   ExecutionPlanStub,
+  EstimateCostInput,
   EffectiveReceiptPolicy,
   FieldFromTableInvariant,
   InferOutput,

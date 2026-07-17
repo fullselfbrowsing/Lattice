@@ -82,6 +82,14 @@ export type {
 } from "../policy/policy.js";
 export type { TrainingClass } from "../capabilities/profile.js";
 export type {
+  CostDimensionEstimate,
+  CostEstimate,
+  CostEstimateStatus,
+  CostPricingSource,
+  CostUnknownReason,
+  EstimateCostInput,
+} from "../routing/cost.js";
+export type {
   CapabilityModality,
   ModelCapability,
   ProviderAdapter,

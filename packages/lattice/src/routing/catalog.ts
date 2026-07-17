@@ -5,6 +5,7 @@ import type {
   ProviderPricingHint,
   ProviderRef,
 } from "../providers/provider.js";
+import { estimateCost } from "./cost.js";
 
 export const DEFAULT_CATALOG_VERSION = "lattice:catalog:v1";
 
@@ -72,20 +73,15 @@ export function effectivePer1kPricing(
   readonly inputPer1kTokens: number | undefined;
   readonly outputPer1kTokens: number | undefined;
 } {
-  if (pricing === undefined) {
-    return { inputPer1kTokens: undefined, outputPer1kTokens: undefined };
-  }
-
-  const inputPer1k =
-    pricing.inputPer1kTokens ??
-    (pricing.inputCostPer1M !== undefined ? pricing.inputCostPer1M / 1000 : undefined);
-  const outputPer1k =
-    pricing.outputPer1kTokens ??
-    (pricing.outputCostPer1M !== undefined ? pricing.outputCostPer1M / 1000 : undefined);
+  const estimate = estimateCost({
+    ...(pricing !== undefined ? { pricing } : {}),
+    inputTokens: 0,
+    outputTokens: 0,
+  });
 
   return {
-    inputPer1kTokens: inputPer1k,
-    outputPer1kTokens: outputPer1k,
+    inputPer1kTokens: estimate.input.ratePer1kUsd ?? undefined,
+    outputPer1kTokens: estimate.output.ratePer1kUsd ?? undefined,
   };
 }
 
