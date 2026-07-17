@@ -72,8 +72,12 @@ import {
 import {
   createCostTracker,
   runAgent,
+  type AgentFailure,
   type AgentIntent,
+  type AgentResult,
+  type AgentSnapshot,
   type CostTrackerOptions,
+  type IterationRecord,
 } from "@full-self-browsing/lattice/agents";
 
 const receiptMode: ReceiptIssuanceMode = "required";
@@ -278,3 +282,47 @@ const externalAuditInput = {
   outputs: { answer: "ok" },
 } satisfies ExternalExecutionAuditInput;
 void externalAuditInput;
+
+declare const modularAgentReceipt: ReceiptEnvelope;
+declare const modularAgentResult: AgentResult;
+
+const historicalAgentIteration: IterationRecord = {
+  index: 0,
+  provider: "legacy-provider",
+  promptTokens: 0,
+  completionTokens: 0,
+  costUsd: null,
+  durationMs: 0,
+  toolCalls: [],
+};
+const evidenceAgentIteration: IterationRecord = {
+  ...historicalAgentIteration,
+  iterationId: "agent-execution:modular:iteration:0",
+  receipt: modularAgentReceipt,
+};
+const historicalAgentSnapshot: AgentSnapshot = {
+  version: "agent-snapshot/v1",
+  iterationIndex: 0,
+  conversation: [],
+  cumulativeUsage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  providerName: "legacy-provider",
+  capturedAt: "2026-07-17T00:00:00.000Z",
+};
+const evidenceAgentSnapshot: AgentSnapshot = {
+  ...historicalAgentSnapshot,
+  executionId: "agent-execution:modular",
+  iterations: [evidenceAgentIteration],
+};
+const modularRecoveryFailure = {
+  kind: "agent-recovery-failed",
+  reason: "snapshot-invalid",
+  usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  iterations: [],
+} satisfies AgentFailure;
+
+expectType<string | undefined>(historicalAgentIteration.iterationId);
+expectType<ReceiptEnvelope | undefined>(evidenceAgentIteration.receipt);
+expectType<string | undefined>(historicalAgentSnapshot.executionId);
+expectType<readonly IterationRecord[] | undefined>(evidenceAgentSnapshot.iterations);
+expectType<"agent-recovery-failed">(modularRecoveryFailure.kind);
+expectType<ReceiptEnvelope | undefined>(modularAgentResult.receipt);

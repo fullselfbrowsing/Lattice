@@ -10,6 +10,9 @@ import {
 
 import type {
   AppendSessionTurnInput,
+  AgentFailure,
+  AgentResult,
+  AgentSnapshot,
   AuditError,
   ArtifactInput,
   ArtifactLifecycleReport,
@@ -21,6 +24,7 @@ import type {
   ContextProjectionPlan,
   CostEstimate,
   CostTrackerOptions,
+  IterationRecord,
   LatticeRunError,
   MaterializeContextInput,
   MaterializedContext,
@@ -32,6 +36,7 @@ import type {
   ProviderRunRequest,
   ProviderRunResponse,
   ReceiptIssuanceMode,
+  ReceiptEnvelope,
   ReceiptSigner,
   SelectedRoute,
   SessionRecord,
@@ -254,3 +259,48 @@ expectType<PolicySpec | undefined>(materializeInput.policy);
 expectType<readonly ArtifactLifecycleReport[]>(
   materialized.summaryLifecycleReports,
 );
+
+declare const agentReceipt: ReceiptEnvelope;
+declare const agentResult: AgentResult;
+
+const historicalIteration: IterationRecord = {
+  index: 0,
+  provider: "legacy-provider",
+  promptTokens: 0,
+  completionTokens: 0,
+  costUsd: null,
+  durationMs: 0,
+  toolCalls: [],
+};
+const evidenceIteration: IterationRecord = {
+  ...historicalIteration,
+  iterationId: "agent-execution:packed:iteration:0",
+  receipt: agentReceipt,
+};
+const historicalSnapshot: AgentSnapshot = {
+  version: "agent-snapshot/v1",
+  iterationIndex: 0,
+  conversation: [],
+  cumulativeUsage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  providerName: "legacy-provider",
+  capturedAt: "2026-07-17T00:00:00.000Z",
+};
+const evidenceSnapshot: AgentSnapshot = {
+  ...historicalSnapshot,
+  executionId: "agent-execution:packed",
+  iterations: [evidenceIteration],
+};
+const recoveryFailure = {
+  kind: "agent-recovery-failed",
+  reason: "snapshot-invalid",
+  usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  iterations: [],
+} satisfies AgentFailure;
+
+expectType<string | undefined>(historicalIteration.iterationId);
+expectType<ReceiptEnvelope | undefined>(evidenceIteration.receipt);
+expectType<string | undefined>(historicalSnapshot.executionId);
+expectType<readonly IterationRecord[] | undefined>(evidenceSnapshot.iterations);
+expectType<"agent-recovery-failed">(recoveryFailure.kind);
+expectType<ReceiptEnvelope | undefined>(agentResult.receipt);
+expectType<string | undefined>(agentResult.iterations[0]!.iterationId);

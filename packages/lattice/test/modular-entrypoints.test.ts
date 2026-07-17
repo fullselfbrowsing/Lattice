@@ -119,6 +119,42 @@ describe("modular package entrypoints", () => {
     expect(true).toBe(true);
   });
 
+  it("reaches Phase 61 additive agent evidence without exporting runtime internals", () => {
+    type AgentFailure = import("../src/agents.js").AgentFailure;
+    type AgentSnapshot = import("../src/agents.js").AgentSnapshot;
+    type IterationRecord = import("../src/agents.js").IterationRecord;
+
+    const historicalIteration: IterationRecord = {
+      index: 0,
+      provider: "legacy-provider",
+      promptTokens: 0,
+      completionTokens: 0,
+      costUsd: null,
+      durationMs: 0,
+      toolCalls: [],
+    };
+    const historicalSnapshot: AgentSnapshot = {
+      version: "agent-snapshot/v1",
+      iterationIndex: 0,
+      conversation: [],
+      cumulativeUsage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      providerName: "legacy-provider",
+      capturedAt: "2026-07-17T00:00:00.000Z",
+    };
+    const recoveryFailure: AgentFailure = {
+      kind: "agent-recovery-failed",
+      reason: "snapshot-invalid",
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      iterations: [],
+    };
+
+    expect(historicalIteration.iterationId).toBeUndefined();
+    expect(historicalSnapshot.executionId).toBeUndefined();
+    expect(recoveryFailure.kind).toBe("agent-recovery-failed");
+    expect("createCrewDispatcher" in agents).toBe(false);
+    expect("runAgentInternal" in agents).toBe(false);
+  });
+
   it("keeps context and core value exports exact", () => {
     expect(Object.keys(context).sort()).toEqual([
       ...EXPECTED_CONTEXT_VALUE_EXPORTS,

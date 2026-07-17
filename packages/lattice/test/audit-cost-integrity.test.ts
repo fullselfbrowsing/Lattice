@@ -357,7 +357,7 @@ describe("Phase 60 cross-surface receipt integrity", () => {
 
     const parentSigner = signerHarness({
       state: "working",
-      failOn: [4],
+      failOn: [3],
       secret: SIGNER_SECRET,
     });
     let parentProviderCalls = 0;
@@ -397,7 +397,7 @@ describe("Phase 60 cross-surface receipt integrity", () => {
       stage: "post-execution",
     });
     expect(parentProviderCalls).toBe(1);
-    expect(parentSigner.calls.value).toBe(4);
+    expect(parentSigner.calls.value).toBe(3);
     expect(JSON.stringify(parentFailure)).not.toContain(SIGNER_SECRET);
 
     const externalSigner = signerHarness({ state: "failing" });

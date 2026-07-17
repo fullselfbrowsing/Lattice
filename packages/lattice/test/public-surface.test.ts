@@ -41,6 +41,8 @@ import {
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
 import type {
+  AgentFailure,
+  AgentSnapshot,
   AuditError,
   BudgetInvariant,
   CapabilityContract,
@@ -51,6 +53,7 @@ import type {
   CostTrackerOptions,
   FieldFromTableInvariant,
   InvariantDeclaration,
+  IterationRecord,
   KeyEntry,
   KeySet,
   KeyState,
@@ -199,14 +202,65 @@ describe("public-surface inventory", () => {
     for (const internalName of [
       "ArtifactLifecycleFailure",
       "ContextMaterializationFailure",
+      "createCrewDispatcher",
       "materializeContext",
       "persistArtifactLifecycle",
       "persistArtifactLifecycleBatch",
       "prepareRouteAttempt",
+      "runAgentInternal",
       "toContextProjectionPlan",
     ]) {
       expect(internalName in mod).toBe(false);
     }
+  });
+});
+
+describe("Phase 61 public type surface", () => {
+  it("reaches additive agent evidence while preserving historical literals", () => {
+    const envelope: ReceiptEnvelope = {
+      payloadType: "application/vnd.lattice.receipt+json",
+      payload: "e30=",
+      signatures: [{ keyid: "public", sig: "AA==" }],
+    };
+    const historicalIteration: IterationRecord = {
+      index: 0,
+      provider: "legacy-provider",
+      promptTokens: 1,
+      completionTokens: 1,
+      costUsd: null,
+      durationMs: 1,
+      toolCalls: [],
+    };
+    const evidenceIteration: IterationRecord = {
+      ...historicalIteration,
+      iterationId: "agent-execution:public:iteration:0",
+      receipt: envelope,
+    };
+    const historicalSnapshot: AgentSnapshot = {
+      version: "agent-snapshot/v1",
+      iterationIndex: 1,
+      conversation: [],
+      cumulativeUsage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+      providerName: "legacy-provider",
+      capturedAt: "2026-07-17T00:00:00.000Z",
+    };
+    const evidenceSnapshot: AgentSnapshot = {
+      ...historicalSnapshot,
+      executionId: "agent-execution:public",
+      iterations: [evidenceIteration],
+    };
+    const recoveryFailure: AgentFailure = {
+      kind: "agent-recovery-failed",
+      reason: "snapshot-invalid",
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      iterations: [],
+    };
+
+    expect(historicalIteration.iterationId).toBeUndefined();
+    expect(evidenceIteration.receipt).toBe(envelope);
+    expect(historicalSnapshot.executionId).toBeUndefined();
+    expect(evidenceSnapshot.iterations?.[0]).toBe(evidenceIteration);
+    expect(recoveryFailure.kind).toBe("agent-recovery-failed");
   });
 });
 
