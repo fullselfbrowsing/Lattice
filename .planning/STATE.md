@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
-status: executing
-last_updated: "2026-07-17T02:03:10.454Z"
+status: verifying
+last_updated: "2026-07-17T02:24:09.091Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
-  completed_plans: 16
-  percent: 33
+  completed_plans: 17
+  percent: 50
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-17
 
 Progress: [█████████░] 88%
@@ -90,6 +90,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Telemetry accepts bounded authority classes and real persistence status only. — Closed sets prevent raw event strings from becoming span data while completed, skipped, and failed lifecycle outcomes remain inspectable.
 - [Phase 59]: Authoritative materialization is a modular value and a root type contract. — The beginner root stays small while context and core consumers avoid deep imports.
 - [Phase 59]: Lifecycle evidence is public; lifecycle failures and orchestration remain internal. — Stable reports are required by MaterializedContext without exposing raw causes or persistence helpers.
+- [Phase 59]: Provider request order is the closure anchor for authoritative evidence. — Projection refs, packaging, attempt hashes, receipt hashes, and event identity must describe the exact adapter call in the same order.
+- [Phase 59]: Session scope conflicts fail before artifact access or provider execution. — Tenant, privacy, and retention metadata is the first authorization boundary for persisted conversational context.
 
 ### Pending Todos
 
@@ -139,3 +141,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 59 P06 | 18min | 2 tasks | 5 files |
 | Phase 59 P07 | 20min | 2 tasks | 6 files |
 | Phase 59 P08 | 20min | 1 tasks | 9 files |
+| Phase 59 P09 | 18min | 1 tasks | 5 files |
