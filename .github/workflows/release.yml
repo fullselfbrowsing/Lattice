@@ -119,6 +119,9 @@ jobs:
       - name: Audit core package boundary
         run: node scripts/check-core-package-boundary.mjs
 
+      - name: Validate packed runtime and CLI consumer
+        run: pnpm check:packed-consumer
+
       - name: Publish to npm with provenance
         # pnpm publish picks up the OIDC token from
         # ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN that

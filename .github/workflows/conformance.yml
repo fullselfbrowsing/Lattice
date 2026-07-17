@@ -17,6 +17,7 @@ on:
       - "packages/lattice/tsdown.config.ts"
       - "packages/lattice-cli/**"
       - "scripts/check-protocol-package-consumer.mjs"
+      - "scripts/lib/packed-packages.mjs"
       - "scripts/check-package-version-surfaces.mjs"
       - "scripts/stamp-package-version.mjs"
       - "package.json"
@@ -39,6 +40,7 @@ on:
       - "packages/lattice/tsdown.config.ts"
       - "packages/lattice-cli/**"
       - "scripts/check-protocol-package-consumer.mjs"
+      - "scripts/lib/packed-packages.mjs"
       - "scripts/check-package-version-surfaces.mjs"
       - "scripts/stamp-package-version.mjs"
       - "package.json"
@@ -125,10 +127,5 @@ jobs:
           PYTHON: python
         run: pnpm --filter @lattice-conformance/verify-ts test:cross-mint
 
-      - name: Build runtime and CLI packages
-        run: |
-          pnpm --filter @full-self-browsing/lattice build
-          pnpm --filter @full-self-browsing/lattice-cli build
-
       - name: Run clean packed protocol consumer
-        run: pnpm check:protocol-package
+        run: pnpm check:packed-consumer
