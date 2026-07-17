@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T03:44:36.116Z"
+last_updated: "2026-07-17T04:02:04.732Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 50
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 60 (Audit Evaluation and Cost Integrity) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-17
 
@@ -92,6 +92,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Lifecycle evidence is public; lifecycle failures and orchestration remain internal. — Stable reports are required by MaterializedContext without exposing raw causes or persistence helpers.
 - [Phase 59]: Provider request order is the closure anchor for authoritative evidence. — Projection refs, packaging, attempt hashes, receipt hashes, and event identity must describe the exact adapter call in the same order.
 - [Phase 59]: Session scope conflicts fail before artifact access or provider execution. — Tenant, privacy, and retention metadata is the first authorization boundary for persisted conversational context.
+- [Phase 60]: Hard cost ceilings reject unknown estimates and known overages, while exact equality passes. — Route policy and capability contracts must make identical decisions from the same structured estimate.
+- [Phase 60]: Structured cost evidence distinguishes known zero from unknown and retains per-dimension pricing provenance. — Execution plans and diagnostics must expose the facts actually used for deterministic selection without treating missing rates as free.
 
 ### Pending Todos
 
@@ -145,3 +147,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 60 P01 | 14min | 2 tasks | 14 files |
 | Phase 60 P03 | 6 | 2 tasks | 5 files |
 | Phase 60 P02 | 22 | 2 tasks | 14 files |
+| Phase 60 P04 | 18min | 2 tasks | 15 files |

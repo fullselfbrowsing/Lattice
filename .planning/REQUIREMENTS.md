@@ -51,10 +51,10 @@
 
 ### Cost Integrity
 
-- [ ] **PRICE-01**: All pre-execution callers use one estimator that normalizes preferred per-1k and legacy per-1M pricing hints.
-- [ ] **PRICE-02**: Every estimate preserves the distinction between a known zero cost and unknown cost.
-- [ ] **PRICE-03**: Route policy and contract budgets produce the same decision for identical route, token, and budget inputs.
-- [ ] **PRICE-04**: Plans, agents, crews, diagnostics, routing, and contract preflight consume the shared estimator rather than duplicate formulas.
+- [x] **PRICE-01**: All pre-execution callers use one estimator that normalizes preferred per-1k and legacy per-1M pricing hints.
+- [x] **PRICE-02**: Every estimate preserves the distinction between a known zero cost and unknown cost.
+- [x] **PRICE-03**: Route policy and contract budgets produce the same decision for identical route, token, and budget inputs.
+- [x] **PRICE-04**: Plans, agents, crews, diagnostics, routing, and contract preflight consume the shared estimator rather than duplicate formulas.
 
 ### Agent Evidence
 
@@ -138,10 +138,10 @@ Roadmap creation maps each requirement to exactly one phase.
 | AUDIT16-04 | Phase 60 | Complete |
 | EVAL16-01 | Phase 60 | Complete |
 | EVAL16-02 | Phase 60 | Complete |
-| PRICE-01 | Phase 60 | Pending |
-| PRICE-02 | Phase 60 | Pending |
-| PRICE-03 | Phase 60 | Pending |
-| PRICE-04 | Phase 60 | Pending |
+| PRICE-01 | Phase 60 | Complete |
+| PRICE-02 | Phase 60 | Complete |
+| PRICE-03 | Phase 60 | Complete |
+| PRICE-04 | Phase 60 | Complete |
 | AGREC-01 | Phase 61 | Pending |
 | AGREC-02 | Phase 61 | Pending |
 | AGREC-03 | Phase 61 | Pending |
