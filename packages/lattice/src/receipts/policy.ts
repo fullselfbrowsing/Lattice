@@ -68,6 +68,31 @@ export async function issueReceipt(
   return issueReceiptFrom(() => input, policy, stage);
 }
 
+/**
+ * Explicit evidence factories use this throwing form: success returns the
+ * envelope, while every failure throws only the shared bounded AuditError.
+ */
+export async function issueRequiredReceipt(
+  input: CreateReceiptInput,
+  signer: ReceiptSigner | undefined,
+  stage: AuditErrorStage = "post-execution",
+): Promise<ReceiptEnvelope> {
+  const outcome = await issueReceipt(
+    input,
+    resolveReceiptPolicy({
+      mode: "required",
+      ...(signer !== undefined ? { signer } : {}),
+    }),
+    stage,
+  );
+  if (outcome.status === "issued") return outcome.envelope;
+  if (outcome.status === "failed") throw outcome.error;
+
+  // Required mode cannot skip, but retain a safe typed failure if policy
+  // normalization is changed incorrectly in the future.
+  throw auditError("receipt-signer-missing", "pre-execution");
+}
+
 export async function issueReceiptFrom(
   build: () => CreateReceiptInput | Promise<CreateReceiptInput>,
   policy: EffectiveReceiptPolicy,

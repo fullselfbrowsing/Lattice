@@ -15,7 +15,7 @@ import type {
   ReceiptSigner,
 } from "../receipts/types.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
-import { createReceipt } from "../receipts/receipt.js";
+import { issueRequiredReceipt } from "../receipts/policy.js";
 import type { ReplayEnvelope } from "../replay/replay.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { latticeVersion } from "../version.js";
@@ -113,7 +113,7 @@ export async function createExternalExecutionAudit<
     : (await hashUnknown(input.rawResponse)) ?? undefined;
   const contractVerdict = input.contractVerdict ?? "success";
 
-  const receipt = await createReceipt(
+  const receipt = await issueRequiredReceipt(
     {
       runId,
       receiptId,
@@ -128,6 +128,7 @@ export async function createExternalExecutionAudit<
       outputHash,
     },
     signer,
+    "post-execution",
   );
 
   const sidecar: ExternalExecutionSidecar<TOutputs> = {

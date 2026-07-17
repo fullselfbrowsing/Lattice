@@ -30,13 +30,10 @@
  * child's `AgentSnapshot.ancestry` via the survivability seam when
  * snapshots are captured.
  *
- * Receipt chain (research Pattern 2): when a signer is configured the
- * dispatcher mints the child completion receipt directly via
- * `createReceipt` with `parentReceiptCid = crew-root CID` (the anchor
- * minted by the 39-06 orchestrator BEFORE children run — Pitfall 2),
- * using synthetic route identifiers (checkpoint.ts DEFAULT_ROUTE
- * precedent). Per-iteration checkpoint receipts remain UNCHANGED (no
- * parentReceiptCid).
+ * Receipt chain: the dispatcher resolves child completion issuance through
+ * the crew's effective receipt policy and links successful completions to
+ * the crew-root CID. Required failure becomes a terminal child audit result;
+ * best-effort failure preserves the completed child result.
  */
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
@@ -52,8 +49,14 @@ import type {
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
-import { createReceipt } from "../../receipts/receipt.js";
+import {
+  issueReceiptFrom,
+  resolveReceiptPolicy,
+  type ReceiptIssuanceMode,
+  type ReceiptIssuanceOutcome,
+} from "../../receipts/policy.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
+import type { AuditError } from "../../results/errors.js";
 import type { LatticeConfig } from "../../runtime/config.js";
 import {
   createNoopSurvivabilityAdapter,
@@ -97,6 +100,8 @@ export interface CrewDispatchContext {
   readonly crewRootCid?: string;
   /** Crew-level signer threaded into children + completion receipts. */
   readonly signer?: ReceiptSigner;
+  /** Effective crew receipt mode threaded into child loops. */
+  readonly receiptMode?: ReceiptIssuanceMode;
   /**
    * Feeds the per-agent tracker + crew aggregator. Called exactly once per
    * child dispatch with the child run's cumulative usage (Pitfall 3).
@@ -182,6 +187,10 @@ function createDispatcherNode(
   shared: CrewSharedState,
 ): CrewDispatcher {
   const children = spec.childAgents ?? [];
+  const receiptPolicy = resolveReceiptPolicy({
+    ...(ctx.receiptMode !== undefined ? { mode: ctx.receiptMode } : {}),
+    ...(ctx.signer !== undefined ? { signer: ctx.signer } : {}),
+  });
   // D-10 terminal-block set: childId -> cached terminal error content.
   const terminalBlock = new Map<string, string>();
   // Cache-prefix hoist (DELEG-04): every child loop's transport is wrapped
@@ -196,6 +205,21 @@ function createDispatcherNode(
           transport: withCachePrefixHoist(ctx.sharedPrefix, ctx.childHost.transport),
         }
       : ctx.childHost;
+
+  function routeChildFailure(
+    childId: string,
+    failure: AgentFailure,
+  ): { readonly content: string } {
+    const classified = classifyChildFailure(childId, failure);
+    const result = errorResult(classified);
+    if (classified.terminal) {
+      terminalBlock.set(childId, result.content);
+      if (classified.kind === "crew-budget-exceeded") {
+        shared.exhausted = true;
+      }
+    }
+    return result;
+  }
 
   async function dispatchToolUse(
     req: ToolUseRequest,
@@ -308,10 +332,11 @@ function createDispatcherNode(
         ? { contract: { kind: "capability-contract", budget: effectiveBudget } }
         : {}),
       ...(ctx.signer !== undefined ? { signer: ctx.signer } : {}),
+      receiptMode: receiptPolicy.mode,
       ...(ctx.tracer !== undefined ? { tracer: ctx.tracer } : {}),
       ...(ctx.pipeline !== undefined ? { pipeline: ctx.pipeline } : {}),
     };
-    const childResult = await runAgentInternal(
+    let childResult = await runAgentInternal(
       childIntent,
       ctx.config,
       childNode !== undefined ? { dispatchToolUse: childNode.dispatchToolUse } : {},
@@ -321,58 +346,61 @@ function createDispatcherNode(
     // consumed provider budget (Pitfall 3: no double-counting; the crew
     // aggregator never sees this run again).
     ctx.recordUsage(childSpec.id, childResult.usage);
-    ctx.recordAgentResult?.(childSpec.id, childResult);
 
     if (childResult.kind !== "success") {
+      ctx.recordAgentResult?.(childSpec.id, childResult);
       // (b) Classified failure routing (D-09/D-10).
-      const classified = classifyChildFailure(childSpec.id, childResult);
-      const result = errorResult(classified);
-      if (classified.terminal) {
-        terminalBlock.set(childSpec.id, result.content);
-        if (classified.kind === "crew-budget-exceeded") {
-          shared.exhausted = true;
-        }
-      }
-      return result;
+      return routeChildFailure(childSpec.id, childResult);
     }
 
-    // (d) Receipt minting at the seam (D-02): child completion receipt
-    // chained to the crew root. Best-effort (checkpoint.ts D-07 precedent) —
-    // a mint failure never destroys the child's completed work.
+    // (d) Receipt issuance at the seam: successful child completion receipts
+    // chain to the crew root; required failure replaces the child result.
     const receipts: string[] = [];
     const childArtifacts = extractArtifacts(childResult);
-    if (ctx.signer !== undefined) {
-      try {
+    const completionOutcome = await issueReceiptFrom(
+      async () => {
         const lineageMerkleRoot =
           await computeArtifactLineageMerkleRoot(childArtifacts);
-        const envelope = await createReceipt(
-          {
-            runId: shared.runId,
-            model: { requested: "lattice-crew/agent-completion", observed: null },
-            route: {
-              providerId: "lattice-crew",
-              capabilityId: "lattice-crew/agent-completion",
-              attemptNumber: 1,
-            },
-            ...(ctx.crewRootCid !== undefined
-              ? { parentReceiptCid: ctx.crewRootCid }
-              : {}),
-            usage: childResult.usage,
-            ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
-            contractVerdict: "success",
-            contractHash: null,
-            inputHashes: [],
-            outputHash: null,
-            stepName: `crew-agent-completion:${childSpec.id}`,
+        return {
+          runId: shared.runId,
+          model: { requested: "lattice-crew/agent-completion", observed: null },
+          route: {
+            providerId: "lattice-crew",
+            capabilityId: "lattice-crew/agent-completion",
+            attemptNumber: 1,
           },
-          ctx.signer,
-        );
-        ctx.mintedReceipts(envelope);
-        receipts.push(await receiptCid(envelope));
-      } catch {
-        // Best-effort: the summary simply carries no completion CID.
-      }
+          ...(ctx.crewRootCid !== undefined
+            ? { parentReceiptCid: ctx.crewRootCid }
+            : {}),
+          usage: childResult.usage,
+          ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
+          contractVerdict: "success" as const,
+          contractHash: null,
+          inputHashes: [],
+          outputHash: null,
+          stepName: `crew-agent-completion:${childSpec.id}`,
+        };
+      },
+      receiptPolicy,
+      "post-execution",
+    );
+    emitChildReceiptOutcome(ctx, completionOutcome);
+    if (completionOutcome.status === "issued") {
+      ctx.mintedReceipts(completionOutcome.envelope);
+      receipts.push(await receiptCid(completionOutcome.envelope));
+    } else if (
+      completionOutcome.status === "failed" &&
+      receiptPolicy.mode === "required"
+    ) {
+      childResult = buildChildAuditFailure(
+        completionOutcome.error,
+        childResult,
+      );
+      ctx.recordAgentResult?.(childSpec.id, childResult);
+      return routeChildFailure(childSpec.id, childResult);
     }
+
+    ctx.recordAgentResult?.(childSpec.id, childResult);
 
     // (4) Assemble + validate the summary envelope (children only — the
     // root agent's return is NOT schema-validated; research Open Q2).
@@ -570,6 +598,7 @@ export function classifyChildFailure(
 
 function isTerminalChildFailure(failure: AgentFailure): boolean {
   if (
+    failure.kind === "audit" ||
     failure.kind === "tripwire-violated" ||
     failure.kind === "no-contract-match" ||
     failure.kind === "crew-budget-exceeded"
@@ -583,6 +612,32 @@ function isTerminalChildFailure(failure: AgentFailure): boolean {
     return !STUCK_REASONS.some((stuck) => reason.includes(stuck));
   }
   return false;
+}
+
+function emitChildReceiptOutcome(
+  ctx: CrewDispatchContext,
+  outcome: ReceiptIssuanceOutcome,
+): void {
+  ctx.tracer?.event?.("receipt.issuance", {
+    scope: "child-completion",
+    status: outcome.status,
+    ...(outcome.status === "skipped" ? { reason: outcome.reason } : {}),
+    ...(outcome.status === "failed"
+      ? { code: outcome.error.code, stage: outcome.error.stage }
+      : {}),
+  });
+}
+
+function buildChildAuditFailure(
+  error: AuditError,
+  source: AgentResult,
+): AgentFailure {
+  return Object.freeze({
+    ...error,
+    reason: error.message,
+    usage: Object.freeze({ ...source.usage }),
+    iterations: Object.freeze([...source.iterations]),
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ import {
   type ProviderRunRequest,
   type ProviderRunResponse,
   type ReceiptEnvelope,
+  type ReceiptSigner,
   type Usage,
 } from "../../index.js";
 
@@ -96,6 +97,29 @@ async function makeSigner() {
     { kid: signer.kid, publicKeyJwk, state: "active" },
   ]);
   return { signer, keySet };
+}
+
+function completionFaultSigner(failOn: number, secret: string): {
+  readonly signer: ReceiptSigner;
+  readonly calls: { value: number };
+} {
+  const calls = { value: 0 };
+  return {
+    calls,
+    signer: {
+      kid: "crew-completion-fault",
+      publicKeyJwk: {
+        kty: "OKP",
+        crv: "Ed25519",
+        x: "test",
+      } as JsonWebKey,
+      async sign(): Promise<Uint8Array> {
+        calls.value += 1;
+        if (calls.value === failOn) throw new Error(secret);
+        return new Uint8Array([1, 2, 3]);
+      },
+    },
+  };
 }
 
 describe("runAgentCrew public integration", () => {
@@ -233,6 +257,45 @@ describe("runAgentCrew public integration", () => {
     expect(tasks.filter((task) => task.includes("USER:\nexpensive"))).toHaveLength(1);
     expect(tasks.join("\n")).toContain('"terminal":true');
     expect(tasks.join("\n")).toContain('"kind":"no-contract-match"');
+  });
+
+  it("turns required child completion signing failure into one cached terminal child result", async () => {
+    const researcher = defineAgent({
+      id: "researcher",
+      intent: "Complete once before audit signing.",
+      tools: [],
+      summaryReturnSchema: makeSchema(),
+    });
+    const root = defineAgent({
+      id: "lead",
+      intent: "Dispatch the same child twice and handle its terminal result.",
+      tools: [],
+      childAgents: [researcher],
+      summaryReturnSchema: makeSchema(),
+    });
+    const { provider, tasks } = makeScriptedProvider([
+      '{"tool_calls":[{"id":"r1","name":"researcher","args":{"task":"once"}},{"id":"r2","name":"researcher","args":{"task":"once"}}]}',
+      "child completed",
+      "parent handled audit failure",
+    ]);
+    const secret = "SECRET-CHILD-COMPLETION-KMS";
+    const { signer, calls } = completionFaultSigner(4, secret);
+
+    const result = await createAI({ providers: [provider] }).runAgentCrew({
+      root,
+      hosts: { childHost: createNoopAgentHost() },
+      signer,
+      receiptMode: "required",
+    });
+
+    expect(result.result.kind).toBe("success");
+    expect(tasks.filter((task) => task.includes("USER:\nonce"))).toHaveLength(1);
+    expect(tasks).toHaveLength(3);
+    expect(tasks.at(-1)).toContain('"kind":"audit"');
+    expect(tasks.at(-1)).toContain('"terminal":true');
+    expect(tasks.join("\n")).not.toContain(secret);
+    expect(result.receipts).toHaveLength(2);
+    expect(calls.value).toBe(8);
   });
 
   it("executes two child calls from one parent envelope strictly serially", async () => {

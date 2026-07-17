@@ -3,13 +3,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
-import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+  ProviderRunResponse,
+  Usage,
+} from "../../providers/provider.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../../receipts/sign.js";
-import type { CapabilityReceiptBody } from "../../receipts/types.js";
+import type {
+  CapabilityReceiptBody,
+  ReceiptSigner,
+} from "../../receipts/types.js";
 import { verifyReceipt } from "../../receipts/verify.js";
 import { createAI } from "../../runtime/create-ai.js";
 import { createNoopAgentHost } from "../host.js";
@@ -72,6 +80,33 @@ function makeScriptedProvider(
 
 function decodeReceiptBody(payload: string): CapabilityReceiptBody {
   return JSON.parse(atob(payload)) as CapabilityReceiptBody;
+}
+
+function sequenceSigner(options: {
+  readonly failOn?: readonly number[];
+  readonly secret?: string;
+} = {}): {
+  readonly signer: ReceiptSigner;
+  readonly calls: { value: number };
+} {
+  const calls = { value: 0 };
+  const failOn = new Set(options.failOn ?? []);
+  const signer: ReceiptSigner = {
+    kid: "crew-policy-test-key",
+    publicKeyJwk: {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: "test",
+    } as JsonWebKey,
+    async sign(): Promise<Uint8Array> {
+      calls.value += 1;
+      if (failOn.has(calls.value)) {
+        throw new Error(options.secret ?? "SECRET-CREW-SIGNER-FAILURE");
+      }
+      return new Uint8Array([1, 2, 3]);
+    },
+  };
+  return { signer, calls };
 }
 
 afterEach(() => {
@@ -352,6 +387,183 @@ describe("runAgentCrew — rate-limit wiring and facade", () => {
     if (result.result.kind === "success") {
       expect(result.result.output).toEqual({ answer: "facade parent" });
     }
+  });
+});
+
+describe("runAgentCrew — receipt policy", () => {
+  it("returns a frozen required-missing-signer result before host or provider work", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider, tasks } = makeScriptedProvider(["must not run"], []);
+    const hostCalls = { load: 0, transport: 0 };
+    const childHost = {
+      ...createNoopAgentHost(),
+      storage: {
+        async load() {
+          hostCalls.load += 1;
+          return null;
+        },
+        async save() {
+          hostCalls.load += 1;
+        },
+        async clear() {
+          hostCalls.load += 1;
+        },
+      },
+      transport: {
+        async call(adapter: ProviderAdapter, request: ProviderRunRequest) {
+          hostCalls.transport += 1;
+          return adapter.execute!(request);
+        },
+      },
+    };
+
+    const result = await runAgentCrew(
+      { root, hosts: { childHost } },
+      { providers: [provider], receiptMode: "required" },
+    );
+
+    expect(result.result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signer-missing",
+      stage: "pre-execution",
+      terminal: true,
+    });
+    expect(result).toMatchObject({
+      perAgent: [],
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      totalIterations: 0,
+      receipts: [],
+    });
+    expect(tasks).toHaveLength(0);
+    expect(hostCalls).toEqual({ load: 0, transport: 0 });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.result)).toBe(true);
+    expect(Object.isFrozen(result.receipts)).toBe(true);
+    expect(Object.isFrozen(result.usage)).toBe(true);
+  });
+
+  it("returns a safe audit failure when required crew-root signing fails", async () => {
+    const secret = "SECRET-CREW-ROOT-KMS";
+    const root = makeRoot([]);
+    const { provider, tasks } = makeScriptedProvider(["must not run"], []);
+    const { signer, calls } = sequenceSigner({ failOn: [1], secret });
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "pre-execution",
+    });
+    expect(calls.value).toBe(1);
+    expect(tasks).toHaveLength(0);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("lets local mode and signer override runtime config", async () => {
+    const root = makeRoot([]);
+    const { provider } = makeScriptedProvider(["done", "done"], []);
+    const configSigner = sequenceSigner({ failOn: [1] });
+    const localSigner = sequenceSigner();
+
+    const offResult = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        receiptMode: "off",
+      },
+      {
+        providers: [provider],
+        receiptMode: "required",
+        signer: configSigner.signer,
+      },
+    );
+    expect(offResult.result.kind).toBe("success");
+    expect(offResult.receipts).toHaveLength(0);
+    expect(configSigner.calls.value).toBe(0);
+
+    const localResult = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: localSigner.signer,
+      },
+      {
+        providers: [provider],
+        receiptMode: "required",
+        signer: configSigner.signer,
+      },
+    );
+    expect(localResult.result.kind).toBe("success");
+    expect(localResult.receipts).toHaveLength(2);
+    expect(localSigner.calls.value).toBe(4);
+    expect(configSigner.calls.value).toBe(0);
+  });
+
+  it("replaces the parent result when required completion signing fails", async () => {
+    const secret = "SECRET-PARENT-COMPLETION-KMS";
+    const root = makeRoot([]);
+    const { provider, tasks } = makeScriptedProvider(
+      ["parent completed"],
+      [{ promptTokens: 3, completionTokens: 2, costUsd: 0.01 }],
+    );
+    const { signer, calls } = sequenceSigner({ failOn: [4], secret });
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      usage: { promptTokens: 3, completionTokens: 2, costUsd: 0.01 },
+    });
+    expect(result.result.iterations).toHaveLength(1);
+    expect(result.receipts).toHaveLength(1);
+    expect(tasks).toHaveLength(1);
+    expect(calls.value).toBe(4);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("keeps best-effort root and terminal signing failures non-terminal", async () => {
+    const secret = "SECRET-BEST-EFFORT-CREW-KMS";
+    const root = makeRoot([]);
+    const { provider, tasks } = makeScriptedProvider(["done"], []);
+    const { signer, calls } = sequenceSigner({
+      failOn: [1, 2, 3],
+      secret,
+    });
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer,
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receipts).toHaveLength(0);
+    expect(tasks).toHaveLength(1);
+    expect(calls.value).toBe(3);
+    expect(JSON.stringify(result)).not.toContain(secret);
   });
 });
 
