@@ -4,6 +4,7 @@ import type { CreateReceiptInput } from "./receipt.js";
 import type { ReceiptSigner } from "./types.js";
 import {
   issueReceipt,
+  issueReceiptFrom,
   preflightReceiptPolicy,
   resolveReceiptPolicy,
   type ReceiptIssuanceMode,
@@ -127,5 +128,24 @@ describe("receipt issuance policy", () => {
         "application/vnd.lattice.receipt+json",
       );
     }
+  });
+
+  it("bounds receipt-input construction failures before they reach callers", async () => {
+    const outcome = await issueReceiptFrom(
+      () => {
+        throw new Error(SECRET);
+      },
+      resolveReceiptPolicy({ mode: "required", signer: signer() }),
+    );
+
+    expect(outcome).toMatchObject({
+      status: "failed",
+      error: {
+        kind: "audit",
+        code: "receipt-signing-failed",
+        stage: "post-execution",
+      },
+    });
+    expect(JSON.stringify(outcome)).not.toContain(SECRET);
   });
 });

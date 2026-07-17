@@ -22,6 +22,7 @@ export type RunEventKind =
   | "fallback.activated"
   | "validation.complete"
   | "validation.failed"
+  | "receipt.issuance"
   | "artifact.created"
   | "run.complete"
   | "run.failed"

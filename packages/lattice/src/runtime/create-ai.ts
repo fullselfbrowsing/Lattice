@@ -10,6 +10,7 @@ import { toContextProjectionPlan } from "../context/materialize.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMap } from "../outputs/validate.js";
 import {
+  createExecutionPlanStub,
   markStage,
   withPlanAttemptEvidence,
   withPlanStatus,
@@ -32,15 +33,19 @@ import type {
   Usage,
 } from "../providers/provider.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
-import { createReceipt } from "../receipts/receipt.js";
+import {
+  issueReceiptFrom,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+  type EffectiveReceiptPolicy,
+} from "../receipts/policy.js";
 import type {
   ContractVerdict,
-  ReceiptEnvelope,
   ReceiptModel,
   ReceiptRoute,
 } from "../receipts/types.js";
 import type { RunResult } from "../results/result.js";
-import type { PersistenceError } from "../results/errors.js";
+import type { AuditErrorStage, PersistenceError } from "../results/errors.js";
 import {
   validateSessionAppendResult,
   type AppendSessionTurnInput,
@@ -194,6 +199,34 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
   const runId = createRunId();
   const events: RunEvent[] = [];
+  const receiptPolicy = receiptPolicyForConfig(normalized);
+  const receiptPreflight = preflightReceiptPolicy(receiptPolicy);
+  if (receiptPreflight?.status === "failed") {
+    const plan = createExecutionPlanStub([receiptPreflight.error.message]);
+    await emitEvent(normalized, events, createRunEvent("run.start", { runId }));
+    await emitEvent(normalized, events, createRunEvent("receipt.issuance", {
+      runId,
+      planId: plan.id,
+      metadata: {
+        status: "failed",
+        code: receiptPreflight.error.code,
+        stage: receiptPreflight.error.stage,
+      },
+    }));
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: "audit", code: receiptPreflight.error.code },
+    }));
+
+    return {
+      ok: false,
+      error: receiptPreflight.error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+    };
+  }
   await emitEvent(normalized, events, createRunEvent("run.start", { runId }));
 
   const built = await buildPlan(normalized, intent, runId, events);
@@ -201,7 +234,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
   if (!built.ok) {
     const selectedFailureRoute = plan.route.selected;
-    const receipt = await maybeIssueReceipt(normalized, {
+    const receiptInput: MaybeIssueReceiptInput = {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: [],
@@ -216,21 +249,20 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         attemptNumber: 0,
       },
       usage: ZERO_USAGE,
-    });
+    };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
       planId: plan.id,
       metadata: { reason: built.error.kind },
     }));
 
-    return {
+    return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
       ok: false,
       error: built.error,
       usage: { ...ZERO_USAGE },
       plan,
       events,
-      ...(receipt !== undefined ? { receipt } : {}),
-    };
+    });
   }
 
   const selected = plan.route.selected;
@@ -244,7 +276,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         r.code === "contract-privacy-mismatch",
     );
     const isContractFailure = contractReasons.length > 0;
-    const receipt = await maybeIssueReceipt(normalized, {
+    const receiptInput: MaybeIssueReceiptInput = {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: [],
@@ -260,7 +292,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       ...(isContractFailure
         ? { noRouteReasons: plan.route.noRouteReasons }
         : {}),
-    });
+    };
     const failure: RunResult<TOutputs> = isContractFailure
       ? {
           ok: false as const,
@@ -272,7 +304,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
         }
       : {
           ok: false as const,
@@ -284,7 +315,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
         };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
@@ -292,7 +322,13 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       metadata: { reason: isContractFailure ? "no-contract-match" : "no-route" },
     }));
 
-    return failure;
+    return finalizeRunResult(
+      normalized,
+      events,
+      receiptInput,
+      "pre-execution",
+      failure,
+    );
   }
 
   const materialized = built.materialized;
@@ -314,13 +350,26 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       metadata: { reason: error.kind },
     }));
 
-    return {
+    return finalizeRunResult(normalized, events, {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: [],
+      inputHashes: [],
+      contractVerdict: "execution-failed",
+      model: { requested: selected.modelId, observed: null },
+      route: {
+        providerId: selected.providerId,
+        capabilityId: selected.modelId,
+        attemptNumber: 0,
+      },
+      usage: ZERO_USAGE,
+    }, "pre-execution", {
       ok: false,
       error,
       usage: { ...ZERO_USAGE },
       plan,
       events,
-    };
+    });
   }
 
   const routes = [
@@ -455,7 +504,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         modelId: route.modelId,
         metadata: { reason: preparedRoute.error.kind },
       }));
-      const receipt = await maybeIssueReceipt(normalized, {
+      const receiptInput: MaybeIssueReceiptInput = {
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: [],
@@ -468,16 +517,15 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           attemptNumber: attempts.length,
         },
         usage: ZERO_USAGE,
-      });
+      };
 
-      return {
+      return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
         ok: false,
         error: preparedRoute.error,
         usage: { ...ZERO_USAGE },
         plan,
         events,
-        ...(receipt !== undefined ? { receipt } : {}),
-      };
+      });
     }
 
     const attemptMaterialized = preparedRoute.materialized;
@@ -644,7 +692,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           },
         }));
         if (index === routes.length - 1) {
-          const receipt = await maybeIssueReceipt(normalized, {
+          const receiptInput: MaybeIssueReceiptInput = {
             runId,
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
@@ -663,15 +711,14 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               attemptNumber: attempts.length,
             },
             usage: normalizeAdapterUsage(response),
-          });
-          return {
+          };
+          return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
             ...validation,
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
-          };
+          });
         }
         lastError = new Error(validation.error.message);
         continue;
@@ -726,7 +773,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               },
             }),
           );
-          const receipt = await maybeIssueReceipt(normalized, {
+          const receiptInput: MaybeIssueReceiptInput = {
             runId,
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
@@ -746,10 +793,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             },
             usage: normalizeAdapterUsage(response),
             tripwireEvidence: tripwireResult.evidence,
-          });
+          };
           // TERMINAL by design — isTerminal(error) === true; fallback chain
           // bypassed via early return before the `for` loop advances.
-          return {
+          return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
             ok: false,
             error: {
               kind: "tripwire-violated" as const,
@@ -762,8 +809,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
-          };
+          });
         }
       }
 
@@ -922,20 +968,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         modelId: route.modelId,
         metadata: projectionMetadata,
       }));
-      await emitEvent(normalized, events, createRunEvent("run.complete", {
-        runId,
-        planId: completedPlan.id,
-        providerId: route.providerId,
-        modelId: route.modelId,
-        metadata: {
-          ...projectionMetadata,
-          persistenceStatus:
-            completedPlan.stages.find((stage) => stage.kind === "persistence")
-              ?.status ?? "skipped",
-        },
-      }));
-
-      const receipt = await maybeIssueReceipt(normalized, {
+      const receiptInput: MaybeIssueReceiptInput = {
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: providerArtifacts,
@@ -954,17 +987,44 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         },
         usage: normalizeAdapterUsage(response),
         outputs: JSON.stringify(successValidation.outputs),
-      });
-
-      return {
-        ...validation,
-        artifacts: artifactRefs,
-        usage: normalizeAdapterUsage(response),
-        plan: completedPlan,
-        events,
-        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-        ...(receipt !== undefined ? { receipt } : {}),
       };
+
+      const finalized = await finalizeRunResult(
+        normalized,
+        events,
+        receiptInput,
+        "post-execution",
+        {
+          ...validation,
+          artifacts: artifactRefs,
+          usage: normalizeAdapterUsage(response),
+          plan: completedPlan,
+          events,
+          ...(response.gateway !== undefined
+            ? { gateway: response.gateway }
+            : {}),
+        },
+      );
+      await emitEvent(
+        normalized,
+        events,
+        createRunEvent(finalized.ok ? "run.complete" : "run.failed", {
+          runId,
+          planId: completedPlan.id,
+          providerId: route.providerId,
+          modelId: route.modelId,
+          metadata: finalized.ok
+            ? {
+                ...projectionMetadata,
+                persistenceStatus:
+                  completedPlan.stages.find(
+                    (stage) => stage.kind === "persistence",
+                  )?.status ?? "skipped",
+              }
+            : { reason: "audit" },
+        }),
+      );
+      return finalized;
     } catch (error) {
       const completedAt = new Date().toISOString();
       const message =
@@ -995,7 +1055,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   }
 
   if (!anyExecutableAdapter) {
-    const receipt = await maybeIssueReceipt(normalized, {
+    const receiptInput: MaybeIssueReceiptInput = {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: [],
@@ -1008,8 +1068,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         attemptNumber: 0,
       },
       usage: ZERO_USAGE,
-    });
-    return {
+    };
+    return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
       ok: false,
       error: {
         kind: "execution_unavailable",
@@ -1018,8 +1078,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       usage: { ...ZERO_USAGE },
       plan,
       events,
-      ...(receipt !== undefined ? { receipt } : {}),
-    };
+    });
   }
 
   const failedPlan = withPlanStatus(plan, "failed", {
@@ -1043,7 +1102,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     },
   }));
 
-  const receipt = await maybeIssueReceipt(normalized, {
+  const receiptInput: MaybeIssueReceiptInput = {
     runId,
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
     artifacts: lastExecutedPreparation?.materialized.artifacts ?? [],
@@ -1056,9 +1115,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       attemptNumber: attempts.length,
     },
     usage: UNMEASURED_USAGE,
-  });
+  };
 
-  return {
+  return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
     ok: false,
     error: {
       kind: "provider_execution",
@@ -1069,8 +1128,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
     events,
-    ...(receipt !== undefined ? { receipt } : {}),
-  };
+  });
 }
 
 async function buildPlan<const TOutputs extends OutputContractMap>(
@@ -1428,7 +1486,7 @@ async function postProviderPersistenceFailure<
       ...projectionEventMetadata(input.preparedRoute),
     },
   }));
-  const receipt = await maybeIssueReceipt(normalized, {
+  const receiptInput: MaybeIssueReceiptInput = {
     runId: input.runId,
     ...(input.intent.contract !== undefined
       ? { contract: input.intent.contract }
@@ -1448,21 +1506,26 @@ async function postProviderPersistenceFailure<
     },
     usage: normalizeAdapterUsage(input.response),
     outputs: JSON.stringify(input.partialOutputs),
-  });
-
-  return {
-    ok: false,
-    error: input.error,
-    usage: normalizeAdapterUsage(input.response),
-    partialOutputs: input.partialOutputs,
-    artifacts: input.artifactRefs,
-    plan: input.plan,
-    events: input.events,
-    ...(input.response.gateway !== undefined
-      ? { gateway: input.response.gateway }
-      : {}),
-    ...(receipt !== undefined ? { receipt } : {}),
   };
+
+  return finalizeRunResult(
+    normalized,
+    input.events,
+    receiptInput,
+    "post-execution",
+    {
+      ok: false,
+      error: input.error,
+      usage: normalizeAdapterUsage(input.response),
+      partialOutputs: input.partialOutputs,
+      artifacts: input.artifactRefs,
+      plan: input.plan,
+      events: input.events,
+      ...(input.response.gateway !== undefined
+        ? { gateway: input.response.gateway }
+        : {}),
+    },
+  );
 }
 
 function findExecutableAdapter(
@@ -1706,30 +1769,36 @@ function resolveReceiptModelClass(
     ?? getCapabilityProfile(`${route.providerId}:${model.requested}`)?.trainingClass;
 }
 
-/**
- * Phase 9 — issue a signed receipt at a terminal branch when a signer is
- * configured. Signer failures degrade gracefully to `undefined` so a faulty
- * signer never crashes `ai.run`.
- */
-async function maybeIssueReceipt(
+function receiptPolicyForConfig(
   normalized: NormalizedLatticeConfig,
+): EffectiveReceiptPolicy {
+  return resolveReceiptPolicy({
+    ...(normalized.receiptMode !== undefined
+      ? { mode: normalized.receiptMode }
+      : {}),
+    ...(normalized.signer !== undefined ? { signer: normalized.signer } : {}),
+  });
+}
+
+async function maybeIssueReceipt(
+  policy: EffectiveReceiptPolicy,
   input: MaybeIssueReceiptInput,
-): Promise<ReceiptEnvelope | undefined> {
-  if (normalized.signer === undefined) return undefined;
-  try {
-    const inputHashes =
-      input.inputHashes ?? await hashInputArtifacts(input.artifacts);
-    const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
-      input.lineageArtifacts ?? input.artifacts,
-    );
-    const outputHash =
-      input.outputs === undefined
-        ? null
-        : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
-    const contractHash = await sha256HexOfCanonicalContract(input.contract);
-    const modelClass = resolveReceiptModelClass(input.route, input.model);
-    return await createReceipt(
-      {
+  stage: AuditErrorStage,
+) {
+  return issueReceiptFrom(
+    async () => {
+      const inputHashes =
+        input.inputHashes ?? await hashInputArtifacts(input.artifacts);
+      const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
+        input.lineageArtifacts ?? input.artifacts,
+      );
+      const outputHash =
+        input.outputs === undefined
+          ? null
+          : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
+      const contractHash = await sha256HexOfCanonicalContract(input.contract);
+      const modelClass = resolveReceiptModelClass(input.route, input.model);
+      return {
         runId: input.runId,
         model: input.model,
         route: input.route,
@@ -1746,12 +1815,68 @@ async function maybeIssueReceipt(
         ...(input.tripwireEvidence !== undefined
           ? { tripwireEvidence: input.tripwireEvidence }
           : {}),
-      },
-      normalized.signer,
-    );
-  } catch {
-    // Receipt emission is best-effort. A signer failure must NOT crash
-    // ai.run — the run result already encodes the verdict.
-    return undefined;
+      };
+    },
+    policy,
+    stage,
+  );
+}
+
+async function finalizeRunResult<const TOutputs extends OutputContractMap>(
+  normalized: NormalizedLatticeConfig,
+  events: RunEvent[],
+  receiptInput: MaybeIssueReceiptInput,
+  stage: AuditErrorStage,
+  result: RunResult<TOutputs>,
+): Promise<RunResult<TOutputs>> {
+  const policy = receiptPolicyForConfig(normalized);
+  const outcome = await maybeIssueReceipt(policy, receiptInput, stage);
+
+  if (outcome.status === "issued") {
+    return { ...result, receipt: outcome.envelope };
   }
+
+  if (outcome.status !== "failed") {
+    return result;
+  }
+
+  await emitEvent(normalized, events, createRunEvent("receipt.issuance", {
+    runId: receiptInput.runId,
+    planId: result.plan.id,
+    metadata: {
+      status: "failed",
+      code: outcome.error.code,
+      stage: outcome.error.stage,
+    },
+  }));
+
+  if (policy.mode !== "required") {
+    return result;
+  }
+
+  if (result.ok) {
+    return {
+      ok: false,
+      error: outcome.error,
+      usage: result.usage,
+      partialOutputs: result.outputs as Record<string, unknown>,
+      artifacts: result.artifacts,
+      plan: result.plan,
+      events,
+      ...(result.gateway !== undefined ? { gateway: result.gateway } : {}),
+    };
+  }
+
+  return {
+    ok: false,
+    error: outcome.error,
+    usage: result.usage,
+    ...(result.partialOutputs !== undefined
+      ? { partialOutputs: result.partialOutputs }
+      : {}),
+    ...(result.artifacts !== undefined ? { artifacts: result.artifacts } : {}),
+    plan: result.plan,
+    events,
+    ...(result.gateway !== undefined ? { gateway: result.gateway } : {}),
+  };
 }

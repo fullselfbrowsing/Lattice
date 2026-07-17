@@ -65,6 +65,14 @@ export async function issueReceipt(
   policy: EffectiveReceiptPolicy,
   stage: AuditErrorStage = "post-execution",
 ): Promise<ReceiptIssuanceOutcome> {
+  return issueReceiptFrom(() => input, policy, stage);
+}
+
+export async function issueReceiptFrom(
+  build: () => CreateReceiptInput | Promise<CreateReceiptInput>,
+  policy: EffectiveReceiptPolicy,
+  stage: AuditErrorStage = "post-execution",
+): Promise<ReceiptIssuanceOutcome> {
   const preflight = preflightReceiptPolicy(policy);
   if (preflight !== undefined) {
     return preflight;
@@ -73,7 +81,7 @@ export async function issueReceipt(
   try {
     return {
       status: "issued",
-      envelope: await createReceipt(input, policy.signer!),
+      envelope: await createReceipt(await build(), policy.signer!),
     };
   } catch {
     return {

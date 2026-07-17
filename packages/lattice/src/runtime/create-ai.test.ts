@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import canonicalize from "canonicalize";
 
@@ -39,6 +39,17 @@ function pricedFakeProvider(): ReturnType<typeof createFakeProvider> {
       },
     ],
   });
+}
+
+function rejectingReceiptSigner(secret = "SECRET_SIGNER_CAUSE") {
+  const sign = vi.fn(async (): Promise<Uint8Array> => {
+    throw new Error(secret);
+  });
+  return {
+    kid: "rejecting-receipt-key",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "stub" },
+    sign,
+  } satisfies ReceiptSigner;
 }
 
 describe("Phase 7 contract + cost integration", () => {
@@ -791,6 +802,294 @@ describe("Phase 43 streaming runtime", () => {
     if (verifyResult.ok) {
       expect(verifyResult.body.usage.promptTokens).toBeGreaterThan(0);
       expect(verifyResult.body.usage.completionTokens).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("receipt issuance modes across runtime terminals", () => {
+  it("fails required mode before transforms or provider execution when signer is missing", async () => {
+    const execute = vi.fn(async () => ({ rawOutputs: { text: "unused" } }));
+    const transform = vi.fn((input: { readonly artifacts: readonly unknown[] }) =>
+      input.artifacts as never,
+    );
+    const provider: ProviderAdapter = {
+      id: "required-preflight",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("required-preflight"),
+          modelId: "required-preflight:model",
+        },
+      ],
+      execute,
+    };
+
+    const result = await createAI({
+      providers: [provider],
+      receiptMode: "required",
+    }).run({
+      task: "must preflight",
+      outputs: { text: "text" },
+      overrides: { transforms: [{ name: "must-not-run", transform }] },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(execute).not.toHaveBeenCalled();
+    expect(transform).not.toHaveBeenCalled();
+    expect(result.plan.kind).toBe("plan-stub");
+    expect(result.usage).toEqual({
+      promptTokens: 0,
+      completionTokens: 0,
+      costUsd: 0,
+    });
+    if (!result.ok) {
+      expect(result.error).toMatchObject({
+        kind: "audit",
+        code: "receipt-signer-missing",
+        stage: "pre-execution",
+        terminal: true,
+      });
+    }
+  });
+
+  it("lets explicit off suppress a configured signer", async () => {
+    const signer = rejectingReceiptSigner();
+    const result = await createAI({
+      providers: [createFakeProvider()],
+      signer,
+      receiptMode: "off",
+    }).run({ task: "off", outputs: { text: "text" } });
+
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeUndefined();
+    expect(signer.sign).not.toHaveBeenCalled();
+  });
+
+  it("preserves best-effort success and emits only bounded signing diagnostics", async () => {
+    const signer = rejectingReceiptSigner();
+    const result = await createAI({
+      providers: [createFakeProvider()],
+      signer,
+    }).run({ task: "best effort", outputs: { text: "text" } });
+
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeUndefined();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    expect(result.events?.find((event) => event.kind === "receipt.issuance"))
+      .toMatchObject({
+        metadata: {
+          status: "failed",
+          code: "receipt-signing-failed",
+          stage: "post-execution",
+        },
+      });
+    expect(JSON.stringify(result)).not.toContain("SECRET_SIGNER_CAUSE");
+  });
+
+  it("turns required sync success into a post-execution audit failure with evidence", async () => {
+    const signer = rejectingReceiptSigner();
+    const execute = vi.fn(async () => ({
+      rawOutputs: { text: "completed output" },
+      normalizedUsage: { promptTokens: 8, completionTokens: 3, costUsd: 0.02 },
+    }));
+    const provider: ProviderAdapter = {
+      id: "required-sync",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("required-sync"),
+          modelId: "required-sync:model",
+        },
+      ],
+      execute,
+    };
+    const result = await createAI({
+      providers: [provider],
+      signer,
+      receiptMode: "required",
+    }).run({ task: "required sync", outputs: { text: "text" } });
+
+    expect(result.ok).toBe(false);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error).toMatchObject({
+        kind: "audit",
+        code: "receipt-signing-failed",
+        stage: "post-execution",
+      });
+      expect(result.partialOutputs).toEqual({ text: "completed output" });
+      expect(result.usage).toEqual({
+        promptTokens: 8,
+        completionTokens: 3,
+        costUsd: 0.02,
+      });
+    }
+    expect(result.events?.some((event) => event.kind === "run.complete")).toBe(false);
+    expect(result.events?.some((event) => event.kind === "run.failed")).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("SECRET_SIGNER_CAUSE");
+  });
+
+  it("signs once after fallback success and never repeats provider work", async () => {
+    const signer = rejectingReceiptSigner();
+    const primaryExecute = vi.fn(async () => {
+      throw new Error("primary unavailable");
+    });
+    const fallbackExecute = vi.fn(async () => ({
+      rawOutputs: { text: "fallback output" },
+      normalizedUsage: { promptTokens: 5, completionTokens: 2, costUsd: 0.01 },
+    }));
+    const provider = (
+      id: string,
+      execute: NonNullable<ProviderAdapter["execute"]>,
+    ): ProviderAdapter => ({
+      id,
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider(id),
+          modelId: `${id}:model`,
+        },
+      ],
+      execute,
+    });
+    const result = await createAI({
+      providers: [
+        provider("required-primary", primaryExecute),
+        provider("required-fallback", fallbackExecute),
+      ],
+      signer,
+      receiptMode: "required",
+    }).run({ task: "fallback", outputs: { text: "text" } });
+
+    expect(result.ok).toBe(false);
+    expect(primaryExecute).toHaveBeenCalledOnce();
+    expect(fallbackExecute).toHaveBeenCalledOnce();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error.kind).toBe("audit");
+      expect(result.partialOutputs).toEqual({ text: "fallback output" });
+    }
+  });
+
+  it("preserves terminal tripwire usage without activating fallback", async () => {
+    inv.__resetCounterForTests();
+    const signer = rejectingReceiptSigner();
+    const primaryExecute = vi.fn(async () => ({
+      rawOutputs: { text: "blocked" },
+      normalizedUsage: { promptTokens: 4, completionTokens: 1, costUsd: 0.004 },
+    }));
+    const fallbackExecute = vi.fn(async () => ({ rawOutputs: { text: "allowed" } }));
+    const provider = (
+      id: string,
+      execute: NonNullable<ProviderAdapter["execute"]>,
+    ): ProviderAdapter => ({
+      id,
+      kind: "provider-adapter",
+      capabilities: [
+        { ...defaultCapabilityForProvider(id), modelId: `${id}:model` },
+      ],
+      execute,
+    });
+    const result = await createAI({
+      providers: [
+        provider("tripwire-primary", primaryExecute),
+        provider("tripwire-fallback", fallbackExecute),
+      ],
+      signer,
+      receiptMode: "required",
+    }).run({
+      task: "tripwire",
+      outputs: { text: "text" },
+      contract: contract({ invariants: [inv.fieldFromTable("text", ["allowed"])] }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(primaryExecute).toHaveBeenCalledOnce();
+    expect(fallbackExecute).not.toHaveBeenCalled();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error.kind).toBe("audit");
+      expect(result.usage).toEqual({
+        promptTokens: 4,
+        completionTokens: 1,
+        costUsd: 0.004,
+      });
+    }
+  });
+
+  it("finalizes a validation failure without repeating provider work", async () => {
+    const signer = rejectingReceiptSigner();
+    const execute = vi.fn(async () => ({
+      rawOutputs: { text: 42 },
+      normalizedUsage: { promptTokens: 3, completionTokens: 1, costUsd: 0.003 },
+    }));
+    const provider: ProviderAdapter = {
+      id: "required-validation",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("required-validation"),
+          modelId: "required-validation:model",
+        },
+      ],
+      execute,
+    };
+    const result = await createAI({
+      providers: [provider],
+      signer,
+      receiptMode: "required",
+    }).run({ task: "validation", outputs: { text: "text" } });
+
+    expect(result.ok).toBe(false);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error).toMatchObject({
+        kind: "audit",
+        stage: "post-execution",
+      });
+      expect(result.usage).toEqual({
+        promptTokens: 3,
+        completionTokens: 1,
+        costUsd: 0.003,
+      });
+    }
+  });
+
+  it("finalizes assembled streaming output once under required mode", async () => {
+    const signer = rejectingReceiptSigner();
+    const executeStream = vi.fn(async function* (): ProviderStream {
+      yield { kind: "text-delta" as const, output: "text", text: "streamed" };
+    });
+    const provider: ProviderAdapter = {
+      id: "required-stream",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("required-stream"),
+          modelId: "required-stream:model",
+          streaming: true,
+        },
+      ],
+      executeStream,
+    };
+    const result = await createAI({
+      providers: [provider],
+      signer,
+      receiptMode: "required",
+    }).run({
+      task: "required stream",
+      outputs: { text: "text" },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(executeStream).toHaveBeenCalledOnce();
+    expect(signer.sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error.kind).toBe("audit");
+      expect(result.partialOutputs).toEqual({ text: "streamed" });
     }
   });
 });

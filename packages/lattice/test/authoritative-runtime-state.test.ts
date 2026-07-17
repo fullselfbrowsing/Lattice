@@ -20,7 +20,10 @@ import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../src/receipts/sign.js";
-import type { CapabilityReceiptBody } from "../src/receipts/types.js";
+import type {
+  CapabilityReceiptBody,
+  ReceiptSigner,
+} from "../src/receipts/types.js";
 import { fc } from "../src/test-support/fast-check.js";
 
 describe("authoritative runtime state", () => {
@@ -545,6 +548,70 @@ describe("authoritative runtime state", () => {
 });
 
 describe("provider output lifecycle", () => {
+  it("preserves persistence evidence when required receipt signing fails", async () => {
+    const base = createMemoryArtifactStore({ id: "store:required-audit" });
+    const storage = overridePut(base, async (input) => {
+      if (input.lineage?.transform.kind === "model-output") {
+        throw new Error("SECRET_PERSISTENCE_CAUSE");
+      }
+      return base.put(input);
+    });
+    const sign = vi.fn(async (): Promise<Uint8Array> => {
+      throw new Error("SECRET_SIGNER_CAUSE");
+    });
+    const signer = {
+      kid: "required-audit-key",
+      publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "stub" },
+      sign,
+    } satisfies ReceiptSigner;
+    let providerCalls = 0;
+
+    const result = await createAI({
+      storage,
+      signer,
+      receiptMode: "required",
+      providers: [
+        outputProvider("required-audit-provider", async () => {
+          providerCalls += 1;
+          return {
+            rawOutputs: { answer: "preserved output" },
+            artifactRefs: [
+              artifact.text("PERSISTENCE_OUTPUT", {
+                id: "artifact:required-audit",
+              }),
+            ],
+            normalizedUsage: {
+              promptTokens: 6,
+              completionTokens: 2,
+              costUsd: 0.03,
+            },
+          };
+        }),
+      ],
+    }).run({ task: "required audit persistence", outputs: { answer: "text" } });
+
+    expect(result.ok).toBe(false);
+    expect(providerCalls).toBe(1);
+    expect(sign).toHaveBeenCalledOnce();
+    if (!result.ok) {
+      expect(result.error).toMatchObject({
+        kind: "audit",
+        code: "receipt-signing-failed",
+        stage: "post-execution",
+      });
+      expect(result.partialOutputs).toEqual({ answer: "preserved output" });
+      expect(result.artifacts).toEqual([]);
+      expect(result.usage).toEqual({
+        promptTokens: 6,
+        completionTokens: 2,
+        costUsd: 0.03,
+      });
+      expect(result.plan.kind).toBe("execution-plan");
+    }
+    expect(JSON.stringify(result)).not.toContain("SECRET_PERSISTENCE_CAUSE");
+    expect(JSON.stringify(result)).not.toContain("SECRET_SIGNER_CAUSE");
+  });
+
   for (const failureIndex of [0, 1]) {
     it(`returns partial evidence without fallback when output write ${failureIndex + 1} fails`, async () => {
       const base = createMemoryArtifactStore({ id: `store:failure:${failureIndex}` });
