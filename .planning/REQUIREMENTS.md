@@ -61,7 +61,7 @@
 - [x] **AGREC-01**: Each agent iteration record exposes the receipt envelope that attests that iteration when one is issued.
 - [x] **AGREC-02**: Terminal agent success and failure results expose their terminal receipt when one is issued.
 - [x] **AGREC-03**: Resumed agent execution uses stable iteration identity and does not duplicate previously issued receipts.
-- [ ] **AGREC-04**: Crew receipt arrays and CIDs reference the same envelopes in documented order without duplicate minting.
+- [x] **AGREC-04**: Crew receipt arrays and CIDs reference the same envelopes in documented order without duplicate minting.
 
 ### Operational Closure
 
@@ -145,7 +145,7 @@ Roadmap creation maps each requirement to exactly one phase.
 | AGREC-01 | Phase 61 | Complete |
 | AGREC-02 | Phase 61 | Complete |
 | AGREC-03 | Phase 61 | Complete |
-| AGREC-04 | Phase 61 | Pending |
+| AGREC-04 | Phase 61 | Complete |
 | OPSVAL-01 | Phase 62 | Pending |
 | OPSVAL-02 | Phase 62 | Pending |
 | OPSVAL-03 | Phase 62 | Pending |

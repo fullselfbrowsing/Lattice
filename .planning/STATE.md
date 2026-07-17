@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T05:40:48.829Z"
+last_updated: "2026-07-17T05:54:54.030Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 67
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 61 (Agent Receipt Closure) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-17
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Recent Milestone Snapshot
 
@@ -105,6 +105,8 @@ Recent decisions affecting v1.6:
 - [Phase 61]: Terminal finalization attaches the issued envelope before successful host state is cleared. — The returned result and durable boundary must expose the exact final evidence before completed state is discarded.
 - [Phase 61]: New agent-snapshot/v1 writes persist both executionId and the complete available iteration ledger. — A paired identity and ledger lets resume append without reminting while preserving historical v1 literals.
 - [Phase 61]: Invalid present snapshots remain stored and return bounded recovery failure without signing or transport. — Clearing invalid evidence would allow a later invocation to silently restart and duplicate completed work.
+- [Phase 61]: Agent runtime terminal envelopes are the only parent and child crew completion evidence. — One issuer preserves exact public identity and removes replacement signatures.
+- [Phase 61]: Crew CIDs are indexed at collection under the known agent ID. — Direct ownership avoids decoding signed payloads and guarantees each CID hashes the exposed envelope.
 
 ### Pending Todos
 
@@ -163,3 +165,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 60 P06 | 18min | 1 tasks | 10 files |
 | Phase 61 P01 | 7min | 2 tasks | 4 files |
 | Phase 61 P02 | 8min | 2 tasks | 5 files |
+| Phase 61 P03 | 5min | 2 tasks | 6 files |
