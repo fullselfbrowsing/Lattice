@@ -4,6 +4,10 @@ import { artifact } from "../src/artifacts/artifact.js";
 import type { ArtifactRef } from "../src/artifacts/artifact.js";
 import type { ContextSummarizer } from "../src/context/context-pack.js";
 import type { ProviderAdapter, ProviderRunRequest } from "../src/providers/provider.js";
+import {
+  createReplayEnvelope,
+  redactReplayEnvelope,
+} from "../src/replay/replay.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
 import { createAI } from "../src/runtime/create-ai.js";
 import type { SessionRecord, SessionStore } from "../src/sessions/session.js";
@@ -451,6 +455,93 @@ describe("provider output lifecycle", () => {
       expect(JSON.stringify(result)).not.toContain("SECRET_OUTPUT_STORE_CAUSE");
     });
   }
+
+  it("redacts real fallback and post-provider persistence evidence recursively", async () => {
+    const base = createMemoryArtifactStore({ id: "store:replay-redaction" });
+    const storage = overridePut(base, async (input) => {
+      if (input.lineage?.transform.kind === "model-output") {
+        throw new Error("SECRET_OUTPUT_STORE_CAUSE");
+      }
+
+      const stored = await base.put(input);
+      return {
+        ...stored,
+        metadata: {
+          ...stored.metadata,
+          harmlessLooking: "SECRET_ARTIFACT_METADATA",
+          signedUrl: "https://secret.example.test/artifact?sig=SECRET_SIGNATURE",
+        },
+        storage: {
+          ...requiredStorage(stored),
+          key: "SECRET_STORAGE_KEY",
+        },
+      };
+    });
+    const result = await createAI({
+      storage,
+      providers: [
+        outputProvider("replay-primary", async () => {
+          throw new Error("SECRET_PRIMARY_PROVIDER_CAUSE");
+        }),
+        outputProvider("replay-fallback", async () => ({
+          rawOutputs: { answer: "validated fallback output" },
+          artifactRefs: [
+            artifact.text("SECRET_OUTPUT_VALUE", {
+              id: "artifact:replay-output",
+            }),
+          ],
+        })),
+      ],
+    }).run({
+      task: "SECRET_TASK_VALUE",
+      artifacts: [
+        artifact.text("SECRET_INPUT_VALUE", {
+          id: "artifact:replay-input",
+        }),
+      ],
+      outputs: { answer: "text" },
+      policy: {
+        tenantId: "SECRET_TENANT_ID",
+        retention: "durable",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.plan.kind !== "execution-plan") {
+      throw new Error("Expected a fallback output persistence failure.");
+    }
+    expect(result.plan.attempts).toHaveLength(2);
+    const redacted = redactReplayEnvelope(createReplayEnvelope(result));
+    const serialized = JSON.stringify(redacted);
+
+    for (const sentinel of [
+      "SECRET_OUTPUT_STORE_CAUSE",
+      "SECRET_PRIMARY_PROVIDER_CAUSE",
+      "SECRET_ARTIFACT_METADATA",
+      "SECRET_SIGNATURE",
+      "SECRET_STORAGE_KEY",
+      "SECRET_TENANT_ID",
+      "SECRET_TASK_VALUE",
+      "SECRET_INPUT_VALUE",
+      "SECRET_OUTPUT_VALUE",
+      "secret.example.test",
+    ]) {
+      expect(serialized).not.toContain(sentinel);
+    }
+    expect(redacted.plan.attempts.map((attempt) => attempt.status)).toEqual([
+      "failed",
+      "succeeded",
+    ]);
+    expect(
+      redacted.plan.attempts.map((attempt) => attempt.contextProjection?.id),
+    ).toEqual([
+      expect.stringMatching(/^context-projection:/u),
+      expect.stringMatching(/^context-projection:/u),
+    ]);
+    expect(redacted.plan.attempts[1]?.inputHashes).toEqual(
+      redacted.plan.contextProjection?.inputHashes,
+    );
+  });
 
   it("rejects malformed store-returned output refs before ordinary success", async () => {
     const mutations: Array<{
