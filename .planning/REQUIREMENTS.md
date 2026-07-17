@@ -42,9 +42,9 @@
 
 ### Audit and Evaluation
 
-- [ ] **AUDIT16-01**: A caller can select `off`, `best-effort`, or `required` receipt issuance policy without changing provider behavior.
-- [ ] **AUDIT16-02**: A required-receipt run without a signer fails before any provider execution.
-- [ ] **AUDIT16-03**: A signing failure after provider execution returns a typed audit failure with safe diagnostics and never retries the provider.
+- [x] **AUDIT16-01**: A caller can select `off`, `best-effort`, or `required` receipt issuance policy without changing provider behavior.
+- [x] **AUDIT16-02**: A required-receipt run without a signer fails before any provider execution.
+- [x] **AUDIT16-03**: A signing failure after provider execution returns a typed audit failure with safe diagnostics and never retries the provider.
 - [ ] **AUDIT16-04**: Runtime, agent, and crew terminal paths apply the selected receipt policy consistently.
 - [ ] **EVAL16-01**: Evaluation reports every load, verification, materialization, and replay failure and exits with code 2 when any is present.
 - [ ] **EVAL16-02**: Baseline initialization writes no baseline when any input fixture is invalid or unevaluable.
@@ -132,9 +132,9 @@ Roadmap creation maps each requirement to exactly one phase.
 | PERSIST-02 | Phase 59 | Complete |
 | PERSIST-03 | Phase 59 | Complete |
 | PERSIST-04 | Phase 59 | Complete |
-| AUDIT16-01 | Phase 60 | Pending |
-| AUDIT16-02 | Phase 60 | Pending |
-| AUDIT16-03 | Phase 60 | Pending |
+| AUDIT16-01 | Phase 60 | Complete |
+| AUDIT16-02 | Phase 60 | Complete |
+| AUDIT16-03 | Phase 60 | Complete |
 | AUDIT16-04 | Phase 60 | Pending |
 | EVAL16-01 | Phase 60 | Pending |
 | EVAL16-02 | Phase 60 | Pending |
