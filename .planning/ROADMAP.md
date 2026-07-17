@@ -161,7 +161,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | --- | --- | --- | --- | --- |
 | 57. Protocol Semantics | v1.6 | 2/2 | Complete    | 2026-07-16 |
 | 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
-| 59. Authoritative Runtime State | v1.6 | 9/9 | Complete   | 2026-07-17 |
+| 59. Authoritative Runtime State | v1.6 | 9/9 | Complete    | 2026-07-17 |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |
 | 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |
 | 62. Operational Interop and Hygiene | v1.6 | 0/TBD | Not started | - |
