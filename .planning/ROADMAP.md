@@ -107,7 +107,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   4. Every fallback route repacks against its own limits and capabilities, while plans, hashes, receipts, traces, and events describe that route's provider-visible projection.
   5. Configured stores perform policy-checked lifecycle writes and return the references exposed by results and sessions; unconfigured storage reports `skipped`, and configured load or write failures return typed outcomes.
 
-**Plans:** 4/9 plans executed
+**Plans:** 5/9 plans executed
 
 ### Phase 60: Audit, Evaluation, and Cost Integrity
 
@@ -161,7 +161,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | --- | --- | --- | --- | --- |
 | 57. Protocol Semantics | v1.6 | 2/2 | Complete    | 2026-07-16 |
 | 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
-| 59. Authoritative Runtime State | v1.6 | 4/9 | In Progress|  |
+| 59. Authoritative Runtime State | v1.6 | 5/9 | In Progress|  |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 0/TBD | Not started | - |
 | 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |
 | 62. Operational Interop and Hygiene | v1.6 | 0/TBD | Not started | - |

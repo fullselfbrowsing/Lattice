@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T00:29:58.917Z"
+last_updated: "2026-07-17T01:00:51.794Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 12
+  completed_plans: 13
   percent: 33
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-07-17
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 76%
 
 ## Recent Milestone Snapshot
 
@@ -82,6 +82,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Projection identity hashes route identity plus ordered artifact ID and input-hash pairs. — Plans and events can correlate exact provider-visible evidence without carrying raw content.
 - [Phase 59]: Planning and primary execution consume one prepared materialized projection. — A single preparation authority prevents declared or omitted artifacts from bypassing route-specific context policy.
 - [Phase 59]: Projection evidence is redacted at plan and attempt replay boundaries. — Store-returned references can contain signed URLs and must not leak through newly added evidence fields.
+- [Phase 59]: Every fallback rebuilds route-local context and packaging from shared prepared inputs. — Only transforms, tools, and input persistence are route-independent; context budgets, summaries, hashes, and transport are attempt-specific.
+- [Phase 59]: Receipts and telemetry bind to frozen attempt projection evidence. — Ordered hashes and bounded projection metadata must describe the adapter call they claim without leaking content or tenant/storage secrets.
 
 ### Pending Todos
 
@@ -127,3 +129,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 59 P02 | 9 min | 1 tasks | 8 files |
 | Phase 59 P03 | 17 min | 2 tasks | 6 files |
 | Phase 59 P04 | 30min | 2 tasks | 7 files |
+| Phase 59 P05 | 29min | 2 tasks | 8 files |
