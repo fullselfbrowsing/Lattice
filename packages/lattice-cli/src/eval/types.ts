@@ -21,6 +21,14 @@ export type RegressionKind =
 
 export type DeterminismClass = "exact" | "semantic-cheap" | "semantic-expensive";
 
+export type LoadFailedStage =
+  | "load"
+  | "verification"
+  | "materialization"
+  | "replay"
+  | "unevaluable-output"
+  | null;
+
 export interface FixtureReportUsage {
   readonly costUsd: string;
   readonly promptTokens: number;
@@ -48,7 +56,10 @@ export interface FixtureReportUsage {
  */
 export type LoadFailedReason =
   | "no-sidecar"
+  | "receipt-load-failed"
   | "verify-failed"
+  | "artifact-load-failed"
+  | "envelope-malformed"
   | "replay-failed"
   | "malformed-sidecar"
   | "outputhash-missing"
@@ -62,6 +73,7 @@ export interface FixtureReport {
   readonly qualityScore: number | null;
   readonly deltaCostPct: number | null;
   readonly deltaQuality: number | null;
+  readonly loadFailedStage: LoadFailedStage;
   /**
    * Sub-discriminator for `verdict: "load-failed"` (Plan 13.1-02). `null` for
    * every other verdict. Additive field — consumers that pre-date Plan 13.1
@@ -75,6 +87,7 @@ export interface EvalRunSummary {
   readonly passed: number;
   readonly regressed: number;
   readonly newFixtures: number;
+  readonly loadFailed: number;
 }
 
 export interface EvalRunReport {

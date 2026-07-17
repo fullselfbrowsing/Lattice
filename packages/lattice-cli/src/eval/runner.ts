@@ -51,6 +51,7 @@ import {
   type ArtifactInput,
   type CapabilityReceiptBody,
   type KeySet,
+  type MaterializationError,
   type ReceiptEnvelope,
 } from "@full-self-browsing/lattice";
 
@@ -117,7 +118,8 @@ async function sha256Hex(text: string): Promise<string> {
 
 function buildLoadFailedReport(
   fixtureId: string,
-  loadFailedReason: FixtureReport["loadFailedReason"] = null,
+  loadFailedStage: Exclude<FixtureReport["loadFailedStage"], null>,
+  loadFailedReason: Exclude<FixtureReport["loadFailedReason"], null>,
 ): FixtureReport {
   return {
     fixtureId,
@@ -127,8 +129,19 @@ function buildLoadFailedReport(
     qualityScore: null,
     deltaCostPct: null,
     deltaQuality: null,
+    loadFailedStage,
     loadFailedReason,
   };
+}
+
+function isMaterializationError(value: unknown): value is MaterializationError {
+  if (typeof value !== "object" || value === null) return false;
+  const kind = (value as { readonly kind?: unknown }).kind;
+  return (
+    kind === "verify-failed" ||
+    kind === "artifact-load-failed" ||
+    kind === "envelope-malformed"
+  );
 }
 
 function usageFromBody(body: CapabilityReceiptBody): FixtureReportUsage {
@@ -201,7 +214,8 @@ export async function runEvalSession(
       fixtures.push(
         buildLoadFailedReport(
           entry.id,
-          isSidecarError ? "malformed-sidecar" : "verify-failed",
+          "load",
+          isSidecarError ? "malformed-sidecar" : "receipt-load-failed",
         ),
       );
       continue;
@@ -216,7 +230,7 @@ export async function runEvalSession(
     // running an Exact-class compare that would always drift (the v1.1
     // audit's EVAL-02/EVAL-06 forward-compat case).
     if (sidecar === null) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "no-sidecar"));
+      fixtures.push(buildLoadFailedReport(fixtureId, "load", "no-sidecar"));
       continue;
     }
 
@@ -232,8 +246,17 @@ export async function runEvalSession(
         keySet,
         ...applied,
       });
-    } catch {
-      fixtures.push(buildLoadFailedReport(fixtureId, "verify-failed"));
+    } catch (error) {
+      const kind = isMaterializationError(error)
+        ? error.kind
+        : "envelope-malformed";
+      fixtures.push(
+        buildLoadFailedReport(
+          fixtureId,
+          kind === "verify-failed" ? "verification" : "materialization",
+          kind,
+        ),
+      );
       continue;
     }
 
@@ -242,15 +265,27 @@ export async function runEvalSession(
     // microsecond-level; same pattern as `repro.ts`.
     const verifyResult = await verifyReceipt(envelope, keySet);
     if (!verifyResult.ok) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "verify-failed"));
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "verification", "verify-failed"),
+      );
       continue;
     }
     const body = verifyResult.body;
 
     // Stage 4: replay.
-    const replay = await replayOffline(envelopeReplay);
+    let replay;
+    try {
+      replay = await replayOffline(envelopeReplay);
+    } catch {
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "replay", "replay-failed"),
+      );
+      continue;
+    }
     if (!replay.ok) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "replay-failed"));
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "replay", "replay-failed"),
+      );
       continue;
     }
 
@@ -259,7 +294,13 @@ export async function runEvalSession(
       // Failure receipts have no diff target — treat as load-failed with the
       // outputhash-missing discriminator so the audit can distinguish them
       // from sidecar/verify failures.
-      fixtures.push(buildLoadFailedReport(fixtureId, "outputhash-missing"));
+      fixtures.push(
+        buildLoadFailedReport(
+          fixtureId,
+          "unevaluable-output",
+          "outputhash-missing",
+        ),
+      );
       continue;
     }
     const actualHash = await sha256Hex(JSON.stringify(replay.outputs));
@@ -279,6 +320,7 @@ export async function runEvalSession(
         qualityScore: null,
         deltaCostPct: null,
         deltaQuality: null,
+        loadFailedStage: null,
         loadFailedReason: null,
       });
       continue;
@@ -354,6 +396,7 @@ export async function runEvalSession(
       qualityScore,
       deltaCostPct,
       deltaQuality,
+      loadFailedStage: null,
       loadFailedReason: null,
     });
   }
@@ -361,6 +404,9 @@ export async function runEvalSession(
   const passed = fixtures.filter((f) => f.verdict === "match").length;
   const regressed = fixtures.filter(
     (f) => f.verdict === "drift" || f.verdict === "regression",
+  ).length;
+  const loadFailed = fixtures.filter(
+    (f) => f.verdict === "load-failed",
   ).length;
 
   return {
@@ -374,6 +420,7 @@ export async function runEvalSession(
       passed,
       regressed,
       newFixtures,
+      loadFailed,
     },
     exitCode: 0,
     tripwireOutcomes: [],

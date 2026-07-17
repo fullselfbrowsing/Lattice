@@ -78,6 +78,7 @@ function fixtureReport(
     qualityScore: null,
     deltaCostPct: 0,
     deltaQuality: null,
+    loadFailedStage: null,
     loadFailedReason: null,
     ...overrides,
   };
@@ -100,6 +101,7 @@ function reportFromFixtures(
       passed,
       regressed: summary.regressed,
       newFixtures: summary.newFixtures ?? 0,
+      loadFailed: fixtures.filter((f) => f.verdict === "load-failed").length,
     },
     exitCode: 0,
     tripwireOutcomes: [],
