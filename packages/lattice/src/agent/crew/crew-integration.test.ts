@@ -279,7 +279,7 @@ describe("runAgentCrew public integration", () => {
       "parent handled audit failure",
     ]);
     const secret = "SECRET-CHILD-COMPLETION-KMS";
-    const { signer, calls } = completionFaultSigner(4, secret);
+    const { signer, calls } = completionFaultSigner(3, secret);
 
     const result = await createAI({ providers: [provider] }).runAgentCrew({
       root,
@@ -295,7 +295,7 @@ describe("runAgentCrew public integration", () => {
     expect(tasks.at(-1)).toContain('"terminal":true');
     expect(tasks.join("\n")).not.toContain(secret);
     expect(result.receipts).toHaveLength(2);
-    expect(calls.value).toBe(8);
+    expect(calls.value).toBe(7);
   });
 
   it("executes two child calls from one parent envelope strictly serially", async () => {

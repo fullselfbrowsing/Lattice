@@ -199,7 +199,7 @@ export async function runAgentCrew(
     recordAgentResult,
     remainingBudget,
     sharedPrefix: composeSharedPrefix(options.root),
-    mintedReceipts(envelope) {
+    collectReceipt(_agentId, envelope, _cid) {
       receipts.push(envelope);
     },
     config,
