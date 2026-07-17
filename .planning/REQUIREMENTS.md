@@ -58,8 +58,8 @@
 
 ### Agent Evidence
 
-- [ ] **AGREC-01**: Each agent iteration record exposes the receipt envelope that attests that iteration when one is issued.
-- [ ] **AGREC-02**: Terminal agent success and failure results expose their terminal receipt when one is issued.
+- [x] **AGREC-01**: Each agent iteration record exposes the receipt envelope that attests that iteration when one is issued.
+- [x] **AGREC-02**: Terminal agent success and failure results expose their terminal receipt when one is issued.
 - [ ] **AGREC-03**: Resumed agent execution uses stable iteration identity and does not duplicate previously issued receipts.
 - [ ] **AGREC-04**: Crew receipt arrays and CIDs reference the same envelopes in documented order without duplicate minting.
 
@@ -142,8 +142,8 @@ Roadmap creation maps each requirement to exactly one phase.
 | PRICE-02 | Phase 60 | Complete |
 | PRICE-03 | Phase 60 | Complete |
 | PRICE-04 | Phase 60 | Complete |
-| AGREC-01 | Phase 61 | Pending |
-| AGREC-02 | Phase 61 | Pending |
+| AGREC-01 | Phase 61 | Complete |
+| AGREC-02 | Phase 61 | Complete |
 | AGREC-03 | Phase 61 | Pending |
 | AGREC-04 | Phase 61 | Pending |
 | OPSVAL-01 | Phase 62 | Pending |

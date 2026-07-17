@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T05:23:08.242Z"
-last_activity: 2026-07-17 -- Phase 61 planning complete
+last_updated: "2026-07-17T05:32:21.187Z"
+last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 27
-  completed_plans: 23
+  completed_plans: 24
   percent: 67
 ---
 
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Phase 60 — Audit Evaluation and Cost Integrity
+**Current focus:** Phase 61 — Agent Receipt Closure
 
 ## Current Position
 
-Phase: 60 — COMPLETE
-Plan: 6 of 6
+Phase: 61 (Agent Receipt Closure) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-17 -- Phase 61 planning complete
+Last activity: 2026-07-17
 
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 
 ## Recent Milestone Snapshot
 
@@ -101,6 +101,8 @@ Recent decisions affecting v1.6:
 - [Phase 60]: Cross-surface receipt evidence observes signer and provider call counts without adding Phase 61 receipt collectors. — This closes Phase 60 policy guarantees without preempting the stable identity and attachment contract owned by Phase 61.
 - [Phase 60]: CLI integration files run serially because process cwd and dynamic package mocks are process-wide state. — Serialized files make the full CLI gate deterministic while preserving the deliberate process-level integration behavior.
 - [Phase 60]: Showcase baseline tests partition evaluable success receipts while separately proving the full mixed set exits 2 without writing. — Strict evaluation must reject failure-class receipts with null output hashes and must never initialize a baseline from invalid input.
+- [Phase 61]: Managed agent checkpoints execute after the caller pipeline through one invocation-local runner. — This preserves caller hook order while preventing automatic signer accumulation on reused pipelines.
+- [Phase 61]: Terminal finalization attaches the issued envelope before successful host state is cleared. — The returned result and durable boundary must expose the exact final evidence before completed state is discarded.
 
 ### Pending Todos
 
@@ -157,3 +159,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 60 P04 | 18min | 2 tasks | 15 files |
 | Phase 60 P05 | 22min | 2 tasks | 18 files |
 | Phase 60 P06 | 18min | 1 tasks | 10 files |
+| Phase 61 P01 | 7min | 2 tasks | 4 files |

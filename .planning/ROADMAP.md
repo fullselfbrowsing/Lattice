@@ -136,7 +136,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   3. Resumed execution retains stable iteration identity and does not duplicate receipts already issued.
   4. Crew receipt arrays and CIDs reuse the same envelopes in documented order without duplicate minting.
 
-**Plans:** TBD
+**Plans:** 1/4 plans executed
 
 ### Phase 62: Operational Interop and Hygiene
 
@@ -163,5 +163,5 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
 | 59. Authoritative Runtime State | v1.6 | 9/9 | Complete    | 2026-07-17 |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 6/6 | Complete   | 2026-07-17 |
-| 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |
+| 61. Agent Receipt Closure | v1.6 | 1/4 | In Progress|  |
 | 62. Operational Interop and Hygiene | v1.6 | 0/TBD | Not started | - |
