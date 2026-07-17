@@ -59,7 +59,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 - [x] **Phase 57: Protocol Semantics** - Make every new receipt standards-compliant while quarantining historical verification behind an explicit, observable bridge. (completed 2026-07-16)
 - [x] **Phase 58: Conformance and Client Migration** - Move the specification, vectors, TypeScript, Python, CLI, and CI to the corrected protocol as one interoperability surface. (completed 2026-07-16)
 - [x] **Phase 59: Authoritative Runtime State** - Make one materialized context projection and real persistence lifecycle authoritative for provider execution and evidence. (completed 2026-07-17)
-- [ ] **Phase 60: Audit, Evaluation, and Cost Integrity** - Enforce truthful receipt, evaluation, and budget outcomes through shared policies and estimation semantics.
+- [x] **Phase 60: Audit, Evaluation, and Cost Integrity** - Enforce truthful receipt, evaluation, and budget outcomes through shared policies and estimation semantics. (completed 2026-07-17)
 - [ ] **Phase 61: Agent Receipt Closure** - Attach the actual receipt envelopes to iteration, terminal, resume, and crew results without duplication.
 - [ ] **Phase 62: Operational Interop and Hygiene** - Validate packed consumers and provider wire families, then align documentation and production comments with shipped behavior.
 
@@ -122,7 +122,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   4. One estimator normalizes per-1k and legacy per-1M hints while preserving known zero cost separately from unknown cost.
   5. Routing and contract budgets reach the same decision for identical inputs, and plans, agents, crews, diagnostics, routing, and preflight consume the shared estimate.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 ### Phase 61: Agent Receipt Closure
 
@@ -162,6 +162,6 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | 57. Protocol Semantics | v1.6 | 2/2 | Complete    | 2026-07-16 |
 | 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
 | 59. Authoritative Runtime State | v1.6 | 9/9 | Complete    | 2026-07-17 |
-| 60. Audit, Evaluation, and Cost Integrity | v1.6 | 5/6 | In Progress|  |
+| 60. Audit, Evaluation, and Cost Integrity | v1.6 | 6/6 | Complete   | 2026-07-17 |
 | 61. Agent Receipt Closure | v1.6 | 0/TBD | Not started | - |
 | 62. Operational Interop and Hygiene | v1.6 | 0/TBD | Not started | - |

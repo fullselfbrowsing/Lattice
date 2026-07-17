@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
-status: executing
-last_updated: "2026-07-17T04:36:07.123Z"
+status: verifying
+last_updated: "2026-07-17T05:02:15.879Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 22
-  percent: 50
+  completed_plans: 23
+  percent: 67
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 Phase: 60 (Audit Evaluation and Cost Integrity) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-17
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Recent Milestone Snapshot
 
@@ -98,6 +98,9 @@ Recent decisions affecting v1.6:
 - [Phase 60]: Hard agent and crew ceilings require a known next-call estimate and reject projected overage before transport; equality passes. — Predictable budget failures must occur before billable provider work.
 - [Phase 60]: Nested crew dispatch inherits every active ancestor's local cost. — Completed-run accounting alone cannot protect a shared pool while serial ancestors are suspended.
 - [Phase 60]: Accumulated cost comparisons tolerate one ULP while direct single-estimate comparisons remain strict. — This preserves mathematical equality without weakening materially over-budget decisions.
+- [Phase 60]: Cross-surface receipt evidence observes signer and provider call counts without adding Phase 61 receipt collectors. — This closes Phase 60 policy guarantees without preempting the stable identity and attachment contract owned by Phase 61.
+- [Phase 60]: CLI integration files run serially because process cwd and dynamic package mocks are process-wide state. — Serialized files make the full CLI gate deterministic while preserving the deliberate process-level integration behavior.
+- [Phase 60]: Showcase baseline tests partition evaluable success receipts while separately proving the full mixed set exits 2 without writing. — Strict evaluation must reject failure-class receipts with null output hashes and must never initialize a baseline from invalid input.
 
 ### Pending Todos
 
@@ -153,3 +156,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 60 P02 | 22 | 2 tasks | 14 files |
 | Phase 60 P04 | 18min | 2 tasks | 15 files |
 | Phase 60 P05 | 22min | 2 tasks | 18 files |
+| Phase 60 P06 | 18min | 1 tasks | 10 files |
