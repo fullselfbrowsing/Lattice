@@ -139,12 +139,18 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
       expect(mintedReceipts.length).toBe(2);
       // Each receipt verifies cleanly against the ephemeral KeySet (DSSE + JCS
       // round-trip preserved through the agent loop).
-      for (const envelope of mintedReceipts) {
+      for (const [index, envelope] of mintedReceipts.entries()) {
+        expect(result.iterations[index]?.receipt).toBe(envelope);
+        expect(result.iterations[index]?.iterationId).toBeTruthy();
         const verifyResult = await verifyReceipt(envelope, keySet);
         expect(verifyResult.ok).toBe(true);
         expect(envelope.signatures[0]?.keyid).toBe(kid);
         if (verifyResult.ok) {
           expect(verifyResult.body.modelClass).toBeUndefined();
+          expect(verifyResult.body.stepName).toBe(
+            result.iterations[index]?.iterationId,
+          );
+          expect(verifyResult.body.stepIndex).toBe(index);
         }
       }
     },

@@ -38,8 +38,11 @@
 import type { ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
 import { estimateTokens } from "../context/context-pack.js";
-import { BAND, type HookPipeline, createHookPipeline } from "../contract/bands.js";
-import { createCheckpointHook } from "../contract/checkpoint.js";
+import { type HookPipeline, createHookPipeline } from "../contract/bands.js";
+import {
+  createCheckpointHook,
+  type CheckpointHookContext,
+} from "../contract/checkpoint.js";
 import type { BudgetInvariant } from "../contract/contract.js";
 import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
@@ -160,7 +163,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
   const startedAt = Date.now();
-  const runId = `runAgent-${startedAt}-${Math.random().toString(16).slice(2)}`;
+  const executionId = `agent-execution:${crypto.randomUUID()}`;
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
   const receiptPolicy = resolveAgentReceiptPolicy(intent, config);
@@ -205,7 +208,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       ? "post-execution"
       : "pre-execution";
     const outcome = await issueReceipt(
-      buildAgentTerminalReceiptInput(runId, providerName, result),
+      buildAgentTerminalReceiptInput(executionId, providerName, result),
       receiptPolicy,
       stage,
     );
@@ -230,17 +233,40 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   const survivabilityAdapter: SurvivabilityAdapter<AgentSnapshot> =
     intent.survivabilityAdapter ?? createNoopSurvivabilityAdapter<AgentSnapshot>();
 
-  // 1. Hook pipeline + auto-checkpoint registration.
+  // 1. Hook pipeline + invocation-local managed checkpoint.
   const pipeline = ensurePipeline(intent);
-  maybeAutoRegisterCheckpoint(
-    pipeline,
+  const managedCheckpoint = createManagedCheckpointRunner(
     intent,
     receiptPolicy,
-    runId,
+    executionId,
     (outcome) => {
       observeReceiptOutcome("checkpoint", outcome);
     },
   );
+  const completeIteration = async (
+    record: IterationRecord,
+  ): Promise<IterationRecord> => {
+    const stepName = record.iterationId!;
+    const context = {
+      iterationIndex: record.index,
+      intent,
+      record,
+      stepName,
+      stepIndex: record.index,
+      timestamp: new Date().toISOString(),
+      previousStepName: `${stepName}:before`,
+    };
+    await pipeline.run("AFTER_AGENT_ITERATION", context);
+    const outcome = await managedCheckpoint?.(context);
+    if (outcome?.status !== "issued") return record;
+
+    const attached = Object.freeze({
+      ...record,
+      receipt: outcome.envelope,
+    });
+    iterations[iterations.length - 1] = attached;
+    return attached;
+  };
 
   // 2. Provider selection — pick the first adapter with execute().
   const provider = pickFirstExecutableProvider(config);
@@ -300,6 +326,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   }
 
   while (iterationIndex < maxIterations) {
+    const iterationId = buildIterationId(executionId, iterationIndex);
     // 4a. Budget pre-checks.
     const elapsedMs = Date.now() - startedAt;
     if (elapsedMs >= maxWallTimeMs) {
@@ -330,18 +357,17 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       iterationIndex,
       intent,
       conversation: conversation.map((t) => ({ ...t })),
-      // CheckpointHookContext fields — the auto-registered checkpoint hook
-      // reads these to assemble its receipt + tracer event metadata.
-      stepName: `agent-iteration-${iterationIndex}-before`,
+      stepName: `${iterationId}:before`,
       stepIndex: iterationIndex,
       timestamp: new Date().toISOString(),
       ...(iterationIndex > 0
-        ? { previousStepName: `agent-iteration-${iterationIndex - 1}-after` }
+        ? { previousStepName: buildIterationId(executionId, iterationIndex - 1) }
         : {}),
     });
     const denial = pipeline.lastDenialReason();
     if (denial !== null) {
       const failedRecord: IterationRecord = {
+        iterationId,
         index: iterationIndex,
         provider: providerName,
         promptTokens: 0,
@@ -352,15 +378,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         deniedReason: denial,
       };
       iterations.push(failedRecord);
-      await pipeline.run("AFTER_AGENT_ITERATION", {
-        iterationIndex,
-        intent,
-        record: failedRecord,
-        stepName: `agent-iteration-${iterationIndex}-after`,
-        stepIndex: iterationIndex,
-        timestamp: new Date().toISOString(),
-        previousStepName: `agent-iteration-${iterationIndex}-before`,
-      });
+      await completeIteration(failedRecord);
       return finalize(buildFailure({
         kind: "agent-iteration-denied",
         reason: denial,
@@ -459,6 +477,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     if (toolUseRequests === null || toolUseRequests.length === 0) {
       // 4e. Final answer path.
       const finalRecord: IterationRecord = {
+        iterationId,
         index: iterationIndex,
         provider: providerName,
         promptTokens: iterUsage.promptTokens,
@@ -469,16 +488,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       };
       iterations.push(finalRecord);
       conversation.push({ role: "assistant", content: responseText });
-
-      await pipeline.run("AFTER_AGENT_ITERATION", {
-        iterationIndex,
-        intent,
-        record: finalRecord,
-        stepName: `agent-iteration-${iterationIndex}-after`,
-        stepIndex: iterationIndex,
-        timestamp: new Date().toISOString(),
-        previousStepName: `agent-iteration-${iterationIndex}-before`,
-      });
+      await completeIteration(finalRecord);
 
       if (checkpointFailure !== undefined) {
         return finalize(undefined);
@@ -591,6 +601,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     }
 
     const record: IterationRecord = {
+      iterationId,
       index: iterationIndex,
       provider: providerName,
       promptTokens: iterUsage.promptTokens,
@@ -600,16 +611,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       toolCalls: Object.freeze([...toolCallRecords]),
     };
     iterations.push(record);
-
-    await pipeline.run("AFTER_AGENT_ITERATION", {
-      iterationIndex,
-      intent,
-      record,
-      stepName: `agent-iteration-${iterationIndex}-after`,
-      stepIndex: iterationIndex,
-      timestamp: new Date().toISOString(),
-      previousStepName: `agent-iteration-${iterationIndex}-before`,
-    });
+    await completeIteration(record);
 
     if (checkpointFailure !== undefined) {
       return finalize(undefined);
@@ -656,24 +658,38 @@ function ensurePipeline<TOutputs extends OutputContractMap>(
   return createHookPipeline(options);
 }
 
-function maybeAutoRegisterCheckpoint<TOutputs extends OutputContractMap>(
-  pipeline: HookPipeline,
+function createManagedCheckpointRunner<TOutputs extends OutputContractMap>(
   intent: AgentIntent<TOutputs>,
   policy: EffectiveReceiptPolicy,
-  runId: string,
+  executionId: string,
   onReceiptOutcome: (outcome: ReceiptIssuanceOutcome) => void,
-): void {
-  if (policy.mode === "off" || policy.signer === undefined) return;
-  if (intent.autoRegisterCheckpoint === false) return;
-  if (pipeline.isFrozen()) return;
+):
+  | ((
+      context: CheckpointHookContext,
+    ) => Promise<ReceiptIssuanceOutcome | undefined>)
+  | undefined {
+  if (policy.mode === "off" || policy.signer === undefined) return undefined;
+  if (intent.autoRegisterCheckpoint === false) return undefined;
+  let latestOutcome: ReceiptIssuanceOutcome | undefined;
   const handler = createCheckpointHook({
-    runId,
+    runId: executionId,
     receiptMode: policy.mode,
     signer: policy.signer,
-    onReceiptOutcome,
+    onReceiptOutcome: (outcome) => {
+      latestOutcome = outcome;
+      onReceiptOutcome(outcome);
+    },
     ...(intent.tracer !== undefined ? { tracer: intent.tracer } : {}),
   });
-  pipeline.register("AFTER_AGENT_ITERATION", handler, { band: BAND.OBSERVABILITY });
+  return async (context) => {
+    latestOutcome = undefined;
+    await handler(context);
+    return latestOutcome;
+  };
+}
+
+function buildIterationId(executionId: string, index: number): string {
+  return `${executionId}:iteration:${index}`;
 }
 
 function resolveAgentReceiptPolicy<TOutputs extends OutputContractMap>(

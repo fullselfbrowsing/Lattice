@@ -61,6 +61,7 @@ export type DefaultAgentOutputs = {
  * SAFETY-band handler set `controls.deny(...)`.
  */
 export interface IterationRecord {
+  readonly iterationId?: string;
   readonly index: number;
   readonly provider: string;
   readonly promptTokens: number;

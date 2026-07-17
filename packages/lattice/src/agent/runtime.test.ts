@@ -142,6 +142,9 @@ describe("runAgent — final-answer path", () => {
     if (result.kind === "success") {
       expect(result.output).toEqual({ answer: "Hello, world." });
       expect(result.iterations.length).toBe(1);
+      expect(result.iterations[0]?.iterationId).toMatch(
+        /^agent-execution:[^:]+:iteration:0$/,
+      );
       expect(result.iterations[0]?.provider).toBe("fake");
       expect(result.usage.promptTokens).toBe(5);
       expect(result.usage.completionTokens).toBe(3);
@@ -878,6 +881,51 @@ describe("runAgent — provider error path", () => {
 });
 
 describe("runAgent — receipt policy", () => {
+  it("keeps managed checkpoints invocation-local when a pipeline is reused", async () => {
+    const { signer, calls } = countingSigner();
+    const pipeline = createHookPipeline();
+    let userAfterCalls = 0;
+    pipeline.register(
+      "AFTER_AGENT_ITERATION",
+      () => {
+        userAfterCalls += 1;
+      },
+      { band: BAND.EXTENSION },
+    );
+    const checkpointEnvelopes: unknown[] = [];
+    const tracer = {
+      kind: "tracer" as const,
+      event(name: string, attributes?: Record<string, unknown>) {
+        if (name === "step.transition" && attributes?.["envelope"] !== undefined) {
+          checkpointEnvelopes.push(attributes["envelope"]);
+        }
+      },
+    };
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const first = await runAgent(
+      { task: "first", tools: [], pipeline, signer, tracer },
+      { providers: [fake] },
+    );
+    const second = await runAgent(
+      { task: "second", tools: [], pipeline, signer, tracer },
+      { providers: [fake] },
+    );
+
+    expect(first.kind).toBe("success");
+    expect(second.kind).toBe("success");
+    expect(userAfterCalls).toBe(2);
+    expect(checkpointEnvelopes).toHaveLength(2);
+    expect(calls.value).toBe(4);
+    expect(first.iterations[0]?.receipt).toBe(checkpointEnvelopes[0]);
+    expect(second.iterations[0]?.receipt).toBe(checkpointEnvelopes[1]);
+    expect(first.iterations[0]?.iterationId).not.toBe(
+      second.iterations[0]?.iterationId,
+    );
+  });
+
   it("preflights required missing signer before host storage or provider transport", async () => {
     const calls = { storage: 0, transport: 0, provider: 0 };
     const fake = createFakeProvider({
