@@ -13,6 +13,7 @@ import {
   defineAgent,
   defineTool,
   generateEd25519KeyPairJwk,
+  receiptCid,
   verifyReceipt,
   type CapabilityReceiptBody,
   type ProviderRunRequest,
@@ -89,14 +90,22 @@ function decodeReceipt(envelope: ReceiptEnvelope): CapabilityReceiptBody {
 
 async function makeSigner() {
   const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
-  const signer = createInMemorySigner(privateKeyJwk, {
+  const baseSigner = createInMemorySigner(privateKeyJwk, {
     kid: "crew-integration",
     publicKeyJwk,
   });
+  const calls = { value: 0 };
+  const signer: ReceiptSigner = {
+    ...baseSigner,
+    async sign(bytes: Uint8Array): Promise<Uint8Array> {
+      calls.value += 1;
+      return baseSigner.sign(bytes);
+    },
+  };
   const keySet = createMemoryKeySet([
     { kid: signer.kid, publicKeyJwk, state: "active" },
   ]);
-  return { signer, keySet };
+  return { signer, keySet, calls };
 }
 
 function completionFaultSigner(failOn: number, secret: string): {
@@ -150,7 +159,7 @@ describe("runAgentCrew public integration", () => {
       "beta summary",
       "final synthesis",
     ]);
-    const { signer, keySet } = await makeSigner();
+    const { signer, keySet, calls } = await makeSigner();
 
     const result = await createAI({ providers: [provider] }).runAgentCrew({
       root,
@@ -173,9 +182,27 @@ describe("runAgentCrew public integration", () => {
     for (const envelope of result.receipts) {
       expect(await verifyReceipt(envelope, keySet)).toMatchObject({ ok: true });
     }
-    for (const body of result.receipts.map(decodeReceipt).slice(1)) {
+    const bodies = result.receipts.map(decodeReceipt);
+    expect(bodies.map((body) => body.stepName)).toEqual([
+      "crew-start:lead",
+      "crew-agent-completion:alpha",
+      "crew-agent-completion:beta",
+      "crew-agent-completion:lead",
+    ]);
+    for (const body of bodies.slice(1)) {
       expect(body.parentReceiptCid).toBe(result.crewRootCid);
     }
+    expect(result.result.receipt).toBe(result.receipts[3]);
+    expect(
+      result.perAgent.find((entry) => entry.id === "alpha")?.receiptCids,
+    ).toEqual([await receiptCid(result.receipts[1]!)]);
+    expect(
+      result.perAgent.find((entry) => entry.id === "beta")?.receiptCids,
+    ).toEqual([await receiptCid(result.receipts[2]!)]);
+    expect(
+      result.perAgent.find((entry) => entry.id === "lead")?.receiptCids,
+    ).toEqual([await receiptCid(result.receipts[3]!)]);
+    expect(calls.value).toBe(9);
   });
 
   it("accepts adapter-validated child tool calls without falling into unknown_tool", async () => {
@@ -295,7 +322,7 @@ describe("runAgentCrew public integration", () => {
     expect(tasks.at(-1)).toContain('"terminal":true');
     expect(tasks.join("\n")).not.toContain(secret);
     expect(result.receipts).toHaveLength(2);
-    expect(calls.value).toBe(7);
+    expect(calls.value).toBe(6);
   });
 
   it("executes two child calls from one parent envelope strictly serially", async () => {

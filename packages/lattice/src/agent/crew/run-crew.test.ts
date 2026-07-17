@@ -13,6 +13,7 @@ import type {
 } from "../../providers/provider.js";
 import { defaultCapabilityForProvider } from "../../routing/catalog.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
+import { receiptCid } from "../../receipts/cid.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -675,7 +676,7 @@ describe("runAgentCrew — receipt policy", () => {
     );
     expect(localResult.result.kind).toBe("success");
     expect(localResult.receipts).toHaveLength(2);
-    expect(localSigner.calls.value).toBe(4);
+    expect(localSigner.calls.value).toBe(3);
     expect(configSigner.calls.value).toBe(0);
   });
 
@@ -686,7 +687,7 @@ describe("runAgentCrew — receipt policy", () => {
       ["parent completed"],
       [{ promptTokens: 3, completionTokens: 2, costUsd: 0.01 }],
     );
-    const { signer, calls } = sequenceSigner({ failOn: [4], secret });
+    const { signer, calls } = sequenceSigner({ failOn: [3], secret });
 
     const result = await runAgentCrew(
       {
@@ -707,7 +708,7 @@ describe("runAgentCrew — receipt policy", () => {
     expect(result.result.iterations).toHaveLength(1);
     expect(result.receipts).toHaveLength(1);
     expect(tasks).toHaveLength(1);
-    expect(calls.value).toBe(4);
+    expect(calls.value).toBe(3);
     expect(JSON.stringify(result)).not.toContain(secret);
   });
 
@@ -765,7 +766,7 @@ describe("runAgentCrew — signed receipt chain", () => {
     );
 
     expect(result.crewRootCid).toMatch(/^sha256:[a-f0-9]{64}$/u);
-    expect(result.receipts.length).toBeGreaterThanOrEqual(3);
+    expect(result.receipts).toHaveLength(3);
 
     const bodies = result.receipts.map((envelope) => decodeReceiptBody(envelope.payload));
     expect(bodies[0]?.route).toEqual({
@@ -777,6 +778,21 @@ describe("runAgentCrew — signed receipt chain", () => {
     for (const body of bodies.slice(1)) {
       expect(body.parentReceiptCid).toBe(result.crewRootCid);
     }
+    expect(bodies.map((body) => body.stepName)).toEqual([
+      "crew-start:lead",
+      "crew-agent-completion:researcher",
+      "crew-agent-completion:lead",
+    ]);
+    expect(result.result.receipt).toBe(result.receipts[2]);
+
+    const childReceiptCid = await receiptCid(result.receipts[1]!);
+    const parentReceiptCid = await receiptCid(result.receipts[2]!);
+    expect(
+      result.perAgent.find((entry) => entry.id === "researcher")?.receiptCids,
+    ).toEqual([childReceiptCid]);
+    expect(
+      result.perAgent.find((entry) => entry.id === "lead")?.receiptCids,
+    ).toEqual([parentReceiptCid]);
 
     const keySet = createMemoryKeySet([{ kid: signer.kid, publicKeyJwk, state: "active" }]);
     for (const envelope of result.receipts) {

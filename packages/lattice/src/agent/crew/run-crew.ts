@@ -15,7 +15,6 @@
  * all wrapping for consumers who already coordinate quota externally.
  */
 
-import type { ArtifactRef } from "../../artifacts/artifact.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
@@ -26,10 +25,8 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
-import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import {
   issueReceipt,
-  issueReceiptFrom,
   preflightReceiptPolicy,
   resolveReceiptPolicy,
   type EffectiveReceiptPolicy,
@@ -191,6 +188,17 @@ export async function runAgentCrew(
     });
   }
 
+  function collectReceipt(
+    agentId: string,
+    envelope: ReceiptEnvelope,
+    cid: string,
+  ): void {
+    receipts.push(envelope);
+    const cids = receiptCidsByAgent.get(agentId) ?? [];
+    cids.push(cid);
+    receiptCidsByAgent.set(agentId, cids);
+  }
+
   const dispatcher = createCrewDispatcher(options.root, {
     policy,
     childHost,
@@ -199,9 +207,7 @@ export async function runAgentCrew(
     recordAgentResult,
     remainingBudget,
     sharedPrefix: composeSharedPrefix(options.root),
-    collectReceipt(_agentId, envelope, _cid) {
-      receipts.push(envelope);
-    },
+    collectReceipt,
     config,
     ...(crewRoot !== undefined ? { crewRootCid: crewRoot.cid } : {}),
     receiptMode: receiptPolicy.mode,
@@ -240,33 +246,25 @@ export async function runAgentCrew(
   const parentResult = await runAgentInternal(parentIntent, config, {
     dispatchToolUse: dispatcher.dispatchToolUse,
     remainingBudget,
+    ...(crewRoot !== undefined
+      ? {
+          terminalReceipt: {
+            stepName: `crew-agent-completion:${options.root.id}`,
+            parentReceiptCid: crewRoot.cid,
+          },
+        }
+      : {}),
   });
   recordUsage(options.root.id, parentResult.usage);
   recordAgentResult(options.root.id, parentResult);
 
-  let parentCompletionError: AuditError | undefined;
-  if (parentResult.kind !== "audit" && crewRoot !== undefined) {
-    const parentOutcome = await issueAgentCompletionReceipt({
-      runId,
-      agentId: options.root.id,
-      usage: parentResult.usage,
-      policy: receiptPolicy,
-      parentReceiptCid: crewRoot.cid,
-      success: parentResult.kind === "success",
-      artifacts: parentResult.kind === "success" ? parentResult.artifacts ?? [] : [],
-    });
-    emitCrewReceiptOutcome(options.tracer, "parent-completion", parentOutcome);
-    if (parentOutcome.status === "issued") {
-      receipts.push(parentOutcome.envelope);
-    } else if (
-      parentOutcome.status === "failed" &&
-      receiptPolicy.mode === "required"
-    ) {
-      parentCompletionError = parentOutcome.error;
-    }
+  if (parentResult.receipt !== undefined) {
+    collectReceipt(
+      options.root.id,
+      parentResult.receipt,
+      await receiptCid(parentResult.receipt),
+    );
   }
-
-  await populateReceiptCidIndex(receipts, receiptCidsByAgent);
 
   const budgetExceeded =
     dispatcher.crewBudgetExhausted() ||
@@ -277,13 +275,11 @@ export async function runAgentCrew(
       startedAt,
     });
   const result =
-    parentCompletionError !== undefined
-      ? buildCrewAuditFailure(parentCompletionError, parentResult)
-      : parentResult.kind === "audit"
-        ? parentResult
-        : budgetExceeded
-          ? buildCrewBudgetFailure(parentResult)
-          : parentResult;
+    parentResult.kind === "audit"
+      ? parentResult
+      : budgetExceeded
+        ? buildCrewBudgetFailure(parentResult)
+        : parentResult;
 
   return freezeCrewResult({
     result,
@@ -539,46 +535,9 @@ async function issueCrewRoot(input: {
   );
 }
 
-async function issueAgentCompletionReceipt(input: {
-  readonly runId: string;
-  readonly agentId: string;
-  readonly usage: Usage;
-  readonly policy: EffectiveReceiptPolicy;
-  readonly parentReceiptCid: string;
-  readonly success: boolean;
-  readonly artifacts?: readonly ArtifactRef[];
-}): Promise<ReceiptIssuanceOutcome> {
-  return issueReceiptFrom(
-    async () => {
-      const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
-        input.artifacts ?? [],
-      );
-      return {
-        runId: input.runId,
-        model: { requested: "lattice-crew/agent-completion", observed: null },
-        route: {
-          providerId: "lattice-crew",
-          capabilityId: "lattice-crew/agent-completion",
-          attemptNumber: 1,
-        },
-        parentReceiptCid: input.parentReceiptCid,
-        ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
-        usage: input.usage,
-        contractVerdict: input.success ? "success" : "execution-failed",
-        contractHash: null,
-        inputHashes: [],
-        outputHash: null,
-        stepName: `crew-agent-completion:${input.agentId}`,
-      };
-    },
-    input.policy,
-    "post-execution",
-  );
-}
-
 function emitCrewReceiptOutcome(
   tracer: TracerLike | undefined,
-  scope: "root" | "parent-completion",
+  scope: "root",
   outcome: ReceiptIssuanceOutcome,
 ): void {
   tracer?.event?.("receipt.issuance", {
@@ -589,30 +548,6 @@ function emitCrewReceiptOutcome(
       ? { code: outcome.error.code, stage: outcome.error.stage }
       : {}),
   });
-}
-
-async function populateReceiptCidIndex(
-  receipts: readonly ReceiptEnvelope[],
-  byAgent: Map<string, string[]>,
-): Promise<void> {
-  for (const envelope of receipts) {
-    const body = decodeReceiptBody(envelope);
-    const agentId = parseCompletionAgentId(body.stepName);
-    if (agentId === null) continue;
-    const cids = byAgent.get(agentId) ?? [];
-    cids.push(await receiptCid(envelope));
-    byAgent.set(agentId, cids);
-  }
-}
-
-function decodeReceiptBody(envelope: ReceiptEnvelope): { readonly stepName?: string } {
-  return JSON.parse(atob(envelope.payload)) as { readonly stepName?: string };
-}
-
-function parseCompletionAgentId(stepName: string | undefined): string | null {
-  const prefix = "crew-agent-completion:";
-  if (stepName?.startsWith(prefix) !== true) return null;
-  return stepName.slice(prefix.length);
 }
 
 function buildPerAgent(
