@@ -249,16 +249,63 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
     );
 
     expect(result.kind).toBe("success");
-    expect(result.receipt).toBeUndefined();
     expect(outcomes).toHaveLength(1);
     expect(outcomes[0]?.scope).toBe("terminal");
     expect(outcomes[0]?.outcome.status).toBe("issued");
     if (outcomes[0]?.outcome.status === "issued") {
+      expect(result.receipt).toBe(outcomes[0].outcome.envelope);
+      expect(Object.isFrozen(result)).toBe(true);
       const verification = await verifyReceipt(
         outcomes[0].outcome.envelope,
         keySet,
       );
       expect(verification.ok).toBe(true);
+      if (verification.ok) {
+        expect(verification.body.stepName).toMatch(
+          /^agent-execution:[^:]+:terminal$/,
+        );
+        expect(verification.body.stepName).not.toBe(
+          result.iterations[0]?.iterationId,
+        );
+      }
+    }
+  });
+
+  it("binds private crew lineage context into the returned terminal envelope", async () => {
+    const { signer, keySet } = await makeEphemeralSetup();
+    const parentReceiptCid = `sha256:${"ab".repeat(32)}`;
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: "Child done." },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+
+    const result = await runAgentInternal(
+      {
+        task: "Run as a crew child.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        terminalReceipt: {
+          stepName: "crew-agent:child:terminal",
+          parentReceiptCid,
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(result.receipt).toBeDefined();
+    if (result.receipt === undefined) return;
+    const verification = await verifyReceipt(result.receipt, keySet);
+    expect(verification.ok).toBe(true);
+    if (verification.ok) {
+      expect(verification.body.stepName).toBe("crew-agent:child:terminal");
+      expect(verification.body.parentReceiptCid).toBe(parentReceiptCid);
     }
   });
 });

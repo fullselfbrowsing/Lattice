@@ -129,6 +129,10 @@ export interface RunAgentInternalOptions {
     readonly scope: "checkpoint" | "terminal";
     readonly outcome: ReceiptIssuanceOutcome;
   }) => void;
+  readonly terminalReceipt?: {
+    readonly stepName: string;
+    readonly parentReceiptCid: string;
+  };
   /** Dynamic shared pool excluding this invocation's local cumulative usage. */
   readonly remainingBudget?: () => BudgetInvariant | undefined;
 }
@@ -208,7 +212,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       ? "post-execution"
       : "pre-execution";
     const outcome = await issueReceipt(
-      buildAgentTerminalReceiptInput(executionId, providerName, result),
+      buildAgentTerminalReceiptInput(
+        executionId,
+        providerName,
+        result,
+        internalOptions.terminalReceipt,
+      ),
       receiptPolicy,
       stage,
     );
@@ -217,6 +226,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
 
     if (outcome.status === "failed" && receiptPolicy.mode === "required") {
       return buildAuditFailure(outcome.error, iterations, cumulativeUsage);
+    }
+    if (outcome.status === "issued") {
+      return Object.freeze({
+        ...result,
+        receipt: outcome.envelope,
+      });
     }
     return result;
   };
@@ -511,21 +526,21 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         }));
       }
 
-      // 4e.1. Clear persistent storage on final-answer success so the next
-      // run starts fresh (Phase 20).
-      await host.storage?.clear();
-
       const artifactRefs =
         response.artifactRefs !== undefined
           ? response.artifactRefs.map(toArtifactRef)
           : [];
-      return finalize({
+      const finalized = await finalize({
         kind: "success",
         output: outputValidation.outputs as never,
         ...(artifactRefs.length > 0 ? { artifacts: artifactRefs } : {}),
         usage: snapshotUsage(cumulativeUsage),
         iterations: Object.freeze([...iterations]),
       });
+      if (finalized.kind === "success") {
+        await host.storage?.clear();
+      }
+      return finalized;
     }
 
     // 4g. Tool dispatch path.
@@ -705,12 +720,13 @@ function resolveAgentReceiptPolicy<TOutputs extends OutputContractMap>(
 }
 
 function buildAgentTerminalReceiptInput(
-  runId: string,
+  executionId: string,
   providerName: string,
   result: AgentResult,
+  context: RunAgentInternalOptions["terminalReceipt"],
 ): CreateReceiptInput {
   return {
-    runId,
+    runId: executionId,
     model: {
       requested: providerName,
       observed:
@@ -726,6 +742,11 @@ function buildAgentTerminalReceiptInput(
     contractHash: null,
     inputHashes: [],
     outputHash: null,
+    stepName: context?.stepName ?? `${executionId}:terminal`,
+    stepIndex: result.iterations.length,
+    ...(context !== undefined
+      ? { parentReceiptCid: context.parentReceiptCid }
+      : {}),
   };
 }
 

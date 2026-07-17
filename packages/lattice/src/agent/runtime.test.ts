@@ -10,7 +10,7 @@ import type {
   ProviderPricingHint,
   ProviderRunResponse,
 } from "../providers/provider.js";
-import type { ReceiptSigner } from "../receipts/types.js";
+import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import {
   CANONICAL_PROJECTED_OUTPUT_TOKENS,
@@ -21,7 +21,11 @@ import { fc } from "../test-support/fast-check.js";
 import { defineTool } from "../tools/tools.js";
 
 import type { AgentHost } from "./host.js";
-import { runAgent, runAgentInternal } from "./runtime.js";
+import {
+  runAgent,
+  runAgentInternal,
+  type RunAgentInternalOptions,
+} from "./runtime.js";
 import type { AgentIntent } from "./types.js";
 
 function countingSigner(options: {
@@ -881,6 +885,235 @@ describe("runAgent — provider error path", () => {
 });
 
 describe("runAgent — receipt policy", () => {
+  it("attaches the exact issued terminal envelope across terminal result classes", async () => {
+    type Observer = NonNullable<RunAgentInternalOptions["onReceiptOutcome"]>;
+    type TerminalResult = {
+      readonly kind: string;
+      readonly receipt?: ReceiptEnvelope;
+    };
+    const finalProvider = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+    const invalidProvider = createFakeProvider({
+      response: () => ({ rawOutputs: { build: { command: 42 } } }),
+    });
+    const throwingProvider = createFakeProvider({
+      response: () => {
+        throw new Error("provider failed");
+      },
+    });
+    const unknownCostProvider = costProvider(undefined, () => ({
+      rawOutputs: { answer: "must not run" },
+    }));
+    const deniedPipeline = createHookPipeline();
+    deniedPipeline.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => controls?.deny("denied"),
+      { band: BAND.SAFETY },
+    );
+    const cases: ReadonlyArray<{
+      readonly name: string;
+      readonly expectedKind: string;
+      readonly run: (
+        signer: ReceiptSigner,
+        onReceiptOutcome: Observer,
+      ) => Promise<TerminalResult>;
+    }> = [
+      {
+        name: "success",
+        expectedKind: "success",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "success",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "provider error",
+        expectedKind: "provider_execution",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "provider error",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [throwingProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "validation",
+        expectedKind: "validation",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "validation",
+              tools: [],
+              outputs: { build: makeBuildConfigSchema() },
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [invalidProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "denial",
+        expectedKind: "agent-iteration-denied",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "denied",
+              tools: [],
+              pipeline: deniedPipeline,
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "iteration budget",
+        expectedKind: "agent-max-iterations",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no iterations",
+              tools: [],
+              contract: contract({ budget: { maxIterations: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "wall budget",
+        expectedKind: "agent-wall-time-exceeded",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no wall time",
+              tools: [],
+              contract: contract({ budget: { maxWallTimeMs: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "cost budget",
+        expectedKind: "no-contract-match",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "unknown cost",
+              tools: [],
+              contract: contract({ budget: { maxCostUsd: 1 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [unknownCostProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "no provider",
+        expectedKind: "execution_unavailable",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no provider",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [] },
+            { onReceiptOutcome },
+          ),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const signerState = countingSigner();
+      const terminalEnvelopes: ReceiptEnvelope[] = [];
+      const result = await testCase.run(signerState.signer, (event) => {
+        if (event.scope === "terminal" && event.outcome.status === "issued") {
+          terminalEnvelopes.push(event.outcome.envelope);
+        }
+      });
+
+      expect(result.kind, testCase.name).toBe(testCase.expectedKind);
+      expect(terminalEnvelopes, testCase.name).toHaveLength(1);
+      expect(result.receipt, testCase.name).toBe(terminalEnvelopes[0]);
+      expect(Object.isFrozen(result), testCase.name).toBe(true);
+      expect(signerState.calls.value, testCase.name).toBe(1);
+    }
+  });
+
+  it("clears successful host state only after terminal finalization", async () => {
+    const { signer } = countingSigner();
+    const order: string[] = [];
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+    const host: AgentHost = {
+      kind: "agent-host",
+      storage: {
+        async load() {
+          return null;
+        },
+        async save() {},
+        async clear() {
+          order.push("clear");
+        },
+      },
+    };
+
+    const result = await runAgentInternal(
+      {
+        task: "finalize then clear",
+        tools: [],
+        host,
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        onReceiptOutcome(event) {
+          if (event.scope === "terminal" && event.outcome.status === "issued") {
+            order.push("terminal");
+          }
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(result.receipt).toBeDefined();
+    expect(order).toEqual(["terminal", "clear"]);
+  });
+
   it("keeps managed checkpoints invocation-local when a pipeline is reused", async () => {
     const { signer, calls } = countingSigner();
     const pipeline = createHookPipeline();
@@ -1221,8 +1454,10 @@ describe("runAgent — receipt policy", () => {
     );
 
     expect(bestEffortResult.kind).toBe("success");
+    expect(bestEffortResult.receipt).toBeUndefined();
     expect(bestEffort.calls.value).toBe(2);
     expect(offResult.kind).toBe("success");
+    expect(offResult.receipt).toBeUndefined();
     expect(off.calls.value).toBe(0);
   });
 
