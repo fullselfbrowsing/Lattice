@@ -78,6 +78,32 @@ export interface MemorySessionStoreOptions {
   readonly id?: string;
 }
 
+export function validateSessionAppendResult(
+  session: SessionRecord,
+  input: AppendSessionTurnInput,
+): SessionTurn {
+  const turn = session.turns.at(-1);
+
+  if (
+    session.id !== input.sessionId ||
+    turn === undefined ||
+    turn.task !== input.task ||
+    turn.planId !== input.planId ||
+    turn.tenantId !== input.tenantId ||
+    turn.privacy !== input.privacy ||
+    turn.retention !== input.retention ||
+    !structurallyEqual(turn.artifactRefs, input.artifactRefs) ||
+    !structurallyEqual(
+      turn.outputArtifactRefs,
+      input.outputArtifactRefs ?? [],
+    )
+  ) {
+    throw new Error("Session append result does not match the requested continuity.");
+  }
+
+  return turn;
+}
+
 export function createMemorySessionStore(
   options: MemorySessionStoreOptions = {},
 ): SessionStore {
@@ -264,4 +290,35 @@ function clone<T>(value: T): T {
   } catch {
     return value;
   }
+}
+
+function structurallyEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) {
+    return true;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => structurallyEqual(value, right[index]))
+    );
+  }
+
+  if (!isRecord(left) || !isRecord(right)) {
+    return false;
+  }
+
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+
+  return (
+    structurallyEqual(leftKeys, rightKeys) &&
+    leftKeys.every((key) => structurallyEqual(left[key], right[key]))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

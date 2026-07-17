@@ -41,7 +41,11 @@ import type {
 } from "../receipts/types.js";
 import type { RunResult } from "../results/result.js";
 import type { PersistenceError } from "../results/errors.js";
-import type { SessionRef } from "../sessions/session.js";
+import {
+  validateSessionAppendResult,
+  type AppendSessionTurnInput,
+  type SessionRef,
+} from "../sessions/session.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import type { ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
@@ -846,7 +850,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         );
 
         try {
-          await normalized.sessions.appendTurn({
+          const appendInput: AppendSessionTurnInput = {
             sessionId: built.sessionRecord.id,
             task: intent.task,
             artifactRefs: sessionInputRefs,
@@ -861,7 +865,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             ...(built.sessionRecord.retention !== undefined
               ? { retention: built.sessionRecord.retention }
               : {}),
-          });
+          };
+          const appended = await normalized.sessions.appendTurn(appendInput);
+          validateSessionAppendResult(appended, appendInput);
           persistenceReports.push({
             lifecycle: "session",
             status: "stored",

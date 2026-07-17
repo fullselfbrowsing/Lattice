@@ -6,7 +6,7 @@ import type { ContextSummarizer } from "../src/context/context-pack.js";
 import type { ProviderAdapter, ProviderRunRequest } from "../src/providers/provider.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
 import { createAI } from "../src/runtime/create-ai.js";
-import type { SessionRecord } from "../src/sessions/session.js";
+import type { SessionRecord, SessionStore } from "../src/sessions/session.js";
 import { createMemorySessionStore } from "../src/sessions/session.js";
 import { createMemoryArtifactStore } from "../src/storage/memory.js";
 import type { ArtifactStore } from "../src/storage/storage.js";
@@ -663,6 +663,221 @@ describe("provider output lifecycle", () => {
     });
     expect(result.partialOutputs).toEqual({ answer: "streamed" });
     expect(JSON.stringify(result)).not.toContain("SECRET_STREAM_OUTPUT_CAUSE");
+  });
+});
+
+describe("session continuity lifecycle", () => {
+  it("appends exact resolvable projection and output refs with effective scope", async () => {
+    const storage = createMemoryArtifactStore({ id: "store:session-exact" });
+    const sessions = createMemorySessionStore({ id: "sessions:exact" });
+    const requests: ProviderRunRequest[] = [];
+    const result = await createAI({
+      storage,
+      sessions,
+      providers: [
+        outputProvider("session-exact", async (request) => {
+          requests.push(request);
+          return {
+            rawOutputs: { answer: "continued" },
+            artifactRefs: [
+              artifact.text("SESSION_OUTPUT", { id: "artifact:session-output" }),
+            ],
+          };
+        }),
+      ],
+    }).run({
+      task: "scoped continuity",
+      session: { id: "session:exact", kind: "session-ref" },
+      artifacts: [
+        artifact.text("SESSION_INPUT", { id: "artifact:session-input" }),
+      ],
+      outputs: { answer: "text" },
+      policy: {
+        tenantId: "tenant:exact",
+        privacy: "sensitive",
+        retention: "durable",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.plan.kind !== "execution-plan") {
+      throw new Error("Expected exact session continuity success.");
+    }
+    const record = await sessions.load("session:exact");
+    const turn = record?.turns.at(-1);
+    expect(turn).toMatchObject({
+      task: "scoped continuity",
+      planId: result.plan.id,
+      tenantId: "tenant:exact",
+      privacy: "sensitive",
+      retention: "durable",
+    });
+    expect(turn?.artifactRefs).toEqual(
+      result.plan.contextProjection?.artifactRefs.filter(
+        (ref) => ref.storage?.storeId === storage.id,
+      ),
+    );
+    expect(turn?.outputArtifactRefs).toEqual(result.artifacts);
+    expect(record?.planIds).toEqual([result.plan.id]);
+    expect(requests).toHaveLength(1);
+    for (const ref of [
+      ...(turn?.artifactRefs ?? []),
+      ...(turn?.outputArtifactRefs ?? []),
+    ]) {
+      await expect(storage.load(ref.id)).resolves.toEqual(
+        expect.objectContaining({ id: ref.id }),
+      );
+    }
+  });
+
+  for (const mode of ["throw", "malformed"] as const) {
+    it(`returns terminal partial evidence when session append ${mode}s`, async () => {
+      const storage = createMemoryArtifactStore({ id: `store:session-${mode}` });
+      const base = createMemorySessionStore({ id: `sessions:${mode}` });
+      const appendTurn = vi.fn<SessionStore["appendTurn"]>(async (input) => {
+        if (mode === "throw") {
+          throw new Error("SECRET_SESSION_APPEND_CAUSE");
+        }
+
+        const appended = await base.appendTurn(input);
+        return { ...appended, turns: [] };
+      });
+      const sessions: SessionStore = { ...base, appendTurn };
+      let primaryCalls = 0;
+      let fallbackCalls = 0;
+      const result = await createAI({
+        storage,
+        sessions,
+        providers: [
+          outputProvider(`session-primary-${mode}`, async () => {
+            primaryCalls += 1;
+            return {
+              rawOutputs: { answer: "partial session output" },
+              artifactRefs: [
+                artifact.text("PERSISTED_BEFORE_SESSION", {
+                  id: `artifact:session-failure:${mode}`,
+                }),
+              ],
+              normalizedUsage: {
+                promptTokens: 4,
+                completionTokens: 2,
+                costUsd: 0.02,
+              },
+            };
+          }),
+          outputProvider(`session-fallback-${mode}`, async () => {
+            fallbackCalls += 1;
+            return { rawOutputs: { answer: "must not retry" } };
+          }),
+        ],
+      }).run({
+        task: "session append terminal",
+        session: { id: `session:failure:${mode}`, kind: "session-ref" },
+        outputs: { answer: "text" },
+      });
+
+      expect(result.ok).toBe(false);
+      expect(primaryCalls).toBe(1);
+      expect(fallbackCalls).toBe(0);
+      expect(appendTurn).toHaveBeenCalledOnce();
+      if (result.ok || result.plan.kind !== "execution-plan") {
+        throw new Error("Expected a terminal session persistence failure.");
+      }
+      expect(result.error).toMatchObject({
+        kind: "persistence",
+        lifecycle: "session",
+        sessionId: `session:failure:${mode}`,
+        postProvider: true,
+        terminal: true,
+      });
+      expect(result.partialOutputs).toEqual({ answer: "partial session output" });
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts?.[0]?.storage?.storeId).toBe(storage.id);
+      expect(result.usage.costUsd).toBe(0.02);
+      expect(result.plan.attempts[0]?.status).toBe("succeeded");
+      expect(result.plan.stages.find((stage) => stage.kind === "persistence"))
+        .toMatchObject({
+          status: "failed",
+          metadata: {
+            failure: { lifecycle: "session" },
+          },
+        });
+      expect(JSON.stringify(result)).not.toContain("SECRET_SESSION_APPEND_CAUSE");
+    });
+  }
+
+  for (const mode of ["unconfigured", "policy"] as const) {
+    it(`keeps task and plan continuity with empty refs for ${mode} storage`, async () => {
+      const sessions = createMemorySessionStore({ id: `sessions:skip:${mode}` });
+      const storage = createMemoryArtifactStore({ id: `store:session-skip:${mode}` });
+      const result = await createAI({
+        sessions,
+        ...(mode === "policy" ? { storage } : {}),
+        providers: [
+          outputProvider(`session-skip-${mode}`, async () => ({
+            rawOutputs: { answer: "continued" },
+            artifactRefs: [
+              artifact.text("UNRESOLVED_OUTPUT", {
+                id: `artifact:session-skip-output:${mode}`,
+              }),
+            ],
+          })),
+        ],
+      }).run({
+        task: `session ${mode} continuity`,
+        session: { id: `session:skip:${mode}`, kind: "session-ref" },
+        artifacts: [
+          artifact.text("UNRESOLVED_INPUT", {
+            id: `artifact:session-skip-input:${mode}`,
+          }),
+        ],
+        outputs: { answer: "text" },
+        ...(mode === "policy" ? { policy: { retention: "none" as const } } : {}),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        throw new Error("Expected skipped-storage session continuity success.");
+      }
+      const record = await sessions.load(`session:skip:${mode}`);
+      expect(record?.turns).toHaveLength(1);
+      expect(record?.turns[0]).toMatchObject({
+        task: `session ${mode} continuity`,
+        planId: result.plan.id,
+        artifactRefs: [],
+        outputArtifactRefs: [],
+        ...(mode === "policy" ? { retention: "none" } : {}),
+      });
+      expect(record?.planIds).toEqual([result.plan.id]);
+    });
+  }
+
+  it("appends exact output refs after a completed stream", async () => {
+    const storage = createMemoryArtifactStore({ id: "store:session-stream" });
+    const sessions = createMemorySessionStore({ id: "sessions:stream" });
+    let streamCalls = 0;
+    const provider: ProviderAdapter = {
+      ...outputProvider("session-stream", undefined, true),
+      executeStream() {
+        streamCalls += 1;
+        return completedOutputStream("artifact:session-stream-output");
+      },
+    };
+    const result = await createAI({ storage, sessions, providers: [provider] }).run({
+      task: "stream session continuity",
+      session: { id: "session:stream", kind: "session-ref" },
+      outputs: { answer: "text" },
+      policy: { stream: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(streamCalls).toBe(1);
+    if (!result.ok) {
+      throw new Error("Expected completed-stream session success.");
+    }
+    const record = await sessions.load("session:stream");
+    expect(record?.turns.at(-1)?.outputArtifactRefs).toEqual(result.artifacts);
+    expect(result.artifacts[0]?.storage?.storeId).toBe(storage.id);
   });
 });
 

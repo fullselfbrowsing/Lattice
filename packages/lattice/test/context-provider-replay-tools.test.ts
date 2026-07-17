@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { artifact } from "../src/artifacts/artifact.js";
@@ -10,7 +10,12 @@ import {
   replayOffline,
 } from "../src/replay/replay.js";
 import { createAI } from "../src/runtime/create-ai.js";
-import { createMemorySessionStore } from "../src/sessions/session.js";
+import {
+  createMemorySessionStore,
+  type SessionStore,
+} from "../src/sessions/session.js";
+import { createMemoryArtifactStore } from "../src/storage/memory.js";
+import type { ArtifactStore } from "../src/storage/storage.js";
 import { defineTool, importMcpTools, runTool } from "../src/tools/tools.js";
 
 describe("context, sessions, provider adapters, replay, and tools", () => {
@@ -57,6 +62,79 @@ describe("context, sessions, provider adapters, replay, and tools", () => {
     const record = await sessions.load("case-1");
     expect(record?.turns).toHaveLength(1);
     expect(record?.planIds).toEqual([result.plan.id]);
+  });
+
+  it("rejects scoped access to legacy session history before artifact or provider work", async () => {
+    const baseSessions = createMemorySessionStore({ id: "sessions:legacy-scope" });
+    await baseSessions.save({
+      id: "session:legacy-unscoped",
+      kind: "session-ref",
+      turns: [],
+      summaries: [],
+      artifactRefs: [],
+      planIds: [],
+      createdAt: "2026-07-16T00:00:00.000Z",
+      updatedAt: "2026-07-16T00:00:00.000Z",
+    });
+    const loadSession = vi.fn<SessionStore["load"]>((id) =>
+      baseSessions.load(id));
+    const appendTurn = vi.fn<SessionStore["appendTurn"]>((input) =>
+      baseSessions.appendTurn(input));
+    const sessions: SessionStore = {
+      ...baseSessions,
+      load: loadSession,
+      appendTurn,
+    };
+    const baseStorage = createMemoryArtifactStore({ id: "store:legacy-scope" });
+    const putArtifact = vi.fn<ArtifactStore["put"]>((input) =>
+      baseStorage.put(input));
+    const loadArtifact = vi.fn<ArtifactStore["load"]>((id) =>
+      baseStorage.load(id));
+    const storage: ArtifactStore = {
+      ...baseStorage,
+      put: putArtifact,
+      load: loadArtifact,
+    };
+    let providerCalls = 0;
+    const summarize = vi.fn(() => []);
+    const result = await createAI({
+      sessions,
+      storage,
+      providers: [
+        createFakeProvider({
+          response: () => {
+            providerCalls += 1;
+            return { rawOutputs: { answer: "must not execute" } };
+          },
+        }),
+      ],
+    }).run({
+      task: "scoped legacy access",
+      session: { id: "session:legacy-unscoped", kind: "session-ref" },
+      artifacts: [
+        artifact.text("MUST_NOT_PERSIST", { id: "artifact:blocked-before-put" }),
+      ],
+      outputs: { answer: "text" },
+      policy: { tenantId: "tenant:scoped" },
+      overrides: { summarizer: { summarize } },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("Expected legacy session scope rejection.");
+    }
+    expect(result.error).toMatchObject({
+      kind: "context_materialization",
+      reason: "policy-denied",
+      sessionId: "session:legacy-unscoped",
+      terminal: true,
+    });
+    expect(loadSession).toHaveBeenCalledOnce();
+    expect(putArtifact).not.toHaveBeenCalled();
+    expect(loadArtifact).not.toHaveBeenCalled();
+    expect(summarize).not.toHaveBeenCalled();
+    expect(providerCalls).toBe(0);
+    expect(appendTurn).not.toHaveBeenCalled();
   });
 
   it("wraps OpenAI-compatible HTTP without leaking provider SDK types", async () => {
