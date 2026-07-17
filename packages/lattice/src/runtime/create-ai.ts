@@ -7,19 +7,23 @@ import type { TrainingClass } from "../capabilities/profile.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 import type { ContextSummarizer } from "../context/context-pack.js";
+import { toContextProjectionPlan } from "../context/materialize.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMap } from "../outputs/validate.js";
 import {
   markStage,
+  withPlanAttemptEvidence,
   withPlanStatus,
+  type ContextPackPlan,
+  type ContextProjectionPlan,
   type ExecutionPlan,
+  type ProviderPackagingPlan,
   type ProviderAttemptRecord,
   type RouteRejectReason,
   type SelectedRoute,
   type UsageRecord,
 } from "../plan/plan.js";
 import type { PolicySpec } from "../policy/policy.js";
-import { packageArtifactsForProvider } from "../providers/packaging.js";
 import { collectStream } from "../providers/streaming.js";
 import type {
   ProviderAdapter,
@@ -48,7 +52,9 @@ import {
 import {
   gatewayMetadataForRoute,
   prepareRun,
+  prepareRouteAttempt,
   type PreparedRun,
+  type PreparedRouteSuccess,
 } from "./prepare-run.js";
 
 export interface RuntimeOverrides {
@@ -307,8 +313,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     };
   }
 
-  const providerArtifacts = materialized.artifacts;
-
   const routes = [
     selected,
     ...plan.route.fallbackChain.map((fallback) =>
@@ -317,6 +321,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         modelId: fallback.modelId,
         score: fallback.score,
         estimates: selected.estimates,
+        ...(selected.contextWindow !== undefined
+          ? { contextWindow: selected.contextWindow }
+          : {}),
         inputModalities: selected.inputModalities,
         outputModalities: selected.outputModalities,
         fileTransport: selected.fileTransport,
@@ -325,6 +332,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   ];
   const attempts: ProviderAttemptRecord[] = [];
   let lastError: Error | undefined;
+  let lastExecutedRoute: SelectedRoute | undefined;
+  let lastExecutedPreparation: PreparedRouteSuccess | undefined;
   let anyExecutableAdapter = false;
   const streamingRequested = isStreamingRequested(built.mergedPolicy);
 
@@ -366,24 +375,171 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       }));
     }
 
-    const attemptPackaging =
+    const preparedRoute =
       index === 0
-        ? built.packaging
-        : packageArtifactsForProvider({
-            artifacts: providerArtifacts,
+        ? {
+            ok: true as const,
+            contextPack: built.contextPack,
+            materialized,
+            packaging: built.packaging,
+          }
+        : await prepareRouteAttempt(
+            normalized,
+            intent,
+            built.preparedArtifacts,
             route,
-            ...(built.mergedPolicy !== undefined
-              ? { policy: built.mergedPolicy }
-              : {}),
-          });
+            {
+              ...(built.mergedPolicy !== undefined
+                ? { policy: built.mergedPolicy }
+                : {}),
+              ...(built.sessionRecord !== undefined
+                ? { sessionRecord: built.sessionRecord }
+                : {}),
+            },
+          );
+
+    if (!preparedRoute.ok) {
+      const completedAt = new Date().toISOString();
+      const failedAttempt = attemptFailed(
+        route.providerId,
+        route.modelId,
+        startedAt,
+        completedAt,
+        preparedRoute.error.message,
+        {
+          context: preparedRoute.contextPack,
+          warnings: [preparedRoute.error.message],
+        },
+      );
+      attempts.push(failedAttempt);
+      const failedStages = markStage(
+        markStage(plan.stages, preparedRoute.failedStage, "failed"),
+        "execution",
+        "skipped",
+      );
+      plan = withPlanAttemptEvidence(plan, "failed", {
+        route,
+        context: preparedRoute.contextPack,
+        attempts,
+        stages: failedStages,
+        warnings: [preparedRoute.error.message],
+        metadata: metadataForAttempt(plan, undefined),
+      });
+      await emitEvent(normalized, events, createRunEvent("context.packed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: {
+          status: "failed",
+          failureKind: preparedRoute.error.kind,
+          ...("reason" in preparedRoute.error
+            ? { failureReason: preparedRoute.error.reason }
+            : {}),
+        },
+      }));
+      await emitEvent(normalized, events, createRunEvent("run.failed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: { reason: preparedRoute.error.kind },
+      }));
+      const receipt = await maybeIssueReceipt(normalized, {
+        runId,
+        ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+        artifacts: [],
+        inputHashes: [],
+        contractVerdict: "execution-failed",
+        model: { requested: route.modelId, observed: null },
+        route: {
+          providerId: route.providerId,
+          capabilityId: route.modelId,
+          attemptNumber: attempts.length,
+        },
+        usage: ZERO_USAGE,
+      });
+
+      return {
+        ok: false,
+        error: preparedRoute.error,
+        usage: { ...ZERO_USAGE },
+        plan,
+        events,
+        ...(receipt !== undefined ? { receipt } : {}),
+      };
+    }
+
+    const attemptMaterialized = preparedRoute.materialized;
+    const providerArtifacts = attemptMaterialized.artifacts;
+    const attemptPackaging = preparedRoute.packaging;
+    const attemptEvidence = evidenceForPreparedRoute(preparedRoute);
+    if (index > 0) {
+      await emitEvent(normalized, events, createRunEvent("context.packed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: {
+          status: "completed",
+          estimatedTokens: preparedRoute.contextPack.estimatedTokens,
+          included: preparedRoute.contextPack.included.length,
+          summarized: preparedRoute.contextPack.summarized.length,
+          omitted: preparedRoute.contextPack.omitted.length,
+          projectionId: attemptMaterialized.id,
+          artifactCount: providerArtifacts.length,
+          summaryCount: attemptMaterialized.summaryArtifactRefs.length,
+          inputHashes: attemptMaterialized.inputHashes,
+        },
+      }));
+    }
 
     if (attemptPackaging.blocked.length > 0) {
       const message = attemptPackaging.blocked.join("; ");
-      attempts.push(attemptFailed(route.providerId, route.modelId, startedAt, new Date().toISOString(), message));
+      attempts.push(
+        attemptFailed(
+          route.providerId,
+          route.modelId,
+          startedAt,
+          new Date().toISOString(),
+          message,
+          attemptEvidence,
+        ),
+      );
+      plan = withPlanAttemptEvidence(plan, "running", {
+        route,
+        context: preparedRoute.contextPack,
+        contextProjection: attemptEvidence.contextProjection,
+        providerPackaging: attemptPackaging.plan,
+        attempts,
+        warnings: attemptMaterialized.warnings,
+        metadata: metadataForAttempt(plan, undefined),
+      });
       lastError = new Error(message);
       continue;
     }
-
+    const gatewayMetadata = gatewayMetadataForRoute(
+      route.providerId,
+      route.modelId,
+      built.mergedPolicy?.gateway,
+    );
+    const runningAttempt: ProviderAttemptRecord = {
+      providerId: route.providerId,
+      modelId: route.modelId,
+      status: "running",
+      startedAt,
+      ...attemptEvidence,
+    };
+    plan = withPlanAttemptEvidence(plan, "running", {
+      route,
+      context: preparedRoute.contextPack,
+      contextProjection: attemptEvidence.contextProjection,
+      providerPackaging: attemptPackaging.plan,
+      attempts: [...attempts, runningAttempt],
+      stages: markStage(plan.stages, "execution", "running"),
+      warnings: attemptMaterialized.warnings,
+      metadata: metadataForAttempt(plan, gatewayMetadata),
+    });
     const request: ProviderRunRequest = {
       task: intent.task,
       artifacts: providerArtifacts,
@@ -392,15 +548,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
       ...(intent.signal !== undefined ? { signal: intent.signal } : {}),
       plan,
-      contextPack: built.contextPack,
+      contextPack: preparedRoute.contextPack,
       providerPackaging: attemptPackaging.plan,
       packagedArtifacts: attemptPackaging.packagedArtifacts,
     };
-    const gatewayMetadata = gatewayMetadataForRoute(
-      route.providerId,
-      route.modelId,
-      built.mergedPolicy?.gateway,
-    );
 
     try {
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
@@ -415,28 +566,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         },
       }));
       await intent.overrides?.hooks?.beforeProviderCall?.({ plan, request });
-
-      plan = withPlanStatus(plan, "running", {
-        stages: markStage(plan.stages, "execution", "running"),
-        attempts: [
-          ...attempts,
-          {
-            providerId: route.providerId,
-            modelId: route.modelId,
-            status: "running",
-            startedAt,
-            context: built.contextPack,
-            ...(plan.contextProjection !== undefined
-              ? {
-                  contextProjection: plan.contextProjection,
-                  inputHashes: plan.contextProjection.inputHashes,
-                }
-              : {}),
-            providerPackaging: attemptPackaging.plan,
-            warnings: materialized.warnings,
-          },
-        ],
-      });
+      lastExecutedRoute = route;
+      lastExecutedPreparation = preparedRoute;
 
       const response = streamingRequested
         ? await executeStreamingProvider({
@@ -474,6 +605,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         startedAt,
         completedAt,
         response.usage,
+        attemptEvidence,
         response.gateway !== undefined ? { gateway: response.gateway } : undefined,
       );
 
@@ -501,6 +633,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: providerArtifacts,
+            inputHashes: attemptMaterialized.inputHashes,
             lineageArtifacts: [
               ...providerArtifacts,
               ...attemptPackaging.packagedArtifacts,
@@ -582,6 +715,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               ? { contract: intent.contract }
               : {}),
             artifacts: providerArtifacts,
+            inputHashes: attemptMaterialized.inputHashes,
             lineageArtifacts: [
               ...providerArtifacts,
               ...attemptPackaging.packagedArtifacts,
@@ -646,7 +780,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         await normalized.sessions.appendTurn({
           sessionId: built.sessionRecord.id,
           task: intent.task,
-          artifactRefs: built.preparedArtifactRefs,
+          artifactRefs: attemptMaterialized.artifactRefs,
           outputArtifactRefs: artifactRefs,
           planId: completedPlan.id,
           ...(built.sessionRecord.tenantId !== undefined
@@ -680,6 +814,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: providerArtifacts,
+        inputHashes: attemptMaterialized.inputHashes,
         lineageArtifacts: [
           ...providerArtifacts,
           ...attemptPackaging.packagedArtifacts,
@@ -709,7 +844,16 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       const completedAt = new Date().toISOString();
       const message =
         error instanceof Error ? error.message : "Provider adapter execution failed.";
-      attempts.push(attemptFailed(route.providerId, route.modelId, startedAt, completedAt, message));
+      attempts.push(
+        attemptFailed(
+          route.providerId,
+          route.modelId,
+          startedAt,
+          completedAt,
+          message,
+          attemptEvidence,
+        ),
+      );
       lastError = error instanceof Error ? error : new Error(message);
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
         runId,
@@ -725,7 +869,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const receipt = await maybeIssueReceipt(normalized, {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-      artifacts: providerArtifacts,
+      artifacts: [],
+      inputHashes: [],
       contractVerdict: "execution-failed",
       model: { requested: selected.modelId, observed: null },
       route: {
@@ -763,12 +908,13 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const receipt = await maybeIssueReceipt(normalized, {
     runId,
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-    artifacts: providerArtifacts,
+    artifacts: lastExecutedPreparation?.materialized.artifacts ?? [],
+    inputHashes: lastExecutedPreparation?.materialized.inputHashes ?? [],
     contractVerdict: "execution-failed",
-    model: { requested: selected.modelId, observed: null },
+    model: { requested: lastExecutedRoute?.modelId ?? selected.modelId, observed: null },
     route: {
-      providerId: selected.providerId,
-      capabilityId: selected.modelId,
+      providerId: lastExecutedRoute?.providerId ?? selected.providerId,
+      capabilityId: lastExecutedRoute?.modelId ?? selected.modelId,
       attemptNumber: attempts.length,
     },
     usage: UNMEASURED_USAGE,
@@ -779,8 +925,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     error: {
       kind: "provider_execution",
       message: lastError?.message ?? "Provider adapter execution failed.",
-      providerId: selected.providerId,
-      modelId: selected.modelId,
+      providerId: lastExecutedRoute?.providerId ?? selected.providerId,
+      modelId: lastExecutedRoute?.modelId ?? selected.modelId,
     },
     usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
@@ -807,6 +953,7 @@ function attemptSucceeded(
   startedAt: string,
   completedAt: string,
   usage?: UsageRecord,
+  evidence?: AttemptEvidence,
   metadata?: Record<string, unknown>,
 ): ProviderAttemptRecord {
   return {
@@ -816,6 +963,7 @@ function attemptSucceeded(
     startedAt,
     completedAt,
     ...(usage !== undefined ? { usage } : {}),
+    ...(evidence !== undefined ? evidence : {}),
     ...(metadata !== undefined ? { metadata } : {}),
   };
 }
@@ -826,6 +974,7 @@ function attemptFailed(
   startedAt: string,
   completedAt: string,
   error: string,
+  evidence?: Partial<AttemptEvidence>,
 ): ProviderAttemptRecord {
   return {
     providerId,
@@ -834,7 +983,44 @@ function attemptFailed(
     startedAt,
     completedAt,
     error,
+    ...(evidence !== undefined ? evidence : {}),
   };
+}
+
+interface AttemptEvidence {
+  readonly context: ContextPackPlan;
+  readonly contextProjection: ContextProjectionPlan;
+  readonly providerPackaging: ProviderPackagingPlan;
+  readonly inputHashes: readonly string[];
+  readonly warnings: readonly string[];
+}
+
+function evidenceForPreparedRoute(
+  prepared: PreparedRouteSuccess,
+): AttemptEvidence {
+  const contextProjection = toContextProjectionPlan(prepared.materialized);
+
+  return {
+    context: prepared.contextPack,
+    contextProjection,
+    providerPackaging: prepared.packaging.plan,
+    inputHashes: contextProjection.inputHashes,
+    warnings: prepared.materialized.warnings,
+  };
+}
+
+function metadataForAttempt(
+  plan: ExecutionPlan,
+  gateway: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const metadata = { ...plan.metadata };
+  delete metadata.gateway;
+
+  if (gateway !== undefined) {
+    metadata.gateway = gateway;
+  }
+
+  return metadata;
 }
 
 function findExecutableAdapter(
@@ -938,6 +1124,7 @@ function routeFromCandidate(
     modelId,
     score: candidate.score,
     estimates: candidate.estimates,
+    contextWindow: candidate.capability.contextWindow,
     inputModalities: candidate.capability.inputModalities,
     outputModalities: candidate.capability.outputModalities,
     fileTransport: candidate.capability.fileTransport,
@@ -1034,6 +1221,7 @@ interface MaybeIssueReceiptInput {
   readonly runId: string;
   readonly contract?: CapabilityContract;
   readonly artifacts: readonly ArtifactInput[];
+  readonly inputHashes?: readonly string[];
   readonly lineageArtifacts?: readonly (ArtifactInput | ArtifactRef)[];
   readonly contractVerdict: ContractVerdict;
   readonly model: ReceiptModel;
@@ -1065,7 +1253,8 @@ async function maybeIssueReceipt(
 ): Promise<ReceiptEnvelope | undefined> {
   if (normalized.signer === undefined) return undefined;
   try {
-    const inputHashes = await hashInputArtifacts(input.artifacts);
+    const inputHashes =
+      input.inputHashes ?? await hashInputArtifacts(input.artifacts);
     const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
       input.lineageArtifacts ?? input.artifacts,
     );

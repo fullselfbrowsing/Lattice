@@ -324,6 +324,56 @@ export function withPlanStatus(
   };
 }
 
+export function withPlanAttemptEvidence(
+  plan: ExecutionPlan,
+  status: ExecutionPlanStatus,
+  input: {
+    readonly route: SelectedRoute;
+    readonly attempts: readonly ProviderAttemptRecord[];
+    readonly context?: ContextPackPlan;
+    readonly contextProjection?: ContextProjectionPlan;
+    readonly providerPackaging?: ProviderPackagingPlan;
+    readonly stages?: readonly ExecutionPlanStage[];
+    readonly warnings?: readonly string[];
+    readonly metadata?: Record<string, unknown>;
+  },
+): ExecutionPlan {
+  const evidenceWarnings = stableUnique([
+    ...(input.warnings ?? []),
+    ...(input.context?.warnings ?? []),
+    ...(input.contextProjection?.warnings ?? []),
+    ...(input.providerPackaging?.warnings ?? []),
+  ]);
+
+  return {
+    id: plan.id,
+    kind: plan.kind,
+    version: plan.version,
+    createdAt: plan.createdAt,
+    status,
+    task: plan.task,
+    outputNames: plan.outputNames,
+    artifactRefs: plan.artifactRefs,
+    route: {
+      ...plan.route,
+      selected: input.route,
+    },
+    stages: input.stages ?? plan.stages,
+    ...(input.context !== undefined ? { context: input.context } : {}),
+    ...(input.contextProjection !== undefined
+      ? { contextProjection: input.contextProjection }
+      : {}),
+    ...(input.providerPackaging !== undefined
+      ? { providerPackaging: input.providerPackaging }
+      : {}),
+    attempts: input.attempts,
+    warnings: evidenceWarnings,
+    ...((input.metadata ?? plan.metadata) !== undefined
+      ? { metadata: input.metadata ?? plan.metadata }
+      : {}),
+  };
+}
+
 export function markStage(
   stages: readonly ExecutionPlanStage[],
   kind: ExecutionStageKind,
@@ -419,4 +469,8 @@ function createPlanId(): string {
   }
 
   return `plan:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+}
+
+function stableUnique(values: readonly string[]): readonly string[] {
+  return [...new Set(values)];
 }

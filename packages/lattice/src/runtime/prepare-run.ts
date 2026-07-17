@@ -20,6 +20,7 @@ import {
   withPlanStatus,
   type ExecutionPlan,
   type RouteDecision,
+  type SelectedRoute,
 } from "../plan/plan.js";
 import {
   mergePolicy,
@@ -92,6 +93,7 @@ interface PreparedRunBase {
 
 export interface PreparedRunSuccess extends PreparedRunBase {
   readonly ok: true;
+  readonly preparedArtifacts: readonly ArtifactInput[];
   readonly contextPack: ContextPack;
   readonly materialized?: MaterializedContext;
   readonly packaging: ProviderPackagingResult;
@@ -103,6 +105,22 @@ export interface PreparedRunFailure extends PreparedRunBase {
 }
 
 export type PreparedRun = PreparedRunSuccess | PreparedRunFailure;
+
+export interface PreparedRouteSuccess {
+  readonly ok: true;
+  readonly contextPack: ContextPack;
+  readonly materialized: MaterializedContext;
+  readonly packaging: ProviderPackagingResult;
+}
+
+export interface PreparedRouteFailure {
+  readonly ok: false;
+  readonly error: LatticeRunError;
+  readonly contextPack: ContextPack;
+  readonly failedStage: "context-packing" | "persistence";
+}
+
+export type PreparedRoute = PreparedRouteSuccess | PreparedRouteFailure;
 
 interface PreparedArtifactEntry {
   readonly artifact: ArtifactInput;
@@ -203,17 +221,15 @@ export async function prepareRun<
       : {}),
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
   });
-  const contextPack = buildContextPack({
-    task: intent.task,
-    artifacts: preparedArtifacts,
-    ...(route.selected !== undefined ? { route: route.selected } : {}),
-    ...(sessionRecord !== undefined ? { session: sessionRecord } : {}),
-    ...(intent.overrides?.tokenBudget !== undefined
-      ? { tokenBudget: intent.overrides.tokenBudget }
-      : {}),
-  });
-
   if (route.selected === undefined) {
+    const contextPack = buildContextPack({
+      task: intent.task,
+      artifacts: preparedArtifacts,
+      ...(sessionRecord !== undefined ? { session: sessionRecord } : {}),
+      ...(intent.overrides?.tokenBudget !== undefined
+        ? { tokenBudget: intent.overrides.tokenBudget }
+        : {}),
+    });
     const packaging = packageArtifactsForProvider({
       artifacts: [],
       ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
@@ -242,6 +258,7 @@ export async function prepareRun<
     return {
       ok: true,
       plan,
+      preparedArtifacts,
       contextPack,
       packaging,
       preparedArtifactRefs,
@@ -252,57 +269,26 @@ export async function prepareRun<
     };
   }
 
-  let materialized: MaterializedContext;
-
-  try {
-    materialized = await materializeContext({
-      contextPack,
-      route: route.selected,
-      artifacts: preparedArtifacts,
+  const preparedRoute = await prepareRouteAttempt(
+    normalized,
+    intent,
+    preparedArtifacts,
+    route.selected,
+    {
       ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-      ...(sessionRecord !== undefined ? { session: sessionRecord } : {}),
-      ...(normalized.storage !== undefined ? { storage: normalized.storage } : {}),
-      ...(intent.overrides?.summarizer !== undefined
-        ? { summarizer: intent.overrides.summarizer }
-        : {}),
-    });
-  } catch (cause) {
-    if (cause instanceof ArtifactLifecycleFailure) {
-      const error = publicPersistenceError(cause);
-      const plan = createFailurePlan({
-        intent,
-        error,
-        artifactRefs: preparedArtifactRefs,
-        route,
-        contextPack,
-        failedStage: "persistence",
-        toolResults: prepared.toolResults,
-        transformCount: prepared.transformCount,
-        lifecycleReports: inputLifecycleReports,
-      });
-      await emitFailure(options, plan, error);
+      ...(sessionRecord !== undefined ? { sessionRecord } : {}),
+    },
+  );
 
-      return {
-        ok: false,
-        error,
-        plan,
-        preparedArtifactRefs,
-        lifecycleReports: inputLifecycleReports,
-        toolResults: prepared.toolResults,
-        ...(mergedPolicy !== undefined ? { mergedPolicy } : {}),
-        ...(sessionRecord !== undefined ? { sessionRecord } : {}),
-      };
-    }
-
-    const internal = asContextFailure(cause, sessionRecord?.id);
-    const error = publicContextError(internal);
+  if (!preparedRoute.ok) {
+    const { error, contextPack, failedStage } = preparedRoute;
     const plan = createFailurePlan({
       intent,
       error,
       artifactRefs: preparedArtifactRefs,
       route,
       contextPack,
-      failedStage: "context-packing",
+      failedStage,
       toolResults: prepared.toolResults,
       transformCount: prepared.transformCount,
       lifecycleReports: inputLifecycleReports,
@@ -321,15 +307,12 @@ export async function prepareRun<
     };
   }
 
+  const { contextPack, materialized, packaging } = preparedRoute;
+
   const lifecycleReports = [
     ...inputLifecycleReports,
     ...materialized.summaryLifecycleReports,
   ];
-  const packaging = packageArtifactsForProvider({
-    artifacts: materialized.artifacts,
-    route: route.selected,
-    ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-  });
   const plan = createPreparedPlan({
     intent,
     route,
@@ -356,6 +339,7 @@ export async function prepareRun<
   return {
     ok: true,
     plan,
+    preparedArtifacts,
     contextPack: materialized.contextPack,
     materialized,
     packaging,
@@ -364,6 +348,78 @@ export async function prepareRun<
     toolResults: prepared.toolResults,
     ...(mergedPolicy !== undefined ? { mergedPolicy } : {}),
     ...(sessionRecord !== undefined ? { sessionRecord } : {}),
+  };
+}
+
+export async function prepareRouteAttempt<
+  const TOutputs extends OutputContractMap,
+>(
+  normalized: NormalizedLatticeConfig,
+  intent: PrepareRunIntent<TOutputs>,
+  preparedArtifacts: readonly ArtifactInput[],
+  route: SelectedRoute,
+  input: {
+    readonly policy?: PolicySpec;
+    readonly sessionRecord?: SessionRecord;
+  } = {},
+): Promise<PreparedRoute> {
+  const contextPack = buildContextPack({
+    task: intent.task,
+    artifacts: preparedArtifacts,
+    route,
+    ...(input.sessionRecord !== undefined
+      ? { session: input.sessionRecord }
+      : {}),
+    ...(intent.overrides?.tokenBudget !== undefined
+      ? { tokenBudget: intent.overrides.tokenBudget }
+      : {}),
+  });
+  let materialized: MaterializedContext;
+
+  try {
+    materialized = await materializeContext({
+      contextPack,
+      route,
+      artifacts: preparedArtifacts,
+      ...(input.policy !== undefined ? { policy: input.policy } : {}),
+      ...(input.sessionRecord !== undefined
+        ? { session: input.sessionRecord }
+        : {}),
+      ...(normalized.storage !== undefined
+        ? { storage: normalized.storage }
+        : {}),
+      ...(intent.overrides?.summarizer !== undefined
+        ? { summarizer: intent.overrides.summarizer }
+        : {}),
+    });
+  } catch (cause) {
+    if (cause instanceof ArtifactLifecycleFailure) {
+      return {
+        ok: false,
+        error: publicPersistenceError(cause),
+        contextPack,
+        failedStage: "persistence",
+      };
+    }
+
+    const internal = asContextFailure(cause, input.sessionRecord?.id);
+    return {
+      ok: false,
+      error: publicContextError(internal),
+      contextPack,
+      failedStage: "context-packing",
+    };
+  }
+
+  return {
+    ok: true,
+    contextPack: materialized.contextPack,
+    materialized,
+    packaging: packageArtifactsForProvider({
+      artifacts: materialized.artifacts,
+      route,
+      ...(input.policy !== undefined ? { policy: input.policy } : {}),
+    }),
   };
 }
 

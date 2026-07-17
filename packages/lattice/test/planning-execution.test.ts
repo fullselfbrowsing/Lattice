@@ -1,11 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { artifact } from "../src/artifacts/artifact.js";
+import type { ContextSummarizer } from "../src/context/context-pack.js";
 import { createFakeProvider } from "../src/providers/fake.js";
 import { createLiteLLMProvider } from "../src/providers/litellm.js";
 import { createOpenRouterProvider } from "../src/providers/openrouter.js";
-import type { ProviderAdapter } from "../src/providers/provider.js";
+import type {
+  ProviderAdapter,
+  ProviderRunRequest,
+} from "../src/providers/provider.js";
 import { defaultCapabilityForProvider } from "../src/routing/catalog.js";
 import { createAI } from "../src/runtime/create-ai.js";
 
@@ -283,5 +287,189 @@ describe("deterministic planning and execution spine", () => {
     if (result.ok) {
       expect(result.outputs.answer).toBe("fallback packaged");
     }
+  });
+
+  it("rematerializes fallback membership and transport under that route's limits", async () => {
+    const primaryRequests: ProviderRunRequest[] = [];
+    const fallbackRequests: ProviderRunRequest[] = [];
+    const primary = {
+      id: "primary-authority",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("primary-authority"),
+          modelId: "primary-authority:model",
+          contextWindow: 4_096,
+          fileTransport: ["inline", "base64"] as const,
+        },
+      ],
+      async execute(request) {
+        primaryRequests.push(request);
+        throw new Error("primary unavailable");
+      },
+    } satisfies ProviderAdapter;
+    const fallback = {
+      id: "fallback-authority",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fallback-authority"),
+          modelId: "fallback-authority:model",
+          contextWindow: 1_300,
+          fileTransport: ["inline", "url"] as const,
+        },
+      ],
+      async execute(request) {
+        fallbackRequests.push(request);
+        return { rawOutputs: { answer: "route-local" } };
+      },
+    } satisfies ProviderAdapter;
+    const summarize = vi.fn<ContextSummarizer["summarize"]>(({ artifacts: sources }) => {
+      expect(sources.map((source) => source.id)).toEqual(["artifact:raw"]);
+      return [artifact.text("FALLBACK_SUMMARY", { id: "artifact:summary" })];
+    });
+    const result = await createAI({ providers: [primary, fallback] }).run({
+      task: "Route-local fallback",
+      artifacts: [
+        artifact.text("PRIMARY_AND_FALLBACK", {
+          id: "artifact:included",
+          size: { characters: 2_000 },
+        }),
+        artifact.text("RAW_SUMMARIZED_SENTINEL", {
+          id: "artifact:raw",
+          size: { characters: 1_600 },
+        }),
+        artifact.image("https://example.test/image.png", {
+          id: "artifact:image",
+          size: { characters: 4 },
+        }),
+      ],
+      outputs: { answer: "text" },
+      overrides: { summarizer: { summarize } },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(primaryRequests).toHaveLength(1);
+    expect(fallbackRequests).toHaveLength(1);
+    expect(primaryRequests[0]?.artifacts.map((input) => input.id)).toEqual([
+      "artifact:included",
+      "artifact:raw",
+      "artifact:image",
+    ]);
+    expect(fallbackRequests[0]?.artifacts.map((input) => input.id)).toEqual([
+      "artifact:included",
+      "artifact:image",
+      "artifact:summary",
+    ]);
+    expect(JSON.stringify(fallbackRequests[0])).not.toContain(
+      "RAW_SUMMARIZED_SENTINEL",
+    );
+    expect(summarize).toHaveBeenCalledOnce();
+
+    if (!result.ok || result.plan.kind !== "execution-plan") {
+      throw new Error("Expected a successful execution plan.");
+    }
+    expect(result.plan.route.selected?.providerId).toBe("fallback-authority");
+    expect(result.plan.attempts).toHaveLength(2);
+    for (const [attempt, request] of result.plan.attempts.map((attempt, index) => [
+      attempt,
+      [primaryRequests[0], fallbackRequests[0]][index],
+    ] as const)) {
+      expect(attempt.context).toEqual(request?.contextPack);
+      expect(attempt.providerPackaging).toEqual(request?.providerPackaging);
+      expect(attempt.contextProjection?.artifactRefs.map((ref) => ref.id)).toEqual(
+        request?.artifacts.map((input) => input.id),
+      );
+      expect(attempt.inputHashes).toEqual(attempt.contextProjection?.inputHashes);
+    }
+    expect(primaryRequests[0]?.providerPackaging?.artifacts).toContainEqual(
+      expect.objectContaining({ artifactId: "artifact:image", transport: "base64" }),
+    );
+    expect(fallbackRequests[0]?.providerPackaging?.artifacts).toContainEqual(
+      expect.objectContaining({ artifactId: "artifact:image", transport: "url" }),
+    );
+    expect(result.plan.context).toEqual(result.plan.attempts[1]?.context);
+    expect(result.plan.contextProjection).toEqual(
+      result.plan.attempts[1]?.contextProjection,
+    );
+    expect(result.plan.providerPackaging).toEqual(
+      result.plan.attempts[1]?.providerPackaging,
+    );
+  });
+
+  it("stops before a fallback adapter when route materialization fails", async () => {
+    let fallbackCalls = 0;
+    const primary = {
+      id: "primary-materialization",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("primary-materialization"),
+          modelId: "primary-materialization:model",
+          contextWindow: 4_096,
+        },
+      ],
+      async execute() {
+        throw new Error("primary unavailable");
+      },
+    } satisfies ProviderAdapter;
+    const fallback = {
+      id: "fallback-materialization",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("fallback-materialization"),
+          modelId: "fallback-materialization:model",
+          contextWindow: 1_300,
+        },
+      ],
+      async execute() {
+        fallbackCalls += 1;
+        return { rawOutputs: { answer: "must not execute" } };
+      },
+    } satisfies ProviderAdapter;
+    const result = await createAI({ providers: [primary, fallback] }).run({
+      task: "Terminal fallback preparation",
+      artifacts: [
+        artifact.text("included", {
+          id: "artifact:included",
+          size: { characters: 2_000 },
+        }),
+        artifact.text("FAILURE_SOURCE_SENTINEL", {
+          id: "artifact:summary-source",
+          size: { characters: 1_600 },
+        }),
+      ],
+      outputs: { answer: "text" },
+      overrides: {
+        summarizer: {
+          summarize() {
+            throw new Error("SECRET_SUMMARIZER_CAUSE");
+          },
+        },
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(fallbackCalls).toBe(0);
+    if (result.ok || result.plan.kind !== "execution-plan") {
+      throw new Error("Expected a terminal materialization failure.");
+    }
+    expect(result.error).toMatchObject({
+      kind: "context_materialization",
+      reason: "summary-failed",
+      terminal: true,
+    });
+    expect(result.plan.route.selected?.providerId).toBe(
+      "fallback-materialization",
+    );
+    expect(result.plan.attempts).toHaveLength(2);
+    expect(result.plan.attempts[1]).toMatchObject({
+      providerId: "fallback-materialization",
+      status: "failed",
+    });
+    expect(result.plan.attempts[1]?.contextProjection).toBeUndefined();
+    expect(result.plan.contextProjection).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain("SECRET_SUMMARIZER_CAUSE");
   });
 });

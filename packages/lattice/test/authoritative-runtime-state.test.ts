@@ -238,6 +238,110 @@ describe("authoritative runtime state", () => {
     expect(JSON.stringify(request.artifacts)).not.toContain("STREAM_RAW_SUMMARY");
     expect(JSON.stringify(request.artifacts)).not.toContain("STREAM_OMITTED");
   });
+
+  it("rematerializes streaming fallback context before opening the next stream", async () => {
+    const primaryRequests: ProviderRunRequest[] = [];
+    const fallbackRequests: ProviderRunRequest[] = [];
+    async function* failedStream() {
+      throw new Error("primary stream unavailable");
+    }
+    async function* successfulStream() {
+      yield { kind: "text-delta" as const, output: "answer", text: "fallback stream" };
+    }
+    const primary: ProviderAdapter = {
+      id: "authority-stream-primary",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("authority-stream-primary"),
+          modelId: "authority-stream-primary:model",
+          contextWindow: 4_096,
+          fileTransport: ["inline", "base64"],
+          streaming: true,
+        },
+      ],
+      executeStream(request) {
+        primaryRequests.push(request);
+        return failedStream();
+      },
+    };
+    const fallback: ProviderAdapter = {
+      id: "authority-stream-fallback",
+      kind: "provider-adapter",
+      capabilities: [
+        {
+          ...defaultCapabilityForProvider("authority-stream-fallback"),
+          modelId: "authority-stream-fallback:model",
+          contextWindow: 1_300,
+          fileTransport: ["inline", "url"],
+          streaming: true,
+        },
+      ],
+      executeStream(request) {
+        fallbackRequests.push(request);
+        return successfulStream();
+      },
+    };
+    const result = await createAI({ providers: [primary, fallback] }).run({
+      task: "authoritative stream fallback",
+      artifacts: [
+        artifact.text("STREAM_SHARED", {
+          id: "artifact:stream:shared",
+          size: { characters: 2_000 },
+        }),
+        artifact.text("STREAM_FALLBACK_RAW_SENTINEL", {
+          id: "artifact:stream:fallback-raw",
+          size: { characters: 1_600 },
+        }),
+        artifact.image("https://example.test/stream.png", {
+          id: "artifact:stream:image",
+          size: { characters: 4 },
+        }),
+      ],
+      outputs: { answer: "text" },
+      policy: { stream: true },
+      overrides: {
+        summarizer: {
+          summarize: ({ artifacts: sources }) => {
+            expect(sources.map((input) => input.id)).toEqual([
+              "artifact:stream:fallback-raw",
+            ]);
+            return [
+              artifact.text("STREAM_FALLBACK_SUMMARY", {
+                id: "artifact:stream:fallback-summary",
+              }),
+            ];
+          },
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(primaryRequests).toHaveLength(1);
+    expect(fallbackRequests).toHaveLength(1);
+    expect(fallbackRequests[0]?.artifacts.map((input) => input.id)).toEqual([
+      "artifact:stream:shared",
+      "artifact:stream:image",
+      "artifact:stream:fallback-summary",
+    ]);
+    expect(JSON.stringify(fallbackRequests[0])).not.toContain(
+      "STREAM_FALLBACK_RAW_SENTINEL",
+    );
+    if (!result.ok || result.plan.kind !== "execution-plan") {
+      throw new Error("Expected a successful streaming fallback.");
+    }
+    expect(result.plan.attempts.map((attempt) => attempt.providerId)).toEqual([
+      "authority-stream-primary",
+      "authority-stream-fallback",
+    ]);
+    expect(result.plan.attempts[0]?.contextProjection?.artifactRefs.map((ref) => ref.id))
+      .toEqual(primaryRequests[0]?.artifacts.map((input) => input.id));
+    expect(result.plan.attempts[1]?.contextProjection?.artifactRefs.map((ref) => ref.id))
+      .toEqual(fallbackRequests[0]?.artifacts.map((input) => input.id));
+    expect(result.plan.contextProjection).toEqual(
+      result.plan.attempts[1]?.contextProjection,
+    );
+  });
 });
 
 function sessionRecord(
