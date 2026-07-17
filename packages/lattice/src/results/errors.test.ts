@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
+  AuditError,
   ContextMaterializationError,
   LatticeRunError,
   NoContractMatchError,
@@ -196,6 +197,20 @@ describe("Phase 8 isTerminal predicate and TripwireViolationError", () => {
       artifactId: "artifact:output",
       storeId: "store:1",
       postProvider: true,
+      terminal: true,
+    };
+
+    const union: LatticeRunError = error;
+    expect(isTerminal(union)).toBe(true);
+    expect(error).not.toHaveProperty("cause");
+  });
+
+  it("audit failures are bounded, terminal, and cause-free", () => {
+    const error: AuditError = {
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
       terminal: true,
     };
 

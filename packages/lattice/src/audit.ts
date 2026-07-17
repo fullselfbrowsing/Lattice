@@ -1,5 +1,16 @@
 export { createReceipt } from "./receipts/receipt.js";
 export type { CreateReceiptInput } from "./receipts/receipt.js";
+export {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+} from "./receipts/policy.js";
+export type {
+  EffectiveReceiptPolicy,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
+  ReceiptPolicyInput,
+} from "./receipts/policy.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
   ExternalExecutionAuditInput,

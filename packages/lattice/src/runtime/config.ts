@@ -5,6 +5,7 @@ import type {
   ProviderRegistryInput,
 } from "../providers/provider.js";
 import type { ReceiptSigner } from "../receipts/types.js";
+import type { ReceiptIssuanceMode } from "../receipts/policy.js";
 import type { SessionStore } from "../sessions/session.js";
 import type { StorageLike } from "../storage/storage.js";
 import type { RunEventSink, TracerLike } from "../tracing/tracing.js";
@@ -22,6 +23,7 @@ export interface LatticeConfig {
    * no receipts are issued and `RunResult.receipt` is undefined.
    */
   readonly signer?: ReceiptSigner;
+  readonly receiptMode?: ReceiptIssuanceMode;
 }
 
 export type NormalizedProviderEntry = ProviderRef | ProviderAdapter;
@@ -34,6 +36,7 @@ export interface NormalizedLatticeConfig {
   readonly tracing?: TracerLike;
   readonly events: readonly RunEventSink[];
   readonly signer?: ReceiptSigner;
+  readonly receiptMode?: ReceiptIssuanceMode;
 }
 
 export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeConfig {
@@ -45,6 +48,7 @@ export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeCo
     tracing?: TracerLike;
     events: readonly RunEventSink[];
     signer?: ReceiptSigner;
+    receiptMode?: ReceiptIssuanceMode;
   } = {
     providers: normalizeProviders(config.providers),
     defaults: config.defaults ?? {},
@@ -65,6 +69,10 @@ export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeCo
 
   if (config.signer !== undefined) {
     normalized.signer = config.signer;
+  }
+
+  if (config.receiptMode !== undefined) {
+    normalized.receiptMode = config.receiptMode;
   }
 
   return normalized;

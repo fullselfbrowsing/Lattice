@@ -71,6 +71,20 @@ export interface PersistenceError {
   readonly terminal: true;
 }
 
+export type AuditErrorCode =
+  | "receipt-signer-missing"
+  | "receipt-signing-failed";
+
+export type AuditErrorStage = "pre-execution" | "post-execution";
+
+export interface AuditError {
+  readonly kind: "audit";
+  readonly code: AuditErrorCode;
+  readonly stage: AuditErrorStage;
+  readonly message: string;
+  readonly terminal: true;
+}
+
 /**
  * Phase 7 addition: emitted by the runtime when no candidate route can
  * satisfy the caller-supplied `CapabilityContract` (budget, modality,
@@ -112,6 +126,7 @@ export type LatticeRunError =
   | TimeoutError
   | ContextMaterializationError
   | PersistenceError
+  | AuditError
   | NoContractMatchError
   | TripwireViolationError;
 
@@ -138,6 +153,7 @@ export function isTerminal(error: LatticeRunError): boolean {
     error.kind === "tripwire-violated" ||
     error.kind === "no-contract-match" ||
     error.kind === "context_materialization" ||
-    error.kind === "persistence"
+    error.kind === "persistence" ||
+    error.kind === "audit"
   );
 }

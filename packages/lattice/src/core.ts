@@ -158,6 +158,9 @@ export type {
 } from "./storage/storage.js";
 export { isTerminal } from "./results/errors.js";
 export type {
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
   ContextMaterializationError,
   ContextMaterializationFailureReason,
   LatticeRunError,

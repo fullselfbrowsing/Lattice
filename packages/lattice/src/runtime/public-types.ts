@@ -129,6 +129,9 @@ export type {
   RealtimeTransportKind,
 } from "../realtime/realtime.js";
 export type {
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
   ContextMaterializationError,
   ContextMaterializationFailureReason,
   LatticeRunError,
@@ -161,6 +164,12 @@ export type {
   StoredArtifactEnvelope,
   StoredArtifactPayloadDescriptor,
 } from "../storage/storage.js";
+export type {
+  EffectiveReceiptPolicy,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
+  ReceiptPolicyInput,
+} from "../receipts/policy.js";
 export type {
   CapabilityReceiptBody,
   ContractVerdict,

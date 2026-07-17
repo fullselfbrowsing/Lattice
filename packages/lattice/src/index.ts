@@ -32,6 +32,11 @@ export {
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
+export {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+} from "./receipts/policy.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
   ExternalExecutionAuditInput,
@@ -195,6 +200,9 @@ export type { AI, RunIntent } from "./runtime/create-ai.js";
 export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
   ArtifactInput,
   ArtifactKind,
   ArtifactLifecycleKind,
@@ -229,6 +237,7 @@ export type {
   ExecutionPlan,
   ExecutionPlanStage,
   ExecutionPlanStub,
+  EffectiveReceiptPolicy,
   FieldFromTableInvariant,
   InferOutput,
   InferOutputMap,
@@ -298,7 +307,10 @@ export type {
   RealtimeSupportLevel,
   RealtimeTransportKind,
   ReceiptEnvelope,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
   ReceiptModel,
+  ReceiptPolicyInput,
   ReceiptRedaction,
   ReceiptRoute,
   ReceiptSignatureProfile,
