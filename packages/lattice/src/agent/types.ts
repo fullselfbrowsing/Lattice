@@ -27,7 +27,8 @@ import type { OutputContractMap } from "../outputs/contracts.js";
 import type { InferOutputMap } from "../outputs/infer.js";
 import type { PolicySpec } from "../policy/policy.js";
 import type { Usage } from "../providers/provider.js";
-import type { LatticeRunError } from "../results/errors.js";
+import type { AuditError, LatticeRunError } from "../results/errors.js";
+import type { ReceiptIssuanceMode } from "../receipts/policy.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import type { SurvivabilityAdapter } from "../runtime/survivability.js";
 import type { ToolUseRequest } from "../tools/tool-use.js";
@@ -104,6 +105,8 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
   readonly outputs?: TOutputs;
   readonly pipeline?: HookPipeline;
   readonly signer?: ReceiptSigner;
+  /** Local receipt policy override. Takes precedence over runtime config. */
+  readonly receiptMode?: ReceiptIssuanceMode;
   readonly tracer?: TracerLike;
   /**
    * When `false`, the runtime will NOT auto-register `createCheckpointHook`
@@ -154,14 +157,25 @@ export type AgentFailureKind =
  * (empty if the failure occurred pre-iteration). For `agent-iteration-denied`,
  * the failing iteration is the LAST entry and carries `deniedReason`.
  */
-export interface AgentFailure {
-  readonly kind: AgentFailureKind;
+interface AgentFailureEvidence {
   readonly usage: Usage;
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly reason?: string;
   readonly cause?: unknown;
   readonly receipt?: ReceiptEnvelope;
 }
+
+export interface AgentExecutionFailure extends AgentFailureEvidence {
+  readonly kind: Exclude<AgentFailureKind, "audit">;
+}
+
+export interface AgentAuditFailure
+  extends AgentFailureEvidence, AuditError {
+  readonly reason: string;
+  readonly cause?: never;
+}
+
+export type AgentFailure = AgentExecutionFailure | AgentAuditFailure;
 
 /**
  * Discriminated union returned by `ai.runAgent`.

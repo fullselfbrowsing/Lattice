@@ -34,7 +34,11 @@ import { createFakeProvider } from "../providers/fake.js";
 import { defineTool } from "../tools/tools.js";
 import { createHookPipeline, BAND } from "../contract/bands.js";
 
-import { runAgent } from "./runtime.js";
+import {
+  runAgent,
+  runAgentInternal,
+  type RunAgentInternalOptions,
+} from "./runtime.js";
 
 function makeSchema(): StandardSchemaV1 {
   return {
@@ -208,5 +212,47 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
     expect(result.kind).toBe("success");
     // BEFORE_AGENT_ITERATION fired once (iteration 0 → final answer immediately).
     expect(safetyCallCount.value).toBe(1);
+  });
+
+  it("keeps an issued terminal envelope on the internal outcome channel", async () => {
+    const { signer, keySet } = await makeEphemeralSetup();
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: "Done." },
+        normalizedUsage: { promptTokens: 2, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+    const outcomes: Parameters<
+      NonNullable<RunAgentInternalOptions["onReceiptOutcome"]>
+    >[0][] = [];
+
+    const result = await runAgentInternal(
+      {
+        task: "Issue terminal evidence.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        onReceiptOutcome: (event) => {
+          outcomes.push(event);
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(result.receipt).toBeUndefined();
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.scope).toBe("terminal");
+    expect(outcomes[0]?.outcome.status).toBe("issued");
+    if (outcomes[0]?.outcome.status === "issued") {
+      const verification = await verifyReceipt(
+        outcomes[0].outcome.envelope,
+        keySet,
+      );
+      expect(verification.ok).toBe(true);
+    }
   });
 });

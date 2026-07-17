@@ -186,14 +186,69 @@ describe("createCheckpointHook -- best-effort mint (D-07)", () => {
     await expect(handler(ctx())).resolves.toBeUndefined();
   });
 
-  it("emits a single step.transition event with mintError when signer throws", async () => {
+  it("emits one bounded failed outcome without the raw signer message", async () => {
     const { tracer, events } = recordingTracer();
     const handler = createCheckpointHook({ runId: "r-fail", tracer, signer: rejectingSigner() });
     await handler(ctx());
     expect(events.length).toBe(1);
     const attrs = events[0]?.attributes ?? {};
-    expect(typeof attrs.mintError).toBe("string");
+    expect(attrs.receiptStatus).toBe("failed");
+    expect(attrs.receiptCode).toBe("receipt-signing-failed");
+    expect(attrs.receiptStage).toBe("post-execution");
+    expect(attrs.mintError).toBeUndefined();
     expect(attrs.receiptId).toBeUndefined();
+    expect(JSON.stringify(attrs)).not.toContain("signer-throws-on-purpose");
+  });
+
+  it("reports a required missing signer through the outcome callback without a tracer", async () => {
+    const outcomes: unknown[] = [];
+    const handler = createCheckpointHook({
+      runId: "r-required-missing",
+      receiptMode: "required",
+      onReceiptOutcome: (outcome) => {
+        outcomes.push(outcome);
+      },
+    });
+
+    await expect(handler(ctx())).resolves.toBeUndefined();
+    expect(outcomes).toEqual([
+      {
+        status: "failed",
+        error: {
+          kind: "audit",
+          code: "receipt-signer-missing",
+          stage: "pre-execution",
+          message: "Receipt issuance requires a configured signer.",
+          terminal: true,
+        },
+      },
+    ]);
+  });
+
+  it("reports required signer failure through the outcome callback without leaking its cause", async () => {
+    const outcomes: unknown[] = [];
+    const handler = createCheckpointHook({
+      runId: "r-required-failure",
+      receiptMode: "required",
+      signer: rejectingSigner("SECRET-KMS-KID"),
+      onReceiptOutcome: (outcome) => {
+        outcomes.push(outcome);
+      },
+    });
+
+    await handler(ctx());
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]).toMatchObject({
+      status: "failed",
+      error: {
+        kind: "audit",
+        code: "receipt-signing-failed",
+        stage: "post-execution",
+      },
+    });
+    expect(JSON.stringify(outcomes)).not.toContain("signer-throws-on-purpose");
+    expect(JSON.stringify(outcomes)).not.toContain("SECRET-KMS-KID");
   });
 });
 

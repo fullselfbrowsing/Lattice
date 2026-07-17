@@ -20,15 +20,19 @@
  * Composition surfaces (all optional on AgentIntent):
  *
  *   - `pipeline?` — Phase 15 HookPipeline; runtime creates one if absent.
- *   - `signer?`   — Phase 9 ReceiptSigner; when present AND
- *                   `autoRegisterCheckpoint !== false`, the runtime
- *                   auto-registers `createCheckpointHook` on
- *                   BAND.OBSERVABILITY for per-iteration receipts.
+ *   - `signer?` / `receiptMode?` — invocation receipt policy overrides.
+ *                   Signers fall back to runtime config; enabled checkpoint
+ *                   issuance auto-registers on BAND.OBSERVABILITY unless
+ *                   explicitly disabled.
  *   - `tracer?`   — Phase 5 TracerLike; flows through pipeline.
  *   - `outputs?`  — final-answer schema map; validated only on the final
  *                   assistant message (no intermediate validation).
  *   - `contract?` — Phase 7 CapabilityContract; budget invariants are
  *                   enforced pre-iteration.
+ *
+ * Every terminal result passes through one receipt finalizer. Required-mode
+ * checkpoint failure is reused there so completed provider work is not
+ * repeated and signing is not attempted twice.
  */
 
 import type { ArtifactRef } from "../artifacts/artifact.js";
@@ -39,6 +43,15 @@ import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMapValues } from "../outputs/validate.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
+import {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+  type EffectiveReceiptPolicy,
+  type ReceiptIssuanceOutcome,
+} from "../receipts/policy.js";
+import type { CreateReceiptInput } from "../receipts/receipt.js";
+import type { AuditError, AuditErrorStage } from "../results/errors.js";
 import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
 
@@ -51,6 +64,7 @@ import {
 import {
   AgentDeniedError,
   type DefaultAgentOutputs,
+  type AgentExecutionFailure,
   type AgentFailure,
   type AgentIntent,
   type AgentResult,
@@ -93,6 +107,10 @@ export interface RunAgentInternalOptions {
     req: ToolUseRequest,
     ctx: DispatchToolUseContext,
   ) => Promise<{ readonly content: string } | undefined>;
+  readonly onReceiptOutcome?: (event: {
+    readonly scope: "checkpoint" | "terminal";
+    readonly outcome: ReceiptIssuanceOutcome;
+  }) => void;
 }
 
 /**
@@ -125,8 +143,70 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
   const startedAt = Date.now();
+  const runId = `runAgent-${startedAt}-${Math.random().toString(16).slice(2)}`;
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
+  const receiptPolicy = resolveAgentReceiptPolicy(intent, config);
+  let checkpointFailure: AuditError | undefined;
+  let executionStarted = false;
+  let providerName = "lattice-agent/unavailable";
+
+  const observeReceiptOutcome = (
+    scope: "checkpoint" | "terminal",
+    outcome: ReceiptIssuanceOutcome,
+  ): void => {
+    try {
+      internalOptions.onReceiptOutcome?.({ scope, outcome });
+    } catch {
+      // Internal observers collect evidence only; they cannot change execution.
+    }
+    if (
+      scope === "checkpoint" &&
+      receiptPolicy.mode === "required" &&
+      outcome.status === "failed" &&
+      checkpointFailure === undefined
+    ) {
+      checkpointFailure = outcome.error;
+    }
+  };
+
+  const finalize = async (
+    result: AgentResult<TOutputs> | undefined,
+  ): Promise<AgentResult<TOutputs>> => {
+    if (checkpointFailure !== undefined) {
+      return buildAuditFailure(
+        checkpointFailure,
+        iterations,
+        cumulativeUsage,
+      );
+    }
+    if (result === undefined) {
+      throw new Error("Agent terminal finalization requires a result.");
+    }
+
+    const stage: AuditErrorStage = executionStarted
+      ? "post-execution"
+      : "pre-execution";
+    const outcome = await issueReceipt(
+      buildAgentTerminalReceiptInput(runId, providerName, result),
+      receiptPolicy,
+      stage,
+    );
+    observeReceiptOutcome("terminal", outcome);
+    emitAgentReceiptOutcome(intent, "terminal", outcome);
+
+    if (outcome.status === "failed" && receiptPolicy.mode === "required") {
+      return buildAuditFailure(outcome.error, iterations, cumulativeUsage);
+    }
+    return result;
+  };
+
+  const preflight = preflightReceiptPolicy(receiptPolicy);
+  if (preflight?.status === "failed") {
+    observeReceiptOutcome("terminal", preflight);
+    emitAgentReceiptOutcome(intent, "terminal", preflight);
+    return buildAuditFailure(preflight.error, iterations, cumulativeUsage);
+  }
 
   // 0. Host adapter + survivability defaults.
   const host: AgentHost = intent.host ?? createNoopAgentHost();
@@ -135,19 +215,27 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
 
   // 1. Hook pipeline + auto-checkpoint registration.
   const pipeline = ensurePipeline(intent);
-  maybeAutoRegisterCheckpoint(pipeline, intent);
+  maybeAutoRegisterCheckpoint(
+    pipeline,
+    intent,
+    receiptPolicy,
+    runId,
+    (outcome) => {
+      observeReceiptOutcome("checkpoint", outcome);
+    },
+  );
 
   // 2. Provider selection — pick the first adapter with execute().
   const provider = pickFirstExecutableProvider(config);
   if (provider === null) {
-    return buildFailure({
+    return finalize(buildFailure({
       kind: "execution_unavailable",
       reason: "No provider adapter with execute() is configured.",
       iterations,
       usage: cumulativeUsage,
-    });
+    }));
   }
-  let providerName = provider.id;
+  providerName = provider.id;
 
   // 3. Initialize conversation + tools handle.
   let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
@@ -197,12 +285,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     // 4a. Budget pre-checks.
     const elapsedMs = Date.now() - startedAt;
     if (elapsedMs >= maxWallTimeMs) {
-      return buildFailure({
+      return finalize(buildFailure({
         kind: "agent-wall-time-exceeded",
         reason: `Wall-time budget ${maxWallTimeMs}ms exceeded after ${elapsedMs}ms`,
         iterations,
         usage: cumulativeUsage,
-      });
+      }));
     }
     if (
       cumulativeUsage.costUsd !== null &&
@@ -211,12 +299,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       // Reuses v1.1 "no-contract-match" kind for contract-budget-exceeded
       // (per LatticeRunError taxonomy); agent-specific cost-budget exhaustion
       // surfaces with this kind and a descriptive `reason`.
-      return buildFailure({
+      return finalize(buildFailure({
         kind: "no-contract-match",
         reason: `Cost budget $${maxCostUsd} exceeded at $${cumulativeUsage.costUsd}`,
         iterations,
         usage: cumulativeUsage,
-      });
+      }));
     }
 
     // 4b. BEFORE_AGENT_ITERATION + deny check.
@@ -255,12 +343,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         timestamp: new Date().toISOString(),
         previousStepName: `agent-iteration-${iterationIndex}-before`,
       });
-      return buildFailure({
+      return finalize(buildFailure({
         kind: "agent-iteration-denied",
         reason: denial,
         iterations,
         usage: cumulativeUsage,
-      });
+      }));
     }
 
     // 4c. Build task + dispatch via host transport seam.
@@ -269,12 +357,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     let response: ProviderRunResponse;
     try {
       if (provider.execute === undefined) {
-        return buildFailure({
+        return finalize(buildFailure({
           kind: "execution_unavailable",
           reason: "Selected provider has no execute() method.",
           iterations,
           usage: cumulativeUsage,
-        });
+        }));
       }
       const providerRequest = {
         task,
@@ -283,17 +371,18 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         outputContracts,
         ...(intent.policy !== undefined ? { policy: intent.policy } : {}),
       };
+      executionStarted = true;
       response = host.transport !== undefined
         ? await host.transport.call(provider, providerRequest)
         : await provider.execute(providerRequest);
     } catch (error) {
-      return buildFailure({
+      return finalize(buildFailure({
         kind: "provider_execution",
         reason: error instanceof Error ? error.message : "Provider execution failed",
         cause: error,
         iterations,
         usage: cumulativeUsage,
-      });
+      }));
     }
     const iterDuration = Date.now() - iterStart;
     const iterUsage = response.normalizedUsage ?? ZERO_USAGE;
@@ -333,6 +422,10 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         previousStepName: `agent-iteration-${iterationIndex}-before`,
       });
 
+      if (checkpointFailure !== undefined) {
+        return finalize(undefined);
+      }
+
       // 4f. Output materialization. When `intent.outputs` is omitted, the
       // default contract remains `{ answer: "text" }`. Declared outputs are
       // validated through the same kernel used by the single-shot runtime.
@@ -341,13 +434,13 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         response.rawOutputs,
       );
       if (!outputValidation.ok) {
-        return buildFailure({
+        return finalize(buildFailure({
           kind: "validation",
           reason: outputValidation.error.message,
           cause: outputValidation.error,
           iterations,
           usage: cumulativeUsage,
-        });
+        }));
       }
 
       // 4e.1. Clear persistent storage on final-answer success so the next
@@ -358,13 +451,13 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         response.artifactRefs !== undefined
           ? response.artifactRefs.map(toArtifactRef)
           : [];
-      return {
+      return finalize({
         kind: "success",
         output: outputValidation.outputs as never,
         ...(artifactRefs.length > 0 ? { artifacts: artifactRefs } : {}),
         usage: snapshotUsage(cumulativeUsage),
         iterations: Object.freeze([...iterations]),
-      };
+      });
     }
 
     // 4g. Tool dispatch path.
@@ -459,6 +552,10 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       previousStepName: `agent-iteration-${iterationIndex}-before`,
     });
 
+    if (checkpointFailure !== undefined) {
+      return finalize(undefined);
+    }
+
     // 4h. Persist agent state via host.storage so the loop can resume
     // after eviction (Phase 20). The survivability adapter handles
     // serialization (default: createNoopSurvivabilityAdapter which
@@ -483,12 +580,12 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     iterationIndex += 1;
   }
 
-  return buildFailure({
+  return finalize(buildFailure({
     kind: "agent-max-iterations",
     reason: `Iteration budget ${maxIterations} reached without a final answer`,
     iterations,
     usage: cumulativeUsage,
-  });
+  }));
 }
 
 function ensurePipeline<TOutputs extends OutputContractMap>(
@@ -503,16 +600,83 @@ function ensurePipeline<TOutputs extends OutputContractMap>(
 function maybeAutoRegisterCheckpoint<TOutputs extends OutputContractMap>(
   pipeline: HookPipeline,
   intent: AgentIntent<TOutputs>,
+  policy: EffectiveReceiptPolicy,
+  runId: string,
+  onReceiptOutcome: (outcome: ReceiptIssuanceOutcome) => void,
 ): void {
-  if (intent.signer === undefined) return;
+  if (policy.mode === "off" || policy.signer === undefined) return;
   if (intent.autoRegisterCheckpoint === false) return;
   if (pipeline.isFrozen()) return;
   const handler = createCheckpointHook({
-    runId: `runAgent-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    signer: intent.signer,
+    runId,
+    receiptMode: policy.mode,
+    signer: policy.signer,
+    onReceiptOutcome,
     ...(intent.tracer !== undefined ? { tracer: intent.tracer } : {}),
   });
   pipeline.register("AFTER_AGENT_ITERATION", handler, { band: BAND.OBSERVABILITY });
+}
+
+function resolveAgentReceiptPolicy<TOutputs extends OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+  config: LatticeConfig,
+): EffectiveReceiptPolicy {
+  const mode = intent.receiptMode ?? config.receiptMode;
+  const signer = intent.signer ?? config.signer;
+  return resolveReceiptPolicy({
+    ...(mode !== undefined ? { mode } : {}),
+    ...(signer !== undefined ? { signer } : {}),
+  });
+}
+
+function buildAgentTerminalReceiptInput(
+  runId: string,
+  providerName: string,
+  result: AgentResult,
+): CreateReceiptInput {
+  return {
+    runId,
+    model: {
+      requested: providerName,
+      observed:
+        providerName === "lattice-agent/unavailable" ? null : providerName,
+    },
+    route: {
+      providerId: providerName,
+      capabilityId: "lattice-agent/terminal",
+      attemptNumber: Math.max(1, result.iterations.length),
+    },
+    usage: result.usage,
+    contractVerdict: agentContractVerdict(result),
+    contractHash: null,
+    inputHashes: [],
+    outputHash: null,
+  };
+}
+
+function agentContractVerdict(
+  result: AgentResult,
+): CreateReceiptInput["contractVerdict"] {
+  if (result.kind === "success") return "success";
+  if (result.kind === "tripwire-violated") return "tripwire-violated";
+  if (result.kind === "no-contract-match") return "no-contract-match";
+  if (result.kind === "validation") return "validation-failed";
+  return "execution-failed";
+}
+
+function emitAgentReceiptOutcome<TOutputs extends OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+  scope: "checkpoint" | "terminal",
+  outcome: ReceiptIssuanceOutcome,
+): void {
+  intent.tracer?.event?.("receipt.issuance", {
+    scope,
+    status: outcome.status,
+    ...(outcome.status === "skipped" ? { reason: outcome.reason } : {}),
+    ...(outcome.status === "failed"
+      ? { code: outcome.error.code, stage: outcome.error.stage }
+      : {}),
+  });
 }
 
 function pickFirstExecutableProvider(config: LatticeConfig): ProviderAdapter | null {
@@ -561,18 +725,31 @@ function snapshotUsage(c: {
 }
 
 function buildFailure(input: {
-  kind: AgentFailure["kind"];
+  kind: AgentExecutionFailure["kind"];
   reason?: string;
   cause?: unknown;
   iterations: readonly IterationRecord[];
   usage: { promptTokens: number; completionTokens: number; costUsd: number | null };
-}): AgentFailure {
+}): AgentExecutionFailure {
   return {
     kind: input.kind,
     usage: snapshotUsage(input.usage),
     iterations: Object.freeze([...input.iterations]),
     ...(input.reason !== undefined ? { reason: input.reason } : {}),
     ...(input.cause !== undefined ? { cause: input.cause } : {}),
+  };
+}
+
+function buildAuditFailure(
+  error: AuditError,
+  iterations: readonly IterationRecord[],
+  usage: { promptTokens: number; completionTokens: number; costUsd: number | null },
+): AgentFailure {
+  return {
+    ...error,
+    reason: error.message,
+    usage: snapshotUsage(usage),
+    iterations: Object.freeze([...iterations]),
   };
 }
 

@@ -5,10 +5,38 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { BAND, createHookPipeline } from "../contract/bands.js";
 import { contract } from "../contract/contract.js";
 import { createFakeProvider } from "../providers/fake.js";
+import type { ReceiptSigner } from "../receipts/types.js";
 import { defineTool } from "../tools/tools.js";
 
+import type { AgentHost } from "./host.js";
 import { runAgent, runAgentInternal } from "./runtime.js";
 import type { AgentIntent } from "./types.js";
+
+function countingSigner(options: {
+  readonly reject?: boolean;
+  readonly secret?: string;
+} = {}): {
+  readonly signer: ReceiptSigner;
+  readonly calls: { value: number };
+} {
+  const calls = { value: 0 };
+  const signer: ReceiptSigner = {
+    kid: options.secret ?? "agent-policy-test-key",
+    publicKeyJwk: {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: "test",
+    } as JsonWebKey,
+    async sign(): Promise<Uint8Array> {
+      calls.value += 1;
+      if (options.reject === true) {
+        throw new Error(options.secret ?? "SECRET-SIGNER-FAILURE");
+      }
+      return new Uint8Array([1, 2, 3]);
+    },
+  };
+  return { signer, calls };
+}
 
 function makeSchema(): StandardSchemaV1 {
   return {
@@ -568,5 +596,323 @@ describe("runAgent — provider error path", () => {
     if (result.kind !== "success") {
       expect(result.reason).toMatch(/Simulated provider failure/);
     }
+  });
+});
+
+describe("runAgent — receipt policy", () => {
+  it("preflights required missing signer before host storage or provider transport", async () => {
+    const calls = { storage: 0, transport: 0, provider: 0 };
+    const fake = createFakeProvider({
+      response: () => {
+        calls.provider += 1;
+        return { rawOutputs: { answer: "must not run" } };
+      },
+    });
+    const host: AgentHost = {
+      kind: "agent-host",
+      storage: {
+        async load() {
+          calls.storage += 1;
+          return null;
+        },
+        async save() {
+          calls.storage += 1;
+        },
+        async clear() {
+          calls.storage += 1;
+        },
+      },
+      transport: {
+        async call(provider, request) {
+          calls.transport += 1;
+          return provider.execute!(request);
+        },
+      },
+    };
+
+    const result = await runAgent(
+      { task: "Do not run.", tools: [], host },
+      { providers: [fake], receiptMode: "required" },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signer-missing",
+      stage: "pre-execution",
+      terminal: true,
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      iterations: [],
+    });
+    expect(calls).toEqual({ storage: 0, transport: 0, provider: 0 });
+  });
+
+  it("lets an invocation mode override config and resolves the invocation signer first", async () => {
+    const configSigner = countingSigner({ reject: true });
+    const localSigner = countingSigner();
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const offResult = await runAgent(
+      {
+        task: "No receipt.",
+        tools: [],
+        receiptMode: "off",
+        signer: configSigner.signer,
+      },
+      { providers: [fake], receiptMode: "required" },
+    );
+    expect(offResult.kind).toBe("success");
+    expect(configSigner.calls.value).toBe(0);
+
+    const localResult = await runAgent(
+      {
+        task: "Use local signer.",
+        tools: [],
+        signer: localSigner.signer,
+        autoRegisterCheckpoint: false,
+      },
+      {
+        providers: [fake],
+        receiptMode: "required",
+        signer: configSigner.signer,
+      },
+    );
+    expect(localResult.kind).toBe("success");
+    expect(localSigner.calls.value).toBe(1);
+    expect(configSigner.calls.value).toBe(0);
+  });
+
+  it("reuses a required checkpoint failure after one final-answer provider call", async () => {
+    const secret = "SECRET-CHECKPOINT-KMS-FAILURE";
+    const { signer, calls } = countingSigner({ reject: true, secret });
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return {
+          rawOutputs: { answer: "completed output" },
+          normalizedUsage: { promptTokens: 4, completionTokens: 2, costUsd: 0.01 },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Complete once.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [fake] },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      usage: { promptTokens: 4, completionTokens: 2, costUsd: 0.01 },
+    });
+    expect(result.iterations).toHaveLength(1);
+    expect(providerCalls).toBe(1);
+    expect(calls.value).toBe(1);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("stops a tool loop after the first required checkpoint failure", async () => {
+    const { signer, calls } = countingSigner({ reject: true });
+    let providerCalls = 0;
+    let toolCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return {
+          rawOutputs: {
+            answer:
+              providerCalls === 1
+                ? `{"tool_calls":[{"id":"c1","name":"once","args":{}}]}`
+                : "must not reach a second provider call",
+          },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Use one tool.",
+        tools: [
+          makeTool("once", () => {
+            toolCalls += 1;
+            return "done";
+          }),
+        ],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("audit");
+    expect(providerCalls).toBe(1);
+    expect(toolCalls).toBe(1);
+    expect(calls.value).toBe(1);
+  });
+
+  it("turns a required terminal signer failure after provider error into safe audit failure", async () => {
+    const secret = "SECRET-PROVIDER-TERMINAL-SIGNER";
+    const { signer, calls } = countingSigner({ reject: true, secret });
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        throw new Error("provider failed");
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Fail once.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+    });
+    expect(providerCalls).toBe(1);
+    expect(calls.value).toBe(1);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("finalizes denied, zero-budget, and validation branches exactly once", async () => {
+    const cases: Array<{
+      readonly name: string;
+      readonly run: (signer: ReceiptSigner) => Promise<unknown>;
+      readonly expectedProviderCalls: number;
+    }> = [];
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return { rawOutputs: { build: { command: 42 } } };
+      },
+    });
+    const deniedPipeline = createHookPipeline();
+    deniedPipeline.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => controls?.deny("denied"),
+      { band: BAND.SAFETY },
+    );
+    cases.push(
+      {
+        name: "denied",
+        expectedProviderCalls: 0,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "Denied.",
+              tools: [],
+              pipeline: deniedPipeline,
+              signer,
+              receiptMode: "required",
+            },
+            { providers: [fake] },
+          ),
+      },
+      {
+        name: "zero-budget",
+        expectedProviderCalls: 0,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "No iterations.",
+              tools: [],
+              contract: contract({ budget: { maxIterations: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [fake] },
+          ),
+      },
+      {
+        name: "validation",
+        expectedProviderCalls: 1,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "Invalid output.",
+              tools: [],
+              outputs: { build: makeBuildConfigSchema() },
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [fake] },
+          ),
+      },
+    );
+
+    for (const testCase of cases) {
+      providerCalls = 0;
+      const signerState = countingSigner({ reject: true });
+      const result = await testCase.run(signerState.signer);
+      expect(result, testCase.name).toMatchObject({ kind: "audit" });
+      expect(signerState.calls.value, testCase.name).toBe(1);
+      expect(providerCalls, testCase.name).toBe(testCase.expectedProviderCalls);
+    }
+  });
+
+  it("keeps best-effort signer failure non-terminal and explicit off skips signing", async () => {
+    const bestEffort = countingSigner({ reject: true });
+    const off = countingSigner({ reject: true });
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const bestEffortResult = await runAgent(
+      {
+        task: "Best effort.",
+        tools: [],
+        signer: bestEffort.signer,
+      },
+      { providers: [fake] },
+    );
+    const offResult = await runAgent(
+      {
+        task: "Off.",
+        tools: [],
+        signer: off.signer,
+        receiptMode: "off",
+      },
+      { providers: [fake] },
+    );
+
+    expect(bestEffortResult.kind).toBe("success");
+    expect(bestEffort.calls.value).toBe(2);
+    expect(offResult.kind).toBe("success");
+    expect(off.calls.value).toBe(0);
+  });
+
+  it("issues one required terminal receipt on the no-provider branch", async () => {
+    const { signer, calls } = countingSigner();
+    const result = await runAgent(
+      {
+        task: "No provider.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [] },
+    );
+
+    expect(result.kind).toBe("execution_unavailable");
+    expect(calls.value).toBe(1);
   });
 });

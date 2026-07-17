@@ -403,7 +403,7 @@ describe("createCrewDispatcher — childToolDeclarations synthesis (D-01, Pitfal
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
 
 function makeFailure(
-  kind: AgentFailure["kind"],
+  kind: Exclude<AgentFailure["kind"], "audit">,
   reason?: string,
 ): AgentFailure {
   return {

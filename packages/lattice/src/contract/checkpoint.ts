@@ -5,14 +5,10 @@
  * receipt.ts (the Capability Receipt mint). It does NOT modify either; the
  * checkpoint hook is composed from both surfaces.
  *
- * Phase 3 (FSB v0.10.0-attempt-2) -- ships:
- *   - createCheckpointHook(options) factory returning a HookHandler
- *   - One signed v1.2 Capability Receipt minted per handler invocation
- *     (when a signer is configured); body carries step-marker fields
- *   - Exactly one "step.transition" tracer event emitted per invocation
- *     (when a tracer is configured); metadata carries the same step
- *     fields plus runId and either receiptId (mint success) or mintError
- *     (mint failed)
+ * Each invocation applies the shared receipt policy, exposes its bounded
+ * outcome to an optional observer, and emits exactly one "step.transition"
+ * event when a tracer is configured. Successful events include the envelope;
+ * failures include only the stable receipt code and stage.
  *
  * Registration convention (D-06): the caller registers the returned
  * handler on a HookPipeline at BAND.OBSERVABILITY -- between SAFETY
@@ -21,13 +17,9 @@
  * for clarity at the registration site. The factory does NOT auto-
  * register -- the caller owns lifecycle.
  *
- * Best-effort mint contract (D-07): signer.sign() failures are caught
- * by an internal try/catch; the handler emits a tracer event with
- * mintError (no throw upstream). Mirrors maybeIssueReceipt at
- * create-ai.ts:956-992. Callers cannot rely on receipt minting; if
- * minting is required for correctness, the caller must inspect the
- * envelope returned via the tracer event (event.metadata.envelope) AND
- * check mintError absence.
+ * Signer failures never throw upstream or expose their cause. Required-mode
+ * callers observe the shared failed outcome and decide how to terminate the
+ * enclosing operation.
  *
  * Step-marker field contract (carries forward Phase 2 D-04):
  *   - stepName, parentStepName, previousStepName, sessionId are STABLE
@@ -48,7 +40,7 @@
  *     emitEvent at create-ai.ts:862-868):
  *       { stepName, stepIndex, parentStepName?, previousStepName?,
  *         sessionId?, timestamp, runId,
- *         receiptId? | mintError?, envelope? }
+ *         receiptStatus, receiptId?, receiptCode?, receiptStage?, envelope? }
  *   - envelope (the minted ReceiptEnvelope) is included on success so
  *     downstream subscribers can persist or display the signed receipt
  *     without re-minting.
@@ -60,8 +52,14 @@
  * The two vocabularies meet only at the checkpoint hook boundary.
  */
 
+import {
+  issueReceipt,
+  resolveReceiptPolicy,
+  type ReceiptIssuanceMode,
+  type ReceiptIssuanceOutcome,
+} from "../receipts/policy.js";
+import type { CreateReceiptInput } from "../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptModel, ReceiptRoute, ReceiptSigner } from "../receipts/types.js";
-import { createReceipt, type CreateReceiptInput } from "../receipts/receipt.js";
 import type { TracerLike } from "../tracing/tracing.js";
 
 import { BAND, type Band, type HookHandler } from "./bands.js";
@@ -108,9 +106,9 @@ export interface CheckpointHookContext {
  *   present) but does NOT emit a tracer event. When provided, the handler
  *   ALWAYS emits exactly one event per invocation (independent of mint
  *   success/failure per D-10).
- * - signer: optional. When omitted, the handler emits a tracer event only
- *   (no mint attempted). When provided, the handler attempts to mint via
- *   createReceipt(...) inside a try/catch (D-07 best-effort).
+ * - signer: optional. Resolved together with receiptMode by the shared policy.
+ * - receiptMode: optional. Explicit off, best-effort, or required override.
+ * - onReceiptOutcome: optional bounded channel for enclosing runtimes.
  * - sessionId: optional. Threaded into receipt body and event metadata.
  * - model: optional. ReceiptModel descriptor for the receipt body; the
  *   factory provides a sensible "step" default when omitted.
@@ -123,6 +121,10 @@ export interface CheckpointHookOptions {
   readonly runId: string;
   readonly tracer?: TracerLike;
   readonly signer?: ReceiptSigner;
+  readonly receiptMode?: ReceiptIssuanceMode;
+  readonly onReceiptOutcome?: (
+    outcome: ReceiptIssuanceOutcome,
+  ) => void | Promise<void>;
   readonly sessionId?: string;
   readonly model?: ReceiptModel;
   readonly route?: ReceiptRoute;
@@ -155,23 +157,21 @@ const DEFAULT_USAGE = {
  * desired lifecycle event (typically AFTER_TOOL or BEFORE_TOOL) and band
  * (typically BAND.OBSERVABILITY, exported as DEFAULT_CHECKPOINT_BAND).
  *
- * Per-invocation behavior:
- *   1. Build event metadata from options + per-call context.
- *   2. If signer is configured, attempt createReceipt(...) inside a
- *      try/catch. On success, set metadata.receiptId + metadata.envelope.
- *      On failure, set metadata.mintError (string from caught error).
- *   3. If tracer is configured, emit exactly one tracer.event?.(
- *      STEP_TRANSITION_EVENT_NAME, metadata) call.
- *   4. Return void.
- *
- * NO upstream throw (D-07). NO global mutation (D-05).
+ * The handler builds the step receipt input, resolves one policy outcome,
+ * emits one bounded tracer event, notifies the observer, and returns void.
  */
 export function createCheckpointHook(
   options: CheckpointHookOptions,
 ): HookHandler<CheckpointHookContext> {
   const runId = options.runId;
   const tracer = options.tracer;
-  const signer = options.signer;
+  const policy = resolveReceiptPolicy({
+    ...(options.receiptMode !== undefined
+      ? { mode: options.receiptMode }
+      : {}),
+    ...(options.signer !== undefined ? { signer: options.signer } : {}),
+  });
+  const onReceiptOutcome = options.onReceiptOutcome;
   const sessionId = options.sessionId;
   const model = options.model ?? DEFAULT_MODEL;
   const route = options.route ?? DEFAULT_ROUTE;
@@ -193,50 +193,50 @@ export function createCheckpointHook(
       ...(sessionId !== undefined ? { sessionId } : {}),
     };
 
-    // Step 2: best-effort receipt mint (D-07). The try/catch absorbs
-    // signer.sign() failures so the handler never throws upstream.
-    let envelope: ReceiptEnvelope | undefined;
-    let receiptId: string | undefined;
-    let mintError: string | undefined;
-    if (signer !== undefined) {
-      try {
-        const input: CreateReceiptInput = {
-          runId,
-          model,
-          route,
-          usage: DEFAULT_USAGE,
-          contractVerdict,
-          contractHash: null,
-          inputHashes: [],
-          outputHash: null,
-          stepName: ctx.stepName,
-          stepIndex: ctx.stepIndex,
-          timestamp: ctx.timestamp,
-          ...(ctx.parentStepName !== undefined ? { parentStepName: ctx.parentStepName } : {}),
-          ...(ctx.previousStepName !== undefined ? { previousStepName: ctx.previousStepName } : {}),
-          ...(sessionId !== undefined ? { sessionId } : {}),
-        };
-        envelope = await createReceipt(input, signer);
-        // Re-derive receiptId from the envelope by decoding the canonical
-        // payload bytes. createReceipt does not return the body directly;
-        // the receiptId lives inside the payload. We pull it back so
-        // subscribers can correlate the tracer event to the receipt
-        // without re-decoding the envelope themselves.
-        receiptId = extractReceiptId(envelope);
-      } catch (err) {
-        mintError = err instanceof Error ? err.message : String(err);
-      }
-    }
+    const input: CreateReceiptInput = {
+      runId,
+      model,
+      route,
+      usage: DEFAULT_USAGE,
+      contractVerdict,
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      stepName: ctx.stepName,
+      stepIndex: ctx.stepIndex,
+      timestamp: ctx.timestamp,
+      ...(ctx.parentStepName !== undefined ? { parentStepName: ctx.parentStepName } : {}),
+      ...(ctx.previousStepName !== undefined ? { previousStepName: ctx.previousStepName } : {}),
+      ...(sessionId !== undefined ? { sessionId } : {}),
+    };
+    const outcome = await issueReceipt(input, policy, "post-execution");
+    const envelope = outcome.status === "issued" ? outcome.envelope : undefined;
+    const receiptId = envelope === undefined ? undefined : extractReceiptId(envelope);
 
     // Step 3: assemble the final metadata + emit. tracer.event?.() is
     // optional-chained per the established pattern (create-ai.ts:862).
     const metadata: Record<string, unknown> = {
       ...baseMetadata,
+      receiptStatus: outcome.status,
       ...(receiptId !== undefined ? { receiptId } : {}),
       ...(envelope !== undefined ? { envelope } : {}),
-      ...(mintError !== undefined ? { mintError } : {}),
+      ...(outcome.status === "skipped"
+        ? { receiptReason: outcome.reason }
+        : {}),
+      ...(outcome.status === "failed"
+        ? {
+            receiptCode: outcome.error.code,
+            receiptStage: outcome.error.stage,
+          }
+        : {}),
     };
     tracer?.event?.(STEP_TRANSITION_EVENT_NAME, metadata);
+
+    try {
+      await onReceiptOutcome?.(outcome);
+    } catch {
+      // Outcome observers are diagnostic channels and cannot alter hook flow.
+    }
   };
 }
 
