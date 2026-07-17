@@ -223,9 +223,8 @@ function createDispatcherNode(
 
   async function dispatchToolUse(
     req: ToolUseRequest,
-    _loopCtx: DispatchToolUseContext,
+    loopCtx: DispatchToolUseContext,
   ): Promise<{ readonly content: string } | undefined> {
-    void _loopCtx;
     const childSpec = children.find((child) => child.id === req.name);
     if (childSpec === undefined) {
       // Not a child agent — fall through to the default lookup/runTool path.
@@ -268,7 +267,9 @@ function createDispatcherNode(
 
     // (iv) Crew ceiling (D-10): a fully-drained pool ends the run — emit
     // terminal crew-budget-exceeded and flip the orchestrator signal.
-    const pool = ctx.remainingBudget();
+    const childRemainingBudget = (): BudgetInvariant | undefined =>
+      subtractLocalCost(ctx.remainingBudget(), loopCtx.cumulativeUsage);
+    const pool = childRemainingBudget();
     if (isPoolExhausted(pool)) {
       shared.exhausted = true;
       return errorResult({
@@ -311,7 +312,15 @@ function createDispatcherNode(
     const childAncestry: readonly string[] = [...ctx.ancestry, spec.id];
     const childNode =
       childSpec.childAgents !== undefined && childSpec.childAgents.length > 0
-        ? createDispatcherNode(childSpec, { ...ctx, ancestry: childAncestry }, shared)
+        ? createDispatcherNode(
+            childSpec,
+            {
+              ...ctx,
+              ancestry: childAncestry,
+              remainingBudget: childRemainingBudget,
+            },
+            shared,
+          )
         : undefined;
     const childTools =
       childNode !== undefined
@@ -339,7 +348,12 @@ function createDispatcherNode(
     let childResult = await runAgentInternal(
       childIntent,
       ctx.config,
-      childNode !== undefined ? { dispatchToolUse: childNode.dispatchToolUse } : {},
+      {
+        ...(childNode !== undefined
+          ? { dispatchToolUse: childNode.dispatchToolUse }
+          : {}),
+        remainingBudget: childRemainingBudget,
+      },
     );
 
     // (5) Record child usage exactly once — success AND failure paths both
@@ -475,17 +489,32 @@ function minDefined(a: number | null | undefined, b: number | null | undefined):
   return aNum ?? bNum;
 }
 
+function subtractLocalCost(
+  pool: BudgetInvariant | undefined,
+  usage: Usage | undefined,
+): BudgetInvariant | undefined {
+  if (
+    pool?.maxCostUsd === undefined ||
+    usage?.costUsd === undefined ||
+    usage.costUsd === null
+  ) {
+    return pool;
+  }
+  return {
+    ...pool,
+    maxCostUsd: pool.maxCostUsd - usage.costUsd,
+  };
+}
+
 /**
- * Crew-ceiling predicate (D-10): the pool is exhausted when ANY bounded
- * dimension is at/below zero. Null/absent dimensions (unmeasured cost)
- * never count as exhausted (Pitfall 4).
+ * Iteration and wall-time pools are exhausted at zero. Cost remains eligible
+ * for the agent's next-call estimate so a known-free call can pass equality.
  */
 function isPoolExhausted(pool: BudgetInvariant | undefined): boolean {
   if (pool === undefined) return false;
   return (
     (typeof pool.maxIterations === "number" && pool.maxIterations <= 0) ||
-    (typeof pool.maxWallTimeMs === "number" && pool.maxWallTimeMs <= 0) ||
-    (typeof pool.maxCostUsd === "number" && pool.maxCostUsd <= 0)
+    (typeof pool.maxWallTimeMs === "number" && pool.maxWallTimeMs <= 0)
   );
 }
 

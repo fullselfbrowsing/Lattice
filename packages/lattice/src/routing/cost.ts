@@ -105,6 +105,19 @@ export function resolveUsageCostUsd(input: ResolveUsageCostInput): number | null
   return estimateCost(input).totalCostUsd;
 }
 
+export function accumulatedCostExceedsBudget(
+  accumulatedCostUsd: number,
+  maxCostUsd: number,
+): boolean {
+  if (accumulatedCostUsd <= maxCostUsd) {
+    return false;
+  }
+  const oneUlp =
+    Number.EPSILON *
+    Math.max(Math.abs(accumulatedCostUsd), Math.abs(maxCostUsd), Number.MIN_VALUE);
+  return accumulatedCostUsd - maxCostUsd > oneUlp;
+}
+
 function selectRate(
   pricing: ProviderPricingHint | undefined,
   side: "input" | "output",

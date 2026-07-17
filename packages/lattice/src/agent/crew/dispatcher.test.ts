@@ -315,7 +315,7 @@ describe("createCrewDispatcher — child budget enforcement (D-07)", () => {
     expect(parsed.error.terminal).toBe(false);
   });
 
-  it("derives budgets without NaN when the fake provider reports costUsd: null", async () => {
+  it("derives budgets without NaN when known-free pricing fills null usage", async () => {
     const researcher = makeResearcherSpec({
       contract: { kind: "capability-contract", budget: { maxCostUsd: 2 } },
     });
@@ -343,10 +343,10 @@ describe("createCrewDispatcher — child budget enforcement (D-07)", () => {
 
     const parsed = JSON.parse(dispatched?.content ?? "{}") as { summary?: string };
     expect(parsed.summary).toBe("null-cost summary");
-    // Child usage recorded exactly once (Pitfall 3) and null cost preserved
-    // (never coerced to NaN/0-poisoned arithmetic).
+    // Child usage is recorded exactly once and the fake capability's explicit
+    // zero price resolves the otherwise unmeasured response as known free.
     expect(usages.length).toBe(1);
-    expect(usages[0]?.costUsd).toBeNull();
+    expect(usages[0]?.costUsd).toBe(0);
     expect(Number.isNaN(usages[0]?.promptTokens)).toBe(false);
   });
 });

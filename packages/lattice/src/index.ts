@@ -133,7 +133,11 @@ export type {
 // action-history dedup, and tool-permission gating. Each ships pure
 // (no I/O); compose with the agent runtime via hook handlers.
 export { createCostTracker } from "./agent/infra/cost-tracker.js";
-export type { CostTracker, CostBudgetStatus } from "./agent/infra/cost-tracker.js";
+export type {
+  CostTracker,
+  CostTrackerOptions,
+  CostBudgetStatus,
+} from "./agent/infra/cost-tracker.js";
 export { createTranscriptStore } from "./agent/infra/transcript-store.js";
 export type { TranscriptStore, TokenEstimator } from "./agent/infra/transcript-store.js";
 export { createGoalProgressTracker } from "./agent/infra/goal-progress.js";

@@ -20,6 +20,7 @@ import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
   ProviderAdapter,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
@@ -38,6 +39,7 @@ import {
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
 import type { AuditError } from "../../results/errors.js";
 import type { LatticeConfig } from "../../runtime/config.js";
+import { accumulatedCostExceedsBudget } from "../../routing/cost.js";
 import type { TracerLike } from "../../tracing/tracing.js";
 import type { HookPipeline } from "../../contract/bands.js";
 
@@ -137,6 +139,7 @@ export async function runAgentCrew(
   }
 
   const accounting = new Map<string, AgentAccounting>();
+  const providerPricing = firstCrewProviderPricing(config);
   const receipts: ReceiptEnvelope[] = [];
   const receiptCidsByAgent = new Map<string, string[]>();
 
@@ -171,11 +174,11 @@ export async function runAgentCrew(
   );
 
   function recordUsage(agentId: string, usage: Usage): void {
-    entryFor(accounting, agentId).tracker.recordIteration(usage);
+    entryFor(accounting, agentId, providerPricing).tracker.recordIteration(usage);
   }
 
   function recordAgentResult(agentId: string, result: AgentResult): void {
-    const entry = entryFor(accounting, agentId);
+    const entry = entryFor(accounting, agentId, providerPricing);
     entry.iterations += result.iterations.length;
   }
 
@@ -209,11 +212,23 @@ export async function runAgentCrew(
     ...(options.pipeline !== undefined ? { pipeline: options.pipeline } : {}),
   });
 
+  const parentBudget = deriveChildBudget(
+    options.root.contract?.budget,
+    remainingBudget(),
+    policy.maxIterationsPerAgent,
+  );
+  const parentContract =
+    parentBudget !== undefined
+      ? {
+          ...(options.root.contract ?? { kind: "capability-contract" as const }),
+          budget: parentBudget,
+        }
+      : options.root.contract;
   const parentIntent: AgentIntent = {
     task: options.root.intent,
     tools: [...options.root.tools, ...dispatcher.childToolDeclarations],
     host: wrapHostWithRateLimits(createNoopAgentHost(), groupForProvider),
-    ...(options.root.contract !== undefined ? { contract: options.root.contract } : {}),
+    ...(parentContract !== undefined ? { contract: parentContract } : {}),
     receiptMode: receiptPolicy.mode,
     ...(receiptPolicy.signer !== undefined
       ? { signer: receiptPolicy.signer }
@@ -224,6 +239,7 @@ export async function runAgentCrew(
 
   const parentResult = await runAgentInternal(parentIntent, config, {
     dispatchToolUse: dispatcher.dispatchToolUse,
+    remainingBudget,
   });
   recordUsage(options.root.id, parentResult.usage);
   recordAgentResult(options.root.id, parentResult);
@@ -282,13 +298,36 @@ export async function runAgentCrew(
 function entryFor(
   accounting: Map<string, AgentAccounting>,
   agentId: string,
+  pricing?: ProviderPricingHint,
 ): AgentAccounting {
   let entry = accounting.get(agentId);
   if (entry === undefined) {
-    entry = { tracker: createCostTracker(), iterations: 0 };
+    entry = {
+      tracker: createCostTracker(
+        pricing !== undefined ? { pricing } : undefined,
+      ),
+      iterations: 0,
+    };
     accounting.set(agentId, entry);
   }
   return entry;
+}
+
+function firstCrewProviderPricing(
+  config: LatticeConfig,
+): ProviderPricingHint | undefined {
+  for (const provider of config.providers ?? []) {
+    if (
+      typeof provider !== "string" &&
+      provider.kind === "provider-adapter" &&
+      provider.execute !== undefined
+    ) {
+      return provider.capabilities?.find(
+        (capability) => capability.available !== false,
+      )?.pricing;
+    }
+  }
+  return undefined;
 }
 
 function totalUsage(accounting: Map<string, AgentAccounting>): Usage {
@@ -379,7 +418,7 @@ function crewBudgetViolated(input: {
   return (
     maxCostUsd !== undefined &&
     input.usage.costUsd !== null &&
-    input.usage.costUsd > maxCostUsd
+    accumulatedCostExceedsBudget(input.usage.costUsd, maxCostUsd)
   );
 }
 

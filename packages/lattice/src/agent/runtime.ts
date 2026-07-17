@@ -37,12 +37,19 @@
 
 import type { ArtifactRef } from "../artifacts/artifact.js";
 import { toArtifactRef } from "../artifacts/artifact.js";
+import { estimateTokens } from "../context/context-pack.js";
 import { BAND, type HookPipeline, createHookPipeline } from "../contract/bands.js";
 import { createCheckpointHook } from "../contract/checkpoint.js";
+import type { BudgetInvariant } from "../contract/contract.js";
 import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMapValues } from "../outputs/validate.js";
-import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
+import type {
+  ModelCapability,
+  ProviderAdapter,
+  ProviderRunResponse,
+  Usage,
+} from "../providers/provider.js";
 import {
   issueReceipt,
   preflightReceiptPolicy,
@@ -52,6 +59,13 @@ import {
 } from "../receipts/policy.js";
 import type { CreateReceiptInput } from "../receipts/receipt.js";
 import type { AuditError, AuditErrorStage } from "../results/errors.js";
+import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  accumulatedCostExceedsBudget,
+  estimateCost,
+  resolveUsageCostUsd,
+  type CostEstimate,
+} from "../routing/cost.js";
 import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
 
@@ -85,6 +99,7 @@ export interface DispatchToolUseContext {
   readonly iterationIndex: number;
   readonly conversation: readonly ConversationTurn[];
   readonly pipeline: HookPipeline;
+  readonly cumulativeUsage?: Usage;
 }
 
 /**
@@ -111,6 +126,8 @@ export interface RunAgentInternalOptions {
     readonly scope: "checkpoint" | "terminal";
     readonly outcome: ReceiptIssuanceOutcome;
   }) => void;
+  /** Dynamic shared pool excluding this invocation's local cumulative usage. */
+  readonly remainingBudget?: () => BudgetInvariant | undefined;
 }
 
 /**
@@ -236,6 +253,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     }));
   }
   providerName = provider.id;
+  const capability = pickFirstAvailableCapability(provider);
 
   // 3. Initialize conversation + tools handle.
   let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
@@ -294,7 +312,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     }
     if (
       cumulativeUsage.costUsd !== null &&
-      cumulativeUsage.costUsd >= maxCostUsd
+      accumulatedCostExceedsBudget(cumulativeUsage.costUsd, maxCostUsd)
     ) {
       // Reuses v1.1 "no-contract-match" kind for contract-budget-exceeded
       // (per LatticeRunError taxonomy); agent-specific cost-budget exhaustion
@@ -353,6 +371,46 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
 
     // 4c. Build task + dispatch via host transport seam.
     const task = handle.buildTask(conversation);
+    const callEstimate = estimateCost({
+      ...(capability?.pricing !== undefined
+        ? { pricing: capability.pricing }
+        : {}),
+      inputTokens: estimateTokens(task),
+      outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+    });
+    emitAgentCostEstimate(intent, callEstimate);
+    const hardMaxCostUsd = minDefined(
+      budget?.maxCostUsd,
+      internalOptions.remainingBudget?.()?.maxCostUsd,
+    );
+    if (hardMaxCostUsd !== undefined) {
+      const hasPriorUsage =
+        iterationIndex > 0 ||
+        cumulativeUsage.promptTokens > 0 ||
+        cumulativeUsage.completionTokens > 0;
+      const spentCostUsd = cumulativeUsage.costUsd;
+      if (
+        callEstimate.status === "unknown" ||
+        (hasPriorUsage && spentCostUsd === null)
+      ) {
+        return finalize(buildFailure({
+          kind: "no-contract-match",
+          reason: "Cost estimate is unknown for a call with maxCostUsd.",
+          iterations,
+          usage: cumulativeUsage,
+        }));
+      }
+      const projectedCostUsd =
+        (spentCostUsd ?? 0) + callEstimate.totalCostUsd!;
+      if (accumulatedCostExceedsBudget(projectedCostUsd, hardMaxCostUsd)) {
+        return finalize(buildFailure({
+          kind: "no-contract-match",
+          reason: `Estimated next call exceeds remaining maxCostUsd ${hardMaxCostUsd}.`,
+          iterations,
+          usage: cumulativeUsage,
+        }));
+      }
+    }
     const iterStart = Date.now();
     let response: ProviderRunResponse;
     try {
@@ -385,7 +443,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       }));
     }
     const iterDuration = Date.now() - iterStart;
-    const iterUsage = response.normalizedUsage ?? ZERO_USAGE;
+    const iterUsage = resolveAgentUsage(response, capability);
     accumulateUsage(cumulativeUsage, iterUsage);
 
     // 4d. Extract response text + parse tool-use envelope.
@@ -480,6 +538,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
           iterationIndex,
           conversation,
           pipeline,
+          cumulativeUsage: snapshotUsage(cumulativeUsage),
         });
         if (dispatched !== undefined) {
           resultContent = dispatched.content;
@@ -688,6 +747,70 @@ function pickFirstExecutableProvider(config: LatticeConfig): ProviderAdapter | n
     }
   }
   return null;
+}
+
+function minDefined(
+  left: number | undefined,
+  right: number | undefined,
+): number | undefined {
+  if (left !== undefined && right !== undefined) {
+    return Math.min(left, right);
+  }
+  return left ?? right;
+}
+
+function pickFirstAvailableCapability(
+  provider: ProviderAdapter,
+): ModelCapability | undefined {
+  return provider.capabilities?.find(
+    (capability) => capability.available !== false,
+  );
+}
+
+function emitAgentCostEstimate<TOutputs extends OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+  estimate: CostEstimate,
+): void {
+  intent.tracer?.event?.("agent.cost.estimate", {
+    version: estimate.version,
+    status: estimate.status,
+    inputTokens: estimate.input.tokenCount,
+    outputTokens: estimate.output.tokenCount,
+    ...(estimate.totalCostUsd !== null
+      ? { totalCostUsd: estimate.totalCostUsd }
+      : {}),
+  });
+}
+
+function resolveAgentUsage(
+  response: ProviderRunResponse,
+  capability: ModelCapability | undefined,
+): Usage {
+  const baseUsage =
+    response.normalizedUsage ??
+    (response.usage !== undefined
+      ? {
+          promptTokens: response.usage.inputTokens ?? 0,
+          completionTokens: response.usage.outputTokens ?? 0,
+          costUsd: response.usage.costUsd ?? null,
+        }
+      : ZERO_USAGE);
+  const reportedCostUsd = baseUsage.costUsd ?? response.usage?.costUsd;
+
+  return {
+    promptTokens: baseUsage.promptTokens,
+    completionTokens: baseUsage.completionTokens,
+    costUsd: resolveUsageCostUsd({
+      ...(capability?.pricing !== undefined
+        ? { pricing: capability.pricing }
+        : {}),
+      ...(reportedCostUsd !== undefined && reportedCostUsd !== null
+        ? { reportedCostUsd }
+        : {}),
+      inputTokens: baseUsage.promptTokens,
+      outputTokens: baseUsage.completionTokens,
+    }),
+  };
 }
 
 function extractResponseText(response: ProviderRunResponse): string {

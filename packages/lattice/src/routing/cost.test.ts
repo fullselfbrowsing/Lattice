@@ -4,6 +4,7 @@ import { fc } from "../test-support/fast-check.js";
 import {
   CANONICAL_PROJECTED_OUTPUT_TOKENS,
   COST_ESTIMATOR_VERSION,
+  accumulatedCostExceedsBudget,
   estimateCost,
   resolveUsageCostUsd,
 } from "./cost.js";
@@ -187,6 +188,11 @@ describe("estimateCost", () => {
       }),
     ).toBe(0.004);
     expect(resolveUsageCostUsd({ inputTokens: 0, outputTokens: 0 })).toBeNull();
+  });
+
+  it("allows one-ULP accumulation noise but rejects a material overage", () => {
+    expect(accumulatedCostExceedsBudget(0.1 + 0.05, 0.15)).toBe(false);
+    expect(accumulatedCostExceedsBudget(0.151, 0.15)).toBe(true);
   });
 
   it("property: equivalent modern and legacy units produce identical costs", async () => {

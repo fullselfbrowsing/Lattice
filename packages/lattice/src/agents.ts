@@ -38,7 +38,11 @@ export type {
   AgentTransport,
 } from "./agent/host.js";
 export { createCostTracker } from "./agent/infra/cost-tracker.js";
-export type { CostBudgetStatus, CostTracker } from "./agent/infra/cost-tracker.js";
+export type {
+  CostBudgetStatus,
+  CostTracker,
+  CostTrackerOptions,
+} from "./agent/infra/cost-tracker.js";
 export { createTranscriptStore } from "./agent/infra/transcript-store.js";
 export type { TokenEstimator, TranscriptStore } from "./agent/infra/transcript-store.js";
 export { createGoalProgressTracker } from "./agent/infra/goal-progress.js";

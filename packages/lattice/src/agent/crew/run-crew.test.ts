@@ -4,11 +4,14 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
 } from "../../providers/provider.js";
+import { defaultCapabilityForProvider } from "../../routing/catalog.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
   createInMemorySigner,
@@ -57,12 +60,16 @@ function makeRoot(children: readonly AgentSpec[]): AgentSpec {
 function makeScriptedProvider(
   answers: readonly string[],
   usages: readonly Usage[],
+  pricing?: ProviderPricingHint | null,
 ) {
   const answerQueue = [...answers];
   const usageQueue = [...usages];
   const tasks: string[] = [];
   const provider = createFakeProvider({
     id: "crew-fake",
+    ...(pricing !== undefined
+      ? { capabilities: [crewCapability(pricing)] }
+      : {}),
     response: (request): ProviderRunResponse => {
       tasks.push(request.task);
       return {
@@ -76,6 +83,20 @@ function makeScriptedProvider(
     },
   });
   return { provider, tasks };
+}
+
+function crewCapability(
+  pricing: ProviderPricingHint | null,
+): ModelCapability {
+  const base = {
+    ...defaultCapabilityForProvider("crew-fake"),
+    modelId: "crew-fake:cost-test",
+  };
+  if (pricing !== null) {
+    return { ...base, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = base;
+  return inheritedPricing === undefined ? base : unpriced;
 }
 
 function decodeReceiptBody(payload: string): CapabilityReceiptBody {
@@ -250,7 +271,7 @@ describe("runAgentCrew — orchestration and accounting", () => {
     }
   });
 
-  it("does not trip the cost dimension when provider cost is unmeasured", async () => {
+  it("treats the fake provider's explicit zero pricing as known free", async () => {
     const child = makeChild("researcher");
     const root = makeRoot([child]);
     const { provider } = makeScriptedProvider(
@@ -276,7 +297,156 @@ describe("runAgentCrew — orchestration and accounting", () => {
     );
 
     expect(result.result.kind).toBe("success");
-    expect(result.usage.costUsd).toBeNull();
+    expect(result.usage.costUsd).toBe(0);
+  });
+
+  it("fails closed before the root call when crew pricing is unknown", async () => {
+    const root = makeRoot([]);
+    const { provider, tasks } = makeScriptedProvider(
+      ["must not execute"],
+      [{ promptTokens: 1, completionTokens: 1, costUsd: null }],
+      null,
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { budget: { maxCostUsd: 1 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("no-contract-match");
+    expect(tasks).toHaveLength(0);
+    expect(result.totalIterations).toBe(0);
+  });
+
+  it("shares cumulative cost across root and child preflight", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider, tasks } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"work"}}]}',
+        "child summary",
+        "must not run final parent call",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+      ],
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.09765625 },
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { budget: { maxCostUsd: 0.14, maxIterations: 10 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(tasks).toHaveLength(2);
+    expect(result.usage.costUsd).toBeCloseTo(0.1, 12);
+    expect(result.result.kind).toBe("no-contract-match");
+  });
+
+  it("rejects a child before transport when parent spend leaves too little budget", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider, tasks } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"work"}}]}',
+        "must not run child or parent again",
+      ],
+      [{ promptTokens: 1, completionTokens: 1, costUsd: 0.05 }],
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.09765625 },
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { budget: { maxCostUsd: 0.08, maxIterations: 10 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(tasks).toHaveLength(1);
+    expect(result.perAgent.find((entry) => entry.id === "researcher")?.iterations).toBe(0);
+    expect(result.result.kind).toBe("no-contract-match");
+  });
+
+  it("threads active ancestor spend into nested child preflight", async () => {
+    const grandchild = makeChild("digger");
+    const child = defineAgent({
+      id: "researcher",
+      intent: "Delegate research.",
+      tools: [],
+      childAgents: [grandchild],
+      summaryReturnSchema: makeSchema(),
+    });
+    const root = makeRoot([child]);
+    const { provider, tasks } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"work"}}]}',
+        '{"tool_calls":[{"id":"c2","name":"digger","args":{"task":"dig"}}]}',
+        "must not run grandchild or resume an ancestor",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+      ],
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.09765625 },
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: {
+          budget: { maxCostUsd: 0.14, maxIterations: 10 },
+          maxDepth: 2,
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(tasks).toHaveLength(2);
+    expect(result.usage.costUsd).toBeCloseTo(0.1, 12);
+    expect(result.result.kind).toBe("no-contract-match");
+  });
+
+  it("allows exact aggregate equality across root and child calls", async () => {
+    const child = makeChild("researcher");
+    const root = makeRoot([child]);
+    const { provider, tasks } = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"work"}}]}',
+        "child summary",
+        "final synthesis",
+      ],
+      [
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+        { promptTokens: 1, completionTokens: 1, costUsd: 0.05 },
+      ],
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.09765625 },
+    );
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { budget: { maxCostUsd: 0.15, maxIterations: 10 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(tasks).toHaveLength(3);
+    expect(result.result.kind).toBe("success");
+    expect(result.usage.costUsd).toBeCloseTo(0.15, 12);
   });
 });
 

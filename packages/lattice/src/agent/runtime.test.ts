@@ -5,7 +5,19 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { BAND, createHookPipeline } from "../contract/bands.js";
 import { contract } from "../contract/contract.js";
 import { createFakeProvider } from "../providers/fake.js";
+import type {
+  ModelCapability,
+  ProviderPricingHint,
+  ProviderRunResponse,
+} from "../providers/provider.js";
 import type { ReceiptSigner } from "../receipts/types.js";
+import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
+} from "../routing/cost.js";
+import { fc } from "../test-support/fast-check.js";
 import { defineTool } from "../tools/tools.js";
 
 import type { AgentHost } from "./host.js";
@@ -82,6 +94,33 @@ function makeTool(
     name,
     inputSchema: makeSchema(),
     execute,
+  });
+}
+
+function capabilityForCost(
+  id: string,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  const base = {
+    ...defaultCapabilityForProvider(id),
+    modelId: `${id}:cost-test`,
+  };
+  if (pricing !== undefined) {
+    return { ...base, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = base;
+  return inheritedPricing === undefined ? base : unpriced;
+}
+
+function costProvider(
+  pricing: ProviderPricingHint | undefined,
+  response: () => ProviderRunResponse,
+  id = "cost-provider",
+) {
+  return createFakeProvider({
+    id,
+    capabilities: [capabilityForCost(id, pricing)],
+    response,
   });
 }
 
@@ -410,6 +449,245 @@ describe("runAgent — cost budget", () => {
     if (result.kind !== "success") {
       expect(result.reason).toMatch(/Cost budget/);
     }
+  });
+
+  it.each([
+    {
+      name: "exact equality",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 1 },
+      budget: 0.512,
+      expectedKind: "success",
+      expectedCalls: 1,
+    },
+    {
+      name: "known free equality",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+      budget: 0,
+      expectedKind: "success",
+      expectedCalls: 1,
+    },
+    {
+      name: "known overage",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 1 },
+      budget: 0.511,
+      expectedKind: "no-contract-match",
+      expectedCalls: 0,
+    },
+  ] as const)(
+    "preflights $name before transport",
+    async ({ pricing, budget, expectedKind, expectedCalls }) => {
+      let calls = 0;
+      const provider = costProvider(pricing, () => {
+        calls += 1;
+        return {
+          rawOutputs: { answer: "done" },
+          normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+        };
+      });
+      const result = await runAgent(
+        {
+          task: "bounded",
+          tools: [],
+          contract: contract({ budget: { maxCostUsd: budget } }),
+        },
+        { providers: [provider] },
+      );
+
+      expect(result.kind).toBe(expectedKind);
+      expect(calls).toBe(expectedCalls);
+    },
+  );
+
+  it("fails closed on unknown pricing only when a hard ceiling exists", async () => {
+    let calls = 0;
+    const provider = costProvider(undefined, () => {
+      calls += 1;
+      return {
+        rawOutputs: { answer: "done" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+      };
+    });
+    const bounded = await runAgent(
+      {
+        task: "bounded unknown",
+        tools: [],
+        contract: contract({ budget: { maxCostUsd: 1 } }),
+      },
+      { providers: [provider] },
+    );
+    expect(bounded.kind).toBe("no-contract-match");
+    expect(calls).toBe(0);
+
+    const unbounded = await runAgent(
+      { task: "unbounded unknown", tools: [] },
+      { providers: [provider] },
+    );
+    expect(unbounded.kind).toBe("success");
+    expect(calls).toBe(1);
+    expect(unbounded.usage.costUsd).toBeNull();
+  });
+
+  it("uses cumulative remaining budget before a second provider call", async () => {
+    let calls = 0;
+    const provider = costProvider(
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.1953125 },
+      () => {
+        calls += 1;
+        return {
+          rawOutputs: {
+            answer:
+              calls === 1
+                ? '{"tool_calls":[{"id":"c","name":"noop","args":{}}]}'
+                : "must not execute",
+          },
+          normalizedUsage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            costUsd: 0.06,
+          },
+        };
+      },
+    );
+    const result = await runAgent(
+      {
+        task: "cumulative",
+        tools: [makeTool("noop")],
+        contract: contract({ budget: { maxCostUsd: 0.15 } }),
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.kind).toBe("no-contract-match");
+    expect(result.usage.costUsd).toBe(0.06);
+    expect(result.iterations).toHaveLength(1);
+    expect(calls).toBe(1);
+  });
+
+  it("fills null actual usage from static pricing while reported cost wins", async () => {
+    const pricing = { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 };
+    const estimated = await runAgent(
+      { task: "estimate actual", tools: [] },
+      {
+        providers: [
+          costProvider(pricing, () => ({
+            rawOutputs: { answer: "done" },
+            normalizedUsage: {
+              promptTokens: 1_000,
+              completionTokens: 500,
+              costUsd: null,
+            },
+          })),
+        ],
+      },
+    );
+    expect(estimated.usage.costUsd).toBe(0.002);
+
+    const reported = await runAgent(
+      { task: "reported actual", tools: [] },
+      {
+        providers: [
+          costProvider(
+            { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+            () => ({
+              rawOutputs: { answer: "done" },
+              normalizedUsage: {
+                promptTokens: 1_000,
+                completionTokens: 500,
+                costUsd: 0.25,
+              },
+            }),
+          ),
+        ],
+      },
+    );
+    expect(reported.usage.costUsd).toBe(0.25);
+  });
+
+  it("emits bounded estimate diagnostics without task content", async () => {
+    const secret = "SECRET-AGENT-COST-PROMPT";
+    const events: Array<{ name: string; attributes?: Record<string, unknown> }> = [];
+    const provider = costProvider(undefined, () => ({
+      rawOutputs: { answer: "must not execute" },
+    }));
+    const result = await runAgent(
+      {
+        task: secret,
+        tools: [],
+        contract: contract({ budget: { maxCostUsd: 1 } }),
+        tracer: {
+          kind: "tracer",
+          event(name, attributes) {
+            events.push({ name, ...(attributes !== undefined ? { attributes } : {}) });
+          },
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.kind).toBe("no-contract-match");
+    const diagnostic = events.find((event) => event.name === "agent.cost.estimate");
+    expect(diagnostic?.attributes).toMatchObject({
+      version: COST_ESTIMATOR_VERSION,
+      status: "unknown",
+      outputTokens: 512,
+    });
+    expect(diagnostic?.attributes).not.toHaveProperty("totalCostUsd");
+    expect(JSON.stringify(events)).not.toContain(secret);
+  });
+
+  it("property: generated first-call budgets preserve equality and reject overage", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          outputRateMicros: fc.integer({ min: 1, max: 100_000 }),
+          task: fc.string({ minLength: 0, maxLength: 100 }),
+          relation: fc.constantFrom("under", "equal", "over"),
+        }),
+        async ({ outputRateMicros, task, relation }) => {
+          const pricing = {
+            inputPer1kTokens: 0,
+            outputPer1kTokens: outputRateMicros / 1_000_000,
+          };
+          const totalCostUsd = estimateCost({
+            pricing,
+            inputTokens: 1,
+            outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+          }).totalCostUsd!;
+          const maxCostUsd =
+            relation === "under"
+              ? totalCostUsd * 2
+              : relation === "equal"
+                ? totalCostUsd
+                : totalCostUsd / 2;
+          let calls = 0;
+          const provider = costProvider(pricing, () => {
+            calls += 1;
+            return {
+              rawOutputs: { answer: "done" },
+              normalizedUsage: {
+                promptTokens: 1,
+                completionTokens: 1,
+                costUsd: 0,
+              },
+            };
+          });
+          const result = await runAgent(
+            {
+              task,
+              tools: [],
+              contract: contract({ budget: { maxCostUsd } }),
+            },
+            { providers: [provider] },
+          );
+
+          expect(calls).toBe(relation === "over" ? 0 : 1);
+          expect(result.kind).toBe(
+            relation === "over" ? "no-contract-match" : "success",
+          );
+        },
+      ),
+      { numRuns: 40 },
+    );
   });
 });
 
