@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T01:40:45.271Z"
+last_updated: "2026-07-17T02:03:10.454Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 33
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-07-17
 
@@ -88,6 +88,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Session continuity records only resolvable exact refs and validates append results. — Unconfigured or retention-none storage can preserve task and plan continuity but must not claim unavailable artifacts.
 - [Phase 59]: Replay evidence is reconstructed from explicit safe fields. — Post-hoc key filtering cannot safely cover nested attempt, lineage, packaging, lifecycle, and arbitrary metadata surfaces.
 - [Phase 59]: Telemetry accepts bounded authority classes and real persistence status only. — Closed sets prevent raw event strings from becoming span data while completed, skipped, and failed lifecycle outcomes remain inspectable.
+- [Phase 59]: Authoritative materialization is a modular value and a root type contract. — The beginner root stays small while context and core consumers avoid deep imports.
+- [Phase 59]: Lifecycle evidence is public; lifecycle failures and orchestration remain internal. — Stable reports are required by MaterializedContext without exposing raw causes or persistence helpers.
 
 ### Pending Todos
 
@@ -136,3 +138,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 59 P05 | 29min | 2 tasks | 8 files |
 | Phase 59 P06 | 18min | 2 tasks | 5 files |
 | Phase 59 P07 | 20min | 2 tasks | 6 files |
+| Phase 59 P08 | 20min | 1 tasks | 9 files |
