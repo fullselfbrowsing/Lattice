@@ -89,23 +89,23 @@
         "description": "Provider factories, provider contracts, streaming helpers, capability negotiation, and prompt scaffold helpers."
       },
       "./audit": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Receipt creation, signing, verification, CID, replay envelopes, replay redaction, materialization, and receipt OTel attributes."
       },
       "./context": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Context packing, token estimates, and artifact reference extraction."
       },
       "./artifacts": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Artifact builders, refs, metadata, storage references, and lineage types."
       },
       "./routing": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Deterministic routing, catalogs, policy, capability profiles, and negotiation helpers."
       },
       "./tools": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Tool definitions, tool execution, MCP-like tool import, and tool-call validation types."
       },
       "./storage": {
@@ -113,15 +113,15 @@
         "description": "Memory and Node filesystem artifact stores plus storage contracts."
       },
       "./eval": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Standalone evaluation kernels for regression checks."
       },
       "./agents": {
-        "compatibility": "node24-runtime",
+        "compatibility": "node24-plus",
         "description": "Opt-in single-agent, crew, host, and agent infrastructure runtime surfaces."
       },
       "./core": {
-        "compatibility": "node20-compatible",
+        "compatibility": "node24-plus",
         "description": "Non-agent artifact, context, output, contract, routing, provider-contract, storage-contract, and result primitives."
       }
     }

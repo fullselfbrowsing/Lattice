@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
 import {
   mkdir,
   mkdtemp,
   readFile,
-  readdir,
-  realpath,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -14,8 +11,20 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  assert,
+  buildPackages,
+  installPackedConsumer,
+  mustRun,
+  packPackage,
+  runCommand,
+  writeJson,
+} from "./lib/packed-packages.mjs";
+
 const SCRIPT_NAME = "check-protocol-package-consumer";
-const KEEP_TEMP = process.env.LATTICE_PROTOCOL_PACKAGE_KEEP_TEMP === "1";
+const KEEP_TEMP =
+  process.env.LATTICE_PACKED_CONSUMER_KEEP_TEMP === "1" ||
+  process.env.LATTICE_PROTOCOL_PACKAGE_KEEP_TEMP === "1";
 const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,78 +40,6 @@ const packages = {
     name: "@full-self-browsing/lattice-cli",
   },
 };
-
-function runCommand(command, args, options = {}) {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(command, args, {
-      ...options,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", rejectPromise);
-    child.on("close", (code) => {
-      resolvePromise({ code: code ?? 1, stdout, stderr });
-    });
-  });
-}
-
-async function mustRun(command, args, options, label) {
-  const result = await runCommand(command, args, options);
-  if (result.code !== 0) {
-    throw new Error(
-      `${label} failed (exit ${result.code})\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-    );
-  }
-  return result;
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
-async function writeJson(path, value) {
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
-async function buildPackages() {
-  await mustRun(
-    "pnpm",
-    ["--filter", packages.runtime.name, "build"],
-    { cwd: repoRoot },
-    "runtime build",
-  );
-  await mustRun(
-    "pnpm",
-    ["--filter", packages.cli.name, "build"],
-    { cwd: repoRoot },
-    "CLI build",
-  );
-}
-
-async function packPackage(entry, destination) {
-  await mkdir(destination, { recursive: true });
-  await mustRun(
-    "pnpm",
-    ["pack", "--pack-destination", destination],
-    { cwd: entry.dir },
-    `${entry.name} pack`,
-  );
-  const tarballs = (await readdir(destination)).filter((file) =>
-    file.endsWith(".tgz"),
-  );
-  assert(
-    tarballs.length === 1,
-    `${entry.name} pack produced ${tarballs.length} tarballs instead of one`,
-  );
-  return join(destination, tarballs[0]);
-}
 
 async function createFixtures(fixturesDir) {
   const standardVector = JSON.parse(
@@ -148,9 +85,11 @@ async function createFixtures(fixturesDir) {
   await mkdir(fixturesDir, { recursive: true });
   const standardPath = join(fixturesDir, "standard-receipt.json");
   const legacyPath = join(fixturesDir, "legacy-receipt.json");
+  const malformedPath = join(fixturesDir, "malformed-receipt.json");
   const keysetPath = join(fixturesDir, "keyset.json");
   await writeJson(standardPath, toEnvelope(standardVector));
   await writeJson(legacyPath, toEnvelope(legacyVector));
+  await writeFile(malformedPath, "{\n", "utf8");
   await writeJson(keysetPath, [
     {
       kid: standardVector.kid,
@@ -158,54 +97,20 @@ async function createFixtures(fixturesDir) {
       state: "active",
     },
   ]);
-  return { standardPath, legacyPath, keysetPath };
+  return { standardPath, legacyPath, malformedPath, keysetPath };
 }
 
 async function installConsumer(consumerDir, runtimeTarball, cliTarball) {
   const runtimeSpec = `file:${runtimeTarball}`;
-  const cliSpec = `file:${cliTarball}`;
-  await mkdir(consumerDir, { recursive: true });
-  await writeJson(join(consumerDir, "package.json"), {
-    name: "lattice-protocol-package-consumer",
-    private: true,
-    type: "module",
-    dependencies: {
-      [packages.runtime.name]: runtimeSpec,
-      [packages.cli.name]: cliSpec,
-    },
-    pnpm: {
-      overrides: {
-        [packages.runtime.name]: runtimeSpec,
-      },
-    },
+  await installPackedConsumer({
+    consumerDir,
+    consumerName: "lattice-packed-consumer",
+    packages: [
+      { name: packages.runtime.name, tarball: runtimeTarball },
+      { name: packages.cli.name, tarball: cliTarball },
+    ],
+    overrides: { [packages.runtime.name]: runtimeSpec },
   });
-  await mustRun(
-    "pnpm",
-    ["install", "--ignore-scripts", "--no-frozen-lockfile"],
-    { cwd: consumerDir },
-    "clean consumer install",
-  );
-
-  const resolvedConsumerDir = await realpath(consumerDir);
-  for (const entry of Object.values(packages)) {
-    const installed = join(consumerDir, "node_modules", ...entry.name.split("/"));
-    const resolved = await realpath(installed);
-    assert(
-      resolved.startsWith(`${resolvedConsumerDir}/`),
-      `${entry.name} resolved outside the clean consumer: ${resolved}`,
-    );
-    const manifest = JSON.parse(
-      await readFile(join(installed, "package.json"), "utf8"),
-    );
-    assert(
-      manifest.name === entry.name,
-      `installed package name mismatch for ${entry.name}`,
-    );
-    assert(
-      !JSON.stringify(manifest).includes("workspace:"),
-      `${entry.name} packed manifest still contains a workspace reference`,
-    );
-  }
 }
 
 async function writeRuntimeSmoke(consumerDir) {
@@ -218,13 +123,20 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
+  createAI,
+  createFakeProvider,
   createInMemorySigner,
   createMemoryKeySet,
   createReceipt,
   generateEd25519KeyPairJwk,
+  latticeVersion,
   receiptCid,
   verifyReceipt,
 } from "@full-self-browsing/lattice";
+import * as agents from "@full-self-browsing/lattice/agents";
+import * as audit from "@full-self-browsing/lattice/audit";
+import * as core from "@full-self-browsing/lattice/core";
+import * as providers from "@full-self-browsing/lattice/providers";
 
 const fixturesDir = join(process.cwd(), "fixtures");
 const readJson = async (name) =>
@@ -235,6 +147,15 @@ const [standardEnvelope, legacyEnvelope, keyEntries] = await Promise.all([
   readJson("keyset.json"),
 ]);
 const keySet = createMemoryKeySet(keyEntries);
+
+const runtimeManifest = await readJson("../node_modules/@full-self-browsing/lattice/package.json");
+const cliManifest = await readJson("../node_modules/@full-self-browsing/lattice-cli/package.json");
+assert.equal(latticeVersion, runtimeManifest.version);
+assert.equal(cliManifest.version, runtimeManifest.version);
+assert.equal(typeof audit.verifyReceipt, "function");
+assert.equal(typeof agents.runAgent, "function");
+assert.equal(typeof core.prepareCoreRun, "function");
+assert.equal(typeof providers.createOpenAICompatibleProvider, "function");
 
 const standard = await verifyReceipt(standardEnvelope, keySet, {
   legacyPolicy: "reject",
@@ -284,6 +205,40 @@ assert.equal(created.body.version, "lattice-receipt/v1.4");
 assert.equal(created.body.signatureProfile, "dsse-v1");
 assert.equal(created.verificationProfile, "dsse-v1");
 assert.equal(created.deprecated, false);
+
+const ai = createAI({
+  providers: [
+    createFakeProvider({
+      id: "packed-provider",
+      modelId: "packed-provider:model",
+      response: {
+        rawOutputs: { answer: "packed runtime response" },
+        normalizedUsage: {
+          promptTokens: 3,
+          completionTokens: 2,
+          costUsd: 0,
+        },
+      },
+    }),
+  ],
+  signer,
+  receiptMode: "required",
+});
+const runResult = await ai.run({
+  task: "Exercise the packed runtime.",
+  outputs: { answer: "text" },
+});
+assert.equal(runResult.ok, true, "packed createAI run succeeds");
+assert.equal(runResult.outputs.answer, "packed runtime response");
+assert.equal(runResult.usage.promptTokens, 3);
+assert.equal(runResult.usage.completionTokens, 2);
+assert.ok(runResult.receipt, "required mode attaches a receipt");
+const runReceipt = await verifyReceipt(runResult.receipt, createdKeySet, {
+  legacyPolicy: "reject",
+});
+assert.equal(runReceipt.ok, true, "packed runtime receipt verifies strictly");
+assert.equal(runReceipt.body.version, "lattice-receipt/v1.4");
+assert.equal(runReceipt.verificationProfile, "dsse-v1");
 
 const legacyAllowed = await verifyReceipt(legacyEnvelope, keySet);
 assert.equal(legacyAllowed.ok, true, "legacy vector verifies by default");
@@ -390,6 +345,18 @@ async function runCliSmoke(consumerDir, fixtures) {
     stdout: "",
     stderrPrefix: "FAIL kind=legacy-profile-rejected reason=",
   });
+
+  const malformed = await runCommand(
+    executable,
+    ["verify", fixtures.malformedPath, "--key", fixtures.keysetPath],
+    options,
+  );
+  assertCliResult(malformed, {
+    label: "malformed CLI verify",
+    code: 2,
+    stdout: "",
+    stderrPrefix: "FAIL kind=receipt-load-failed reason=",
+  });
 }
 
 async function main() {
@@ -398,7 +365,7 @@ async function main() {
   const consumerDir = join(tempRoot, "consumer");
 
   try {
-    await buildPackages();
+    await buildPackages(Object.values(packages), { cwd: repoRoot });
     const runtimeTarball = await packPackage(
       packages.runtime,
       join(packRoot, "runtime"),

@@ -38,8 +38,7 @@ const REQUIRED_MODULES = [
 ] as const;
 
 const COMPATIBILITY_LABELS = [
-  "node20-compatible",
-  "node24-runtime",
+  "node24-plus",
   "adapter-specific",
 ] as const;
 
@@ -199,20 +198,20 @@ describe("modular package entrypoints", () => {
     expect("runAgent" in core).toBe(false);
     expect("runAgentCrew" in core).toBe(false);
 
-    expect(packageJson.lattice?.modules?.["./providers"]?.compatibility).not.toBe(
-      "node24-runtime",
+    expect(packageJson.lattice?.modules?.["./providers"]?.compatibility).toBe(
+      "adapter-specific",
     );
-    expect(packageJson.lattice?.modules?.["./audit"]?.compatibility).not.toBe(
-      "node24-runtime",
+    expect(packageJson.lattice?.modules?.["./audit"]?.compatibility).toBe(
+      "node24-plus",
     );
-    expect(packageJson.lattice?.modules?.["./tools"]?.compatibility).not.toBe(
-      "node24-runtime",
+    expect(packageJson.lattice?.modules?.["./tools"]?.compatibility).toBe(
+      "node24-plus",
     );
-    expect(packageJson.lattice?.modules?.["./core"]?.compatibility).not.toBe(
-      "node24-runtime",
+    expect(packageJson.lattice?.modules?.["./core"]?.compatibility).toBe(
+      "node24-plus",
     );
     expect(packageJson.lattice?.modules?.["./agents"]?.compatibility).toBe(
-      "node24-runtime",
+      "node24-plus",
     );
   });
 });
