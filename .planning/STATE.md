@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
-status: executing
-last_updated: "2026-07-17T05:54:54.030Z"
+status: verifying
+last_updated: "2026-07-17T06:08:28.126Z"
 last_activity: 2026-07-17
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 27
-  completed_plans: 26
-  percent: 67
+  completed_plans: 27
+  percent: 83
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 Phase: 61 (Agent Receipt Closure) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-17
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Recent Milestone Snapshot
 
@@ -107,6 +107,8 @@ Recent decisions affecting v1.6:
 - [Phase 61]: Invalid present snapshots remain stored and return bounded recovery failure without signing or transport. — Clearing invalid evidence would allow a later invocation to silently restart and duplicate completed work.
 - [Phase 61]: Agent runtime terminal envelopes are the only parent and child crew completion evidence. — One issuer preserves exact public identity and removes replacement signatures.
 - [Phase 61]: Crew CIDs are indexed at collection under the known agent ID. — Direct ownership avoids decoding signed payloads and guarantees each CID hashes the exposed envelope.
+- [Phase 61]: Public closure evidence combines real Ed25519 verification with bounded generated resume and crew cases. — Black-box cryptographic and work-count assertions prove the public contract without relying on private observers.
+- [Phase 61]: Historical agent iteration and snapshot literals remain source compatible. — The new identity, ledger, and envelope fields stay optional at packed root and agents entrypoints.
 
 ### Pending Todos
 
@@ -166,3 +168,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 61 P01 | 7min | 2 tasks | 4 files |
 | Phase 61 P02 | 8min | 2 tasks | 5 files |
 | Phase 61 P03 | 5min | 2 tasks | 6 files |
+| Phase 61 P04 | 12min | 1 tasks | 7 files |

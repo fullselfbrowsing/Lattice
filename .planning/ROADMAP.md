@@ -60,7 +60,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 - [x] **Phase 58: Conformance and Client Migration** - Move the specification, vectors, TypeScript, Python, CLI, and CI to the corrected protocol as one interoperability surface. (completed 2026-07-16)
 - [x] **Phase 59: Authoritative Runtime State** - Make one materialized context projection and real persistence lifecycle authoritative for provider execution and evidence. (completed 2026-07-17)
 - [x] **Phase 60: Audit, Evaluation, and Cost Integrity** - Enforce truthful receipt, evaluation, and budget outcomes through shared policies and estimation semantics. (completed 2026-07-17)
-- [ ] **Phase 61: Agent Receipt Closure** - Attach the actual receipt envelopes to iteration, terminal, resume, and crew results without duplication.
+- [x] **Phase 61: Agent Receipt Closure** - Attach the actual receipt envelopes to iteration, terminal, resume, and crew results without duplication. (completed 2026-07-17)
 - [ ] **Phase 62: Operational Interop and Hygiene** - Validate packed consumers and provider wire families, then align documentation and production comments with shipped behavior.
 
 ## Phase Details
@@ -136,7 +136,7 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
   3. Resumed execution retains stable iteration identity and does not duplicate receipts already issued.
   4. Crew receipt arrays and CIDs reuse the same envelopes in documented order without duplicate minting.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 ### Phase 62: Operational Interop and Hygiene
 
@@ -163,5 +163,5 @@ Phases 50 to 56. Language-neutral receipt protocol specification, committed conf
 | 58. Conformance and Client Migration | v1.6 | 6/6 | Complete   | 2026-07-16 |
 | 59. Authoritative Runtime State | v1.6 | 9/9 | Complete    | 2026-07-17 |
 | 60. Audit, Evaluation, and Cost Integrity | v1.6 | 6/6 | Complete   | 2026-07-17 |
-| 61. Agent Receipt Closure | v1.6 | 3/4 | In Progress|  |
+| 61. Agent Receipt Closure | v1.6 | 4/4 | Complete   | 2026-07-17 |
 | 62. Operational Interop and Hygiene | v1.6 | 0/TBD | Not started | - |
