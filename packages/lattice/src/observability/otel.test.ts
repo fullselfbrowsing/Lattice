@@ -178,6 +178,130 @@ describe("createOtelRunEventSink", () => {
     expect(span?.exceptions).toEqual(["no-route"]);
   });
 
+  it("does not record arbitrary failure kinds or reasons", async () => {
+    const tracer = new FakeTracer();
+    const sink = createOtelRunEventSink({ tracer });
+
+    await sink(event("run.start"));
+    await sink(event("run.failed", {
+      metadata: {
+        error: "SECRET_RAW_ERROR",
+        failureKind: "SECRET_FAILURE_KIND",
+        reason: "SECRET_FAILURE_REASON",
+      },
+    }));
+
+    const span = tracer.starts[0]?.span;
+    expect(span?.statuses).toEqual([{ code: 2 }]);
+    expect(span?.exceptions).toEqual([]);
+    expect(JSON.stringify(tracer.starts)).not.toContain("SECRET_");
+  });
+
+  it("emits bounded authority attributes for primary, fallback, and failure spans", async () => {
+    const tracer = new FakeTracer();
+    const sink = createOtelRunEventSink({ tracer });
+    const secretMetadata = {
+      tenantId: "SECRET_TENANT_SENTINEL",
+      storageKey: "SECRET_STORAGE_SENTINEL",
+      signedUrl: "https://secret.example.test/signed",
+      artifactRef: { key: "SECRET_REF_SENTINEL" },
+      summaryText: "SECRET_SUMMARY_SENTINEL",
+      providerPayload: { value: "SECRET_PROVIDER_SENTINEL" },
+      rawError: "SECRET_RAW_ERROR_SENTINEL",
+      unknownNested: { safeLooking: "SECRET_NESTED_SENTINEL" },
+    };
+    const fixtures: RunEvent[] = [
+      event("provider.attempt", {
+        runId: "run:primary",
+        providerId: "primary",
+        modelId: "primary:model",
+        metadata: {
+          status: "started",
+          projectionId: "projection:primary",
+          artifactCount: 3,
+          summaryCount: 0,
+          omitted: 1,
+          ...secretMetadata,
+        },
+      }),
+      event("context.packed", {
+        runId: "run:fallback",
+        providerId: "fallback",
+        modelId: "fallback:model",
+        metadata: {
+          status: "completed",
+          projectionId: "projection:fallback",
+          artifactCount: 2,
+          summaryCount: 1,
+          omitted: 2,
+          ...secretMetadata,
+        },
+      }),
+      event("context.packed", {
+        runId: "run:pre-provider-failure",
+        metadata: {
+          status: "failed",
+          failureKind: "context_materialization",
+          failureReason: "summary-failed",
+          ...secretMetadata,
+        },
+      }),
+      event("run.failed", {
+        runId: "run:post-provider-failure",
+        providerId: "fallback",
+        modelId: "fallback:model",
+        metadata: {
+          reason: "persistence",
+          failureKind: "persistence",
+          persistenceStatus: "failed",
+          projectionId: "projection:fallback",
+          artifactCount: 2,
+          summaryCount: 1,
+          omitted: 2,
+          ...secretMetadata,
+        },
+      }),
+    ];
+
+    for (const fixture of fixtures) {
+      await sink(fixture);
+    }
+
+    const attributes = tracer.starts.map(
+      (start) => start.span.events[0]?.attributes,
+    );
+    expect(attributes[0]).toMatchObject({
+      "lattice.event.status": "started",
+      "lattice.context.projection.id": "projection:primary",
+      "lattice.context.artifact.count": 3,
+      "lattice.context.summary.count": 0,
+      "lattice.context.omitted.count": 1,
+    });
+    expect(attributes[1]).toMatchObject({
+      "lattice.event.status": "completed",
+      "lattice.context.projection.id": "projection:fallback",
+      "lattice.context.artifact.count": 2,
+      "lattice.context.summary.count": 1,
+      "lattice.context.omitted.count": 2,
+    });
+    expect(attributes[2]).toMatchObject({
+      "lattice.event.status": "failed",
+      "lattice.failure.kind": "context_materialization",
+      "lattice.failure.reason": "summary-failed",
+    });
+    expect(attributes[3]).toMatchObject({
+      "lattice.failure.kind": "persistence",
+      "lattice.failure.reason": "persistence",
+      "lattice.persistence.status": "failed",
+      "lattice.context.projection.id": "projection:fallback",
+      "lattice.context.artifact.count": 2,
+      "lattice.context.summary.count": 1,
+      "lattice.context.omitted.count": 2,
+    });
+    expect(JSON.stringify(tracer.starts)).not.toContain("SECRET_");
+    expect(JSON.stringify(tracer.starts)).not.toContain("secret.example.test");
+  });
+
   it("maps every current RunEventKind to a predictable span event", async () => {
     const tracer = new FakeTracer();
     const sink = createOtelRunEventSink({ tracer });

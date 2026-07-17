@@ -76,6 +76,42 @@ const OTEL_STATUS_OK = 1;
 const OTEL_STATUS_ERROR = 2;
 const SECRET_KEY_RE = /api[-_]?key|authorization|credentials?|headers?|password|secret|signed[-_]?url|storage|tenant|token/iu;
 const CONTENT_KEY_RE = /artifact|body|content|input|inputs|message|messages|output|outputs|payload|prompt|rawOutputs|task|uri|url|value/iu;
+const EVENT_STATUSES = new Set([
+  "pending",
+  "running",
+  "started",
+  "completed",
+  "succeeded",
+  "failed",
+  "skipped",
+]);
+const FAILURE_KINDS = new Set([
+  "validation",
+  "execution_unavailable",
+  "no_route",
+  "no-contract-match",
+  "provider_execution",
+  "timeout",
+  "context_materialization",
+  "persistence",
+  "tripwire-violated",
+]);
+const FAILURE_REASONS = new Set([
+  "missing-reference",
+  "load-failed",
+  "policy-denied",
+  "summary-failed",
+  "no-route",
+  "no-contract-match",
+  "provider_execution",
+  "tripwire-violated",
+  "persistence",
+]);
+const PERSISTENCE_STATUSES = new Set([
+  "completed",
+  "skipped",
+  "failed",
+]);
 
 export function createOtelRunEventSink(
   options: OtelRunEventSinkOptions,
@@ -103,7 +139,7 @@ export function createOtelRunEventSink(
     }
 
     if (event.kind === "run.failed") {
-      const message = metadataString(event, "reason");
+      const message = boundedFailureReason(event.metadata?.reason);
       span.setStatus?.({
         code: OTEL_STATUS_ERROR,
         ...(message !== undefined ? { message } : {}),
@@ -139,12 +175,17 @@ export function sanitizeRunEventAttributes(
   }
 
   const metadata = event.metadata ?? {};
-  assignString(attributes, "lattice.event.status", metadataString(event, "status"));
-  const failureKind = metadataString(event, "failureKind");
+  assignString(
+    attributes,
+    "lattice.event.status",
+    boundedString(metadata.status, EVENT_STATUSES),
+  );
+  const rawFailureKind = metadataString(event, "failureKind");
+  const failureKind = boundedString(rawFailureKind, FAILURE_KINDS);
   assignBoolean(
     attributes,
     "lattice.error.present",
-    metadataString(event, "error") !== undefined || failureKind !== undefined
+    metadataString(event, "error") !== undefined || rawFailureKind !== undefined
       ? true
       : undefined,
   );
@@ -152,7 +193,12 @@ export function sanitizeRunEventAttributes(
   assignString(
     attributes,
     "lattice.failure.reason",
-    metadataString(event, "reason") ?? metadataString(event, "failureReason"),
+    boundedFailureReason(metadata.reason) ?? boundedFailureReason(metadata.failureReason),
+  );
+  assignString(
+    attributes,
+    "lattice.persistence.status",
+    boundedString(metadata.persistenceStatus, PERSISTENCE_STATUSES),
   );
   assignString(attributes, "lattice.tripwire.invariant_id", asString(metadata.invariantId));
   assignString(attributes, "lattice.artifact.source", asString(metadata.source));
@@ -276,6 +322,17 @@ function eventTime(event: RunEvent): Date {
 
 function metadataString(event: RunEvent, key: string): string | undefined {
   return asString(event.metadata?.[key]);
+}
+
+function boundedFailureReason(value: unknown): string | undefined {
+  return boundedString(value, FAILURE_REASONS);
+}
+
+function boundedString(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+): string | undefined {
+  return typeof value === "string" && allowed.has(value) ? value : undefined;
 }
 
 function assignString(
@@ -451,6 +508,7 @@ function captureSafeMetadata(
     "included",
     "inputHashes",
     "invariantId",
+    "lifecycle",
     "mintError",
     "normalizedUsage",
     "omitted",
@@ -459,6 +517,7 @@ function captureSafeMetadata(
     "receiptId",
     "rejected",
     "projectionId",
+    "persistenceStatus",
     "selected",
     "source",
     "status",

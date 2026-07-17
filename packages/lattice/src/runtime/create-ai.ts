@@ -927,7 +927,12 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: completedPlan.id,
         providerId: route.providerId,
         modelId: route.modelId,
-        metadata: projectionMetadata,
+        metadata: {
+          ...projectionMetadata,
+          persistenceStatus:
+            completedPlan.stages.find((stage) => stage.kind === "persistence")
+              ?.status ?? "skipped",
+        },
       }));
 
       const receipt = await maybeIssueReceipt(normalized, {
@@ -1419,6 +1424,7 @@ async function postProviderPersistenceFailure<
       reason: "persistence",
       failureKind: input.error.kind,
       lifecycle: input.error.lifecycle,
+      persistenceStatus: "failed",
       ...projectionEventMetadata(input.preparedRoute),
     },
   }));

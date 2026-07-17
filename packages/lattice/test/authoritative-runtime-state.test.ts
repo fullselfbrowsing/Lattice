@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { artifact } from "../src/artifacts/artifact.js";
 import type { ArtifactRef } from "../src/artifacts/artifact.js";
 import type { ContextSummarizer } from "../src/context/context-pack.js";
+import { sanitizeRunEventAttributes } from "../src/observability/otel.js";
 import type { ProviderAdapter, ProviderRunRequest } from "../src/providers/provider.js";
 import {
   createReplayEnvelope,
@@ -170,6 +171,14 @@ describe("authoritative runtime state", () => {
     expect(JSON.stringify(result.events)).not.toContain("RAW_SUMMARY_SENTINEL");
     expect(JSON.stringify(result.events)).not.toContain("OMITTED_VALUE");
     expect(JSON.stringify(result.events)).not.toContain("UNSELECTED_SESSION_SENTINEL");
+    const completeEvent = result.events?.find((event) => event.kind === "run.complete");
+    expect(completeEvent).toBeDefined();
+    if (completeEvent !== undefined) {
+      expect(sanitizeRunEventAttributes(completeEvent)).toMatchObject({
+        "lattice.context.projection.id": result.plan.contextProjection?.id,
+        "lattice.persistence.status": "completed",
+      });
+    }
   });
 
   it("uses the same projection for streaming request artifacts and plan evidence", async () => {
@@ -541,6 +550,21 @@ describe("provider output lifecycle", () => {
     expect(redacted.plan.attempts[1]?.inputHashes).toEqual(
       redacted.plan.contextProjection?.inputHashes,
     );
+    const failureEvent = result.events?.find((event) => event.kind === "run.failed");
+    expect(failureEvent).toBeDefined();
+    if (failureEvent !== undefined) {
+      const attributes = sanitizeRunEventAttributes(failureEvent, {
+        contentCapture: "metadata",
+      });
+      expect(attributes).toMatchObject({
+        "lattice.failure.kind": "persistence",
+        "lattice.failure.reason": "persistence",
+        "lattice.persistence.status": "failed",
+        "lattice.context.projection.id": result.plan.contextProjection?.id,
+      });
+      expect(JSON.stringify(attributes)).not.toContain("SECRET_");
+      expect(JSON.stringify(attributes)).not.toContain("secret.example.test");
+    }
   });
 
   it("rejects malformed store-returned output refs before ordinary success", async () => {
@@ -703,6 +727,15 @@ describe("provider output lifecycle", () => {
           }),
         ]),
       );
+      const completeEvent = result.events?.find(
+        (event) => event.kind === "run.complete",
+      );
+      expect(completeEvent).toBeDefined();
+      if (completeEvent !== undefined) {
+        expect(sanitizeRunEventAttributes(completeEvent)).toMatchObject({
+          "lattice.persistence.status": "skipped",
+        });
+      }
     });
   }
 
