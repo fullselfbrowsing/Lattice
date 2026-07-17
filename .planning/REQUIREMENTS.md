@@ -65,7 +65,7 @@
 
 ### Operational Closure
 
-- [ ] **OPSVAL-01**: A clean consumer can install and use packed runtime and CLI artifacts on every supported Node line.
+- [x] **OPSVAL-01**: A clean consumer can install and use packed runtime and CLI artifacts on every supported Node line.
 - [ ] **OPSVAL-02**: Scheduled or manually dispatched canaries validate representative OpenAI-compatible, Anthropic, and Gemini wire families.
 - [ ] **OPSVAL-03**: Each canary enforces token, time, retry, and spend limits and reports `not-run` distinctly from success or failure.
 - [ ] **DOC16-01**: Root, package, CLI, protocol, migration, and release documentation matches the shipped v1.6 APIs, versions, and compatibility behavior.
@@ -146,7 +146,7 @@ Roadmap creation maps each requirement to exactly one phase.
 | AGREC-02 | Phase 61 | Complete |
 | AGREC-03 | Phase 61 | Complete |
 | AGREC-04 | Phase 61 | Complete |
-| OPSVAL-01 | Phase 62 | Pending |
+| OPSVAL-01 | Phase 62 | Complete |
 | OPSVAL-02 | Phase 62 | Pending |
 | OPSVAL-03 | Phase 62 | Pending |
 | DOC16-01 | Phase 62 | Pending |
