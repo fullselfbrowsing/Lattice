@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-16T23:58:44.749Z"
-last_activity: 2026-07-16
+last_updated: "2026-07-17T00:29:58.917Z"
+last_activity: 2026-07-17
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 11
+  completed_plans: 12
   percent: 33
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 59 (Authoritative Runtime State) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
-Last activity: 2026-07-16
+Last activity: 2026-07-17
 
-Progress: [███████░░░] 65%
+Progress: [███████░░░] 71%
 
 ## Recent Milestone Snapshot
 
@@ -80,6 +80,8 @@ Recent decisions affecting v1.6:
 - [Phase 59]: Context classification is stable-first and materialization loads only IDs named by included items. — This prevents summarized, archived, or unselected session artifacts from re-entering the provider projection.
 - [Phase 59]: Missing stored context fails by default; explicit omit rewrites the final pack atomically with bounded warnings. — Plans and provider-visible content must agree even when compatibility policy permits unavailable refs to be skipped.
 - [Phase 59]: Projection identity hashes route identity plus ordered artifact ID and input-hash pairs. — Plans and events can correlate exact provider-visible evidence without carrying raw content.
+- [Phase 59]: Planning and primary execution consume one prepared materialized projection. — A single preparation authority prevents declared or omitted artifacts from bypassing route-specific context policy.
+- [Phase 59]: Projection evidence is redacted at plan and attempt replay boundaries. — Store-returned references can contain signed URLs and must not leak through newly added evidence fields.
 
 ### Pending Todos
 
@@ -124,3 +126,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 59 P01 | 12 min | 1 tasks | 9 files |
 | Phase 59 P02 | 9 min | 1 tasks | 8 files |
 | Phase 59 P03 | 17 min | 2 tasks | 6 files |
+| Phase 59 P04 | 30min | 2 tasks | 7 files |
