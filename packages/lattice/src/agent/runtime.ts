@@ -167,7 +167,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
   const startedAt = Date.now();
-  const executionId = `agent-execution:${crypto.randomUUID()}`;
+  let executionId = `agent-execution:${crypto.randomUUID()}`;
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
   const receiptPolicy = resolveAgentReceiptPolicy(intent, config);
@@ -248,8 +248,53 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   const survivabilityAdapter: SurvivabilityAdapter<AgentSnapshot> =
     intent.survivabilityAdapter ?? createNoopSurvivabilityAdapter<AgentSnapshot>();
 
-  // 1. Hook pipeline + invocation-local managed checkpoint.
+  // 1. Restore persisted state before receipt handlers capture identity.
   const pipeline = ensurePipeline(intent);
+  let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
+  const outputContracts = intent.outputs ?? DEFAULT_AGENT_OUTPUTS;
+  const outputNames = Object.keys(outputContracts);
+
+  const budget = intent.contract?.budget;
+  const maxIterations = budget?.maxIterations ?? Number.POSITIVE_INFINITY;
+  const maxWallTimeMs = budget?.maxWallTimeMs ?? Number.POSITIVE_INFINITY;
+  const maxCostUsd = budget?.maxCostUsd ?? Number.POSITIVE_INFINITY;
+
+  let iterationIndex = 0;
+  const existingSnapshot = await host.storage?.load();
+  if (existingSnapshot !== null && existingSnapshot !== undefined) {
+    intent.tracer?.event?.("recovery.start", {
+      snapshotVersion: existingSnapshot.version,
+      capturedAt: existingSnapshot.capturedAt,
+    });
+    try {
+      const restored = survivabilityAdapter.deserialize(existingSnapshot);
+      iterationIndex = restored.iterationIndex;
+      conversation = [...restored.conversation];
+      cumulativeUsage.promptTokens = restored.cumulativeUsage.promptTokens;
+      cumulativeUsage.completionTokens = restored.cumulativeUsage.completionTokens;
+      cumulativeUsage.costUsd = restored.cumulativeUsage.costUsd;
+      providerName = restored.providerName;
+      if (restored.executionId !== undefined) {
+        executionId = restored.executionId;
+      }
+      if (restored.iterations !== undefined) {
+        iterations.push(...restored.iterations);
+      }
+      intent.tracer?.event?.("recovery.complete", {
+        iterationIndex,
+        providerName,
+      });
+    } catch (error) {
+      intent.tracer?.event?.("recovery.failed", {
+        reason: error instanceof Error ? error.message : "deserialize failed",
+      });
+      await host.storage?.clear();
+      // Historical behavior falls through to a fresh start. Plan 61-02 Task 2
+      // replaces this with bounded fail-closed recovery.
+    }
+  }
+
+  // 2. Invocation-local managed checkpoint uses the restored execution ID.
   const managedCheckpoint = createManagedCheckpointRunner(
     intent,
     receiptPolicy,
@@ -283,8 +328,11 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     return attached;
   };
 
-  // 2. Provider selection — pick the first adapter with execute().
-  const provider = pickFirstExecutableProvider(config);
+  // 3. Provider selection prefers the sticky provider restored by the host.
+  const provider = pickFirstExecutableProvider(
+    config,
+    providerName === "lattice-agent/unavailable" ? undefined : providerName,
+  );
   if (provider === null) {
     return finalize(buildFailure({
       kind: "execution_unavailable",
@@ -295,50 +343,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   }
   providerName = provider.id;
   const capability = pickFirstAvailableCapability(provider);
-
-  // 3. Initialize conversation + tools handle.
-  let conversation: ConversationTurn[] = [{ role: "user", content: intent.task }];
   const handle = formatToolsForProvider(providerName, intent.tools);
-  const outputContracts = intent.outputs ?? DEFAULT_AGENT_OUTPUTS;
-  const outputNames = Object.keys(outputContracts);
-
-  const budget = intent.contract?.budget;
-  const maxIterations = budget?.maxIterations ?? Number.POSITIVE_INFINITY;
-  const maxWallTimeMs = budget?.maxWallTimeMs ?? Number.POSITIVE_INFINITY;
-  const maxCostUsd = budget?.maxCostUsd ?? Number.POSITIVE_INFINITY;
-
-  let iterationIndex = 0;
-
-  // 3.5. Resume path (Phase 20): attempt to load a snapshot from host.storage.
-  // On success, deserialize via the survivability adapter and re-enter at the
-  // recorded iteration index. Emits recovery.start / recovery.complete /
-  // recovery.failed events on the configured tracer (TRACE-EXT-01).
-  const existingSnapshot = await host.storage?.load();
-  if (existingSnapshot !== null && existingSnapshot !== undefined) {
-    intent.tracer?.event?.("recovery.start", {
-      snapshotVersion: existingSnapshot.version,
-      capturedAt: existingSnapshot.capturedAt,
-    });
-    try {
-      const restored = survivabilityAdapter.deserialize(existingSnapshot);
-      iterationIndex = restored.iterationIndex;
-      conversation = [...restored.conversation];
-      cumulativeUsage.promptTokens = restored.cumulativeUsage.promptTokens;
-      cumulativeUsage.completionTokens = restored.cumulativeUsage.completionTokens;
-      cumulativeUsage.costUsd = restored.cumulativeUsage.costUsd;
-      providerName = restored.providerName;
-      intent.tracer?.event?.("recovery.complete", {
-        iterationIndex,
-        providerName,
-      });
-    } catch (error) {
-      intent.tracer?.event?.("recovery.failed", {
-        reason: error instanceof Error ? error.message : "deserialize failed",
-      });
-      await host.storage?.clear();
-      // Fall through to fresh start (iterationIndex stays 0).
-    }
-  }
 
   while (iterationIndex < maxIterations) {
     const iterationId = buildIterationId(executionId, iterationIndex);
@@ -639,6 +644,8 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     if (host.storage !== undefined) {
       const snapshot = survivabilityAdapter.serialize({
         version: "agent-snapshot/v1",
+        executionId,
+        iterations: Object.freeze([...iterations]),
         iterationIndex: iterationIndex + 1,
         conversation: [...conversation],
         cumulativeUsage: snapshotUsage(cumulativeUsage),
@@ -775,15 +782,20 @@ function emitAgentReceiptOutcome<TOutputs extends OutputContractMap>(
   });
 }
 
-function pickFirstExecutableProvider(config: LatticeConfig): ProviderAdapter | null {
+function pickFirstExecutableProvider(
+  config: LatticeConfig,
+  preferredId?: string,
+): ProviderAdapter | null {
   const providers = config.providers ?? [];
+  let first: ProviderAdapter | null = null;
   for (const entry of providers) {
     if (typeof entry === "string") continue;
     if ("kind" in entry && entry.kind === "provider-adapter" && entry.execute !== undefined) {
-      return entry;
+      if (first === null) first = entry;
+      if (entry.id === preferredId) return entry;
     }
   }
-  return null;
+  return first;
 }
 
 function minDefined(

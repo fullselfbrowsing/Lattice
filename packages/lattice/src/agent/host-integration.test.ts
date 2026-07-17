@@ -143,6 +143,15 @@ describe("runAgent — AgentHost storage seam (Phase 20)", () => {
     expect(saves.length).toBe(1);
     expect(saves[0]?.kind).toBe("survivability-snapshot");
     expect(saves[0]?.version).toBe("lattice-survivability/v1");
+    const savedState = createNoopSurvivabilityAdapter<AgentSnapshot>().deserialize(
+      saves[0]!,
+    );
+    expect(savedState.version).toBe("agent-snapshot/v1");
+    expect(savedState.executionId).toMatch(/^agent-execution:/);
+    expect(savedState.iterations).toHaveLength(1);
+    expect(savedState.iterations?.[0]?.iterationId).toBe(
+      `${savedState.executionId}:iteration:0`,
+    );
     // Clear was called on final-answer success.
     expect(clears.length).toBe(1);
   });

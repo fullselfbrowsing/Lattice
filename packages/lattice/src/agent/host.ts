@@ -37,6 +37,7 @@ import type {
 } from "../providers/provider.js";
 
 import type { ConversationTurn } from "./format-tools.js";
+import type { IterationRecord } from "./types.js";
 
 /**
  * Snapshot shape the agent loop serializes between iterations. The full
@@ -46,6 +47,8 @@ import type { ConversationTurn } from "./format-tools.js";
  */
 export interface AgentSnapshot {
   readonly version: "agent-snapshot/v1";
+  readonly executionId?: string;
+  readonly iterations?: readonly IterationRecord[];
   readonly iterationIndex: number;
   readonly conversation: readonly ConversationTurn[];
   readonly cumulativeUsage: Usage;

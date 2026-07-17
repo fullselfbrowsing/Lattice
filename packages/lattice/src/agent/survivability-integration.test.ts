@@ -59,7 +59,15 @@ describe("Phase 20 survivability integration — end-to-end resume across simula
   it(
     "captures a snapshot after iteration 0, evicts, resumes at iteration 1, signs a verifiable receipt",
     async () => {
-      const { signer, keySet, kid } = await makeEphemeralSetup();
+      const { signer: baseSigner, keySet, kid } = await makeEphemeralSetup();
+      let signerCalls = 0;
+      const signer = {
+        ...baseSigner,
+        async sign(bytes: Uint8Array): Promise<Uint8Array> {
+          signerCalls += 1;
+          return baseSigner.sign(bytes);
+        },
+      };
 
       // Track ALL receipts minted across both halves of the run.
       const mintedReceipts: ReceiptEnvelope[] = [];
@@ -150,6 +158,12 @@ describe("Phase 20 survivability integration — end-to-end resume across simula
       expect(restored.iterationIndex).toBe(1);
       expect(restored.conversation.length).toBeGreaterThanOrEqual(3);
       expect(restored.cumulativeUsage.promptTokens).toBe(3);
+      expect(restored.executionId).toMatch(/^agent-execution:/);
+      expect(restored.iterations).toHaveLength(1);
+      expect(restored.iterations?.[0]?.iterationId).toBe(
+        `${restored.executionId}:iteration:0`,
+      );
+      expect(restored.iterations?.[0]?.receipt).toEqual(mintedReceipts[0]);
 
       // -- Simulate process restart --
 
@@ -209,8 +223,16 @@ describe("Phase 20 survivability integration — end-to-end resume across simula
       expect((recoveryEvents[1]?.payload as { iterationIndex?: number })?.iterationIndex).toBe(1);
 
       if (result.kind === "success") {
-        // Exactly 1 NEW iteration ran in the second half (iteration index 1 -> final).
-        expect(result.iterations.length).toBe(1);
+        expect(result.iterations.length).toBe(2);
+        expect(result.iterations[0]?.iterationId).toBe(
+          restored.iterations?.[0]?.iterationId,
+        );
+        expect(result.iterations[0]?.receipt).toEqual(
+          restored.iterations?.[0]?.receipt,
+        );
+        expect(result.iterations[1]?.iterationId).toBe(
+          `${restored.executionId}:iteration:1`,
+        );
         // Usage carries from the snapshot (3/2/0.001) plus the new iter (4/1/0.0005)
         // = 7/3/0.0015.
         expect(result.usage.promptTokens).toBe(7);
@@ -225,6 +247,7 @@ describe("Phase 20 survivability integration — end-to-end resume across simula
         expect(v.ok).toBe(true);
         expect(envelope.signatures[0]?.keyid).toBe(kid);
       }
+      expect(signerCalls).toBe(3);
     },
     20000,
   );
