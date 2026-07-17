@@ -279,6 +279,9 @@ describe("prepareRun", () => {
         terminal: true,
       },
     });
+    if (result.ok) {
+      throw new Error("Expected input persistence to fail.");
+    }
     expect(result.error.message).not.toContain("SECRET");
     expect(JSON.stringify(result.plan)).not.toContain("SECRET");
     expect(result.plan.stages.find((stage) => stage.kind === "persistence")?.status).toBe(
@@ -314,6 +317,9 @@ describe("prepareRun", () => {
       },
     });
     expect(load).toHaveBeenCalledOnce();
+    if (result.ok) {
+      throw new Error("Expected context materialization to fail.");
+    }
     expect(result.error.message).not.toContain("SECRET");
     expect(JSON.stringify(result.plan)).not.toContain("SECRET");
     expect(result.plan.contextProjection).toBeUndefined();
@@ -365,6 +371,9 @@ describe("prepareRun", () => {
         terminal: true,
       },
     });
+    if (result.ok) {
+      throw new Error("Expected summary persistence to fail.");
+    }
     expect(result.error.message).not.toContain("SECRET");
   });
 

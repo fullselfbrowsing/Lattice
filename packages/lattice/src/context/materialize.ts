@@ -408,7 +408,7 @@ async function resolveConcreteArtifact(
   state: MaterializationState,
   requiredPrivacy: ArtifactPrivacy = state.input.policy?.privacy ?? "standard",
 ): Promise<ArtifactInput | undefined> {
-  if (candidate.value !== undefined) {
+  if ("value" in candidate && candidate.value !== undefined) {
     return {
       ...candidate,
       privacy: mostRestrictiveArtifactPrivacy(
