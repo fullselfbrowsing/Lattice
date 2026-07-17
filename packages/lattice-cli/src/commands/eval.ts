@@ -10,22 +10,21 @@
  * stdout for programmatic consumers (with human-readable lines on stderr).
  *
  * Exit-code matrix (CONTEXT.md "Subcommand Shape"):
- *   - 0 : session completed AND `summary.regressed === 0` (includes empty
+ *   - 0 : session completed AND no fixture is invalid or regressed (includes empty
  *         fixtures dir per CONTEXT.md — no fixtures is not an error).
  *   - 0 : `--init-baseline` ran AND writeBaseline succeeded.
  *   - 1 : session completed AND `summary.regressed > 0`.
- *   - 2 : session aborted before producing a report — keyset/baseline/receipts
- *         dir missing or malformed, OR --init-baseline write failed.
+ *   - 2 : any fixture is invalid/unevaluable, the session aborts before producing
+ *         a report, or --init-baseline cannot write a complete valid baseline.
  *
  * Output streams:
  *   - stdout : ONE line, `JSON.stringify(report)`. `report.exitCode` mirrors
  *              the process exit code (set BEFORE serialization).
  *   - stderr : one human line per fixture (`<id> verdict=... regressionKind=...
- *              deltaCostPct=... deltaQuality=...`) followed by a final
- *              `SUMMARY total=<n> passed=<n> regressed=<n> newFixtures=<n>`
- *              aggregate line. On exit 2, stderr emits ONLY the
- *              `FAIL kind=<kind> reason=<msg>` line (no fixture lines, no
- *              JSON on stdout) — there is no report to render.
+ *              deltaCostPct=... deltaQuality=... loadFailedStage=...
+ *              loadFailedReason=...`) followed by a final aggregate line.
+ *              Session-wide failures that prevent enumeration emit only
+ *              `FAIL kind=<kind> reason=<msg>` and no JSON report.
  *
  * Redaction discipline (CLI-05): the JSON report surfaces `usage.costUsd` as
  * a string (Plan 12-01's I-JSON decision) but NEVER emits input/output hashes
@@ -189,14 +188,30 @@ function emitReport(report: EvalRunReport, deps: EvalDeps): void {
     deps.stderr(
       `${f.fixtureId} verdict=${f.verdict} regressionKind=${
         f.regressionKind ?? "none"
-      } deltaCostPct=${deltaCost} deltaQuality=${deltaQual}`,
+      } deltaCostPct=${deltaCost} deltaQuality=${deltaQual} loadFailedStage=${
+        f.loadFailedStage ?? "none"
+      } loadFailedReason=${f.loadFailedReason ?? "none"}`,
     );
   }
   deps.stderr(
-    `SUMMARY total=${report.summary.total} passed=${report.summary.passed} regressed=${report.summary.regressed} newFixtures=${report.summary.newFixtures}`,
+    `SUMMARY total=${report.summary.total} passed=${report.summary.passed} regressed=${report.summary.regressed} newFixtures=${report.summary.newFixtures} loadFailed=${report.summary.loadFailed}`,
   );
   // stdout: exactly one JSON line.
   deps.stdout(JSON.stringify(report));
+}
+
+function reconcileLoadFailed(report: EvalRunReport): EvalRunReport {
+  const loadFailed = report.fixtures.filter(
+    (fixture) => fixture.verdict === "load-failed",
+  ).length;
+
+  return {
+    ...report,
+    summary: {
+      ...report.summary,
+      loadFailed,
+    },
+  };
 }
 
 function emitAgentReport(
@@ -367,15 +382,24 @@ export async function runEval(
     return fail(deps, "session-failed", readErrorMessage(err), 2);
   }
 
+  report = reconcileLoadFailed(report);
+
   // --init-baseline: write a new baseline from the current run AND exit 0.
   // Per CONTEXT.md "Baseline-Relative Gating": this is the documented way to
   // bootstrap a baseline. The runner returned every fixture as verdict=match
   // (initBaseline mode skips baseline loading); we project per-fixture
   // usage+qualityScore into BaselineEntry shape.
   if (config.initBaseline) {
+    if (report.summary.loadFailed > 0) {
+      const finalReport: EvalRunReport = { ...report, exitCode: 2 };
+      emitReport(finalReport, deps);
+      deps.exit(2);
+      return;
+    }
+
     const entries: Record<string, BaselineEntry> = {};
     for (const f of report.fixtures) {
-      if (f.verdict === "load-failed" || f.usage === null) continue;
+      if (f.usage === null) continue;
       entries[f.fixtureId] = {
         usage: f.usage,
         qualityFloor:
@@ -403,8 +427,14 @@ export async function runEval(
     return;
   }
 
-  // Standard mode: regressed > 0 -> exit 1, else exit 0.
-  const exitCode: 0 | 1 = report.summary.regressed > 0 ? 1 : 0;
+  // Invalid/unevaluable rows outrank regressions because the evaluated set is
+  // incomplete. Row-derived failures still retain the full report.
+  const exitCode: 0 | 1 | 2 =
+    report.summary.loadFailed > 0
+      ? 2
+      : report.summary.regressed > 0
+        ? 1
+        : 0;
   const finalReport: EvalRunReport = { ...report, exitCode };
   emitReport(finalReport, deps);
   deps.exit(exitCode);

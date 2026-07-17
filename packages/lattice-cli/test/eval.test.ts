@@ -8,9 +8,9 @@
  *
  *   - stdout: ONE line containing JSON.stringify(report); `report.exitCode`
  *     reflects the process exit code.
- *   - stderr: human-readable lines (one per fixture + final SUMMARY); FAIL
- *     lines appear ONLY on exit 2.
- *   - Exit 0: no regression; Exit 1: any regression; Exit 2: load/session fail.
+ *   - stderr: human-readable lines (one per fixture + final SUMMARY); FAIL is
+ *     reserved for session-wide errors that prevent a report.
+ *   - Exit 0: complete pass; Exit 1: regression; Exit 2: invalid/session fail.
  *
  * Cases:
  *   1.  Pass run                       -> exit 0, all match
@@ -25,7 +25,7 @@
  *   10. Default config                 -> buildConfig defaults all CONTEXT.md flags
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { runEval, type EvalDeps, type RunEvalArgs } from "../src/commands/eval.js";
 import type { BaselineLoadError } from "../src/eval/baseline.js";
@@ -128,6 +128,7 @@ describe("lattice eval handler (commands/eval.ts)", () => {
       passed: 2,
       regressed: 0,
       newFixtures: 0,
+      loadFailed: 0,
     });
     expect(
       bag.stderr.some((l) =>
@@ -171,10 +172,86 @@ describe("lattice eval handler (commands/eval.ts)", () => {
       passed: 0,
       regressed: 0,
       newFixtures: 0,
+      loadFailed: 0,
     });
     expect(
       bag.stderr.some((l) => l.startsWith("SUMMARY total=0 passed=0 regressed=0 newFixtures=0")),
     ).toBe(true);
+  });
+
+  it("emits every invalid row and a JSON report before exiting 2", async () => {
+    const report = reportFromFixtures(
+      [
+        fixtureReport("bad-receipt", "load-failed", null, {
+          usage: null,
+          deltaCostPct: null,
+          loadFailedStage: "load",
+          loadFailedReason: "receipt-load-failed",
+        }),
+        fixtureReport("bad-replay", "load-failed", null, {
+          usage: null,
+          deltaCostPct: null,
+          loadFailedStage: "replay",
+          loadFailedReason: "replay-failed",
+        }),
+      ],
+      { regressed: 0 },
+    );
+    const { deps, bag } = captureDeps({ runSession: async () => report });
+
+    await runEval({}, deps);
+
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stdout).toHaveLength(1);
+    expect(bag.stderr).toHaveLength(3);
+    expect(bag.stderr).not.toContainEqual(expect.stringMatching(/^FAIL /));
+    expect(bag.stderr[0]).toContain(
+      "loadFailedStage=load loadFailedReason=receipt-load-failed",
+    );
+    expect(bag.stderr[1]).toContain(
+      "loadFailedStage=replay loadFailedReason=replay-failed",
+    );
+    expect(bag.stderr[2]).toBe(
+      "SUMMARY total=2 passed=0 regressed=0 newFixtures=0 loadFailed=2",
+    );
+    const parsed = JSON.parse(bag.stdout[0]!) as EvalRunReport;
+    expect(parsed.exitCode).toBe(2);
+    expect(parsed.summary.loadFailed).toBe(2);
+    expect(parsed.fixtures.map((fixture) => fixture.fixtureId)).toEqual([
+      "bad-receipt",
+      "bad-replay",
+    ]);
+  });
+
+  it("derives invalidity from rows and lets exit 2 outrank regression", async () => {
+    const report = reportFromFixtures(
+      [
+        fixtureReport("regressed", "regression", "cost-regression"),
+        fixtureReport("invalid", "load-failed", null, {
+          usage: null,
+          deltaCostPct: null,
+          loadFailedStage: "materialization",
+          loadFailedReason: "artifact-load-failed",
+        }),
+      ],
+      { regressed: 1 },
+    );
+    const staleReport: EvalRunReport = {
+      ...report,
+      summary: { ...report.summary, loadFailed: 0 },
+    };
+    const { deps, bag } = captureDeps({
+      runSession: async () => staleReport,
+    });
+
+    await runEval({}, deps);
+
+    expect(bag.exitCode).toBe(2);
+    expect(bag.stderr).toHaveLength(3);
+    expect(bag.stderr).not.toContainEqual(expect.stringMatching(/^FAIL /));
+    const parsed = JSON.parse(bag.stdout[0]!) as EvalRunReport;
+    expect(parsed.exitCode).toBe(2);
+    expect(parsed.summary).toMatchObject({ regressed: 1, loadFailed: 1 });
   });
 
   it("Test 4: baseline missing -> exit 2, FAIL kind=baseline-missing reason=...", async () => {
@@ -291,6 +368,63 @@ describe("lattice eval handler (commands/eval.ts)", () => {
     expect(
       bag.stderr.some((l) => l.startsWith("FAIL kind=baseline-write-failed reason=")),
     ).toBe(true);
+  });
+
+  it("does not invoke the baseline writer when init contains an invalid row", async () => {
+    const report = reportFromFixtures(
+      [
+        fixtureReport("valid", "match"),
+        fixtureReport("invalid", "load-failed", null, {
+          usage: null,
+          deltaCostPct: null,
+          loadFailedStage: "unevaluable-output",
+          loadFailedReason: "outputhash-missing",
+        }),
+      ],
+      { regressed: 0 },
+    );
+    let baselineBytes = "PREEXISTING-BASELINE";
+    const writeBaseline = vi.fn(async () => {
+      baselineBytes = "OVERWRITTEN";
+    });
+    const { deps, bag } = captureDeps({
+      runSession: async () => report,
+      writeBaseline,
+    });
+
+    await runEval({ initBaseline: true }, deps);
+
+    expect(bag.exitCode).toBe(2);
+    expect(writeBaseline).not.toHaveBeenCalled();
+    expect(baselineBytes).toBe("PREEXISTING-BASELINE");
+    expect(bag.stdout).toHaveLength(1);
+    expect(bag.stderr).toHaveLength(3);
+    expect(bag.stderr).not.toContainEqual(expect.stringMatching(/^FAIL /));
+    const parsed = JSON.parse(bag.stdout[0]!) as EvalRunReport;
+    expect(parsed.exitCode).toBe(2);
+    expect(parsed.summary.loadFailed).toBe(1);
+  });
+
+  it("writes an empty baseline for a valid empty init run", async () => {
+    const report = reportFromFixtures([], { regressed: 0 });
+    const writeBaseline = vi.fn(async () => undefined);
+    const { deps, bag } = captureDeps({
+      runSession: async () => report,
+      writeBaseline,
+      now: () => "2026-05-11T00:00:00.000Z",
+    });
+
+    await runEval({ initBaseline: true }, deps);
+
+    expect(bag.exitCode).toBe(0);
+    expect(writeBaseline).toHaveBeenCalledTimes(1);
+    expect(writeBaseline).toHaveBeenCalledWith(
+      ".lattice/baseline.json",
+      expect.objectContaining({ fixtures: {} }),
+    );
+    const parsed = JSON.parse(bag.stdout[0]!) as EvalRunReport;
+    expect(parsed.exitCode).toBe(0);
+    expect(parsed.summary.loadFailed).toBe(0);
   });
 
   it("Test 9: stdout discipline -> JSON contains usage.costUsd, no fingerprints/hashes", async () => {
