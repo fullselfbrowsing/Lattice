@@ -568,6 +568,81 @@ describe("Phase 51: OpenAI-compatible native provider execution", () => {
   });
 });
 
+describe("OpenAI-compatible output token ceiling", () => {
+  it("serializes an explicit ceiling while preserving signal and usage", async () => {
+    const { fetch, inits } = makeMultiRouteFetch([
+      {
+        body: {
+          choices: [{ message: { content: "bounded" } }],
+          usage: { prompt_tokens: 3, completion_tokens: 2 },
+        },
+      },
+    ]);
+    const controller = new AbortController();
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+      signal: controller.signal,
+    });
+
+    const body = JSON.parse(String(inits[0]?.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
+    expect(inits[0]?.signal).toBe(controller.signal);
+    expect(response.usage).toEqual({
+      inputTokens: 3,
+      outputTokens: 2,
+    });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 3,
+      completionTokens: 2,
+      costUsd: null,
+    });
+  });
+
+  it("omits max_tokens when no ceiling is configured", async () => {
+    const { fetch, inits } = makeMultiRouteFetch([
+      { body: { choices: [{ message: { content: "default" } }], usage: {} } },
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] });
+
+    const body = JSON.parse(String(inits[0]?.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("max_tokens");
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid maxOutputTokens=%s before transport",
+    (maxOutputTokens) => {
+      let transports = 0;
+      const fetch = (async () => {
+        transports += 1;
+        return new Response();
+      }) as unknown as typeof globalThis.fetch;
+
+      expect(() => createOpenAICompatibleProvider({
+        model: "test",
+        baseUrl: "http://fake",
+        fetch,
+        maxOutputTokens,
+      })).toThrow("maxOutputTokens must be a positive integer");
+      expect(transports).toBe(0);
+    },
+  );
+});
+
 describe("Phase 44: OpenAI-compatible streaming adapter", () => {
   it("advertises streaming capability", () => {
     const adapter = createOpenAICompatibleProvider({
@@ -605,6 +680,32 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
     expect(body.model).toBe("test");
     expect(body.stream).toBe(true);
     expect(body.stream_options).toEqual({ include_usage: true });
+  });
+
+  it("streaming request body uses the configured output ceiling", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "ok" } }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    const body = JSON.parse(String(first.init.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
   });
 
   it("streaming request body includes stream_options include_usage and captures usage from final chunk", async () => {

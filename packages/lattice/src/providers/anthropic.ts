@@ -71,6 +71,8 @@ export interface AnthropicProviderOptions {
   readonly anthropicVersion?: string;
   readonly fetch?: typeof fetch;
   readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling. Defaults to 2000. */
+  readonly maxOutputTokens?: number;
   /**
    * D-08: Per-instance TTL for the /v1/models response cache (milliseconds).
    * Default 300_000 (5 minutes). `0` disables caching (always re-fetch -- for testing).
@@ -109,6 +111,16 @@ const DEFAULT_MODELS_RETRY_COUNT = 2;
 /** D-11: Backoff schedule for transient /v1/models failures -- immediate, 200ms, 1s. */
 const MODELS_BACKOFF_MS = [0, 200, 1000] as const;
 
+function resolveMaxOutputTokens(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_MAX_TOKENS;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
+}
+
 interface AnthropicMessagesBodyResult {
   readonly body: Record<string, unknown>;
   readonly usesFilesApi: boolean;
@@ -117,6 +129,7 @@ interface AnthropicMessagesBodyResult {
 async function createAnthropicMessagesBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens: number;
   readonly stream?: boolean;
 }): Promise<AnthropicMessagesBodyResult> {
   // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
@@ -157,7 +170,7 @@ async function createAnthropicMessagesBody(input: {
             : [...content.blocks, { type: "text", text: input.request.task }],
         },
       ],
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: input.maxOutputTokens,
       ...(input.stream === true ? { stream: true } : {}),
       ...(tools.length > 0 ? { tools } : {}),
       ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
@@ -279,6 +292,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/u, "");
   const anthropicVersion = options.anthropicVersion ?? DEFAULT_ANTHROPIC_VERSION;
+  const maxOutputTokens = resolveMaxOutputTokens(options.maxOutputTokens);
 
   // D-08: TTL cache configuration
   const ttlMs = options.modelsCacheTtlMs ?? DEFAULT_MODELS_CACHE_TTL_MS;
@@ -573,6 +587,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       const messagesBody = await createAnthropicMessagesBody({
         model: options.model,
         request,
+        maxOutputTokens,
       });
       const bodyStr = JSON.stringify(messagesBody.body);
       assertNoPublicUrlEgress(request, id, bodyStr);
@@ -658,6 +673,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         anthropicVersion,
         fetchImpl,
         request,
+        maxOutputTokens,
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
         ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
         ...(options.validateToolCalls !== undefined
@@ -676,6 +692,7 @@ async function* streamAnthropicResponse(input: {
   readonly anthropicVersion: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens: number;
   readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
@@ -683,6 +700,7 @@ async function* streamAnthropicResponse(input: {
   const messagesBody = await createAnthropicMessagesBody({
     model: input.model,
     request: input.request,
+    maxOutputTokens: input.maxOutputTokens,
     stream: true,
   });
   const streamBodyStr = JSON.stringify(messagesBody.body);

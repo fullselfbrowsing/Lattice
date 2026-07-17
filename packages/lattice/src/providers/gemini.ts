@@ -77,6 +77,8 @@ export interface GeminiProviderOptions {
   readonly baseUrl?: string;
   readonly fetch?: typeof fetch;
   readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling. Defaults to 2000. */
+  readonly maxOutputTokens?: number;
   /**
    * D-08: TTL for per-instance /models response cache, in milliseconds.
    * Default: 300_000ms (5 minutes). 0 = always refetch (tests). Infinity = process-lifetime.
@@ -102,6 +104,16 @@ const DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com";
 const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_TOP_P = 0.9;
+
+function resolveMaxOutputTokens(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
+}
 
 /**
  * 4 HARM_CATEGORY entries at BLOCK_NONE (FSB convention mirrored from
@@ -138,6 +150,7 @@ const GEMINI_QUIRKS: GeminiQuirks = {
 
 async function createGeminiGenerateContentBody(
   request: ProviderRunRequest,
+  maxOutputTokens: number,
 ): Promise<Record<string, unknown>> {
   const parts = await createGeminiUserParts(request);
   const functionDeclarations = geminiFunctionDeclarations(request.nativeTools);
@@ -154,7 +167,7 @@ async function createGeminiGenerateContentBody(
     generationConfig: {
       temperature: DEFAULT_TEMPERATURE,
       topP: DEFAULT_TOP_P,
-      maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+      maxOutputTokens,
       ...(structuredOutputConfig !== undefined ? structuredOutputConfig : {}),
     },
     safetySettings: SAFETY_SETTINGS,
@@ -325,6 +338,7 @@ export function createGeminiProvider(
   const id = options.id ?? "gemini";
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/u, "");
+  const maxOutputTokens = resolveMaxOutputTokens(options.maxOutputTokens);
 
   // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
   // each createGeminiProvider({}) call gets its own Map (no cross-contamination).
@@ -554,7 +568,10 @@ export function createGeminiProvider(
     quirks: GEMINI_QUIRKS,
     negotiateCapabilities: negotiate,
     async execute(request) {
-      const requestBody = await createGeminiGenerateContentBody(request);
+      const requestBody = await createGeminiGenerateContentBody(
+        request,
+        maxOutputTokens,
+      );
       const bodyStr = JSON.stringify(requestBody);
       assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
@@ -644,6 +661,7 @@ export function createGeminiProvider(
         apiKey: options.apiKey,
         fetchImpl,
         request,
+        maxOutputTokens,
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
         ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
         ...(options.validateToolCalls !== undefined
@@ -661,11 +679,15 @@ async function* streamGeminiResponse(input: {
   readonly apiKey: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens: number;
   readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
-  const requestBody = await createGeminiGenerateContentBody(input.request);
+  const requestBody = await createGeminiGenerateContentBody(
+    input.request,
+    input.maxOutputTokens,
+  );
   const streamBodyStr = JSON.stringify(requestBody);
   assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(

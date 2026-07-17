@@ -49,6 +49,8 @@ export interface OpenAICompatibleProviderOptions {
   readonly fetch?: typeof fetch;
   /** Static pricing used only when the provider does not report a cost. */
   readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling serialized as `max_tokens` when set. */
+  readonly maxOutputTokens?: number;
   /**
    * Phase 34 — D-05/D-06/D-08 — TTL for the per-instance models cache.
    * Default 300_000ms (5 minutes). Set to 0 to disable caching.
@@ -106,6 +108,16 @@ export interface SdkLikeProviderOptions {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateMaxOutputTokens(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
 }
 
 function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
@@ -299,6 +311,7 @@ function observedModelFromResponse(body: unknown): string | undefined {
 function createOpenAICompatibleRequestBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens?: number;
   readonly metadata?: Record<string, unknown>;
   readonly stream?: boolean;
 }): Record<string, unknown> {
@@ -308,6 +321,9 @@ function createOpenAICompatibleRequestBody(input: {
 
   return {
     model: input.model,
+    ...(input.maxOutputTokens !== undefined
+      ? { max_tokens: input.maxOutputTokens }
+      : {}),
     ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
     messages: [
       {
@@ -446,6 +462,7 @@ export function createOpenAICompatibleProvider(
   const id = options.id ?? "openai-compatible";
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = options.baseUrl.replace(/\/$/u, "");
+  const maxOutputTokens = validateMaxOutputTokens(options.maxOutputTokens);
 
   // Phase 34 — D-04 — OpenAI-compat negotiate() is registry-only (no fetch,
   // no cache, no inflight). Source: "registry" signals intentional no-endpoint.
@@ -490,6 +507,7 @@ export function createOpenAICompatibleProvider(
       const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
         model: options.model,
         request,
+        ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
         ...(metadata !== undefined ? { metadata } : {}),
       }));
       assertNoPublicUrlEgress(request, id, bodyStr);
@@ -576,6 +594,7 @@ export function createOpenAICompatibleProvider(
         baseUrl,
         fetchImpl,
         request,
+        ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
         ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
         ...(options.gateway !== undefined ? { providerGateway: options.gateway } : {}),
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
@@ -595,6 +614,7 @@ async function* streamOpenAICompatibleResponse(input: {
   readonly apiKey?: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens?: number;
   readonly providerGateway?: GatewayPolicy;
   readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
@@ -608,6 +628,9 @@ async function* streamOpenAICompatibleResponse(input: {
   const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
     model: input.model,
     request: input.request,
+    ...(input.maxOutputTokens !== undefined
+      ? { maxOutputTokens: input.maxOutputTokens }
+      : {}),
     ...(metadata !== undefined ? { metadata } : {}),
     stream: true,
   }));
