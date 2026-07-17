@@ -33,13 +33,13 @@ updated: 2026-07-17
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---|---|---:|---|---|---|---|---|---|---|
-| 61-01-01 | 01 | 1 | AGREC-01 | T-61-01, T-61-02 | Every managed completed/denied iteration has one stable ID and at most one exact issued envelope, including reused-pipeline cases | unit/integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/contract/checkpoint.test.ts src/agent/runtime.test.ts src/agent/integration.test.ts` | existing | pending |
-| 61-01-02 | 01 | 1 | AGREC-02 | T-61-01 | Success and every non-audit terminal branch attach the exact finalizer envelope without another provider or signer call | unit/integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/runtime.test.ts src/agent/integration.test.ts test/audit-cost-integrity.test.ts` | existing | pending |
-| 61-02-01 | 02 | 2 | AGREC-03 | T-61-03, T-61-05 | New snapshots round-trip execution identity, ordered completed records, and exact envelopes; resume appends without reminting | integration/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/host-integration.test.ts src/agent/survivability-integration.test.ts` | existing | pending |
-| 61-02-02 | 02 | 2 | AGREC-03 | T-61-04, T-61-08 | Legacy snapshots gain a stable tail identity while corrupt/inconsistent present snapshots stop before transport with bounded diagnostics | fault/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/host-integration.test.ts src/agent/survivability-integration.test.ts src/agent/runtime.test.ts` | existing | pending |
-| 61-03-01 | 03 | 2 | AGREC-02, AGREC-04 | T-61-06, T-61-07 | Child summaries and crew collection reuse child terminal result envelopes and CIDs with no completion replacement mint | integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/crew/dispatcher.test.ts src/agent/crew/crew-integration.test.ts` | existing | pending |
-| 61-03-02 | 03 | 2 | AGREC-04 | T-61-06, T-61-07 | Crew order is root, serial child terminals, parent terminal; per-agent CIDs hash those exact entries and failure caching stays single-shot | integration/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/crew/run-crew.test.ts src/agent/crew/crew-integration.test.ts` | existing | pending |
-| 61-04-01 | 04 | 3 | AGREC-01, AGREC-02, AGREC-03, AGREC-04 | T-61-01..T-61-08 | Generated root/modular/packed matrix proves exact envelope identity, resume deduplication, crew order, and additive compatibility | property/integration/public/type | `pnpm --filter @full-self-browsing/lattice exec vitest run test/agent-receipt-closure.test.ts test/public-surface.test.ts test/modular-entrypoints.test.ts && pnpm --filter @full-self-browsing/lattice build && pnpm --filter @full-self-browsing/lattice exec tsd` | task-created plus existing | pending |
+| 61-01-01 | 01 | 1 | AGREC-01 | T-61-01, T-61-02 | Every managed completed/denied iteration has one stable ID and at most one exact issued envelope, including reused-pipeline cases | unit/integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/contract/checkpoint.test.ts src/agent/runtime.test.ts src/agent/integration.test.ts` | existing | passed |
+| 61-01-02 | 01 | 1 | AGREC-02 | T-61-01 | Success and every non-audit terminal branch attach the exact finalizer envelope without another provider or signer call | unit/integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/runtime.test.ts src/agent/integration.test.ts test/audit-cost-integrity.test.ts` | existing | passed |
+| 61-02-01 | 02 | 2 | AGREC-03 | T-61-03, T-61-05 | New snapshots round-trip execution identity, ordered completed records, and exact envelopes; resume appends without reminting | integration/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/host-integration.test.ts src/agent/survivability-integration.test.ts` | existing | passed |
+| 61-02-02 | 02 | 2 | AGREC-03 | T-61-04, T-61-08 | Legacy snapshots gain a stable tail identity while corrupt/inconsistent present snapshots stop before transport with bounded diagnostics | fault/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/host-integration.test.ts src/agent/survivability-integration.test.ts src/agent/runtime.test.ts` | existing | passed |
+| 61-03-01 | 03 | 2 | AGREC-02, AGREC-04 | T-61-06, T-61-07 | Child summaries and crew collection reuse child terminal result envelopes and CIDs with no completion replacement mint | integration/fault | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/crew/dispatcher.test.ts src/agent/crew/crew-integration.test.ts` | existing | passed |
+| 61-03-02 | 03 | 2 | AGREC-04 | T-61-06, T-61-07 | Crew order is root, serial child terminals, parent terminal; per-agent CIDs hash those exact entries and failure caching stays single-shot | integration/property | `pnpm --filter @full-self-browsing/lattice exec vitest run src/agent/crew/run-crew.test.ts src/agent/crew/crew-integration.test.ts` | existing | passed |
+| 61-04-01 | 04 | 3 | AGREC-01, AGREC-02, AGREC-03, AGREC-04 | T-61-01..T-61-08 | Generated root/modular/packed matrix proves exact envelope identity, resume deduplication, crew order, and additive compatibility | property/integration/public/type | `pnpm --filter @full-self-browsing/lattice exec vitest run test/agent-receipt-closure.test.ts test/public-surface.test.ts test/modular-entrypoints.test.ts && pnpm --filter @full-self-browsing/lattice build && pnpm --filter @full-self-browsing/lattice exec tsd` | task-created plus existing | passed |
 
 ## Wave 0 Requirements
 
@@ -71,3 +71,12 @@ host is required.
 **Approval:** passed inline plan-checker convergence on 2026-07-17. All four plan
 frontmatters and task structures validate, D-61-01 through D-61-17 are represented,
 and AGREC-01 through AGREC-04 have executable coverage.
+
+## Execution Evidence
+
+- Plans 61-01 through 61-03 passed their focused runtime, recovery, and crew suites
+  with exact signer, provider, host, and collector counts.
+- Plan 61-04 added 15 public closure tests; the focused public matrix passed 69
+  tests across three files.
+- The full package passed 96 files and 1,359 tests. Type testing passed 119 files
+  and 1,610 tests with no type errors; build, tsd, and module boundaries also passed.
