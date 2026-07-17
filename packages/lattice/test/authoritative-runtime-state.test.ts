@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { artifact } from "../src/artifacts/artifact.js";
-import type { ArtifactRef } from "../src/artifacts/artifact.js";
+import type { ArtifactPrivacy, ArtifactRef } from "../src/artifacts/artifact.js";
 import type { ContextSummarizer } from "../src/context/context-pack.js";
 import { sanitizeRunEventAttributes } from "../src/observability/otel.js";
 import type { ProviderAdapter, ProviderRunRequest } from "../src/providers/provider.js";
@@ -21,6 +21,7 @@ import {
   generateEd25519KeyPairJwk,
 } from "../src/receipts/sign.js";
 import type { CapabilityReceiptBody } from "../src/receipts/types.js";
+import { fc } from "../src/test-support/fast-check.js";
 
 describe("authoritative runtime state", () => {
   it("makes ai.plan and sync ai.run share one provider-visible projection", async () => {
@@ -386,6 +387,159 @@ describe("authoritative runtime state", () => {
     });
     expect(JSON.stringify(result.events)).not.toContain(
       "STREAM_FALLBACK_RAW_SENTINEL",
+    );
+  });
+
+  it("preserves generated request, projection, hash, receipt, and event order", async () => {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, {
+      kid: "authority-property-key",
+      publicKeyJwk,
+    });
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          ids: fc.uniqueArray(fc.integer({ min: 0, max: 1_000 }), {
+            minLength: 1,
+            maxLength: 5,
+          }),
+          summaryPrivacy: fc.constantFrom<ArtifactPrivacy>(
+            "standard",
+            "sensitive",
+            "restricted",
+          ),
+        }),
+        async ({ ids, summaryPrivacy }) => {
+          const requests: ProviderRunRequest[] = [];
+          const provider: ProviderAdapter = {
+            id: "authority-property",
+            kind: "provider-adapter",
+            capabilities: [
+              {
+                ...defaultCapabilityForProvider("authority-property"),
+                modelId: "authority-property:model",
+                contextWindow: 4_096,
+              },
+            ],
+            async execute(request) {
+              requests.push(request);
+              return { rawOutputs: { answer: "ok" } };
+            },
+          };
+          const included = ids.map((id) =>
+            artifact.text(`property-value-${id}`, {
+              id: `artifact:property:${id}`,
+            }),
+          );
+          const rawSummaryId = "artifact:property:raw-summary";
+          const omittedId = "artifact:property:omitted";
+          const summaryId = "artifact:property:summary";
+          const result = await createAI({ providers: [provider], signer }).run({
+            task: "generated authoritative projection",
+            artifacts: [
+              ...included,
+              artifact.text(`PROPERTY_RAW_SUMMARY_${"x".repeat(8_000)}`, {
+                id: rawSummaryId,
+                privacy: summaryPrivacy,
+              }),
+              artifact.file("PROPERTY_OMITTED", {
+                id: omittedId,
+                size: { characters: 4_000 },
+              }),
+            ],
+            outputs: { answer: "text" },
+            overrides: {
+              tokenBudget: 500,
+              summarizer: {
+                summarize: ({ artifacts: sources }) => {
+                  expect(sources.map((source) => source.id)).toEqual([
+                    rawSummaryId,
+                  ]);
+                  return [
+                    artifact.text("PROPERTY_SUMMARY", {
+                      id: summaryId,
+                      privacy: "standard",
+                    }),
+                  ];
+                },
+              },
+            },
+          });
+
+          expect(result.ok).toBe(true);
+          expect(requests).toHaveLength(1);
+          if (
+            !result.ok ||
+            result.plan.kind !== "execution-plan" ||
+            requests[0] === undefined ||
+            result.receipt === undefined
+          ) {
+            throw new Error("Expected generated authoritative success evidence.");
+          }
+
+          const request = requests[0];
+          const requestIds = request.artifacts.map((input) => input.id);
+          const expectedIds = [...included.map((input) => input.id), summaryId];
+          const requestHashes = request.artifacts.map(
+            (input) => input.fingerprint?.value,
+          );
+          const attempt = result.plan.attempts[0];
+
+          expect(requestIds).toEqual(expectedIds);
+          expect(request.plan?.contextProjection?.artifactRefs.map((ref) => ref.id))
+            .toEqual(requestIds);
+          expect(request.providerPackaging?.artifacts.map((item) => item.artifactId))
+            .toEqual(requestIds);
+          expect(result.plan.contextProjection?.artifactRefs.map((ref) => ref.id))
+            .toEqual(requestIds);
+          expect(attempt?.contextProjection?.artifactRefs.map((ref) => ref.id))
+            .toEqual(requestIds);
+          expect(requestHashes.every((hash) => hash !== undefined)).toBe(true);
+          expect(attempt?.inputHashes).toEqual(requestHashes);
+          expect(result.plan.contextProjection?.inputHashes).toEqual(requestHashes);
+
+          const receiptBody = JSON.parse(
+            new TextDecoder().decode(base64Decode(result.receipt.payload)),
+          ) as CapabilityReceiptBody;
+          expect(receiptBody.inputHashes).toEqual(requestHashes);
+
+          const excludedIds = [
+            ...(request.contextPack?.summarized.flatMap((item) =>
+              item.artifactIds ??
+              (item.artifactId === undefined ? [] : [item.artifactId])) ?? []),
+            ...(request.contextPack?.archived.flatMap((item) =>
+              item.artifactIds ??
+              (item.artifactId === undefined ? [] : [item.artifactId])) ?? []),
+            ...(request.contextPack?.omitted.flatMap((item) =>
+              item.artifactIds ??
+              (item.artifactId === undefined ? [] : [item.artifactId])) ?? []),
+          ];
+          expect(excludedIds).toEqual(expect.arrayContaining([
+            rawSummaryId,
+            omittedId,
+          ]));
+          for (const excludedId of excludedIds) {
+            expect(requestIds).not.toContain(excludedId);
+          }
+
+          const summary = request.artifacts.find((input) => input.id === summaryId);
+          expect(summary?.privacy).toBe(summaryPrivacy);
+          expect(summary?.lineage?.parents.map((ref) => ref.id)).toEqual([
+            rawSummaryId,
+          ]);
+          const completeEvent = result.events?.find(
+            (event) => event.kind === "run.complete",
+          );
+          expect(completeEvent).toBeDefined();
+          if (completeEvent !== undefined) {
+            expect(sanitizeRunEventAttributes(completeEvent)).toMatchObject({
+              "lattice.context.projection.id": result.plan.contextProjection?.id,
+            });
+          }
+        },
+      ),
+      { numRuns: 12 },
     );
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { artifact } from "../src/artifacts/artifact.js";
+import type { ArtifactInput, ArtifactRef } from "../src/artifacts/artifact.js";
 import { createOpenAICompatibleProvider } from "../src/providers/adapters.js";
 import { createFakeProvider } from "../src/providers/fake.js";
 import {
@@ -135,6 +136,118 @@ describe("context, sessions, provider adapters, replay, and tools", () => {
     expect(summarize).not.toHaveBeenCalled();
     expect(providerCalls).toBe(0);
     expect(appendTurn).not.toHaveBeenCalled();
+  });
+
+  it("rejects generated tenant, privacy, and retention conflicts before artifact work", async () => {
+    const cases = [
+      {
+        name: "tenant",
+        sessionScope: {
+          tenantId: "tenant:stored",
+          privacy: "standard" as const,
+          retention: "session" as const,
+        },
+        policy: {
+          tenantId: "tenant:requested",
+          privacy: "standard" as const,
+          retention: "session" as const,
+        },
+      },
+      {
+        name: "privacy",
+        sessionScope: {
+          privacy: "standard" as const,
+          retention: "session" as const,
+        },
+        policy: {
+          privacy: "sensitive" as const,
+          retention: "session" as const,
+        },
+      },
+      {
+        name: "retention",
+        sessionScope: {
+          privacy: "standard" as const,
+          retention: "session" as const,
+        },
+        policy: {
+          privacy: "standard" as const,
+          retention: "durable" as const,
+        },
+      },
+    ] as const;
+
+    for (const entry of cases) {
+      const sessionId = `session:scope:${entry.name}`;
+      const baseSessions = createMemorySessionStore({
+        id: `sessions:scope:${entry.name}`,
+      });
+      await baseSessions.save({
+        id: sessionId,
+        kind: "session-ref",
+        ...entry.sessionScope,
+        turns: [],
+        summaries: [],
+        artifactRefs: [],
+        planIds: [],
+        createdAt: "2026-07-16T00:00:00.000Z",
+        updatedAt: "2026-07-16T00:00:00.000Z",
+      });
+      const loadSession = vi.fn<SessionStore["load"]>((id) =>
+        baseSessions.load(id));
+      const sessions: SessionStore = { ...baseSessions, load: loadSession };
+      const baseStorage = createMemoryArtifactStore({
+        id: `store:scope:${entry.name}`,
+      });
+      const putArtifact = vi.fn<ArtifactStore["put"]>((input) =>
+        baseStorage.put(input));
+      const loadArtifact = vi.fn<ArtifactStore["load"]>((id) =>
+        baseStorage.load(id));
+      const storage: ArtifactStore = {
+        ...baseStorage,
+        put: putArtifact,
+        load: loadArtifact,
+      };
+      let providerCalls = 0;
+      const result = await createAI({
+        sessions,
+        storage,
+        providers: [
+          createFakeProvider({
+            id: `scope-${entry.name}`,
+            response: () => {
+              providerCalls += 1;
+              return { rawOutputs: { answer: "must not execute" } };
+            },
+          }),
+        ],
+      }).run({
+        task: `reject ${entry.name} conflict`,
+        session: { id: sessionId, kind: "session-ref" },
+        artifacts: [
+          artifact.text("MUST_NOT_PERSIST", {
+            id: `artifact:scope:${entry.name}`,
+          }),
+        ],
+        outputs: { answer: "text" },
+        policy: entry.policy,
+      });
+
+      expect(result.ok, entry.name).toBe(false);
+      if (result.ok) {
+        throw new Error(`Expected ${entry.name} session scope rejection.`);
+      }
+      expect(result.error, entry.name).toMatchObject({
+        kind: "context_materialization",
+        reason: "policy-denied",
+        sessionId,
+        terminal: true,
+      });
+      expect(loadSession, entry.name).toHaveBeenCalledOnce();
+      expect(putArtifact, entry.name).not.toHaveBeenCalled();
+      expect(loadArtifact, entry.name).not.toHaveBeenCalled();
+      expect(providerCalls, entry.name).toBe(0);
+    }
   });
 
   it("wraps OpenAI-compatible HTTP without leaking provider SDK types", async () => {
@@ -344,6 +457,195 @@ describe("context, sessions, provider adapters, replay, and tools", () => {
     expect(summarized).toBe(true);
     expect(plan.artifactRefs.map((ref) => ref.id)).toContain("artifact:text:derived");
     expect(plan.metadata?.summaryArtifactIds).toEqual(["artifact:text:summary"]);
+  });
+
+  it("proves every configured lifecycle returns an exact ref or a terminal fault", async () => {
+    type MatrixLifecycle =
+      | "input"
+      | "derived"
+      | "tool"
+      | "summary"
+      | "provider-output";
+
+    const lifecycleOrder: readonly MatrixLifecycle[] = [
+      "input",
+      "derived",
+      "tool",
+      "summary",
+      "provider-output",
+    ];
+    const classifyLifecycle = (input: ArtifactInput): MatrixLifecycle => {
+      if (input.lineage?.transform.kind === "model-output") {
+        return "provider-output";
+      }
+      if (input.id === "artifact:lifecycle:derived") {
+        return "derived";
+      }
+      if (input.id === "artifact:lifecycle:summary") {
+        return "summary";
+      }
+      if (input.kind === "tool-result") {
+        return "tool";
+      }
+      return "input";
+    };
+    const runLifecycleCase = async (
+      storage: ArtifactStore,
+      calls: { primary: number; fallback: number; requestIds: string[] },
+    ) => {
+      const tool = defineTool({
+        name: "lifecycleLookup",
+        inputSchema: z.object({}),
+        execute: () => ({ ok: true }),
+      });
+
+      return createAI({
+        storage,
+        providers: [
+          createFakeProvider({
+            id: "lifecycle-primary",
+            response: (request) => {
+              calls.primary += 1;
+              calls.requestIds = request.artifacts.map((input) => input.id);
+              return {
+                rawOutputs: { answer: "lifecycle ok" },
+                artifactRefs: [
+                  artifact.text("LIFECYCLE_OUTPUT", {
+                    id: "artifact:lifecycle:provider-output",
+                  }),
+                ],
+              };
+            },
+          }),
+          createFakeProvider({
+            id: "lifecycle-fallback",
+            response: () => {
+              calls.fallback += 1;
+              return { rawOutputs: { answer: "must not retry" } };
+            },
+          }),
+        ],
+      }).run({
+        task: "configured lifecycle matrix",
+        artifacts: [
+          artifact.text("LIFECYCLE_INPUT", {
+            id: "artifact:lifecycle:input",
+          }),
+          artifact.text(`LIFECYCLE_RAW_SUMMARY_${"x".repeat(8_000)}`, {
+            id: "artifact:lifecycle:summary-source",
+          }),
+        ],
+        tools: [tool],
+        toolInputs: { lifecycleLookup: {} },
+        outputs: { answer: "text" },
+        policy: {
+          tenantId: "tenant:lifecycle",
+          privacy: "sensitive",
+          retention: "durable",
+        },
+        overrides: {
+          tokenBudget: 300,
+          transforms: [
+            {
+              name: "lifecycle-derived",
+              transform: () =>
+                artifact.text("LIFECYCLE_DERIVED", {
+                  id: "artifact:lifecycle:derived",
+                }),
+            },
+          ],
+          summarizer: {
+            summarize: ({ artifacts: sources }) => {
+              expect(sources.map((source) => source.id)).toEqual([
+                "artifact:lifecycle:summary-source",
+              ]);
+              return [
+                artifact.text("LIFECYCLE_SUMMARY", {
+                  id: "artifact:lifecycle:summary",
+                }),
+              ];
+            },
+          },
+        },
+      });
+    };
+
+    const successBase = createMemoryArtifactStore({
+      id: "store:lifecycle:success",
+    });
+    const successfulWrites: Array<{
+      lifecycle: MatrixLifecycle;
+      ref: ArtifactRef;
+    }> = [];
+    const successStorage: ArtifactStore = {
+      ...successBase,
+      async put(input) {
+        const ref = await successBase.put(input);
+        successfulWrites.push({ lifecycle: classifyLifecycle(input), ref });
+        return ref;
+      },
+    };
+    const successCalls = { primary: 0, fallback: 0, requestIds: [] as string[] };
+    const success = await runLifecycleCase(successStorage, successCalls);
+
+    expect(success.ok).toBe(true);
+    expect(successCalls.primary).toBe(1);
+    expect(successCalls.fallback).toBe(0);
+    expect(successfulWrites.map((entry) => entry.lifecycle)).toEqual([
+      "input",
+      "input",
+      "derived",
+      "tool",
+      "summary",
+      "provider-output",
+    ]);
+    if (!success.ok || success.plan.kind !== "execution-plan") {
+      throw new Error("Expected configured lifecycle success.");
+    }
+    const returnedById = new Map(
+      successfulWrites.map((entry) => [entry.ref.id, entry.ref]),
+    );
+    expect(success.artifacts).toEqual([
+      returnedById.get("artifact:lifecycle:provider-output"),
+    ]);
+    expect(success.plan.contextProjection?.artifactRefs.map((ref) => ref.id))
+      .toEqual(successCalls.requestIds);
+    for (const ref of success.plan.contextProjection?.artifactRefs ?? []) {
+      expect(ref).toEqual(returnedById.get(ref.id));
+    }
+
+    for (const failingLifecycle of lifecycleOrder) {
+      const base = createMemoryArtifactStore({
+        id: `store:lifecycle:${failingLifecycle}`,
+      });
+      const storage: ArtifactStore = {
+        ...base,
+        async put(input) {
+          if (classifyLifecycle(input) === failingLifecycle) {
+            throw new Error(`SECRET_${failingLifecycle}_STORE_CAUSE`);
+          }
+          return base.put(input);
+        },
+      };
+      const calls = { primary: 0, fallback: 0, requestIds: [] as string[] };
+      const result = await runLifecycleCase(storage, calls);
+
+      expect(result.ok, failingLifecycle).toBe(false);
+      if (result.ok) {
+        throw new Error(`Expected ${failingLifecycle} lifecycle failure.`);
+      }
+      expect(result.error, failingLifecycle).toMatchObject({
+        kind: "persistence",
+        lifecycle: failingLifecycle,
+        postProvider: failingLifecycle === "provider-output",
+        terminal: true,
+      });
+      expect(calls.primary, failingLifecycle).toBe(
+        failingLifecycle === "provider-output" ? 1 : 0,
+      );
+      expect(calls.fallback, failingLifecycle).toBe(0);
+      expect(JSON.stringify(result), failingLifecycle).not.toContain("SECRET_");
+    }
   });
 
   it("creates redacted replay envelopes and replays successful runs offline", async () => {
