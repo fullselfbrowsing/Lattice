@@ -74,8 +74,8 @@ const DEFAULT_LANGFUSE_BASE_URL = "https://cloud.langfuse.com";
 const DEFAULT_PHOENIX_BASE_URL = "http://localhost:6006";
 const OTEL_STATUS_OK = 1;
 const OTEL_STATUS_ERROR = 2;
-const SECRET_KEY_RE = /api[-_]?key|authorization|credentials?|headers?|password|secret|token/iu;
-const CONTENT_KEY_RE = /artifact|body|content|input|inputs|message|messages|output|outputs|payload|prompt|rawOutputs|task|value/iu;
+const SECRET_KEY_RE = /api[-_]?key|authorization|credentials?|headers?|password|secret|signed[-_]?url|storage|tenant|token/iu;
+const CONTENT_KEY_RE = /artifact|body|content|input|inputs|message|messages|output|outputs|payload|prompt|rawOutputs|task|uri|url|value/iu;
 
 export function createOtelRunEventSink(
   options: OtelRunEventSinkOptions,
@@ -140,8 +140,20 @@ export function sanitizeRunEventAttributes(
 
   const metadata = event.metadata ?? {};
   assignString(attributes, "lattice.event.status", metadataString(event, "status"));
-  assignBoolean(attributes, "lattice.error.present", metadataString(event, "error") !== undefined ? true : undefined);
-  assignString(attributes, "lattice.failure.reason", metadataString(event, "reason"));
+  const failureKind = metadataString(event, "failureKind");
+  assignBoolean(
+    attributes,
+    "lattice.error.present",
+    metadataString(event, "error") !== undefined || failureKind !== undefined
+      ? true
+      : undefined,
+  );
+  assignString(attributes, "lattice.failure.kind", failureKind);
+  assignString(
+    attributes,
+    "lattice.failure.reason",
+    metadataString(event, "reason") ?? metadataString(event, "failureReason"),
+  );
   assignString(attributes, "lattice.tripwire.invariant_id", asString(metadata.invariantId));
   assignString(attributes, "lattice.artifact.source", asString(metadata.source));
   assignString(attributes, "lattice.receipt.id", asString(metadata.receiptId));
@@ -154,6 +166,9 @@ export function sanitizeRunEventAttributes(
   assignNumber(attributes, "lattice.context.included.count", asNumber(metadata.included));
   assignNumber(attributes, "lattice.context.summarized.count", asNumber(metadata.summarized));
   assignNumber(attributes, "lattice.context.omitted.count", asNumber(metadata.omitted));
+  assignString(attributes, "lattice.context.projection.id", asString(metadata.projectionId));
+  assignNumber(attributes, "lattice.context.artifact.count", asNumber(metadata.artifactCount));
+  assignNumber(attributes, "lattice.context.summary.count", asNumber(metadata.summaryCount));
   assignString(attributes, "lattice.tool.name", asString(metadata.toolName));
   assignString(attributes, "lattice.tool.call.id", asString(metadata.callId));
   assignStringArray(attributes, "lattice.output.names", asStringArray(metadata.outputNames));
@@ -428,10 +443,13 @@ function captureSafeMetadata(
     "callId",
     "estimatedTokens",
     "error",
+    "failureKind",
+    "failureReason",
     "fallback",
     "fallbacks",
     "gateway",
     "included",
+    "inputHashes",
     "invariantId",
     "mintError",
     "normalizedUsage",
@@ -440,10 +458,13 @@ function captureSafeMetadata(
     "reason",
     "receiptId",
     "rejected",
+    "projectionId",
     "selected",
     "source",
     "status",
     "summarized",
+    "summaryCount",
+    "artifactCount",
     "toolName",
     "usage",
   ]);

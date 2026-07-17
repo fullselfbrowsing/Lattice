@@ -100,6 +100,20 @@ describe("receipt.ts — defaults", () => {
   });
 });
 
+describe("receipt.ts — authoritative input hashes", () => {
+  it("preserves the supplied attempt hash order byte-for-byte", async () => {
+    const { signer } = await makeSigner();
+    const inputHashes = [
+      "11".repeat(32),
+      "aa".repeat(32),
+      "00".repeat(32),
+    ];
+    const env = await createReceipt(minimalInput({ inputHashes }), signer);
+
+    expect(decodeBody(env.payload).inputHashes).toEqual(inputHashes);
+  });
+});
+
 describe("receipt.ts — kid defense in depth", () => {
   it("body.kid equals signer.kid (caller cannot mismatch)", async () => {
     const { signer } = await makeSigner("my-kid");

@@ -27,6 +27,7 @@ import type { PolicySpec } from "../policy/policy.js";
 import { collectStream } from "../providers/streaming.js";
 import type {
   ProviderAdapter,
+  ProviderGatewayMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
@@ -474,6 +475,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const providerArtifacts = attemptMaterialized.artifacts;
     const attemptPackaging = preparedRoute.packaging;
     const attemptEvidence = evidenceForPreparedRoute(preparedRoute);
+    const projectionMetadata = projectionEventMetadata(preparedRoute);
     if (index > 0) {
       await emitEvent(normalized, events, createRunEvent("context.packed", {
         runId,
@@ -485,10 +487,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           estimatedTokens: preparedRoute.contextPack.estimatedTokens,
           included: preparedRoute.contextPack.included.length,
           summarized: preparedRoute.contextPack.summarized.length,
-          omitted: preparedRoute.contextPack.omitted.length,
-          projectionId: attemptMaterialized.id,
-          artifactCount: providerArtifacts.length,
-          summaryCount: attemptMaterialized.summaryArtifactRefs.length,
+          ...projectionMetadata,
           inputHashes: attemptMaterialized.inputHashes,
         },
       }));
@@ -562,6 +561,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "started",
           fallback: index > 0,
+          ...projectionMetadata,
           ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
         },
       }));
@@ -592,8 +592,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "succeeded",
           fallback: index > 0,
+          ...projectionMetadata,
           normalizedUsage: normalizeAdapterUsage(response),
-          ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+          ...(response.gateway !== undefined
+            ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+            : {}),
         },
       }));
 
@@ -606,7 +609,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         completedAt,
         response.usage,
         attemptEvidence,
-        response.gateway !== undefined ? { gateway: response.gateway } : undefined,
+        response.gateway !== undefined
+          ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+          : undefined,
       );
 
       if (!validation.ok) {
@@ -624,7 +629,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           planId: plan.id,
           providerId: route.providerId,
           modelId: route.modelId,
-          metadata: { error: validation.error.message },
+          metadata: {
+            failureKind: "validation",
+            ...projectionMetadata,
+          },
         }));
         if (index === routes.length - 1) {
           const receipt = await maybeIssueReceipt(normalized, {
@@ -800,10 +808,14 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: completedPlan.id,
         providerId: route.providerId,
         modelId: route.modelId,
+        metadata: projectionMetadata,
       }));
       await emitEvent(normalized, events, createRunEvent("run.complete", {
         runId,
         planId: completedPlan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: projectionMetadata,
       }));
 
       const successValidation = validation as Extract<
@@ -860,7 +872,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: plan.id,
         providerId: route.providerId,
         modelId: route.modelId,
-        metadata: { status: "failed", error: message },
+        metadata: {
+          status: "failed",
+          failureKind: "provider_execution",
+          ...projectionMetadata,
+        },
       }));
     }
   }
@@ -900,8 +916,17 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   await emitEvent(normalized, events, createRunEvent("run.failed", {
     runId,
     planId: failedPlan.id,
+    ...(lastExecutedRoute !== undefined
+      ? {
+          providerId: lastExecutedRoute.providerId,
+          modelId: lastExecutedRoute.modelId,
+        }
+      : {}),
     metadata: {
-      error: lastError?.message ?? "Provider adapter execution failed.",
+      reason: "provider_execution",
+      ...(lastExecutedPreparation !== undefined
+        ? projectionEventMetadata(lastExecutedPreparation)
+        : {}),
     },
   }));
 
@@ -1009,6 +1034,30 @@ function evidenceForPreparedRoute(
   };
 }
 
+function projectionEventMetadata(
+  prepared: PreparedRouteSuccess,
+): Record<string, string | number> {
+  return {
+    projectionId: prepared.materialized.id,
+    artifactCount: prepared.materialized.artifacts.length,
+    summaryCount: prepared.materialized.summaryArtifactRefs.length,
+    omitted: prepared.contextPack.omitted.length,
+  };
+}
+
+function requestProjectionEventMetadata(
+  request: ProviderRunRequest,
+): Record<string, string | number> {
+  const projection = request.plan?.contextProjection;
+
+  return {
+    ...(projection !== undefined ? { projectionId: projection.id } : {}),
+    artifactCount: request.artifacts.length,
+    summaryCount: projection?.summaryArtifactRefs.length ?? 0,
+    omitted: request.contextPack?.omitted.length ?? 0,
+  };
+}
+
 function metadataForAttempt(
   plan: ExecutionPlan,
   gateway: Record<string, unknown> | undefined,
@@ -1059,6 +1108,7 @@ async function executeStreamingProvider(input: {
   readonly adapter: ProviderAdapter & Required<Pick<ProviderAdapter, "executeStream">>;
   readonly gatewayMetadata?: Record<string, unknown>;
 }): Promise<ProviderRunResponse> {
+  const projectionMetadata = requestProjectionEventMetadata(input.request);
   await emitEvent(input.normalized, input.events, createRunEvent("stream.start", {
     runId: input.runId,
     planId: input.plan.id,
@@ -1066,6 +1116,7 @@ async function executeStreamingProvider(input: {
     modelId: input.route.modelId,
     metadata: {
       status: "started",
+      ...projectionMetadata,
       ...(input.gatewayMetadata !== undefined ? { gateway: input.gatewayMetadata } : {}),
     },
   }));
@@ -1084,14 +1135,16 @@ async function executeStreamingProvider(input: {
       modelId: input.route.modelId,
       metadata: {
         status: "completed",
+        ...projectionMetadata,
         outputNames: Object.keys(response.rawOutputs),
-        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+        ...(response.gateway !== undefined
+          ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+          : {}),
       },
     }));
 
     return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Provider stream execution failed.";
     await emitEvent(input.normalized, input.events, createRunEvent("stream.failed", {
       runId: input.runId,
       planId: input.plan.id,
@@ -1099,7 +1152,8 @@ async function executeStreamingProvider(input: {
       modelId: input.route.modelId,
       metadata: {
         status: "failed",
-        error: message,
+        failureKind: "provider_execution",
+        ...projectionMetadata,
       },
     }));
     throw error;
@@ -1177,6 +1231,23 @@ function normalizeAdapterUsage(response: ProviderRunResponse): Usage {
 
 function observedModelForReceipt(response: ProviderRunResponse): string | null {
   return response.gateway?.observedModel ?? null;
+}
+
+function gatewayResponseMetadataForEvents(
+  gateway: ProviderGatewayMetadata,
+): Record<string, unknown> {
+  return {
+    used: gateway.used,
+    ...(gateway.requestedModel !== undefined
+      ? { requestedModel: gateway.requestedModel }
+      : {}),
+    ...(gateway.observedModel !== undefined
+      ? { observedModel: gateway.observedModel }
+      : {}),
+    ...(gateway.fallbackModels !== undefined
+      ? { fallbackModels: gateway.fallbackModels }
+      : {}),
+  };
 }
 
 /**

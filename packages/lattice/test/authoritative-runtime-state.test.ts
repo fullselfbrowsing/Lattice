@@ -8,6 +8,12 @@ import { createAI } from "../src/runtime/create-ai.js";
 import type { SessionRecord } from "../src/sessions/session.js";
 import { createMemorySessionStore } from "../src/sessions/session.js";
 import { createMemoryArtifactStore } from "../src/storage/memory.js";
+import { base64Decode } from "../src/receipts/envelope.js";
+import {
+  createInMemorySigner,
+  generateEd25519KeyPairJwk,
+} from "../src/receipts/sign.js";
+import type { CapabilityReceiptBody } from "../src/receipts/types.js";
 
 describe("authoritative runtime state", () => {
   it("makes ai.plan and sync ai.run share one provider-visible projection", async () => {
@@ -282,7 +288,15 @@ describe("authoritative runtime state", () => {
         return successfulStream();
       },
     };
-    const result = await createAI({ providers: [primary, fallback] }).run({
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, {
+      kid: "authority-fallback-key",
+      publicKeyJwk,
+    });
+    const result = await createAI({
+      providers: [primary, fallback],
+      signer,
+    }).run({
       task: "authoritative stream fallback",
       artifacts: [
         artifact.text("STREAM_SHARED", {
@@ -340,6 +354,23 @@ describe("authoritative runtime state", () => {
       .toEqual(fallbackRequests[0]?.artifacts.map((input) => input.id));
     expect(result.plan.contextProjection).toEqual(
       result.plan.attempts[1]?.contextProjection,
+    );
+    expect(result.receipt).toBeDefined();
+    if (result.receipt === undefined) {
+      throw new Error("Expected a fallback receipt.");
+    }
+    const receiptBody = JSON.parse(
+      new TextDecoder().decode(base64Decode(result.receipt.payload)),
+    ) as CapabilityReceiptBody;
+    expect(receiptBody.inputHashes).toEqual(result.plan.attempts[1]?.inputHashes);
+    expect(receiptBody.inputHashes).not.toEqual(result.plan.attempts[0]?.inputHashes);
+    expect(receiptBody.route).toMatchObject({
+      providerId: "authority-stream-fallback",
+      capabilityId: "authority-stream-fallback:model",
+      attemptNumber: 2,
+    });
+    expect(JSON.stringify(result.events)).not.toContain(
+      "STREAM_FALLBACK_RAW_SENTINEL",
     );
   });
 });

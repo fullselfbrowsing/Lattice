@@ -260,6 +260,42 @@ describe("sanitizeRunEventAttributes", () => {
     });
   });
 
+  it("maps bounded projection evidence without tenant, storage, hash, or URL data", () => {
+    const attributes = sanitizeRunEventAttributes(event("context.packed", {
+      providerId: "fallback",
+      modelId: "fallback:model",
+      metadata: {
+        status: "failed",
+        failureKind: "context_materialization",
+        failureReason: "summary-failed",
+        projectionId: "projection:safe",
+        artifactCount: 3,
+        summaryCount: 1,
+        omitted: 2,
+        inputHashes: ["SECRET_INPUT_HASH_SENTINEL"],
+        tenantId: "SECRET_TENANT_SENTINEL",
+        storageKey: "SECRET_STORAGE_SENTINEL",
+        signedUrl: "https://secret.example.test/signed",
+      },
+    }), { contentCapture: "metadata" });
+
+    expect(attributes).toMatchObject({
+      "lattice.event.status": "failed",
+      "lattice.error.present": true,
+      "lattice.failure.kind": "context_materialization",
+      "lattice.failure.reason": "summary-failed",
+      "lattice.context.projection.id": "projection:safe",
+      "lattice.context.artifact.count": 3,
+      "lattice.context.summary.count": 1,
+      "lattice.context.omitted.count": 2,
+    });
+    const serialized = JSON.stringify(attributes);
+    expect(serialized).not.toContain("SECRET_INPUT_HASH_SENTINEL");
+    expect(serialized).not.toContain("SECRET_TENANT_SENTINEL");
+    expect(serialized).not.toContain("SECRET_STORAGE_SENTINEL");
+    expect(serialized).not.toContain("secret.example.test");
+  });
+
   it("maps usage, gateway, and provider attempt metadata without leaking gateway policy internals", () => {
     const attributes = sanitizeRunEventAttributes(event("provider.attempt", {
       providerId: "openrouter",
