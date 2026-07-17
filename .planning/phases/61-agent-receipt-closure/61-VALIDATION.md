@@ -1,7 +1,7 @@
 ---
 phase: 61
 slug: agent-receipt-closure
-status: draft
+status: approved
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-17
@@ -68,4 +68,6 @@ host is required.
 - [x] Task feedback target is under 180 seconds; the full gate is phase-level.
 - [x] `nyquist_compliant: true` is set.
 
-**Approval:** pending plan-checker convergence
+**Approval:** passed inline plan-checker convergence on 2026-07-17. All four plan
+frontmatters and task structures validate, D-61-01 through D-61-17 are represented,
+and AGREC-01 through AGREC-04 have executable coverage.
