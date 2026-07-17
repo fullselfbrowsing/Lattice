@@ -34,12 +34,17 @@ export {
   estimateTokens,
   toContextArtifactRefs,
 } from "./context/context-pack.js";
+export { materializeContext } from "./context/materialize.js";
 export type {
   BuildContextPackInput,
   ContextPack,
   ContextSummarizer,
   TrustLabel,
 } from "./context/context-pack.js";
+export type {
+  MaterializeContextInput,
+  MaterializedContext,
+} from "./context/materialize.js";
 export { output } from "./outputs/contracts.js";
 export type {
   ArtifactRefsOutputContract,
@@ -96,8 +101,10 @@ export { routeDeterministically } from "./routing/router.js";
 export type { RouteRequest } from "./routing/router.js";
 export { mergePolicy } from "./policy/policy.js";
 export type {
+  ArtifactRetentionPolicy,
   GatewayMetadataValue,
   GatewayPolicy,
+  MissingArtifactRefPolicy,
   PolicySpec,
 } from "./policy/policy.js";
 export type {
@@ -127,6 +134,9 @@ export type {
   ToolUseRequest,
 } from "./tools/tool-use.js";
 export type {
+  ContextPackItemPlan,
+  ContextPackPlan,
+  ContextProjectionPlan,
   ExecutionPlan,
   FallbackRoute,
   ProviderAttemptRecord,
@@ -148,15 +158,36 @@ export type {
 } from "./storage/storage.js";
 export { isTerminal } from "./results/errors.js";
 export type {
+  ContextMaterializationError,
+  ContextMaterializationFailureReason,
   LatticeRunError,
   NoContractMatchError,
   NoRouteError,
+  PersistenceError,
+  PersistenceLifecycleKind,
   ProviderExecutionError,
   TimeoutError,
   TripwireViolationError,
   ValidationError,
   ValidationIssue,
 } from "./results/errors.js";
+export type {
+  ArtifactLifecycleKind,
+  ArtifactLifecycleReport,
+  ArtifactLifecycleSkipReason,
+  PreservedArtifactLifecycleReport,
+  SkippedArtifactLifecycleReport,
+  StoredArtifactLifecycleReport,
+} from "./runtime/artifact-lifecycle.js";
+export type {
+  AppendSessionTurnInput,
+  CreateSessionOptions,
+  SessionRecord,
+  SessionRef,
+  SessionStore,
+  SessionSummary,
+  SessionTurn,
+} from "./sessions/session.js";
 export type {
   RunFailure,
   RunResult,

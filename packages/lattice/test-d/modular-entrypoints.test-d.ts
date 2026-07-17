@@ -12,12 +12,23 @@ import {
 } from "@full-self-browsing/lattice/audit";
 import {
   buildContextPack,
+  materializeContext,
+  type ArtifactLifecycleReport,
+  type ArtifactRetentionPolicy,
+  type ContextMaterializationError,
   type ContextPack,
+  type ContextProjectionPlan,
+  type MaterializeContextInput,
+  type MaterializedContext,
+  type MissingArtifactRefPolicy,
+  type SelectedRoute,
 } from "@full-self-browsing/lattice/context";
 import {
   contract,
+  materializeContext as materializeCoreContext,
   output,
   prepareCoreRun,
+  type PersistenceError,
   type PreparedCoreRun,
   type PrepareCoreRunInput,
   type ProviderAdapter as CoreProviderAdapter,
@@ -77,6 +88,71 @@ const pack = buildContextPack({
   artifacts: [input],
 });
 expectType<ContextPack>(pack);
+
+const selectedRoute: SelectedRoute = {
+  providerId: "custom",
+  modelId: "custom:model",
+  score: 1,
+  estimates: { inputTokens: 1, outputTokens: 1 },
+  contextWindow: 4_096,
+  inputModalities: ["text"],
+  outputModalities: ["text"],
+  fileTransport: ["inline"],
+};
+const materializeInput = {
+  contextPack: pack,
+  route: selectedRoute,
+  artifacts: [input],
+  policy: {
+    retention: "durable",
+    missingArtifactRef: "omit",
+  },
+} satisfies MaterializeContextInput;
+expectType<Promise<MaterializedContext>>(materializeContext(materializeInput));
+expectType<typeof materializeContext>(materializeCoreContext);
+
+const retention: ArtifactRetentionPolicy = "durable";
+const missingReference: MissingArtifactRefPolicy = "omit";
+expectType<"durable">(retention);
+expectType<"omit">(missingReference);
+
+const lifecycleReport: ArtifactLifecycleReport = {
+  lifecycle: "summary",
+  status: "skipped",
+  reason: "policy",
+  artifactId: input.id,
+  ref: input,
+};
+expectType<"skipped">(lifecycleReport.status);
+
+const projection: ContextProjectionPlan = {
+  id: "projection:modular",
+  providerId: selectedRoute.providerId,
+  modelId: selectedRoute.modelId,
+  artifactRefs: [input],
+  summaryArtifactRefs: [],
+  inputHashes: ["sha256:modular"],
+  omittedArtifactIds: [],
+  warnings: [],
+};
+expectType<readonly string[]>(projection.inputHashes);
+
+const contextError: ContextMaterializationError = {
+  kind: "context_materialization",
+  message: "missing",
+  reason: "missing-reference",
+  terminal: true,
+};
+const persistenceError: PersistenceError = {
+  kind: "persistence",
+  message: "write failed",
+  operation: "write",
+  lifecycle: "provider-output",
+  postProvider: true,
+  terminal: true,
+};
+expectType<"context_materialization">(contextError.kind);
+expectType<"persistence">(persistenceError.kind);
 
 const outputs = {
   answer: output.citations(),

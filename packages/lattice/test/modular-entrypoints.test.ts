@@ -43,12 +43,49 @@ const COMPATIBILITY_LABELS = [
   "adapter-specific",
 ] as const;
 
+const EXPECTED_CONTEXT_VALUE_EXPORTS = [
+  "buildContextPack",
+  "estimateArtifactTokens",
+  "estimateTokens",
+  "materializeContext",
+  "toContextArtifactRefs",
+] as const;
+
+const EXPECTED_CORE_VALUE_EXPORTS = [
+  "DEFAULT_CATALOG_VERSION",
+  "artifact",
+  "buildContextPack",
+  "contract",
+  "createCapabilityCatalog",
+  "createMemoryArtifactStore",
+  "defaultCapabilityForProvider",
+  "defaultPiiDetectors",
+  "effectivePer1kPricing",
+  "estimateArtifactTokens",
+  "estimateRouteCost",
+  "estimateTokens",
+  "evaluateContractAgainstRoute",
+  "evaluateTripwires",
+  "inv",
+  "isArtifactRef",
+  "isTerminal",
+  "materializeContext",
+  "mergePolicy",
+  "modalRank",
+  "output",
+  "prepareCoreRun",
+  "routeDeterministically",
+  "toArtifactRef",
+  "toContextArtifactRefs",
+] as const;
+
 describe("modular package entrypoints", () => {
   it("exposes representative source-level values for every module facade", () => {
     expect(typeof providers.createOpenAICompatibleProvider).toBe("function");
     expect(typeof providers.parseToolUseEnvelope).toBe("function");
     expect(typeof audit.createReceipt).toBe("function");
     expect(typeof context.buildContextPack).toBe("function");
+    expect(typeof context.materializeContext).toBe("function");
     expect(typeof artifacts.artifact.text).toBe("function");
     expect(typeof routing.routeDeterministically).toBe("function");
     expect(typeof tools.defineTool).toBe("function");
@@ -59,6 +96,25 @@ describe("modular package entrypoints", () => {
     expect(typeof agents.runAgent).toBe("function");
     expect(typeof core.artifact.text).toBe("function");
     expect(typeof core.routeDeterministically).toBe("function");
+    expect(typeof core.materializeContext).toBe("function");
+  });
+
+  it("keeps context and core value exports exact", () => {
+    expect(Object.keys(context).sort()).toEqual([
+      ...EXPECTED_CONTEXT_VALUE_EXPORTS,
+    ]);
+    expect(Object.keys(core).sort()).toEqual([...EXPECTED_CORE_VALUE_EXPORTS]);
+    for (const internalName of [
+      "ArtifactLifecycleFailure",
+      "ContextMaterializationFailure",
+      "persistArtifactLifecycle",
+      "persistArtifactLifecycleBatch",
+      "prepareRouteAttempt",
+      "toContextProjectionPlan",
+    ]) {
+      expect(internalName in context).toBe(false);
+      expect(internalName in core).toBe(false);
+    }
   });
 
   it("declares package exports and compatibility metadata for every module", () => {

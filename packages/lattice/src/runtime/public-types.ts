@@ -33,6 +33,10 @@ export type {
 export type { PiiDetector, PiiDetectorResult } from "../contract/pii-detectors.js";
 export type { TripwireEvidence, TripwireResult } from "../contract/tripwire.js";
 export type {
+  MaterializeContextInput,
+  MaterializedContext,
+} from "../context/materialize.js";
+export type {
   InferOutput,
   InferOutputMap,
 } from "../outputs/infer.js";
@@ -56,6 +60,7 @@ export type {
 export type {
   ContextPackItemPlan,
   ContextPackPlan,
+  ContextProjectionPlan,
   ExecutionPlan,
   ExecutionPlanStage,
   ExecutionPlanStub,
@@ -70,7 +75,11 @@ export type {
   SelectedRoute,
   UsageRecord,
 } from "../plan/plan.js";
-export type { PolicySpec } from "../policy/policy.js";
+export type {
+  ArtifactRetentionPolicy,
+  MissingArtifactRefPolicy,
+  PolicySpec,
+} from "../policy/policy.js";
 export type { TrainingClass } from "../capabilities/profile.js";
 export type {
   CapabilityModality,
@@ -120,11 +129,23 @@ export type {
   RealtimeTransportKind,
 } from "../realtime/realtime.js";
 export type {
+  ContextMaterializationError,
+  ContextMaterializationFailureReason,
   LatticeRunError,
+  PersistenceError,
+  PersistenceLifecycleKind,
   TripwireViolationError,
   ValidationIssue,
 } from "../results/errors.js";
 export type { RunFailure, RunResult, RunSuccess } from "../results/result.js";
+export type {
+  ArtifactLifecycleKind,
+  ArtifactLifecycleReport,
+  ArtifactLifecycleSkipReason,
+  PreservedArtifactLifecycleReport,
+  SkippedArtifactLifecycleReport,
+  StoredArtifactLifecycleReport,
+} from "./artifact-lifecycle.js";
 export type {
   AppendSessionTurnInput,
   CreateSessionOptions,

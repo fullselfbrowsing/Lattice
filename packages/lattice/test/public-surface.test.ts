@@ -177,6 +177,59 @@ describe("public-surface inventory", () => {
     expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
     expect("default" in mod).toBe(false);
   });
+
+  it("keeps authoritative orchestration internals out of the beginner root", async () => {
+    const mod = await import("../src/index.js");
+
+    for (const internalName of [
+      "ArtifactLifecycleFailure",
+      "ContextMaterializationFailure",
+      "materializeContext",
+      "persistArtifactLifecycle",
+      "persistArtifactLifecycleBatch",
+      "prepareRouteAttempt",
+      "toContextProjectionPlan",
+    ]) {
+      expect(internalName in mod).toBe(false);
+    }
+  });
+});
+
+describe("Phase 59 public type surface", () => {
+  it("reaches stable authoritative-state contracts through the package root", () => {
+    type _ArtifactLifecycleReport =
+      import("../src/index.js").ArtifactLifecycleReport;
+    type _ArtifactRetentionPolicy =
+      import("../src/index.js").ArtifactRetentionPolicy;
+    type _ContextMaterializationError =
+      import("../src/index.js").ContextMaterializationError;
+    type _ContextProjectionPlan =
+      import("../src/index.js").ContextProjectionPlan;
+    type _MaterializeContextInput =
+      import("../src/index.js").MaterializeContextInput;
+    type _MaterializedContext = import("../src/index.js").MaterializedContext;
+    type _MissingArtifactRefPolicy =
+      import("../src/index.js").MissingArtifactRefPolicy;
+    type _PersistenceError = import("../src/index.js").PersistenceError;
+    type _ProviderAttemptRecord =
+      import("../src/index.js").ProviderAttemptRecord;
+    type _SessionRecord = import("../src/index.js").SessionRecord;
+    type _SessionStore = import("../src/index.js").SessionStore;
+
+    void (null as unknown as
+      | _ArtifactLifecycleReport
+      | _ArtifactRetentionPolicy
+      | _ContextMaterializationError
+      | _ContextProjectionPlan
+      | _MaterializeContextInput
+      | _MaterializedContext
+      | _MissingArtifactRefPolicy
+      | _PersistenceError
+      | _ProviderAttemptRecord
+      | _SessionRecord
+      | _SessionStore);
+    expect(true).toBe(true);
+  });
 });
 
 describe("Phase 52 public surface", () => {
