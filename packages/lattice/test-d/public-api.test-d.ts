@@ -1,7 +1,16 @@
 import { expectAssignable, expectType } from "tsd";
 
+import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  createCostTracker,
+  estimateCost,
+  resolveReceiptPolicy,
+} from "@full-self-browsing/lattice";
+
 import type {
   AppendSessionTurnInput,
+  AuditError,
   ArtifactInput,
   ArtifactLifecycleReport,
   ArtifactRef,
@@ -10,6 +19,8 @@ import type {
   ArtifactStore,
   ContextMaterializationError,
   ContextProjectionPlan,
+  CostEstimate,
+  CostTrackerOptions,
   LatticeRunError,
   MaterializeContextInput,
   MaterializedContext,
@@ -20,9 +31,64 @@ import type {
   ProviderAttemptRecord,
   ProviderRunRequest,
   ProviderRunResponse,
+  ReceiptIssuanceMode,
+  ReceiptSigner,
+  SelectedRoute,
   SessionRecord,
   SessionStore,
 } from "@full-self-browsing/lattice";
+
+const receiptMode: ReceiptIssuanceMode = "required";
+expectType<"required">(receiptMode);
+expectType<ReceiptIssuanceMode>(resolveReceiptPolicy({ mode: receiptMode }).mode);
+
+const auditError: AuditError = {
+  kind: "audit",
+  code: "receipt-signing-failed",
+  stage: "post-execution",
+  message: "Receipt signing failed.",
+  terminal: true,
+};
+expectType<"audit">(auditError.kind);
+
+const costEstimate: CostEstimate = estimateCost({
+  pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+  inputTokens: 1_000,
+  outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+});
+expectType<typeof COST_ESTIMATOR_VERSION>(costEstimate.version);
+
+const trackerOptions: CostTrackerOptions = {
+  pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+};
+const configuredTracker = createCostTracker(trackerOptions);
+const legacyTracker = createCostTracker();
+expectType<number | null>(configuredTracker.total().costUsd);
+expectType<number | null>(legacyTracker.total().costUsd);
+
+const legacySigner = {
+  kid: "legacy-signer",
+  publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "test" },
+  async sign(_bytes: Uint8Array) {
+    return new Uint8Array([1, 2, 3]);
+  },
+} satisfies ReceiptSigner;
+expectAssignable<ReceiptSigner>(legacySigner);
+
+const legacySelectedRoute: SelectedRoute = {
+  providerId: "legacy-provider",
+  modelId: "legacy-provider:model",
+  score: 1,
+  estimates: {
+    inputTokens: 1,
+    outputTokens: 1,
+    costUsd: 0,
+  },
+  inputModalities: ["text"],
+  outputModalities: ["text"],
+  fileTransport: ["inline"],
+};
+expectType<number | undefined>(legacySelectedRoute.estimates.costUsd);
 
 const retention: ArtifactRetentionPolicy = "durable";
 const missingReference: MissingArtifactRefPolicy = "omit";

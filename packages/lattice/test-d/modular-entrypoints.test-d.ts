@@ -6,9 +6,12 @@ import {
   createExternalExecutionAudit,
   createMemoryKeySet,
   createNobleEd25519Signer,
+  resolveReceiptPolicy,
+  type AuditError,
   type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
+  type ReceiptIssuanceMode,
 } from "@full-self-browsing/lattice/audit";
 import {
   buildContextPack,
@@ -43,8 +46,11 @@ import {
   type ProviderAdapter,
 } from "@full-self-browsing/lattice/providers";
 import {
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
   routeDeterministically,
   type CapabilityCatalog,
+  type CostEstimate,
 } from "@full-self-browsing/lattice/routing";
 import {
   createMemoryArtifactStore,
@@ -64,9 +70,34 @@ import {
   type ValidatedToolCall,
 } from "@full-self-browsing/lattice/tools";
 import {
+  createCostTracker,
   runAgent,
   type AgentIntent,
+  type CostTrackerOptions,
 } from "@full-self-browsing/lattice/agents";
+
+const receiptMode: ReceiptIssuanceMode = "required";
+expectType<ReceiptIssuanceMode>(resolveReceiptPolicy({ mode: receiptMode }).mode);
+const auditError: AuditError = {
+  kind: "audit",
+  code: "receipt-signer-missing",
+  stage: "pre-execution",
+  message: "Receipt issuance requires a configured signer.",
+  terminal: true,
+};
+expectType<"audit">(auditError.kind);
+
+const modularEstimate: CostEstimate = estimateCost({
+  pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+  inputTokens: 1,
+  outputTokens: 1,
+});
+expectType<typeof COST_ESTIMATOR_VERSION>(modularEstimate.version);
+const trackerOptions: CostTrackerOptions = {
+  pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+};
+expectType<number | null>(createCostTracker(trackerOptions).total().costUsd);
+expectType<number | null>(createCostTracker().total().costUsd);
 
 const provider = createFakeProvider();
 expectType<ProviderAdapter>(provider);

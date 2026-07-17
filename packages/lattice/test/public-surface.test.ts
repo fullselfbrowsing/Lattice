@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
   collectStream,
   contract,
   createAI,
+  createCostTracker,
   createExternalExecutionAudit,
   createInMemorySigner,
   createLangfuseOtlpConfig,
@@ -16,6 +19,7 @@ import {
   createRealtimeCheckpointContext,
   createRemoteReceiptSigner,
   evaluateTripwires,
+  estimateCost,
   generateEd25519KeyPairJwk,
   inv,
   isTerminal,
@@ -26,6 +30,7 @@ import {
   getStructuredOutputContract,
   getToolUseContract,
   realtimeStepName,
+  resolveReceiptPolicy,
   sanitizeRunEventAttributes,
   stripChatTemplateArtifacts,
   stripOpenRouterVariant,
@@ -36,11 +41,14 @@ import {
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
 import type {
+  AuditError,
   BudgetInvariant,
   CapabilityContract,
   CapabilityReceiptBody,
   ContractRejectReasonCode,
   ContractVerdict,
+  CostEstimate,
+  CostTrackerOptions,
   FieldFromTableInvariant,
   InvariantDeclaration,
   KeyEntry,
@@ -53,6 +61,7 @@ import type {
   NoPiiInvariant,
   QualityFloorInvariant,
   ReceiptEnvelope,
+  ReceiptIssuanceMode,
   ReceiptSignatureProfile,
   ReceiptSigner,
   RemoteReceiptSignRequest,
@@ -75,6 +84,8 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "ALL_TRAINING_CLASSES",
   "AgentDeniedError",
   "BAND",
+  "CANONICAL_PROJECTED_OUTPUT_TOKENS",
+  "COST_ESTIMATOR_VERSION",
   "DEFAULT_CHECKPOINT_BAND",
   "NegotiationAuthError",
   "NoPublicUrlEgressError",
@@ -129,6 +140,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "defaultPiiDetectors",
   "defineAgent",
   "defineTool",
+  "estimateCost",
   "estimateRouteCost",
   "evalAgentRun",
   "evaluateContractAgainstRoute",
@@ -143,12 +155,14 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "importMcpTools",
   "inv",
   "isTerminal",
+  "issueReceipt",
   "latticeVersion",
   "materializeReplayEnvelope",
   "negotiateCapabilities",
   "output",
   "parseToolUseEnvelope",
   "permissionGuardRegisterOptions",
+  "preflightReceiptPolicy",
   "realtimeStepName",
   "receiptCid",
   "redactArtifactRef",
@@ -156,6 +170,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "redactReplayEnvelope",
   "replayOffline",
   "rerunLive",
+  "resolveReceiptPolicy",
   "runAgent",
   "runAgentCrew",
   "runTool",
@@ -192,6 +207,49 @@ describe("public-surface inventory", () => {
     ]) {
       expect(internalName in mod).toBe(false);
     }
+  });
+});
+
+describe("Phase 60 public type surface", () => {
+  it("exposes receipt policy and structured cost values from the package root", () => {
+    const mode: ReceiptIssuanceMode = "required";
+    const policy = resolveReceiptPolicy({ mode });
+    const estimate: CostEstimate = estimateCost({
+      pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+      inputTokens: 1_000,
+      outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+    });
+    const trackerOptions: CostTrackerOptions = {
+      pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+    };
+    const tracker = createCostTracker(trackerOptions);
+    tracker.recordIteration({
+      promptTokens: 1_000,
+      completionTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+      costUsd: null,
+    });
+
+    expect(policy).toEqual({ mode: "required" });
+    expect(estimate.version).toBe(COST_ESTIMATOR_VERSION);
+    expect(tracker.latestEstimate()).toEqual(estimate);
+  });
+
+  it("keeps AuditError a bounded terminal discriminated type", () => {
+    const error: AuditError = {
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
+      terminal: true,
+    };
+
+    expect(error).toEqual({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
+      terminal: true,
+    });
   });
 });
 

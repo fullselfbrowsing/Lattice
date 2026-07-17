@@ -11,6 +11,11 @@ export type {
   ReceiptIssuanceOutcome,
   ReceiptPolicyInput,
 } from "./receipts/policy.js";
+export type {
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
+} from "./results/errors.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
   ExternalExecutionAuditInput,

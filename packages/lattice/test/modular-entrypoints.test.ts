@@ -84,19 +84,39 @@ describe("modular package entrypoints", () => {
     expect(typeof providers.createOpenAICompatibleProvider).toBe("function");
     expect(typeof providers.parseToolUseEnvelope).toBe("function");
     expect(typeof audit.createReceipt).toBe("function");
+    expect(typeof audit.issueReceipt).toBe("function");
+    expect(typeof audit.preflightReceiptPolicy).toBe("function");
+    expect(typeof audit.resolveReceiptPolicy).toBe("function");
     expect(typeof context.buildContextPack).toBe("function");
     expect(typeof context.materializeContext).toBe("function");
     expect(typeof artifacts.artifact.text).toBe("function");
     expect(typeof routing.routeDeterministically).toBe("function");
+    expect(typeof routing.estimateCost).toBe("function");
+    expect(routing.COST_ESTIMATOR_VERSION).toBe("lattice-cost/v1");
     expect(typeof tools.defineTool).toBe("function");
     expect(typeof tools.mcpResourceArtifact).toBe("function");
     expect(typeof tools.validateToolCallRequests).toBe("function");
     expect(typeof storage.createMemoryArtifactStore).toBe("function");
     expect(typeof evals.evalAgentRun).toBe("function");
     expect(typeof agents.runAgent).toBe("function");
+    expect(typeof agents.createCostTracker).toBe("function");
     expect(typeof core.artifact.text).toBe("function");
     expect(typeof core.routeDeterministically).toBe("function");
     expect(typeof core.materializeContext).toBe("function");
+  });
+
+  it("reaches Phase 60 additive types through their owning facades", () => {
+    type _AuditError = import("../src/audit.js").AuditError;
+    type _ReceiptIssuanceMode = import("../src/audit.js").ReceiptIssuanceMode;
+    type _CostEstimate = import("../src/routing.js").CostEstimate;
+    type _CostTrackerOptions = import("../src/agents.js").CostTrackerOptions;
+
+    void (null as unknown as
+      | _AuditError
+      | _ReceiptIssuanceMode
+      | _CostEstimate
+      | _CostTrackerOptions);
+    expect(true).toBe(true);
   });
 
   it("keeps context and core value exports exact", () => {

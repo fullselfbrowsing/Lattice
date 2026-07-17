@@ -179,7 +179,7 @@ describe("lattice eval handler (commands/eval.ts)", () => {
     ).toBe(true);
   });
 
-  it("emits every invalid row and a JSON report before exiting 2", async () => {
+  it("[EVAL16-01] emits every invalid row and a JSON report before exiting 2", async () => {
     const report = reportFromFixtures(
       [
         fixtureReport("bad-receipt", "load-failed", null, {
@@ -223,7 +223,7 @@ describe("lattice eval handler (commands/eval.ts)", () => {
     ]);
   });
 
-  it("derives invalidity from rows and lets exit 2 outrank regression", async () => {
+  it("[EVAL16-01] derives invalidity from rows and lets exit 2 outrank regression", async () => {
     const report = reportFromFixtures(
       [
         fixtureReport("regressed", "regression", "cost-regression"),
@@ -370,7 +370,7 @@ describe("lattice eval handler (commands/eval.ts)", () => {
     ).toBe(true);
   });
 
-  it("does not invoke the baseline writer when init contains an invalid row", async () => {
+  it("[EVAL16-02] does not invoke the baseline writer when init contains an invalid row", async () => {
     const report = reportFromFixtures(
       [
         fixtureReport("valid", "match"),

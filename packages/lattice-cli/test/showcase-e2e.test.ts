@@ -57,6 +57,7 @@ const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
 const SHOWCASE_DIR = join(REPO_ROOT, "examples/work-inbox");
 const LATTICE_DIR = join(SHOWCASE_DIR, ".lattice");
 const RECEIPTS_DIR = join(LATTICE_DIR, "receipts");
+const EVAL_RECEIPTS_DIR = join(LATTICE_DIR, "eval-receipts");
 const FIXTURES_DIR = join(LATTICE_DIR, "fixtures");
 const SIDECARS_DIR = join(LATTICE_DIR, "sidecars");
 const KEYSET_PATH = join(LATTICE_DIR, "keyset.json");
@@ -155,6 +156,7 @@ interface EvalReport {
     readonly passed: number;
     readonly regressed: number;
     readonly newFixtures: number;
+    readonly loadFailed: number;
   };
   readonly exitCode: 0 | 1 | 2;
 }
@@ -226,6 +228,21 @@ describe("showcase v1.1 end-to-end", () => {
     // the receipt ids without re-running.
     showcaseRun = await runProc("node", ["examples/work-inbox/index.mjs"]);
     scenarios = parseScenarioLines(showcaseRun.stdout);
+
+    // Strict evaluation correctly rejects failure receipts whose signed body
+    // has no output hash. Keep a separate evaluable set for baseline and
+    // regression checks while retaining the full set for the invalid-input
+    // assertion below.
+    await mkdir(EVAL_RECEIPTS_DIR, { recursive: true });
+    for (const row of scenarios) {
+      if (row.scenario !== "success" && row.scenario !== "quality-floor") {
+        continue;
+      }
+      await writeFile(
+        join(EVAL_RECEIPTS_DIR, `${row.receiptId}.json`),
+        await readFile(join(RECEIPTS_DIR, `${row.receiptId}.json`)),
+      );
+    }
   });
 
   afterAll(async () => {
@@ -396,12 +413,47 @@ describe("showcase v1.1 end-to-end", () => {
     expect(r.stderr).not.toMatch(/j\.doe@example\.com/);
   });
 
-  it("lattice eval --init-baseline writes baseline.json and exits 0", async () => {
+  it("[EVAL16-01, EVAL16-02] strict init rejects unevaluable failure receipts without a baseline write", async () => {
     const r = await runProc("node", [
       CLI_BIN,
       "eval",
       "--fixtures",
       RECEIPTS_DIR,
+      "--key",
+      KEYSET_PATH,
+      "--artifacts",
+      FIXTURES_DIR,
+      "--sidecar-dir",
+      SIDECARS_DIR,
+      "--baseline",
+      BASELINE_PATH,
+      "--init-baseline",
+    ]);
+
+    expect(r.code).toBe(2);
+    const report = parseEvalReport(r.stdout);
+    expect(report.summary).toMatchObject({
+      total: 4,
+      passed: 2,
+      loadFailed: 2,
+    });
+    expect(report.fixtures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          verdict: "load-failed",
+          loadFailedReason: "outputhash-missing",
+        }),
+      ]),
+    );
+    await expect(stat(BASELINE_PATH)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("lattice eval --init-baseline writes an evaluable baseline and exits 0", async () => {
+    const r = await runProc("node", [
+      CLI_BIN,
+      "eval",
+      "--fixtures",
+      EVAL_RECEIPTS_DIR,
       "--key",
       KEYSET_PATH,
       "--artifacts",
@@ -420,46 +472,24 @@ describe("showcase v1.1 end-to-end", () => {
 
     const report = parseEvalReport(r.stdout);
     expect(report.exitCode).toBe(0);
-    // The walker visits every receipt in the dir; Plan 13.2-01 added the
-    // quality-floor scenario for a 4th receipt, so total === 4.
-    expect(report.summary.total).toBe(4);
+    expect(report.summary.total).toBe(2);
+    expect(report.summary.loadFailed).toBe(0);
     expect(report.version).toBe("lattice-eval/v1");
 
-    // Phase 13.1 closes V1.1-LIMITATION-1: the success fixture now has a
-    // sidecar, replays cleanly, and is verdict=match with
-    // loadFailedReason=null. The tripwire + refusal fixtures keep
-    // outputHash=null (failure receipts cannot commit to outputs) and
-    // surface as load-failed with loadFailedReason="outputhash-missing"
-    // — this is the documented expected outcome for failure-class receipts.
-    // Phase 13.2-01: the quality-floor scenario also writes a sidecar whose
-    // rawOutputs match the receipt's outputHash, so it likewise reaches
-    // verdict=match with loadFailedReason=null.
+    // The success and quality-floor receipts both carry output hashes and
+    // sidecars, so they are valid baseline inputs.
     const successRow = scenarios.find((s) => s.scenario === "success");
-    const tripwireRow = scenarios.find((s) => s.scenario === "tripwire");
-    const refusalRow = scenarios.find(
-      (s) => s.scenario === "no-contract-match",
-    );
     const qualityFloorRow = scenarios.find(
       (s) => s.scenario === "quality-floor",
     );
     const successFixture = report.fixtures.find(
       (f) => f.fixtureId === successRow?.receiptId,
     );
-    const tripwireFixture = report.fixtures.find(
-      (f) => f.fixtureId === tripwireRow?.receiptId,
-    );
-    const refusalFixture = report.fixtures.find(
-      (f) => f.fixtureId === refusalRow?.receiptId,
-    );
     const qualityFloorFixture = report.fixtures.find(
       (f) => f.fixtureId === qualityFloorRow?.receiptId,
     );
     expect(successFixture?.verdict).toBe("match");
     expect(successFixture?.loadFailedReason).toBe(null);
-    expect(tripwireFixture?.verdict).toBe("load-failed");
-    expect(tripwireFixture?.loadFailedReason).toBe("outputhash-missing");
-    expect(refusalFixture?.verdict).toBe("load-failed");
-    expect(refusalFixture?.loadFailedReason).toBe("outputhash-missing");
     expect(qualityFloorFixture?.verdict).toBe("match");
     expect(qualityFloorFixture?.loadFailedReason).toBe(null);
 
@@ -478,7 +508,7 @@ describe("showcase v1.1 end-to-end", () => {
       CLI_BIN,
       "eval",
       "--fixtures",
-      RECEIPTS_DIR,
+      EVAL_RECEIPTS_DIR,
       "--key",
       KEYSET_PATH,
       "--artifacts",
@@ -539,7 +569,7 @@ describe("showcase v1.1 end-to-end", () => {
       CLI_BIN,
       "eval",
       "--fixtures",
-      RECEIPTS_DIR,
+      EVAL_RECEIPTS_DIR,
       "--key",
       KEYSET_PATH,
       "--artifacts",
@@ -556,7 +586,7 @@ describe("showcase v1.1 end-to-end", () => {
 
     const report = parseEvalReport(r.stdout);
     expect(report.version).toBe("lattice-eval/v1");
-    expect(report.summary.total).toBe(4);
+    expect(report.summary.total).toBe(2);
     // The mutated baseline only carries the success fixture; the
     // quality-floor fixture is absent from the baseline → counted as a new
     // fixture (newFixtures >= 1), NOT regressed. The success fixture's cost
@@ -576,7 +606,7 @@ describe("showcase v1.1 end-to-end", () => {
       CLI_BIN,
       "eval",
       "--fixtures",
-      RECEIPTS_DIR,
+      EVAL_RECEIPTS_DIR,
       "--key",
       KEYSET_PATH,
       "--artifacts",

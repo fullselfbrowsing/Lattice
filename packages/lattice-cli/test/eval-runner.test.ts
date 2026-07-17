@@ -1028,7 +1028,7 @@ describe("runEvalSession", () => {
     expect(report.summary.regressed).toBe(1);
   });
 
-  it("retains every invalid stage in fixture order with bounded diagnostics", async () => {
+  it("[EVAL16-01] retains every invalid stage in fixture order with bounded diagnostics", async () => {
     const paths = await makeSandbox();
     const noSidecar = await buildFixture("stage-no-sidecar");
     const verifyFailure = await buildFixture("stage-verify");
