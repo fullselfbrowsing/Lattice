@@ -263,35 +263,36 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   const existingSnapshot = await host.storage?.load();
   if (existingSnapshot !== null && existingSnapshot !== undefined) {
     intent.tracer?.event?.("recovery.start", {
-      snapshotVersion: existingSnapshot.version,
-      capturedAt: existingSnapshot.capturedAt,
+      snapshotVersion: "lattice-survivability/v1",
     });
-    try {
-      const restored = survivabilityAdapter.deserialize(existingSnapshot);
-      iterationIndex = restored.iterationIndex;
-      conversation = [...restored.conversation];
-      cumulativeUsage.promptTokens = restored.cumulativeUsage.promptTokens;
-      cumulativeUsage.completionTokens = restored.cumulativeUsage.completionTokens;
-      cumulativeUsage.costUsd = restored.cumulativeUsage.costUsd;
-      providerName = restored.providerName;
-      if (restored.executionId !== undefined) {
-        executionId = restored.executionId;
-      }
-      if (restored.iterations !== undefined) {
-        iterations.push(...restored.iterations);
-      }
-      intent.tracer?.event?.("recovery.complete", {
-        iterationIndex,
-        providerName,
-      });
-    } catch (error) {
-      intent.tracer?.event?.("recovery.failed", {
-        reason: error instanceof Error ? error.message : "deserialize failed",
-      });
-      await host.storage?.clear();
-      // Historical behavior falls through to a fresh start. Plan 61-02 Task 2
-      // replaces this with bounded fail-closed recovery.
+    if (!isSerializedSnapshot(existingSnapshot)) {
+      return buildRecoveryFailure(intent, "snapshot-invalid");
     }
+    let restored: AgentSnapshot;
+    try {
+      restored = survivabilityAdapter.deserialize(existingSnapshot);
+    } catch {
+      return buildRecoveryFailure(intent, "deserialize-failed");
+    }
+    if (!isValidAgentSnapshot(restored)) {
+      return buildRecoveryFailure(intent, "snapshot-invalid");
+    }
+
+    iterationIndex = restored.iterationIndex;
+    conversation = [...restored.conversation];
+    cumulativeUsage.promptTokens = restored.cumulativeUsage.promptTokens;
+    cumulativeUsage.completionTokens = restored.cumulativeUsage.completionTokens;
+    cumulativeUsage.costUsd = restored.cumulativeUsage.costUsd;
+    providerName = restored.providerName;
+    executionId = restored.executionId ??
+      await deriveHistoricalExecutionId(existingSnapshot.payload);
+    if (restored.iterations !== undefined) {
+      iterations.push(...restored.iterations);
+    }
+    intent.tracer?.event?.("recovery.complete", {
+      iterationIndex,
+      providerName,
+    });
   }
 
   // 2. Invocation-local managed checkpoint uses the restored execution ID.
@@ -712,6 +713,176 @@ function createManagedCheckpointRunner<TOutputs extends OutputContractMap>(
 
 function buildIterationId(executionId: string, index: number): string {
   return `${executionId}:iteration:${index}`;
+}
+
+type RecoveryFailureReason = "deserialize-failed" | "snapshot-invalid";
+
+function buildRecoveryFailure<TOutputs extends OutputContractMap>(
+  intent: AgentIntent<TOutputs>,
+  reason: RecoveryFailureReason,
+): AgentExecutionFailure {
+  intent.tracer?.event?.("recovery.failed", { reason });
+  return buildFailure({
+    kind: "agent-recovery-failed",
+    reason,
+    iterations: [],
+    usage: ZERO_USAGE,
+  });
+}
+
+async function deriveHistoricalExecutionId(payload: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(payload),
+  );
+  const hex = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `agent-execution:legacy:${hex}`;
+}
+
+function isSerializedSnapshot(value: unknown): value is {
+  readonly kind: "survivability-snapshot";
+  readonly version: "lattice-survivability/v1";
+  readonly payload: string;
+  readonly capturedAt: string;
+} {
+  return isRecord(value) &&
+    value["kind"] === "survivability-snapshot" &&
+    value["version"] === "lattice-survivability/v1" &&
+    typeof value["payload"] === "string" &&
+    typeof value["capturedAt"] === "string";
+}
+
+function isValidAgentSnapshot(value: unknown): value is AgentSnapshot {
+  if (!isRecord(value) || value["version"] !== "agent-snapshot/v1") {
+    return false;
+  }
+  const iterationIndex = value["iterationIndex"];
+  if (!isNonNegativeInteger(iterationIndex)) return false;
+  if (!isConversation(value["conversation"])) return false;
+  if (!isUsage(value["cumulativeUsage"])) return false;
+  if (!isBoundedString(value["providerName"], 256)) return false;
+  if (typeof value["capturedAt"] !== "string") return false;
+  if (
+    value["ancestry"] !== undefined &&
+    (!Array.isArray(value["ancestry"]) ||
+      !value["ancestry"].every((id) => isBoundedString(id, 256)))
+  ) {
+    return false;
+  }
+
+  const executionId = value["executionId"];
+  const iterations = value["iterations"];
+  if ((executionId === undefined) !== (iterations === undefined)) return false;
+  if (executionId === undefined) return true;
+  if (!isExecutionId(executionId) || !Array.isArray(iterations)) return false;
+
+  let previousIndex = -1;
+  const iterationIds = new Set<string>();
+  for (const record of iterations) {
+    if (!isIterationRecord(record)) return false;
+    if (record.index <= previousIndex || record.index >= iterationIndex) {
+      return false;
+    }
+    if (record.iterationId !== buildIterationId(executionId, record.index)) {
+      return false;
+    }
+    if (iterationIds.has(record.iterationId)) return false;
+    iterationIds.add(record.iterationId);
+    previousIndex = record.index;
+  }
+  return true;
+}
+
+function isIterationRecord(value: unknown): value is IterationRecord & {
+  readonly iterationId: string;
+} {
+  if (!isRecord(value)) return false;
+  if (!isExecutionId(value["iterationId"])) return false;
+  if (!isNonNegativeInteger(value["index"])) return false;
+  if (!isBoundedString(value["provider"], 256)) return false;
+  if (!isNonNegativeInteger(value["promptTokens"])) return false;
+  if (!isNonNegativeInteger(value["completionTokens"])) return false;
+  if (!isNullableNonNegativeFiniteNumber(value["costUsd"])) return false;
+  if (!isNonNegativeFiniteNumber(value["durationMs"])) return false;
+  if (!Array.isArray(value["toolCalls"])) return false;
+  if (!value["toolCalls"].every(isToolCallRecord)) return false;
+  if (
+    value["deniedReason"] !== undefined &&
+    typeof value["deniedReason"] !== "string"
+  ) {
+    return false;
+  }
+  return value["receipt"] === undefined || isReceiptEnvelope(value["receipt"]);
+}
+
+function isToolCallRecord(value: unknown): boolean {
+  return isRecord(value) &&
+    typeof value["id"] === "string" &&
+    typeof value["name"] === "string" &&
+    typeof value["argsHash"] === "string" &&
+    typeof value["resultHash"] === "string";
+}
+
+function isReceiptEnvelope(value: unknown): boolean {
+  return isRecord(value) &&
+    value["payloadType"] === "application/vnd.lattice.receipt+json" &&
+    isBoundedString(value["payload"], 1_000_000) &&
+    Array.isArray(value["signatures"]) &&
+    value["signatures"].length > 0 &&
+    value["signatures"].every((signature) =>
+      isRecord(signature) &&
+      isBoundedString(signature["keyid"], 1024) &&
+      isBoundedString(signature["sig"], 1_000_000)
+    );
+}
+
+function isConversation(value: unknown): value is ConversationTurn[] {
+  return Array.isArray(value) && value.every((turn) =>
+    isRecord(turn) &&
+    (turn["role"] === "user" ||
+      turn["role"] === "assistant" ||
+      turn["role"] === "tool") &&
+    typeof turn["content"] === "string" &&
+    (turn["toolCallId"] === undefined ||
+      typeof turn["toolCallId"] === "string") &&
+    (turn["toolName"] === undefined || typeof turn["toolName"] === "string")
+  );
+}
+
+function isUsage(value: unknown): value is Usage {
+  return isRecord(value) &&
+    isNonNegativeInteger(value["promptTokens"]) &&
+    isNonNegativeInteger(value["completionTokens"]) &&
+    isNullableNonNegativeFiniteNumber(value["costUsd"]);
+}
+
+function isExecutionId(value: unknown): value is string {
+  return isBoundedString(value, 128) &&
+    /^agent-execution:[A-Za-z0-9:._-]+$/u.test(value);
+}
+
+function isBoundedString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function isNullableNonNegativeFiniteNumber(
+  value: unknown,
+): value is number | null {
+  return value === null || isNonNegativeFiniteNumber(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function resolveAgentReceiptPolicy<TOutputs extends OutputContractMap>(

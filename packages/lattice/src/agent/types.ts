@@ -149,6 +149,7 @@ export type AgentFailureKind =
   | "agent-iteration-denied"
   | "agent-max-iterations"
   | "agent-wall-time-exceeded"
+  | "agent-recovery-failed"
   | "crew-budget-exceeded";
 
 /**
