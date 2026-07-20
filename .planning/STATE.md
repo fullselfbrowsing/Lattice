@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Protocol and Runtime Integrity Bridge
 status: executing
-last_updated: "2026-07-17T06:48:57.241Z"
-last_activity: 2026-07-17
+last_updated: "2026-07-20T13:31:54.399Z"
+last_activity: 2026-07-20
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 28
+  completed_plans: 29
   percent: 83
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 62 (Operational Interop and Hygiene) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-07-17
+Last activity: 2026-07-20
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 94%
 
 ## Recent Milestone Snapshot
 
@@ -109,6 +109,9 @@ Recent decisions affecting v1.6:
 - [Phase 61]: Crew CIDs are indexed at collection under the known agent ID. — Direct ownership avoids decoding signed payloads and guarantees each CID hashes the exposed envelope.
 - [Phase 61]: Public closure evidence combines real Ed25519 verification with bounded generated resume and crew cases. — Black-box cryptographic and work-count assertions prove the public contract without relying on private observers.
 - [Phase 61]: Historical agent iteration and snapshot literals remain source compatible. — The new identity, ledger, and envelope fields stay optional at packed root and agents entrypoints.
+- [Phase 62]: Adapter output ceilings remain additive and preserve omitted defaults. — Ordinary consumers keep established request behavior while the canary selects an explicit bound.
+- [Phase 62]: Canary cost uses configured token pricing and fails closed on higher provider-reported cost. — Provider billing evidence may raise but cannot lower the bounded spend verdict.
+- [Phase 62]: Retained canary evidence is rebuilt from an explicit field allowlist. — Credentials, URLs, headers, prompts, outputs, raw errors, and receipt payloads never enter the report surface.
 
 ### Pending Todos
 
@@ -170,3 +173,4 @@ Items deferred at v1.4 milestone close (2026-06-16) that remain informational on
 | Phase 61 P03 | 5min | 2 tasks | 6 files |
 | Phase 61 P04 | 12min | 1 tasks | 7 files |
 | Phase 62 P01 | 9 min | 2 tasks | 11 files |
+| Phase 62 P02 | 45 min | 2 tasks | 11 files |
