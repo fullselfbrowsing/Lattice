@@ -1,5 +1,50 @@
 # Milestones
 
+## v1.6 Protocol and Runtime Integrity Bridge (Shipped: 2026-07-20)
+
+**Phases completed:** 6 phases, 31 plans, 61 tasks
+**Delivered:** A standards-correct, independently reproducible receipt bridge and
+one authoritative runtime evidence model, released as aligned 1.6.0 runtime and
+CLI packages.
+**Audit:** Passed - 42 / 42 requirements satisfied
+(`milestones/v1.6-MILESTONE-AUDIT.md`).
+**Validation:** 1,381 runtime tests, 175 CLI tests, 1,632 type tests, 28 generator
+tests, TypeScript/Python reciprocal conformance, independent DSSE oracle, clean
+Node 24/26 package consumers, bounded provider canaries, and comment hygiene.
+**Known deferred items at close:** 5 stale quick-task index entries (see
+`STATE.md` Deferred Items).
+
+**Key accomplishments:**
+
+- Corrected TypeScript and Python issuance to raw-byte DSSE PAE under signed
+  `lattice-receipt/v1.4` and `dsse-v1`, with historical verification isolated
+  behind an explicit observable allow/reject policy.
+- Published a normative schema/spec/migration contract, separate immutable legacy
+  and generated standard corpora, exact manifests, reciprocal TypeScript/Python
+  minting, and a test-only `securesystemslib==1.4.0` oracle.
+- Made one policy-permitted route-local materialization authoritative for provider
+  requests, fallback packaging, persistence, sessions, plans, receipts, replay,
+  events, and OpenTelemetry evidence.
+- Unified required/best-effort/off receipt behavior, exhaustive evaluation failure
+  accounting, and known/free/partial/unknown cost semantics across runtime, agents,
+  crews, routing, contracts, providers, and diagnostics.
+- Attached exact checkpoint and terminal envelopes to stable agent identities,
+  preserved them across resume without reminting, and reused those envelopes and
+  CIDs in deterministic crew order.
+- Released aligned runtime and CLI 1.6.0 packages with clean Node 24/26 consumers,
+  bounded OpenAI-compatible/Anthropic/Gemini canaries, executable documentation
+  drift checks, and zero-baseline production comment hygiene.
+
+**Stats:** 350 files changed across the implementation range, 42,066 insertions,
+5,304 deletions, and five calendar days from Phase 57 start to audit completion.
+
+**Git range:** `14707f1` -> `a1bb201`
+
+**What's next:** No milestone is active; define the next requirements from the
+shipped v1.6 baseline.
+
+---
+
 ## v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client (Shipped: 2026-07-06)
 
 **Phases completed:** 7 phases, 11 plans, 11 tasks

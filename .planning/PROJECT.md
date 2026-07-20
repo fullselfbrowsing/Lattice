@@ -10,17 +10,15 @@ The product is for developers building multimodal AI features who do not want to
 
 Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
 
-## Current Milestone: v1.6 Protocol and Runtime Integrity Bridge
-
-**Goal:** Correct Lattice's protocol and execution semantics while preserving bounded compatibility for existing receipts.
-
-**Target features:**
-- Standards-compliant DSSE issuance with an explicit, observable legacy-receipt verification bridge across TypeScript, Python, schemas, vectors, and conformance CI.
-- Execution-authoritative context packing, summarization, session continuity, artifact omission, and configured artifact storage.
-- Strict audit modes for required receipt issuance and evaluation input failures, plus unified routing and contract cost estimation.
-- Closure of agent receipt/result and documentation mismatches, independent interoperability coverage, real-provider canaries, package validation, and durable comment hygiene.
-
 ## Current State
+
+**v1.6 Protocol and Runtime Integrity Bridge shipped 2026-07-20.** Phases 57-62
+are complete and archived: standard-only DSSE v1.4 issuance with an explicit
+historical-read bridge, independent TypeScript/Python conformance and oracle proof,
+authoritative context/persistence evidence, shared audit/evaluation/cost semantics,
+exact agent/crew receipt attachment and resume identity, and operational release
+closure. Runtime and CLI are aligned at 1.6.0, clean consumers pass on Node 24 and
+26, and the milestone audit passed with 42 / 42 requirements satisfied.
 
 **v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface shipped 2026-06-15.** Lattice's first public npm release: `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live with SLSA provenance attestations and GitHub Release `v1.3.0`. 13 of 16 planned phases shipped (public-release infra 24–29, model-aware SDK 33–37, receipt v1.2 38, opt-in multi-agent crew 39); 64 / 87 REQ-IDs. The three canary-validation phases (30–32) were **superseded** — FSB consumes Lattice via the published npm package for real-world dogfooding, replacing the planned synthetic canary repo. Initial FSB dogfood validation passed with `npm run test:lattice` at 426 PASS / 0 FAIL against the published npm tarball.
 
@@ -39,6 +37,7 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - **v1.4 Provider Breadth + Live Multimodal + Observability Export** (2026-06-16) — Package identity guardrails, LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage + remote signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, agent eval/receipt diff/LM Studio diagnostics CLI, offline validation, tarball checks, and FSB package-candidate dogfood. 44/44 REQ-IDs shipped; audit passed.
 - **v1.5.0 Modular Adoption + Execution Parity** (2026-06-20) — Modular entrypoints and boundary metadata, provider-native execution parity, external audit and standalone core helpers, optional tools/MCP and agent paths, Node 20 smoke checks, and external-consumer dogfood. 30/30 REQ-IDs shipped; audit passed.
 - **v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client** (2026-07-06) — Language-neutral `lattice-receipt` protocol spec, schema/changelog set, golden conformance vectors, TS verifier harness, Python verify/replay/mint client, Python-to-TypeScript mint parity, and conformance CI gate. 26/26 REQ-IDs shipped; audit passed.
+- **v1.6 Protocol and Runtime Integrity Bridge** (2026-07-20) — Corrected DSSE v1.4 issuance and bounded legacy reads, independent conformance, authoritative context/persistence, truthful audit/evaluation/cost, exact agent/crew receipts, packed Node 24/26 validation, bounded provider canaries, and production comment hygiene. 42/42 REQ-IDs shipped; audit passed.
 
 ## Requirements
 
@@ -68,10 +67,12 @@ Developers can run one capability-first task across mixed text, image, audio, vi
 - [x] v1.4 Phase 41 gateway delegation: `createLiteLLMProvider` delegates to the OpenAI-compatible provider path, typed `GatewayPolicy` carries gateway hints/metadata, plans and run events preserve the Lattice-selected route separately from gateway observations, and public-surface/type/parity/package gates cover the new API. (GATE-01..03)
 - [x] v1.4 Phases 42-49 provider breadth/live multimodal/observability closure: OpenRouter fallback + deterministic catalog refresh (ORCAT), streaming contract + five adapter implementations (STRM/SADAPT), Anthropic/Gemini multimodal shaping + realtime direction (MMRT), receipt lineage + remote signer shapes (REC), OpenTelemetry export + Langfuse/Phoenix OTLP helpers (OTEL), eval/receipt-diff/LM Studio diagnostics CLI (EVAL), and package/showcase/FSB dogfood validation (VAL). 44/44 v1.4 requirements are mapped in `49-MILESTONE-EVIDENCE.md`.
 - [x] v1.5.0 modular adoption + execution parity: modular subpaths and boundary enforcement, native provider tools/structured outputs, external audit and standalone core helpers, optional tools/MCP and typed-agent paths, Node 20 modular checks, and external-consumer dogfood. 30/30 requirements shipped.
+- [x] v1.6 protocol and runtime integrity bridge: corrected-only v1.4/`dsse-v1` issuance with bounded observable legacy reads; exact schema/vector/cross-language conformance; authoritative provider-visible context and persistence; shared audit, evaluation, and cost semantics; stable agent/crew receipt evidence; and operational 1.6.0 release closure. 42/42 requirements shipped.
 
 ### Active
 
-v1.6 is active. Requirements and phase sequencing will be defined from the repository audit and milestone research before implementation begins.
+No milestone is active. The next cycle must define fresh requirements and a roadmap
+from the shipped v1.6 baseline.
 
 Carryforward considerations not yet scheduled:
 
@@ -94,6 +95,12 @@ Carryforward considerations not yet scheduled:
 - Building 100 custom provider adapters from scratch — broad provider coverage should initially lean on an existing provider/routing surface where practical.
 - Frontend hook library as the center of the product — UI bindings can exist, but the core bet is the runtime.
 - Opaque AI-selected routing in v1 — routing should be deterministic and inspectable first.
+
+## Next Milestone Goals
+
+No next milestone has been selected. Candidate inputs remain the carryforward items
+above plus adoption evidence from the 1.6.0 package and scheduled provider canaries;
+none is a committed requirement until the next milestone workflow completes.
 
 ## Context
 
@@ -141,7 +148,7 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | Treat context management as built-in runtime behavior | Manual trimming, summarizer middleware, and developer-managed file stuffing are core pain points this product should remove. | Validated in Phase 4: context packs record included, summarized, archived, omitted, reasons, estimates, and trust labels. |
 | Focus the first showcase on the multimodal work inbox | It exercises text, image, audio, files, structured outputs, policy routing, artifact packaging, and optional speech in one understandable workflow. | Validated in Phase 6: executable work-inbox example and fixtures are included. |
 | Keep Phase 1 sessions as references only | Full persistence, context packs, summaries, branching, and replay belong in later phases; Phase 1 only needs a stable public placeholder. | `ai.session(id)` returns a `SessionRef` and can be passed into `ai.run`. |
-| v1.3 expanded from publish + canary into model-aware SDK + multi-agent surface | Phase 33/34 registry and negotiation work landed, and Phases 35-39 are now part of the stable `1.3.0` gate. | Active; 75/87 planned REQ-IDs authored, 49 authored REQ-IDs complete. |
+| v1.3 expanded from publish + canary into model-aware SDK + multi-agent surface | Phase 33/34 registry and negotiation work landed, and Phases 35-39 became part of the stable `1.3.0` gate. | Shipped 2026-06-15 with 64/87 REQ-IDs; synthetic canary phases 30-32 were superseded by FSB-via-npm dogfooding. |
 | Keep model-aware adapter hardening opt-in in v1.3 | Output sanitizers and tool-call validators reduce model-shape failure without changing default v1.2 consumer behavior. | Validated in Phases 36-37 across all 7 adapters with parity tests, public-surface/type tests, security review, validation audit, and UAT. |
 | v1.3 publishes under `@full-self-browsing` scope, not unscoped `lattice` | Unscoped `lattice` on npm is contested; the FSB scope ties Lattice's identity to its origin org and unlocks `@full-self-browsing/lattice-cli` as a sibling. | Validated by `1.3.0-rc.0` publish for both packages. |
 | v1.3 uses OIDC Trusted Publisher with provenance attestations, not long-lived `NPM_TOKEN` | A library that ships cryptographic primitives benefits from supply-chain attestation. OIDC + provenance is a free, durable signal that the published tarball matches a specific commit. | Validated by npm rc.0 provenance attestations for both packages. |
@@ -153,6 +160,12 @@ Phase 6 completed on 2026-04-22. Lattice now includes an executable multimodal w
 | v1.5 makes the receipt *protocol* language-neutral while the runtime stays TypeScript-first | "Other languages can't use this" is only true for the SDK ergonomics; the receipt / replay / contract format is built on cross-language standards (JCS, DSSE, Ed25519, CID) and is portable by construction. Specifying it + shipping thin verify / replay / mint clients makes the audit trail the cross-language product without a perpetual N-language runtime port. | Validated in v1.5: spec, vectors, TypeScript harness, Python client, parity, and CI shipped. |
 | v1.5 ships the Python client in-repo with committed conformance vectors before any PyPI publish | A committed `input → canonical bytes → signature` vector set + a CI gate proves byte-parity and prevents TS/client drift; publishing posture (trusted publishing, provenance) is a separate concern best handled once the client surface stabilizes. | Validated in v1.5; PyPI publishing remains deferred. |
 | Preserve modular adoption when reconciling the two v1.5 histories | The polyglot protocol branch and canonical mainline independently used v1.5 phase numbers. Both delivered distinct capabilities, so the integration retains both archived histories and treats mainline package version 1.5.1 as canonical. | Validated during the v1.6 pre-milestone reconciliation. |
+| Issue only standard DSSE v1.4 receipts while retaining historical verification as an explicit read policy | New evidence must be standards-correct without making existing signed evidence unreadable or allowing downgrade after standard verification failure. | Validated in Phases 57-58 across TypeScript, Python, schemas, vectors, CLI, oracle, CI, and packed consumers. |
+| Treat the route-local materialized projection and store-returned refs as runtime authority | Declared history is not sufficient evidence of what a provider received or what storage accepted. | Validated in Phase 59 across planning, fallback, persistence, sessions, receipts, replay, events, and OTel. |
+| Share receipt policy and cost semantics across capability, agent, crew, and evaluation surfaces | Duplicate issuance and pricing rules produce inconsistent strict-mode and budget outcomes. | Validated in Phase 60 with one issuance vocabulary and one structured cost kernel. |
+| Reuse exact agent terminal envelopes and stable execution identities | Replacement minting or restart reminting breaks receipt identity, ordering, and auditability. | Validated in Phase 61 for iterations, terminal outcomes, resume, and crew collection. |
+| Make clean packed consumers the deterministic release authority and live calls bounded operational evidence | Workspace tests cannot prove package installation, while live provider calls are too costly and variable for pull requests. | Validated in Phase 62 with Node 24/26 tarball consumers and protected tri-family canaries. |
+| Enforce production comment durability with a comment-aware zero-baseline gate | Planning chronology in production source decays quickly, but deleting all comments would erase security and interoperability constraints. | Validated in Phase 62 with zero findings and narrow documented exclusions. |
 
 ## Evolution
 
@@ -172,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-16 for v1.6 milestone initialization*
+*Last updated: 2026-07-20 after v1.6 milestone archive*

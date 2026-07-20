@@ -129,6 +129,70 @@
 
 ---
 
+## Milestone: v1.6 - Protocol and Runtime Integrity Bridge
+
+**Shipped:** 2026-07-20
+**Phases:** 6 (57-62) | **Plans:** 31 | **Tasks:** 61 | **REQ-IDs:** 42/42
+
+### What Was Built
+- Corrected-only DSSE v1.4 receipt issuance in TypeScript and Python with an
+  explicit, observable, downgrade-resistant historical verification bridge.
+- Normative schema/spec/migration documents, separate immutable and generated
+  corpora, exact manifests, reciprocal cross-minting, and an independent DSSE oracle.
+- Authoritative route-local context and persistence evidence shared by provider
+  requests, fallbacks, sessions, plans, receipts, replay, events, and OTel.
+- Shared receipt-mode, evaluation-failure, and cost-estimation semantics across
+  capability runs, agents, crews, routing, contracts, providers, and diagnostics.
+- Exact agent iteration/terminal receipt attachment, stable resume identity, ordered
+  crew evidence, and a 1.6.0 release closure with packed consumers and canaries.
+
+### What Worked
+- **Hard semantic boundaries were sequenced before consumers.** Corrected issuance
+  landed before schemas, vectors, clients, CLI, runtime evidence, and release gates,
+  so every later phase inherited one protocol contract.
+- **Property and fault matrices targeted authority, not only success.** Generated
+  cases proved exclusion, scope, fallback, budget, signer, recovery, and exact
+  identity invariants across the runtime rather than sampling happy paths.
+- **Package and protocol checks converged.** The same real tarballs drive clean
+  consumers and provider canaries, while static operational assertions bind package
+  versions, Node support, protocol schema, migrations, docs, and workflows.
+
+### What Was Inefficient
+- Phase 58 reached implementation completion without a `58-VERIFICATION.md`, and
+  Phase 57/58 validation rows remained pending until the milestone audit repaired
+  them. Verification artifacts need to be part of the phase-close atomic commit.
+- The generic milestone archive extractor emitted a duplicated milestone name and
+  one accomplishment per plan, requiring manual normalization to a useful summary.
+- Build-mutating packed checks and CLI tests were briefly run in parallel during the
+  final audit, exposing a transient missing dist chunk. Those gates must run
+  sequentially when they share generated package output.
+
+### Patterns Established
+- **Corrected-write, bounded-read bridge:** new evidence uses one standard profile;
+  compatibility remains explicit, observable, rejectable, and read-only.
+- **Provider-visible authority:** every plan, receipt, trace, and replay record is
+  tied to the exact route-local projection sent to the adapter.
+- **Allowlisted operational evidence:** canaries rebuild retained reports from safe
+  fields rather than redacting raw provider data after collection.
+- **Comment-aware hygiene:** production rationale is preserved while planning
+  chronology is blocked by a lexer-aware zero-baseline CI gate.
+
+### Key Lessons
+1. A phase is not complete until its verification and validation status are committed,
+   even when every implementation test already passes.
+2. Cross-language security claims require reciprocal minting plus an implementation-
+   independent oracle; shared static fixtures alone are insufficient.
+3. Build, pack, install, and downstream tests that share `dist` must be scheduled as
+   one ordered pipeline, not parallelized as independent read-only checks.
+
+### Cost Observations
+- Model mix: not instrumented this milestone (`model_profile: balanced`).
+- Notable: all release validation remained local and deterministic except the
+  deliberately optional protected provider workflow; fake native-protocol servers
+  exercised the complete canary request/result contract without credentials.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -142,9 +206,11 @@
 | v1.4 | 40–49 | Provider/gateway breadth, streaming/multimodal, OTel/eval diagnostics, and package-candidate downstream dogfood became the release-validation pattern. |
 | v1.5.0 | 50–55 | Modular adoption paths, provider execution parity, external audit, standalone core preparation, and consumer dogfood shipped on canonical mainline. |
 | v1.5 | 50–56 | Receipt audit trail became language-neutral with shared conformance vectors, Python verify/replay/mint, and cross-language parity CI. |
+| v1.6 | 57-62 | Standard DSSE bridge, authoritative runtime evidence, shared audit/cost semantics, exact agent receipts, and packed operational closure became one release contract. |
 
 ### Top Lessons (Verified Across Milestones)
 1. **Opt-in, additive surfaces preserve the parity contract** — validated across v1.2 (adapters) and v1.3 (sanitizers/validators/crew).
 2. **Inspectable, signed, reproducible artifacts are the differentiator** — every milestone has leaned further into receipts/replay rather than feature breadth.
 3. **Validate releases as packages, not just source trees** — v1.3 FSB-via-npm and v1.4 packed-candidate dogfood both found or defended boundaries that workspace-local tests would miss.
 4. **Use content-addressed evidence for protocol gates** — v1.5 replaced checkout-sensitive freshness checks with manifest coverage and byte-level conformance vectors.
+5. **Treat verification artifacts as phase deliverables** - v1.5 and v1.6 both exposed stale or missing validation records during milestone audit despite green implementations.
