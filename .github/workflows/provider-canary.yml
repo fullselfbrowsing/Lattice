@@ -1,0 +1,92 @@
+name: provider-canary
+
+on:
+  schedule:
+    - cron: '30 7 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: packed provider canary
+    runs-on: ubuntu-latest
+    environment: provider-canary
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run bounded packed canary
+        id: provider-canary
+        continue-on-error: true
+        run: node scripts/run-provider-canary.mjs
+        env:
+          LATTICE_CANARY_OPENAI_MODEL: ${{ vars.PROVIDER_CANARY_OPENAI_MODEL }}
+          LATTICE_CANARY_OPENAI_API_KEY: ${{ secrets.PROVIDER_CANARY_OPENAI_API_KEY }}
+          LATTICE_CANARY_OPENAI_BASE_URL: ${{ vars.PROVIDER_CANARY_OPENAI_BASE_URL }}
+          LATTICE_CANARY_OPENAI_INPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_OPENAI_INPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_OPENAI_OUTPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_OPENAI_OUTPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_OPENAI_MAX_SPEND_USD: ${{ vars.PROVIDER_CANARY_OPENAI_MAX_SPEND_USD }}
+          LATTICE_CANARY_ANTHROPIC_MODEL: ${{ vars.PROVIDER_CANARY_ANTHROPIC_MODEL }}
+          LATTICE_CANARY_ANTHROPIC_API_KEY: ${{ secrets.PROVIDER_CANARY_ANTHROPIC_API_KEY }}
+          LATTICE_CANARY_ANTHROPIC_INPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_ANTHROPIC_INPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_ANTHROPIC_OUTPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_ANTHROPIC_OUTPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_ANTHROPIC_MAX_SPEND_USD: ${{ vars.PROVIDER_CANARY_ANTHROPIC_MAX_SPEND_USD }}
+          LATTICE_CANARY_GEMINI_MODEL: ${{ vars.PROVIDER_CANARY_GEMINI_MODEL }}
+          LATTICE_CANARY_GEMINI_API_KEY: ${{ secrets.PROVIDER_CANARY_GEMINI_API_KEY }}
+          LATTICE_CANARY_GEMINI_INPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_GEMINI_INPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_GEMINI_OUTPUT_PRICE_PER_1K_USD: ${{ vars.PROVIDER_CANARY_GEMINI_OUTPUT_PRICE_PER_1K_USD }}
+          LATTICE_CANARY_GEMINI_MAX_SPEND_USD: ${{ vars.PROVIDER_CANARY_GEMINI_MAX_SPEND_USD }}
+
+      - name: Write sanitized summary
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFile, readFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile("provider-canary-report.json", "utf8"));
+          const lines = [
+            "## Packed provider canary",
+            "",
+            `Package: \`${report.packageVersion}\``,
+            "",
+            "| Family | Status | Code |",
+            "|---|---|---|",
+            ...report.families.map(
+              ({ family, status, code }) => `| ${family} | ${status} | ${code} |`,
+            ),
+            "",
+          ];
+          await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"), "utf8");
+          NODE
+
+      - name: Retain sanitized report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: provider-canary-report
+          path: provider-canary-report.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce canary result
+        if: steps.provider-canary.outcome == 'failure'
+        run: exit 1
