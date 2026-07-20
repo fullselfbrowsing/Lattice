@@ -1,14 +1,13 @@
 /**
  * Regex-based PII detectors used by the `no-pii` tripwire invariant.
  *
- * Phase 8 ships four detectors (email, US SSN, Luhn-valid credit card,
- * US phone). They are intentionally regex-only — zero new dependencies —
- * per the v1.1 scope locked in 08-CONTEXT.md.
+ * Four detectors cover email, US SSN, Luhn-valid credit card, and
+ * US phone. They are intentionally regex-only, with zero new dependencies.
  *
  * Each detector returns either `{ matched: true, substring }` carrying
  * ONLY the matched fragment, or `{ matched: false }`. The substring shape
  * is required so the tripwire evaluator can emit redacted evidence
- * (Phase 9 receipts must not leak the full input).
+ * (receipts must not leak the full input).
  *
  * Detector order in `defaultPiiDetectors` is deterministic so the
  * evaluator's first-violation semantics produce stable receipts.
@@ -85,7 +84,7 @@ const creditCardDetector: PiiDetector = {
     // Match any 13-19 character sequence of digits with optional single
     // space or dash separators, then validate with Luhn. The regex is
     // intentionally permissive on separators (banks/forms vary); Luhn
-    // filters trivially-formatted strings per Pitfall #5 in CONTEXT.md.
+    // filters trivially formatted digit sequences.
     const candidate = execFirst(/\b(?:\d[ -]?){13,19}\b/, input);
     if (candidate === undefined) return { matched: false };
     // Strip trailing space/dash that the regex may have absorbed.

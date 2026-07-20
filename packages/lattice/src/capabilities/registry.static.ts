@@ -1,29 +1,29 @@
-// Phase 33 — CAPS-05 — Static supplemental profiles.
+// Static supplemental profiles.
 //
 // Hand-edited sibling to registry.generated.ts. Profiles for models that
 // OpenRouter does not surface (or that consumers reach through Lattice's
 // direct adapters rather than through OpenRouter routing). The lookup
 // module merges STATIC_PROFILES + GENERATED_PROFILES at Map-build time;
 // direct adapters (anthropic, gemini, xai, lm-studio) win over the
-// openrouter routing equivalent per D-10 ADAPTER_ORDER.
+// OpenRouter routing equivalent according to ADAPTER_ORDER.
 //
 // Source-file order is alphabetical by canonical key for human review
 // ease. The runtime lookup order is governed by ADAPTER_ORDER in
 // lookup.ts and is INDEPENDENT of source-file order.
 //
-// Rationale (cited in CONTEXT.md <specifics> and PLAN.md):
+// Rationale:
 //   - anthropic:claude-opus-4   — direct Anthropic, frontier_rlhf;
 //                                 contextWindow 200000 matches Anthropic's
 //                                 published max for Opus-class.
 //   - gemini:gemini-2.5-pro     — direct Gemini, frontier_rlhf;
 //                                 contextWindow 2097152 (2M) matches
 //                                 Google's published 2M-token max for 2.5 Pro.
-//   - lm-studio:local-template  — generic local-quantized template (A7);
+//   - lm-studio:local-template  — generic local-quantized template;
 //                                 contextWindow 8192 is a sensible default;
 //                                 consumers parameterize via their LM Studio
 //                                 configuration if they need a different value.
 //                                 Carries the full FAILURE_MODE_DEFAULTS.local_quantized
-//                                 set per D-14: internal_envelope_leak,
+//                                 set: internal_envelope_leak,
 //                                 system_prompt_echo, template_artifact_leak,
 //                                 malformed_tool_arguments, premature_termination.
 //   - xai:grok-4                — direct xAI, frontier_rlhf;

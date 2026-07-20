@@ -7,7 +7,7 @@
  * single malformed file — the eval gate must keep going so its summary is
  * complete.
  *
- * Behavior contract (Plan 12-01):
+ * Behavior contract:
  *   - readdir(ENOENT)            -> throws `{ kind: "missing", ... }`
  *                                    (so the runner can map to exit 2)
  *   - non-.json entries          -> skipped entirely

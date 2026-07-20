@@ -1,5 +1,5 @@
 /**
- * Receipt CID — Phase 39 (v1.3). Content address = sha256 of the DSSE
+ * Receipt CID (v1.3). Content address = sha256 of the DSSE
  * canonical payload bytes (the exact bytes that were signed).
  *
  * The CID is derivable from any envelope WITHOUT key material: it digests

@@ -1,13 +1,13 @@
 /**
- * Baseline loader, atomic writer, and cost/quality comparators (Plan 12-01).
+ * Baseline loader, atomic writer, and cost/quality comparators.
  *
  * The baseline file holds the last-known-good per-fixture cost and quality
- * floor. CONTEXT.md "Baseline-Relative Gating" pins the JSON shape:
+ * floor. Its versioned JSON shape is:
  *
  *   { version: "lattice-eval/v1", recordedAt: ISO,
  *     fixtures: { [id]: { usage: { costUsd: string, ... }, qualityFloor: ... } } }
  *
- * Pitfall #2 (I-JSON / float drift): `costUsd` is string-encoded. All numeric
+ * To avoid I-JSON float drift, `costUsd` is string-encoded. All numeric
  * arithmetic guards against NaN/Infinity via `Number.isFinite` before use; on
  * a parse miss the comparator throws `{ kind: "malformed" }` so the runner can
  * map to exit 2.

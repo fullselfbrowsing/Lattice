@@ -5,8 +5,8 @@ import type { ExecutionPlan, ProviderPackagingPlan, UsageRecord } from "../plan/
 import type { ValidatedToolCall } from "../tools/tool-call-validation.js";
 import type { ToolDefinition } from "../tools/tools.js";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-// Phase 34 — D-01 / D-02 optional fields on ProviderAdapter (non-breaking for
-// v1.2 consumer adapters; existing 4-field literals still satisfy the interface)
+// Optional ProviderAdapter fields remain non-breaking for
+// v1.2 consumer adapters; existing 4-field literals still satisfy the interface.
 import type { AdapterQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 
@@ -38,9 +38,9 @@ export interface ProviderPricingHint {
   readonly inputCostPer1M?: number;
   /** @deprecated prefer `outputPer1kTokens` — kept for backward compatibility */
   readonly outputCostPer1M?: number;
-  /** Per-1000-prompt-token cost in USD. Preferred field for Phase 7+ pricing. */
+  /** Per-1000-prompt-token cost in USD. Preferred pricing field. */
   readonly inputPer1kTokens?: number;
-  /** Per-1000-completion-token cost in USD. Preferred field for Phase 7+ pricing. */
+  /** Per-1000-completion-token cost in USD. Preferred pricing field. */
   readonly outputPer1kTokens?: number;
 }
 
@@ -49,7 +49,7 @@ export interface ProviderPricingHint {
  *
  * `costUsd` is `number | null` (not optional, not `0`) so downstream
  * consumers can distinguish "free" (`0`) from "unmeasured" (`null`) when
- * provider pricing is unknown — see 07-CONTEXT.md "Cost Normalization & Usage".
+ * provider pricing is unknown.
  *
  * Distinct from `UsageRecord` on `ProviderAttemptRecord`: `UsageRecord`
  * is the per-attempt record, `Usage` is the per-run normalized shape
@@ -122,18 +122,17 @@ export interface ProviderRunRequest {
   readonly providerPackaging?: ProviderPackagingPlan;
   readonly packagedArtifacts?: readonly ArtifactRef[];
   /**
-   * Phase 39 — opt-in prompt-cache prefix (DELEG-04). Adapters that support
+   * Opt-in prompt-cache prefix. Adapters that support
    * block-granular caching (Anthropic) hoist this to a `cache_control`-marked
    * system content block; adapters that ignore it MUST receive the prefix
    * folded into `task` by the caller instead (the crew dispatcher gates on
    * `quirks.promptCachingSupported`). The field is advisory, additive, and
-   * absent for all existing callers — follows the Phase 37 `toolCalls`
-   * additive-field precedent (request/response additive fields accepted;
-   * `ProviderAdapter` METHODS frozen per INV-03).
+   * absent for existing callers. Request and response fields may grow
+   * additively while `ProviderAdapter` methods remain stable.
    */
   readonly cacheSystemPrefix?: string;
   /**
-   * Phase 51 — Provider-only native tool declarations. This is an explicit
+   * Provider-only native tool declarations. This is an explicit
    * opt-in so existing `ai.run()` and agent prompt-reencoded behavior does not
    * change merely because output contracts or tools exist elsewhere.
    */
@@ -160,17 +159,16 @@ export interface ProviderRunResponse {
   readonly rawOutputs: Record<string, unknown>;
   readonly artifactRefs?: readonly (ArtifactInput | ArtifactRef)[];
   /**
-   * @deprecated Legacy per-attempt usage shape. Phase 7+ adapters should
-   * populate `normalizedUsage` instead — Plan 04 will prefer `normalizedUsage`
+   * @deprecated Legacy per-attempt usage shape. Adapters should populate
+   * `normalizedUsage` instead; consumers prefer `normalizedUsage`
    * when wiring `RunResult.usage`. Kept here for backward compatibility with
    * v1.0 adapters that already report this field.
    */
   readonly usage?: UsageRecord;
   /**
-   * Phase 7 normalized usage shape for `RunResult.usage`. Populated by all
-   * Phase 7+ adapters (openai, openai-compat, ai-sdk, fake). `costUsd` is
-   * `null` when pricing is unknown (per the cost-normalization decision in
-   * 07-CONTEXT.md — distinguishes "free" from "unmeasured").
+   * Normalized usage shape for `RunResult.usage`. Populated by first-party
+   * adapters. `costUsd` is `null` when pricing is unknown, distinguishing
+   * "free" from "unmeasured".
    */
   readonly normalizedUsage?: Usage;
   readonly toolCalls?: readonly ValidatedToolCall[];
@@ -238,26 +236,26 @@ export interface ProviderAdapter {
     request: ProviderRunRequest,
   ) => ProviderStream | Promise<ProviderStream>;
   /**
-   * Phase 34 — D-01 — Per-adapter behavioral deviation flags. OPTIONAL on the
+   * Per-adapter behavioral deviation flags. OPTIONAL on the
    * base interface so v1.2 consumer adapters (4-field literals) continue to work
    * without modification (non-breaking). First-party adapter factories narrow the
    * return type to require `quirks` with the specific sub-interface for their adapter.
    *
-   * D-03 discriminant-narrowing contract: consumers reading this field get
+   * Consumers reading this field get
    * `AdapterQuirks` autocomplete. To access adapter-specific flags, cast after
    * an `adapter.id` discriminant check OR use the typed factory return directly.
    * Example: `(adapter.quirks as AnthropicQuirks).promptCachingSupported`.
    */
   readonly quirks?: AdapterQuirks;
   /**
-   * Phase 34 — D-02 — Capability negotiation via the provider's /models endpoint.
+   * Capability negotiation via the provider's /models endpoint.
    * OPTIONAL on the base interface (non-breaking for v1.2 consumer adapters).
    * First-party adapters that have a /models endpoint implement this; adapters
-   * without one (LM Studio, openai-compat) fall back to the Phase 33 registry.
+   * without one (LM Studio, openai-compat) fall back to the static registry.
    *
    * The top-level `negotiateCapabilities(adapter, modelId)` helper in
    * `capabilities/negotiate.ts` delegates to this method when present and
-   * synthesizes from the registry otherwise (D-04).
+   * synthesizes from the registry otherwise.
    */
   readonly negotiateCapabilities?: (modelId: string) => Promise<NegotiatedCapabilities>;
 }

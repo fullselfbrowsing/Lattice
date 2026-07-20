@@ -16,10 +16,9 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
  *   - for `must-cite`: the citations array as found at the located path
  *   - for `field-from-table`: the actual value at `path`
  *   - for `no-pii`: ONLY `{ detector, substring }` — never the full input
- *     (T-08-01 in the 08-01-PLAN threat register)
  *   - for `matches`: the value at `path`
  *
- * Phase 9 receipts will sign this evidence, so leaking the full PII into
+ * Receipts sign this evidence, so leaking the full PII into
  * `observed` would defeat redact-before-sign.
  */
 export interface TripwireEvidence {
@@ -38,8 +37,8 @@ export type TripwireResult =
  * Pure tripwire evaluator.
  *
  * No I/O, no Date.now, no random — same `(output, invariants)` always
- * returns the same `TripwireResult`. Phase 9 receipts can reconstruct the
- * verdict deterministically (T-08-04).
+ * returns the same `TripwireResult`. Receipts can reconstruct the
+ * verdict deterministically.
  *
  * Evaluates invariants in declaration order; the FIRST failing invariant
  * aborts and returns its evidence. Subsequent invariants are not evaluated.
@@ -114,7 +113,7 @@ function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireRes
 
 /**
  * Locate the citations payload in `output`. Searches top-level for a
- * `citations` or `evidence` key holding an array. Per 08-CONTEXT.md:
+ * `citations` or `evidence` key holding an array:
  * "Path defaults to evidence if the output has a citations field; the
  * runtime locates the citations payload in the output."
  *
@@ -170,7 +169,7 @@ function evaluateNoPii(
           kind: "no-pii",
           path: decl.path,
           // CRITICAL: redacted — only the detector name and the matched
-          // substring, never the full input string (T-08-01).
+          // substring, never the full input string.
           observed: { detector: detector.name, substring: result.substring },
           message: `no-pii: detector "${detector.name}" flagged content at "${decl.path}".`,
         },
@@ -215,7 +214,7 @@ async function evaluateMatches(
  *
  * Returns `undefined` for missing paths (does not throw).
  *
- * NOTE (T-08-03): `[*]` materializes the array; deeply nested wildcard
+ * NOTE: `[*]` materializes the array; deeply nested wildcard
  * chains could allocate O(N^k). Accepted for v1.1 — provider responses
  * are bounded by output token caps.
  */

@@ -57,9 +57,9 @@ export interface EvaluateContractInput {
  * projection so verdict reconstruction uses the same inputs.
  *
  * Reject taxonomy:
- *  - `contract-budget-exceeded` (CONTRACT-04 + COST-03)
- *  - `contract-modality-missing` (CONTRACT-06)
- *  - `contract-privacy-mismatch` (CONTRACT-06)
+ *  - `contract-budget-exceeded`
+ *  - `contract-modality-missing`
+ *  - `contract-privacy-mismatch`
  *  - `contract-quality-floor` (reserved for post-execution evaluation)
  */
 export function evaluateContractAgainstRoute(

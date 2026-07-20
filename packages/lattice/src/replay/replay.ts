@@ -37,14 +37,14 @@ export interface ReplayEnvelope<TOutputs extends OutputContractMap = OutputContr
   readonly usage?: UsageRecord;
   readonly events: readonly RunEvent[];
   /**
-   * Phase 10 — optional signed receipt recorded alongside the envelope so a
+   * Optional signed receipt recorded alongside the envelope so a
    * single artifact is sufficient to materialize an offline replay session
    * deterministically. Type-only import — replay.ts stays runtime-import-free
    * of the receipts builder.
    */
   readonly receipt?: ReceiptEnvelope;
   /**
-   * Phase 10 — optional contract recorded so replays can re-run pre-flight
+   * Optional contract recorded so replays can re-run preflight
    * checks deterministically.
    */
   readonly contract?: CapabilityContract;

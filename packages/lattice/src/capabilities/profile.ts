@@ -1,5 +1,4 @@
-// Phase 33 — D-05 / D-06 / D-12 / D-13 / D-14 — Public capability profile types.
-// CAPS-01 surface.
+// Public capability profile types.
 //
 // `ModelCapabilityProfile` is a sibling to `ModelCapability` (in
 // `../providers/provider.ts`), not a replacement. `ModelCapability` tracks
@@ -10,8 +9,8 @@
 // queried at run construction time but answer orthogonal questions.
 
 /**
- * Closed enum of the 8 Lattice transport adapters (D-06). Adding a new
- * adapter is a typed breaking change. Phase 34 quirk dispatch reads this
+ * Closed enum of the 8 Lattice transport adapters. Adding a new
+ * adapter is a typed breaking change. Quirk dispatch reads this
  * field.
  */
 export type CapabilityAdapter =
@@ -27,8 +26,8 @@ export type CapabilityAdapter =
 /**
  * Runtime list of the closed `CapabilityAdapter` union. MUST stay in sync with
  * the type above; the test suite asserts membership equivalence so drift fails
- * CI. Used by `isCapabilityAdapter` (below) and Phase 34 `negotiateCapabilities`
- * to narrow `string` -> `CapabilityAdapter` without an unsafe cast (IN-04).
+ * CI. Used by `isCapabilityAdapter` and `negotiateCapabilities`
+ * to narrow `string` -> `CapabilityAdapter` without an unsafe cast.
  */
 export const CAPABILITY_ADAPTERS: readonly CapabilityAdapter[] = [
   "openrouter",
@@ -42,7 +41,7 @@ export const CAPABILITY_ADAPTERS: readonly CapabilityAdapter[] = [
 ] as const;
 
 /**
- * Runtime type guard for the closed `CapabilityAdapter` union (IN-04). Returns
+ * Runtime type guard for the closed `CapabilityAdapter` union. Returns
  * true iff `id` is one of the 8 first-party adapter identifiers. Consumers passing
  * a third-party adapter id (e.g., `"openrouter-prod"` typo) get `false` and the
  * caller can route to the graceful-degradation empty-stub path without performing
@@ -53,8 +52,8 @@ export function isCapabilityAdapter(id: string): id is CapabilityAdapter {
 }
 
 /**
- * Closed enum of the 5 training-lineage buckets (D-14). Receipt v1.2
- * (Phase 38) carries this value verbatim via the `modelClass` field.
+ * Closed enum of the 5 training-lineage buckets. Receipt v1.2 carries this
+ * value verbatim via the `modelClass` field.
  * Stable across model patches — gpt-4o-2024-05-13 and gpt-4o-2024-08-06
  * share a trainingClass so receipts remain comparable across rebuilds.
  */
@@ -66,12 +65,12 @@ export type TrainingClass =
   | "local_quantized";
 
 /**
- * Closed enum of the 5 recommended prompt-tuning buckets (research open
- * question 2). DISTINCT from `TrainingClass`: `reasoning` is orthogonal
+ * Closed enum of the 5 recommended prompt-tuning buckets. DISTINCT from
+ * `TrainingClass`: `reasoning` is orthogonal
  * to lineage (a frontier RLHF model with hidden_cot routes to the
  * `reasoning` strategy bucket); `local` is the granularity boundary
  * for the deployed-locally strategy bucket (vs the `local_quantized`
- * lineage signal). Phase 35 prompt-scaffold dispatch reads this field.
+ * lineage signal). Prompt-scaffold dispatch reads this field.
  */
 export type RecommendedPromptStrategy =
   | "frontier"
@@ -82,8 +81,8 @@ export type RecommendedPromptStrategy =
 
 /**
  * Closed enum of the 7 known model-class output-shape failure modes at
- * v1.3.0 (D-12). Adding a member in v1.4+ is an intentional typed
- * breaking change — Phase 36 sanitizer dispatch enforces exhaustiveness
+ * v1.3.0. Adding a member in v1.4+ is an intentional typed
+ * breaking change; sanitizer dispatch enforces exhaustiveness
  * via a `_exhaustive: never` switch (see test-d/capabilities.test-d.ts).
  */
 export type KnownFailureMode =
@@ -97,7 +96,7 @@ export type KnownFailureMode =
 
 /**
  * Closed enum of the 5 reasoning-surface shapes a model exposes. Drives
- * the Phase 36 sanitizer's choice of leak-cleanup pass (e.g., `<think>`
+ * the sanitizer's choice of leak-cleanup pass (e.g., `<think>`
  * tag stripping for `inlined_tags`).
  */
 export type ReasoningSurface =
@@ -109,7 +108,7 @@ export type ReasoningSurface =
 
 /**
  * Closed enum of the 5 tool-call surface shapes a model exposes. Drives
- * the Phase 37 tool-call validator's choice of arguments parser.
+ * the tool-call validator's choice of arguments parser.
  */
 export type ToolCallSurface =
   | "none"
@@ -141,10 +140,10 @@ export type ModelCapabilityProfileModality =
   | "embeddings";
 
 /**
- * Phase 33 — D-05 / D-08 — Capability profile for one (adapter, model)
- * pair. Sibling to `ModelCapability`, not a replacement. Built-time baked
- * via the OpenRouter snapshot generator (Phase 33-03) plus hand-edited
- * supplemental static profiles (Phase 33-04).
+ * Capability profile for one (adapter, model)
+ * pair. Sibling to `ModelCapability`, not a replacement. Baked at build time
+ * via the OpenRouter snapshot generator plus hand-edited
+ * supplemental static profiles.
  *
  * Canonical key: `${adapter}:${modelId}` — one profile per (adapter,
  * model) pair. `openrouter:openai/gpt-oss-120b` and `openai:gpt-oss-120b`
@@ -155,43 +154,42 @@ export interface ModelCapabilityProfile {
    * The model identifier as the adapter sees it. For OpenRouter this is
    * the `vendor/model` shape (e.g., `openai/gpt-oss-120b`); for direct
    * adapters this is the provider's native id (e.g., `claude-opus-4`).
-   * Combined with `adapter` to form the canonical lookup key `${adapter}:${id}` (D-08).
+   * Combined with `adapter` to form the canonical lookup key `${adapter}:${id}`.
    */
   readonly id: string;
   /**
-   * The Lattice transport adapter that ships this profile (D-05 /
-   * D-06). Phase 34 adapter-quirk dispatch reads this field. Closed
-   * union of 8 values.
+   * The Lattice transport adapter that ships this profile. Adapter-quirk
+   * dispatch reads this closed union of 8 values.
    */
   readonly adapter: CapabilityAdapter;
   /**
-   * The model creator (D-07). Open extensible string — new orgs emerge
+   * The model creator. Open extensible string — new orgs emerge
    * frequently and should not break the type. Examples: `openai`,
    * `anthropic`, `meta`, `mistral`, `google`, `xai`, `deepseek`, `qwen`.
-   * Phase 35 prompt-scaffold dispatch falls back to
+   * Prompt-scaffold dispatch falls back to
    * `recommendedPromptStrategy` for unknown originFamily values.
    */
   readonly originFamily: string;
   /**
-   * Training-lineage classification (D-14). Receipt v1.2 `modelClass`
-   * (Phase 38) carries this value verbatim. Drives the failure-mode
+   * Training-lineage classification. Receipt v1.2 `modelClass` carries this
+   * value verbatim and drives the failure-mode
    * default set in the classifier.
    */
   readonly trainingClass: TrainingClass;
   /**
-   * Shape of the model's reasoning output. Drives the Phase 36
+   * Shape of the model's reasoning output. Drives the
    * sanitizer's reasoning-leak cleanup pass.
    */
   readonly reasoningSurface: ReasoningSurface;
   /**
-   * Shape of the model's tool-call output. Drives the Phase 37
+   * Shape of the model's tool-call output. Drives the
    * tool-call validator's arguments parser.
    */
   readonly toolCallSurface: ToolCallSurface;
   /**
    * The actual context window the adapter will accept on a request, in
    * tokens. For OpenRouter this is `top_provider.context_length ?? context_length`
-   * (Phase 33 Pitfall 2) — what OpenRouter routing actually offers, not
+   * — what OpenRouter routing actually offers, not
    * the model card's aspirational maximum.
    */
   readonly contextWindow: number;
@@ -200,14 +198,14 @@ export interface ModelCapabilityProfile {
   readonly outputModalities?: readonly ModelCapabilityProfileModality[];
   readonly supportedParameters?: readonly string[];
   /**
-   * Failure modes this model class is known to exhibit (D-14). Class-
-   * derived defaults plus per-family overrides. Phase 36 sanitizer
+   * Failure modes this model class is known to exhibit. Class-
+   * derived defaults plus per-family overrides. Sanitizer
    * dispatch exhaustively switches on each entry.
    */
   readonly knownFailureModes: readonly KnownFailureMode[];
   /**
-   * Recommended prompt-tuning bucket (research open question 2). Phase
-   * 35 prompt-scaffold dispatch reads this field. Distinct from
+   * Recommended prompt-tuning bucket. Prompt-scaffold dispatch reads this
+   * field. Distinct from
    * `trainingClass` — see `RecommendedPromptStrategy` JSDoc.
    */
   readonly recommendedPromptStrategy: RecommendedPromptStrategy;
@@ -215,9 +213,9 @@ export interface ModelCapabilityProfile {
 
 /**
  * Frozen list of every `KnownFailureMode` member. Useful for exhaustive
- * iteration in downstream tests and Phase 36 sanitizer registration.
+ * iteration in downstream tests and sanitizer registration.
  * Adding a new mode requires updating this array AND the
- * `KnownFailureMode` union AND the Phase 36 exhaustive switch — the
+ * `KnownFailureMode` union AND the sanitizer's exhaustive switch; the
  * `satisfies` clause enforces array-vs-union parity at compile time.
  */
 export const ALL_KNOWN_FAILURE_MODES = [
@@ -232,8 +230,8 @@ export const ALL_KNOWN_FAILURE_MODES = [
 
 /**
  * Frozen list of every `TrainingClass` member. Useful for exhaustive
- * iteration when constructing the failure-mode defaults table (D-14)
- * and for Phase 38 receipt-class enumeration.
+ * iteration when constructing the failure-mode defaults table and receipt
+ * class enumeration.
  */
 export const ALL_TRAINING_CLASSES = [
   "frontier_rlhf",

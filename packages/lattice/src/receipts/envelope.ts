@@ -8,22 +8,21 @@
  *
  * Reference: https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md
  *
- * Reconciled in plan 09-03 to import canonical types from ./types.js (plan
- * 09-01 lands the spine). `_Local` aliases are retained as deprecated type
- * exports for backward compatibility with the Wave 1 sibling imports.
+ * Canonical receipt types live in ./types.js. `_Local` aliases are retained
+ * as deprecated exports for backward compatibility.
  */
 
 import type { ReceiptEnvelope, ReceiptSignature } from "./types.js";
 
 /**
  * @deprecated Use ReceiptSignature from "./types.js". Retained as an alias
- * during the Wave 1 -> Wave 2 reconciliation.
+ * for backward compatibility.
  */
 export type ReceiptSignature_Local = ReceiptSignature;
 
 /**
  * @deprecated Use ReceiptEnvelope from "./types.js". Retained as an alias
- * during the Wave 1 -> Wave 2 reconciliation.
+ * for backward compatibility.
  */
 export type ReceiptEnvelope_Local = ReceiptEnvelope;
 

@@ -10,7 +10,7 @@
  * event when a tracer is configured. Successful events include the envelope;
  * failures include only the stable receipt code and stage.
  *
- * Registration convention (D-06): the caller registers the returned
+ * Registration convention: the caller registers the returned
  * handler on a HookPipeline at BAND.OBSERVABILITY -- between SAFETY
  * (must run first) and EXTENSION (user-supplied; runs last). The factory
  * exposes DEFAULT_CHECKPOINT_BAND as a re-export of BAND.OBSERVABILITY
@@ -21,23 +21,22 @@
  * callers observe the shared failed outcome and decide how to terminate the
  * enclosing operation.
  *
- * Step-marker field contract (carries forward Phase 2 D-04):
+ * Step-marker field contract:
  *   - stepName, parentStepName, previousStepName, sessionId are STABLE
  *     IDENTIFIERS, NOT user content. Callers MUST NOT populate them
  *     with free-form user input -- those fields appear cleartext in
  *     the signed receipt (the redaction manifest at redact.ts
- *     intentionally does NOT cover them per Phase 2 D-04).
+ *     intentionally does NOT cover them).
  *   - timestamp is ISO-8601 RFC 3339 (e.g., "2026-05-24T18:00:00.000Z").
  *   - stepIndex is a monotonically increasing ordinal supplied by the
  *     caller. The handler does NOT auto-increment -- the caller owns
  *     ordering (typically via session state).
  *
- * Tracer event vocabulary (D-01):
+ * Tracer event vocabulary:
  *   - Event name: "step.transition" (added to RunEventKind in the
  *     preceding tracing.ts commit; namespace-sibling of run.start /
  *     stage.start / provider.attempt / tool.call).
- *   - Metadata keys (flat -- CD-01 resolved to flat per existing
- *     emitEvent at create-ai.ts:862-868):
+ *   - Metadata keys are flat, matching other RunEvent metadata:
  *       { stepName, stepIndex, parentStepName?, previousStepName?,
  *         sessionId?, timestamp, runId,
  *         receiptStatus, receiptId?, receiptCode?, receiptStage?, envelope? }
@@ -45,7 +44,7 @@
  *     downstream subscribers can persist or display the signed receipt
  *     without re-minting.
  *
- * Vocabulary separation (D-02): HookLifecycleEvent (bands.ts) and
+ * Vocabulary separation: HookLifecycleEvent (bands.ts) and
  * RunEventKind (tracing.ts) remain SEPARATE unions. This module
  * subscribes to HookLifecycleEvent (the caller registers on BEFORE_TOOL
  * or AFTER_TOOL or wherever) and emits a RunEventKind tracer event.
@@ -71,7 +70,7 @@ import { BAND, type Band, type HookHandler } from "./bands.js";
 export const STEP_TRANSITION_EVENT_NAME = "step.transition" as const;
 
 /**
- * Default band convention for the checkpoint hook (D-06). The caller is
+ * Default band convention for the checkpoint hook. The caller is
  * free to register in a different band but the documented convention is
  * OBSERVABILITY -- between SAFETY (runs first) and EXTENSION (runs last).
  */
@@ -80,14 +79,14 @@ export const DEFAULT_CHECKPOINT_BAND: Band = BAND.OBSERVABILITY;
 /**
  * Per-step context the caller passes through the hook pipeline.
  *
- * Fields are stable identifiers (D-04 carryforward); do NOT populate with
+ * Fields are stable identifiers; do NOT populate them with
  * user content -- they appear cleartext in the signed receipt body.
  *
  * - stepName: required. Stable identifier for this step.
  * - stepIndex: required. Monotonically increasing ordinal; caller-owned.
  * - parentStepName: optional. Names the enclosing step when nested.
  * - previousStepName: optional. Names the immediately-prior step in the
- *   linked-list timeline (D-09 linked-list threading).
+ *   linked-list timeline.
  * - timestamp: required. ISO-8601 RFC 3339.
  */
 export interface CheckpointHookContext {
@@ -105,7 +104,7 @@ export interface CheckpointHookContext {
  * - tracer: optional. When omitted, the handler still mints (when signer
  *   present) but does NOT emit a tracer event. When provided, the handler
  *   ALWAYS emits exactly one event per invocation (independent of mint
- *   success/failure per D-10).
+ *   success or failure).
  * - signer: optional. Resolved together with receiptMode by the shared policy.
  * - receiptMode: optional. Explicit off, best-effort, or required override.
  * - onReceiptOutcome: optional bounded channel for enclosing runtimes.

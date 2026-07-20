@@ -225,7 +225,7 @@ export async function loadSidecar(path: string): Promise<SidecarFile> {
     validatedOutputs[key] = classified;
   }
 
-  // Optional rawOutputs (Phase 13.1-03). When present, callers can opt to
+  // Optional rawOutputs. When present, callers can opt to
   // round-trip the receipt's outputHash through `lattice repro`. Additive
   // field: existing sidecars without it still load.
   let rawOutputs: Record<string, unknown> | undefined;
@@ -258,7 +258,7 @@ export async function loadSidecar(path: string): Promise<SidecarFile> {
  * `output.artifacts()`). Returns the four optional fields ready to spread
  * into `MaterializeReplayEnvelopeOptions`.
  *
- * Phase 13.1-03: when the sidecar carries `rawOutputs` (the original
+ * When the sidecar carries `rawOutputs` (the original
  * provider output VALUES), the returned `outputs` field is set to those
  * values directly so `materializeReplayEnvelope` populates the replay
  * envelope with values that recompute the receipt's recorded outputHash

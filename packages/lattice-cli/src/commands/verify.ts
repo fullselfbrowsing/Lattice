@@ -5,21 +5,20 @@
  * receipt JSON, loads the keyset JSON file (default `~/.lattice/keyset.json`),
  * and runs `verifyReceipt` from the lattice public surface.
  *
- * Output contract (CONTEXT.md exit-code matrix):
- *   exit 0 — success    : single stdout line with the receipt verdict,
+ * Output contract (exit-code matrix):
+ *   exit 0 — success: single stdout line with the receipt verdict,
  *                         verification profile, and deprecation status
  *   exit 1 — verify FAIL: single stderr line `FAIL kind=<VerifyErrorKind> reason=<message>`
- *   exit 2 — load FAIL  : single stderr line `FAIL kind=keyset-load-failed reason=...`
+ *   exit 2 — load FAIL: single stderr line `FAIL kind=keyset-load-failed reason=...`
  *                         or `FAIL kind=receipt-load-failed reason=...`
  *
- * Redaction discipline (CLI-05): the success line only surfaces signed-body
+ * Redaction discipline: the success line only surfaces signed-body
  * metadata plus verifier-owned profile metadata. It never prints payload
  * bytes, input/output hashes, or signatures.
  *
  * The handler is split into a named exported `runVerify(args, deps)` plus
  * the default-exported `defineCommand`. Tests import `runVerify` and inject
- * a capturing `VerifyDeps` — the "subcommand handlers tested via mock argv,
- * no spawn" pattern documented in 11-CONTEXT.md.
+ * a capturing `VerifyDeps`, avoiding subprocesses.
  */
 
 import { readFile } from "node:fs/promises";

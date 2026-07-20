@@ -1,5 +1,5 @@
 /**
- * runAgent — Phase 19 (v1.2).
+ * runAgent (v1.2).
  *
  * The agent-loop orchestrator. Wraps multiple provider iterations under one
  * `ai.runAgent(intent)` call. Each iteration:
@@ -19,15 +19,15 @@
  *
  * Composition surfaces (all optional on AgentIntent):
  *
- *   - `pipeline?` — Phase 15 HookPipeline; runtime creates one if absent.
+ *   - `pipeline?` — HookPipeline; runtime creates one if absent.
  *   - `signer?` / `receiptMode?` — invocation receipt policy overrides.
  *                   Signers fall back to runtime config; enabled checkpoint
  *                   issuance auto-registers on BAND.OBSERVABILITY unless
  *                   explicitly disabled.
- *   - `tracer?`   — Phase 5 TracerLike; flows through pipeline.
+ *   - `tracer?`   — TracerLike; flows through pipeline.
  *   - `outputs?`  — final-answer schema map; validated only on the final
  *                   assistant message (no intermediate validation).
- *   - `contract?` — Phase 7 CapabilityContract; budget invariants are
+ *   - `contract?` — CapabilityContract; budget invariants are
  *                   enforced pre-iteration.
  *
  * Every terminal result passes through one receipt finalizer. Required-mode
@@ -93,7 +93,7 @@ const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null 
 const DEFAULT_AGENT_OUTPUTS: DefaultAgentOutputs = { answer: "text" };
 
 /**
- * Context handed to an injected `dispatchToolUse` seam (Phase 39, internal).
+ * Context handed to the internal injected `dispatchToolUse` seam.
  * Carries the loop position plus read-only views of the live conversation
  * and the hook pipeline so a crew dispatcher can run its own pipeline
  * events around child execution.
@@ -107,9 +107,8 @@ export interface DispatchToolUseContext {
 
 /**
  * Internal (in-package only — NOT re-exported from src/index.ts) options
- * for `runAgentInternal`. Phase 39 (v1.3) adds the injectable tool-use
- * dispatch seam the CrewDispatcher (39-05) routes child-agent calls
- * through.
+ * for `runAgentInternal`. The injectable tool-use dispatch seam lets
+ * CrewDispatcher route child-agent calls through the same loop.
  *
  * Semantics: for each `ToolUseRequest` in step 4g, when `dispatchToolUse`
  * is present it is consulted FIRST. If it resolves `{ content }`, that
@@ -140,12 +139,12 @@ export interface RunAgentInternalOptions {
 /**
  * Resolves the runtime's behaviour for a single `ai.runAgent(intent)` call.
  *
- * Phase 19 ships an in-process default scheduler (the loop runs in the
+ * The default scheduler runs the loop in the
  * calling Promise), direct transport (provider.execute()), and in-memory
- * transcript (the `conversation` array). Phase 20 promotes scheduler /
- * transport / storage to the pluggable `AgentHost` adapter.
+ * transcript (the `conversation` array). Scheduler, transport, and storage
+ * are replaceable through the pluggable `AgentHost` adapter.
  *
- * Phase 39: `runAgent` is a thin public wrapper over `runAgentInternal`
+ * `runAgent` is a thin public wrapper over `runAgentInternal`
  * with no internal options — the public signature and behavior are
  * unchanged.
  */
@@ -157,8 +156,8 @@ export async function runAgent<TOutputs extends OutputContractMap = DefaultAgent
 }
 
 /**
- * The agent-loop implementation with the internal dispatch seam (Phase 39).
- * In-package consumers (agent/crew/, 39-05) call this directly; it is NOT
+ * The agent-loop implementation with the internal dispatch seam.
+ * In-package crew consumers call this directly; it is NOT
  * part of the public package surface.
  */
 export async function runAgentInternal<TOutputs extends OutputContractMap = DefaultAgentOutputs>(
@@ -561,8 +560,8 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
       let resultContent: string | null = null;
       let resultHash = "tool-not-found";
 
-      // Phase 39 internal dispatch seam: consult the injected dispatcher
-      // first. `{ content }` short-circuits the default path; `undefined`
+      // Consult the injected dispatcher first. `{ content }` short-circuits
+      // the default path; `undefined`
       // falls through to the existing lookup/runTool path verbatim.
       if (internalOptions.dispatchToolUse !== undefined) {
         const dispatched = await internalOptions.dispatchToolUse(req, {
@@ -639,7 +638,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
     }
 
     // 4h. Persist agent state via host.storage so the loop can resume
-    // after eviction (Phase 20). The survivability adapter handles
+    // after eviction. The survivability adapter handles
     // serialization (default: createNoopSurvivabilityAdapter which
     // JSON.stringifies the state).
     if (host.storage !== undefined) {

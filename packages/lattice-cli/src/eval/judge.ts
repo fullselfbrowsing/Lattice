@@ -1,8 +1,8 @@
 /**
  * Judge interface, the v1.1 default `noopJudge`, the N=3 median primitive,
- * and the cache-aware `runJudgeWithN` runner (Plan 12-01).
+ * and the cache-aware `runJudgeWithN` runner.
  *
- * CONTEXT.md "Judge implementation is user-supplied at runtime" — `noopJudge`
+ * Judge implementations are user-supplied at runtime. `noopJudge`
  * ships only so the eval gate can run end-to-end in tests without a real
  * judge. Real judges are caller-pluggable.
  *

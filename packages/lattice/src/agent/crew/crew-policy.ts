@@ -1,20 +1,19 @@
 /**
- * CrewPolicy — Phase 39 (v1.3). Crew-level policy contract + normalizer
- * (D-06, D-11, D-16).
+ * CrewPolicy (v1.3). Crew-level policy contract and normalizer.
  *
  * `CrewPolicy.budget` reuses `BudgetInvariant` verbatim from
- * `contract/contract.ts` (D-06) — the crew-level shared pool. Structural
+ * `contract/contract.ts` — the crew-level shared pool. Structural
  * caps (`maxTotalIterations`, `maxIterationsPerAgent`,
  * `maxConcurrentChildren`, `maxDepth`) bound the crew shape independently
  * of cost.
  *
- * v1.3 executes children serially (D-11): the `maxConcurrentChildren`
+ * v1.3 executes children serially: the `maxConcurrentChildren`
  * field exists for forward compatibility but `validateCrewPolicy` rejects
- * values > 1 with a `TypeError` at entry (fail-fast, research Pattern 5 —
- * reject, not clamp, per the project's "explicit config, no magic" stance).
+ * values > 1 with a `TypeError` at entry. Rejecting rather than clamping
+ * preserves the project's explicit-configuration contract.
  *
  * `limits` is keyed by `adapter.id` and overrides the rate-limit-group
- * defaults per provider key (D-16). `coordination: "unmanaged"` is the
+ * defaults per provider key. `coordination: "unmanaged"` is the
  * explicit escape hatch for consumers who handle 429s themselves.
  *
  * `validateCrewPolicy` follows the `contract()` factory template
@@ -31,17 +30,17 @@ export interface CrewRateLimitOverride {
   readonly tokensPerMinute?: number;
 }
 
-/** Crew-level policy contract (D-06, D-11, D-16). */
+/** Crew-level policy contract. */
 export interface CrewPolicy {
   /** Crew-level shared budget pool — `BudgetInvariant` reused verbatim. */
   readonly budget?: BudgetInvariant;
   readonly maxTotalIterations?: number;
   readonly maxIterationsPerAgent?: number;
-  /** Forward-compat field; the v1.3 runtime rejects values > 1 (D-11). */
+  /** Forward-compat field; the v1.3 runtime rejects values > 1. */
   readonly maxConcurrentChildren?: number;
-  /** Delegation depth cap; defaults to 1 (parent→child only, D-05). */
+  /** Delegation depth cap; defaults to 1 (parent to child only). */
   readonly maxDepth?: number;
-  /** Per-adapter-id rate-limit overrides (D-16). */
+  /** Per-adapter-id rate-limit overrides. */
   readonly limits?: Readonly<Record<string, CrewRateLimitOverride>>;
   /** "managed" (default) wraps transports in the rate-limit group; "unmanaged" skips it. */
   readonly coordination?: "managed" | "unmanaged";
@@ -63,7 +62,7 @@ export interface ValidatedCrewPolicy extends CrewPolicy {
  * - Applies defaults: `maxDepth: 1`, `maxConcurrentChildren: 1`,
  *   `coordination: "managed"`.
  * - Throws `TypeError` when `maxConcurrentChildren > 1` (serial-only v1.3
- *   limit, D-11) or when any structural cap is a non-integer or < 1.
+ *   limit) or when any structural cap is a non-integer or < 1.
  * - Returns a frozen normalized policy; the input is never mutated.
  */
 export function validateCrewPolicy(policy: CrewPolicy = {}): ValidatedCrewPolicy {

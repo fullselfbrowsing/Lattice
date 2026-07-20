@@ -1,26 +1,26 @@
 /**
- * CrewDispatcher — Phase 39 (v1.3). The single chokepoint where ALL crew
- * concerns live (D-01/D-02).
+ * CrewDispatcher (v1.3). The single chokepoint where ALL crew
+ * concerns live.
  *
- * Hybrid dispatch model (D-01): the parent's MODEL sees each child agent as
+ * Hybrid dispatch model: the parent's MODEL sees each child agent as
  * a named tool (synthesized `ToolDefinition`-shaped declarations derived
  * from the child's `id`, `intent`, and `summaryReturnSchema`), but the
  * RUNTIME branches on the `kind: "agent"` discriminant at this chokepoint —
- * dispatch is routed through the 39-03 `runAgentInternal` seam
+ * dispatch is routed through the internal `runAgentInternal` seam
  * (`dispatchToolUse`), never through a tool closure. No policy logic is
- * smuggled into tool `execute` bodies (D-02): budget derivation, ancestry
+ * smuggled into tool `execute` bodies: budget derivation, ancestry
  * cycle/depth enforcement, summary-return validation, classified failure
  * routing, and receipt minting all live HERE.
  *
- * Re-entry contract (D-04): a completed child returns a schema-validated
+ * Re-entry contract: a completed child returns a schema-validated
  * `{ summary, artifacts, receipts }` envelope that re-enters the parent
  * conversation as a standard `role: "tool"` turn over the existing
  * prompt-reencoded tool protocol. Recoverable failures return as structured
- * `{ error: { kind, reason, terminal } }` tool results (D-09); terminal
- * failures (D-10) are never re-dispatched — a per-dispatcher terminal-block
+ * `{ error: { kind, reason, terminal } }` tool results; terminal
+ * failures are never re-dispatched — a per-dispatcher terminal-block
  * set caches the error and short-circuits without running the child.
  *
- * Ancestry convention (D-05): `CrewDispatchContext.ancestry` is the chain
+ * Ancestry convention: `CrewDispatchContext.ancestry` is the chain
  * of spec ids ABOVE the agent this dispatcher serves (parent-first,
  * exclusive of the agent itself — the root agent's dispatcher receives
  * `[]`). Cycle prevention rejects any dispatch whose target id equals the
@@ -77,17 +77,17 @@ import type { AgentSpec } from "./agent-spec.js";
 import type { ValidatedCrewPolicy } from "./crew-policy.js";
 
 /**
- * Context handed to `createCrewDispatcher` by the crew orchestrator
- * (39-06) — or by tests driving the dispatcher directly.
+ * Context handed to `createCrewDispatcher` by the crew orchestrator or by
+ * tests driving the dispatcher directly.
  */
 export interface CrewDispatchContext {
-  /** Normalized crew policy from `validateCrewPolicy` (39-03). */
+  /** Normalized crew policy from `validateCrewPolicy`. */
   readonly policy: ValidatedCrewPolicy;
   /** Host every child loop runs against (`hosts.childHost`). */
   readonly childHost: AgentHost;
   /**
    * Spec-id chain ABOVE the agent this dispatcher serves, parent-first and
-   * exclusive of the agent itself (D-05). Root dispatcher: `[]`.
+   * exclusive of the agent itself. Root dispatcher: `[]`.
    */
   readonly ancestry: readonly string[];
   /** Crew-root receipt CID — the chain anchor (absent when no signer). */
@@ -98,11 +98,11 @@ export interface CrewDispatchContext {
   readonly receiptMode?: ReceiptIssuanceMode;
   /**
    * Feeds the per-agent tracker + crew aggregator. Called exactly once per
-   * child dispatch with the child run's cumulative usage (Pitfall 3).
+   * child dispatch with the child run's cumulative usage.
    */
   readonly recordUsage: (agentId: string, usage: Usage) => void;
   /**
-   * Optional richer telemetry hook for the 39-06 orchestrator. Kept
+   * Optional richer telemetry hook for the crew orchestrator. Kept
    * additive so dispatcher-only tests and direct consumers do not need to
    * know about CrewResult assembly.
    */
@@ -110,7 +110,7 @@ export interface CrewDispatchContext {
     agentId: string,
     result: AgentResult,
   ) => void;
-  /** Remaining crew pool (D-07). `undefined` = unbounded. */
+  /** Remaining crew pool. `undefined` = unbounded. */
   readonly remainingBudget: () => BudgetInvariant | undefined;
   /** Byte-stable crew cache prefix ("" = no prefix sharing). */
   readonly sharedPrefix: string;
@@ -128,29 +128,29 @@ export interface CrewDispatchContext {
   readonly pipeline?: AgentIntent["pipeline"];
 }
 
-/** Seam-compatible dispatch function (39-03 `runAgentInternal` options). */
+/** Dispatch function compatible with `runAgentInternal` options. */
 export type DispatchToolUseFn = NonNullable<RunAgentInternalOptions["dispatchToolUse"]>;
 
-/** The chokepoint surface consumed by the 39-06 orchestrator. */
+/** The chokepoint surface consumed by the crew orchestrator. */
 export interface CrewDispatcher {
-  /** Plugs into the 39-03 seam: `runAgentInternal(intent, config, { dispatchToolUse })`. */
+  /** Plugs into `runAgentInternal(intent, config, { dispatchToolUse })`. */
   readonly dispatchToolUse: DispatchToolUseFn;
   /**
    * Synthesized child declarations for the parent's `intent.tools` —
    * real `ToolDefinition`-shaped values so `formatToolsForProvider` renders
-   * them and Phase 37 `validateToolCalls` registries accept them (Pitfall 5).
+   * them and `validateToolCalls` registries accept them.
    */
   readonly childToolDeclarations: ReadonlyArray<ToolDefinition<StandardSchemaV1>>;
   /**
-   * Crew-ceiling signal (D-10): flips to `true` once a dispatch was
-   * rejected with terminal `crew-budget-exceeded`. The 39-06 orchestrator
+   * Crew-ceiling signal: flips to `true` once a dispatch was
+   * rejected with terminal `crew-budget-exceeded`. The orchestrator
    * reads this to end the crew run. Shared across the recursive child
    * dispatchers of one crew.
    */
   readonly crewBudgetExhausted: () => boolean;
 }
 
-/** Structured tool-result error body (D-09 shape). */
+/** Structured tool-result error body. */
 export interface CrewDispatchError {
   readonly kind: string;
   readonly reason: string;
@@ -187,9 +187,9 @@ function createDispatcherNode(
     ...(ctx.receiptMode !== undefined ? { mode: ctx.receiptMode } : {}),
     ...(ctx.signer !== undefined ? { signer: ctx.signer } : {}),
   });
-  // D-10 terminal-block set: childId -> cached terminal error content.
+  // Terminal-block set: childId -> cached terminal error content.
   const terminalBlock = new Map<string, string>();
-  // Cache-prefix hoist (DELEG-04): every child loop's transport is wrapped
+  // Cache-prefix hoist: every child loop's transport is wrapped
   // so requests whose task starts with the byte-stable crew prefix are
   // hoisted to ProviderRunRequest.cacheSystemPrefix when (and ONLY when)
   // the executing adapter discloses quirks.promptCachingSupported. All
@@ -227,16 +227,16 @@ function createDispatcherNode(
       return undefined;
     }
 
-    // ---- Pre-run checks (Task 2a-c) -------------------------------------
+    // ---- Pre-run checks --------------------------------------------------
 
-    // (i) Terminal-block short-circuit (D-10): a terminally-failed child is
+    // (i) Terminal-block short-circuit: a terminally-failed child is
     // never re-dispatched — return the cached error WITHOUT running it.
     const blocked = terminalBlock.get(childSpec.id);
     if (blocked !== undefined) {
       return { content: blocked };
     }
 
-    // (ii) Cycle check (D-05): reject when the target id equals the
+    // (ii) Cycle check: reject when the target id equals the
     // dispatching agent's own id or already appears in the ancestry chain.
     if (req.name === spec.id || ctx.ancestry.includes(req.name)) {
       return errorResult({
@@ -248,7 +248,7 @@ function createDispatcherNode(
       });
     }
 
-    // (iii) Depth check (D-05): ancestry holds the agents ABOVE this one,
+    // (iii) Depth check: ancestry holds the agents ABOVE this one,
     // so its length is this agent's depth — dispatching one level further
     // is rejected once that depth reaches policy.maxDepth.
     if (ctx.ancestry.length >= ctx.policy.maxDepth) {
@@ -261,7 +261,7 @@ function createDispatcherNode(
       });
     }
 
-    // (iv) Crew ceiling (D-10): a fully-drained pool ends the run — emit
+    // (iv) Crew ceiling: a fully-drained pool ends the run — emit
     // terminal crew-budget-exceeded and flip the orchestrator signal.
     const childRemainingBudget = (): BudgetInvariant | undefined =>
       subtractLocalCost(ctx.remainingBudget(), loopCtx.cumulativeUsage);
@@ -275,12 +275,12 @@ function createDispatcherNode(
       });
     }
 
-    // ---- Child pipeline (Task 1) ----------------------------------------
+    // ---- Child pipeline -------------------------------------------------
 
     // (1) Dispatch args: the model supplies { task: string } per the
     // synthesized declaration schema. Untrusted model output — reject
     // malformed args with a recoverable structured error instead of
-    // throwing (T-39-14: failures are structured objects, not raw text).
+    // throwing (failures are structured objects, not raw text).
     const task = extractTaskArg(req.args);
     if (task === null) {
       return errorResult({
@@ -290,10 +290,10 @@ function createDispatcherNode(
       });
     }
 
-    // (2) Effective budget (D-07): per-dimension min of the child's
+    // (2) Effective budget: per-dimension min of the child's
     // contract budget and the remaining crew pool; iterations also capped
     // by policy.maxIterationsPerAgent. Null/absent cost dimensions never
-    // poison min() (Pitfall 4).
+    // poison min().
     const effectiveBudget = deriveChildBudget(
       childSpec.contract?.budget,
       pool,
@@ -301,7 +301,7 @@ function createDispatcherNode(
     );
 
     // (3) Build the child AgentIntent and run the existing loop. The
-    // child's dispatch context threads the extended ancestry chain (D-05);
+    // child's dispatch context threads the extended ancestry chain;
     // when the child has its own childAgents, a recursive dispatcher node
     // (sharing this crew's state) serves its loop and its declarations
     // join the child's tool surface.
@@ -361,7 +361,7 @@ function createDispatcherNode(
     );
 
     // (5) Record child usage exactly once — success AND failure paths both
-    // consumed provider budget (Pitfall 3: no double-counting; the crew
+    // consumed provider budget (no double-counting; the crew
     // aggregator never sees this run again).
     ctx.recordUsage(childSpec.id, childResult.usage);
 
@@ -374,7 +374,7 @@ function createDispatcherNode(
 
     if (childResult.kind !== "success") {
       ctx.recordAgentResult?.(childSpec.id, childResult);
-      // (b) Classified failure routing (D-09/D-10).
+      // (b) Classified failure routing.
       return routeChildFailure(childSpec.id, childResult);
     }
 
@@ -382,7 +382,7 @@ function createDispatcherNode(
     ctx.recordAgentResult?.(childSpec.id, childResult);
 
     // (4) Assemble + validate the summary envelope (children only — the
-    // root agent's return is NOT schema-validated; research Open Q2).
+    // root agent's return is NOT schema-validated).
     const envelope = {
       summary: extractSummary(childResult.output),
       artifacts: childArtifacts,
@@ -401,7 +401,7 @@ function createDispatcherNode(
       });
     }
 
-    // (6) Re-enter the parent conversation as a standard tool turn (D-04).
+    // (6) Re-enter the parent conversation as a standard tool turn.
     return { content: JSON.stringify(envelope) };
   }
 
@@ -413,7 +413,7 @@ function createDispatcherNode(
 }
 
 // ---------------------------------------------------------------------------
-// Budget derivation (D-07, Pitfall 4)
+// Budget derivation
 // ---------------------------------------------------------------------------
 
 /**
@@ -422,7 +422,7 @@ function createDispatcherNode(
  *
  * Cost-dimension min applies ONLY when both sides are numbers — a pool
  * derived from null-cost (unmeasured) usage omits `maxCostUsd`, and even a
- * literal `null` never poisons the arithmetic (Pitfall 4).
+ * literal `null` never poisons the arithmetic.
  */
 export function deriveChildBudget(
   specBudget: BudgetInvariant | undefined,
@@ -446,7 +446,7 @@ export function deriveChildBudget(
   };
 }
 
-/** min() that only applies when BOTH sides are real numbers (Pitfall 4). */
+/** min() that only applies when BOTH sides are real numbers. */
 function minDefined(a: number | null | undefined, b: number | null | undefined): number | undefined {
   const aNum = typeof a === "number" && Number.isFinite(a) ? a : undefined;
   const bNum = typeof b === "number" && Number.isFinite(b) ? b : undefined;
@@ -484,17 +484,17 @@ function isPoolExhausted(pool: BudgetInvariant | undefined): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Cache-prefix sharing (DELEG-04, research Pattern 3)
+// Cache-prefix sharing
 // ---------------------------------------------------------------------------
 
 /**
  * Compose the byte-stable crew cache prefix for one tool surface: the
  * `describeForSystem()` block (tool descriptions + envelope instructions),
  * derived from deterministic, version-pinned inputs ONLY — no timestamps,
- * random ids, or unsorted keys (Phase 35 scaffold discipline; any
+ * random ids, or unsorted keys (scaffold discipline; any
  * non-byte-stable fragment silently zeroes the cache-hit rate).
  *
- * The 39-06 orchestrator composes this ONCE per crew at crew start and
+ * The orchestrator composes this ONCE per crew at crew start and
  * threads it as `CrewDispatchContext.sharedPrefix`. All members sharing a
  * tool surface share byte-identical prefix bytes across dispatches.
  */
@@ -512,15 +512,15 @@ export function composeCrewCachePrefix(
  * - Adapter discloses `quirks.promptCachingSupported === true` (Anthropic
  *   block-granular caching) AND the outgoing task starts with the shared
  *   prefix → the prefix is hoisted to `cacheSystemPrefix` and `task`
- *   carries ONLY the conversation body. The 39-03 byte-equality invariant
+ *   carries ONLY the conversation body. The byte-equality invariant
  *   (`describeForSystem() + "\n" + buildTaskBody(conv) === buildTask(conv)`)
  *   guarantees the stripped remainder IS the body-only rendering — the
  *   prefix is never duplicated.
  * - Any other adapter → the request passes through UNTOUCHED: no
- *   `cacheSystemPrefix` own-property is ever created (Pitfall 6) and the
+ *   `cacheSystemPrefix` own-property is ever created and the
  *   prefix stays at the head of `task` (OpenAI automatic token-prefix path).
  *
- * Composes over an existing `AgentTransport` (FSB offscreen bridge etc.);
+ * Composes over an existing `AgentTransport`, including cross-process bridges;
  * when `inner` is absent it dispatches `provider.execute()` directly,
  * matching the runtime's default transport behavior.
  */
@@ -564,17 +564,17 @@ function supportsPromptCaching(provider: ProviderAdapter): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Failure classification (D-09/D-10)
+// Failure classification
 // ---------------------------------------------------------------------------
 
 /**
  * Map a child `AgentFailure` to the structured tool-result error body.
  *
- * Terminal (D-10): tripwire violations and contract no-match (the
+ * Terminal: tripwire violations and contract no-match (the
  * `isTerminal()` kinds in results/errors.ts — the agent loop reuses
  * `no-contract-match` for child cost-budget exhaustion), crew-ceiling
  * breaches, and non-stuck SAFETY-band denials (AgentDeniedError aligns
- * with TripwireViolationError terminal semantics). Recoverable (D-09):
+ * with TripwireViolationError terminal semantics). Recoverable:
  * iteration/wall-time exhaustion and STUCK_REASONS stalls — the parent
  * MAY re-dispatch.
  */
@@ -613,9 +613,9 @@ function isTerminalChildFailure(failure: AgentFailure): boolean {
 // ---------------------------------------------------------------------------
 
 function errorResult(body: CrewDispatchError): { readonly content: string } {
-  // D-09 exact shape: {"error":{"kind":...,"reason":...,"terminal":...}}.
+  // Exact shape: {"error":{"kind":...,"reason":...,"terminal":...}}.
   // Errors carry kind/reason strings ONLY — never request options, headers,
-  // or key material (T-39-18).
+  // or key material.
   return {
     content: JSON.stringify({
       error: { kind: body.kind, reason: body.reason, terminal: body.terminal },
@@ -651,9 +651,9 @@ function extractArtifacts(result: unknown): ArtifactRef[] {
 
 /**
  * Wrap a survivability adapter so serialized child snapshots carry the
- * root-first ancestry chain (D-05; AgentSnapshot.ancestry from 39-03).
+ * root-first ancestry chain through `AgentSnapshot.ancestry`.
  * The `agent-snapshot/v1` version literal is unchanged — the field is
- * additive-optional (Pitfall 8).
+ * additive and optional.
  */
 function withAncestrySnapshot(
   base: SurvivabilityAdapter<AgentSnapshot>,
@@ -666,7 +666,7 @@ function withAncestrySnapshot(
 }
 
 // ---------------------------------------------------------------------------
-// Child tool declarations (D-01, Pitfall 5)
+// Child tool declarations
 // ---------------------------------------------------------------------------
 
 function synthesizeChildDeclarations(
@@ -683,8 +683,8 @@ function synthesizeChildDeclarations(
     inputSchema: makeDispatchArgsSchema(child.id),
     // NEVER invoked: the CrewDispatcher intercepts matching names at the
     // dispatch seam BEFORE the default tool path. The body exists only so
-    // the declaration is a real ToolDefinition for Phase 37 registries —
-    // policy logic lives at the chokepoint, not in tool closures (D-01/D-02).
+    // the declaration is a real ToolDefinition for validation registries —
+    // policy logic lives at the chokepoint, not in tool closures.
     execute: () => {
       throw new Error(
         `Child agent "${child.id}" must be dispatched through the CrewDispatcher ` +

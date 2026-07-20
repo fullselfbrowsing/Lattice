@@ -1,12 +1,9 @@
 # Lattice PR-Time CI Workflow
-# Closes CI-01 (install + typecheck + test + test:types + lint:packages) and CI-02 (40-char SHA pinning).
-# Decisions traced to .planning/phases/25-pr-time-ci-workflow/25-CONTEXT.md:
-#   D-01 ubuntu-only, D-02 Node 24 only, D-03 sequential gate order,
-#   D-04 tarball leak audit, D-05 source-import rename audit, D-06 workflow safety audit,
-#   D-07 pnpm-store cache only, D-08 single ci job ubuntu-latest, D-09 PR-only cancel concurrency,
-#   D-10 contents: read root permissions, D-11 hard ban on the pwn-request trigger,
-#   D-12 40-char SHA pinning, D-13 pnpm/action-setup + setup-node order.
-# This workflow has ZERO OIDC capability and ZERO secrets references.
+# The primary job runs deterministic workspace gates on Node 24. Packed
+# consumers run separately on every supported Node line so package exports are
+# exercised exactly as downstream applications load them.
+# Third-party actions are pinned to full commit SHAs. Root permissions are
+# read-only, and this workflow has no OIDC capability or secrets references.
 name: ci
 
 on:

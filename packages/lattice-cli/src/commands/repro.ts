@@ -22,7 +22,7 @@
  *      - actualHash === body.outputHash -> exit 0 (verdict=match)
  *      - else                       -> exit 1 (verdict=drift)
  *
- * Redaction discipline (CLI-05): the summary surfaces ONLY redacted-body
+ * Redaction discipline: the summary surfaces ONLY redacted-body
  * fields (receiptId, kid, contractVerdict, model.requested, route.providerId,
  * route.capabilityId, usage.costUsd, profile, deprecated, verdict). inputHashes
  * are never printed. outputHash appears only on drift, as the diff target.
@@ -80,10 +80,10 @@ export interface RunReproArgs {
   readonly target: string;
   readonly key?: string;
   readonly fixtures?: string;
-  /** Explicit sidecar path (Plan 13.1-02). Highest precedence. */
+  /** Explicit sidecar path. Highest precedence. */
   readonly sidecar?: string;
   /**
-   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Second
+   * Directory holding `<receipt-id>.json` sidecars. Second
    * precedence: looked up after --sidecar, before the convention path
    * `<receiptsDir>/../sidecars/<id>.json`.
    */
@@ -128,7 +128,7 @@ function printSummary(
   diff?: { expected: string; actual: string },
 ): void {
   // Order is stable so downstream scripts can grep. Every field below is
-  // already redacted by Phase 9 before signing — printing it does NOT leak
+  // already redacted before signing, so printing it does NOT leak
   // anything the signer didn't already commit to.
   deps.stdout(`receiptId=${body.receiptId}`);
   deps.stdout(`kid=${body.kid}`);
@@ -158,9 +158,7 @@ export async function runRepro(
   const legacyPolicy: LegacyReceiptPolicy = args.standardOnly
     ? "reject"
     : "allow";
-  // Stage 1: load receipt. Capture the full `LoadedReceipt` so Stage 3.5
-  // (Plan 13.1-02) can derive the sidecar convention path from the resolved
-  // receipt path.
+  // Stage 1: load the full receipt so sidecar resolution can use its path.
   let envelope: ReceiptEnvelope;
   let loaded: LoadedReceipt;
   try {
@@ -195,7 +193,7 @@ export async function runRepro(
   const fixturesDir = args.fixtures ?? ".lattice/fixtures";
   const artifactLoader = createFilesystemArtifactLoader(fixturesDir);
 
-  // Stage 3.5 (Plan 13.1-02): resolve sidecar.
+  // Stage 3.5: resolve sidecar.
   // Precedence (highest → lowest):
   //   1. --sidecar <path>                                    (explicit)
   //   2. --sidecar-dir <dir>/<receipt-id>.json               (explicit dir)
@@ -257,7 +255,7 @@ export async function runRepro(
     }
   }
 
-  // Stage 4: materialize. Phase 10's materializer verifies FIRST — a tampered
+  // Stage 4: materialize. The materializer verifies FIRST, so a tampered
   // receipt never touches artifactLoader. Loader-thrown ArtifactLoaderError
   // values get re-wrapped by materialize as MaterializationError
   // { kind: "artifact-load-failed", message }.
@@ -290,8 +288,8 @@ export async function runRepro(
   // Stage 5: obtain typed body for the summary. We re-run verifyReceipt
   // because materializeReplayEnvelope verifies internally but does not expose
   // the verified body to callers. Ed25519 verify is microsecond-level —
-  // acceptable for a CLI. Re-using the public surface keeps CLI-06 intact
-  // (no private imports from lattice/src/*).
+  // acceptable for a CLI. Reusing the public surface avoids private imports
+  // from lattice/src/*.
   const verifyResult = await verifyReceipt(envelope, keySet, { legacyPolicy });
   if (!verifyResult.ok) {
     // Unreachable in practice (materialize already verified). Defensive.
@@ -308,9 +306,8 @@ export async function runRepro(
   if (!result.ok) {
     const reason = `${result.error.kind}: ${result.error.message ?? ""}`;
     deps.stderr(`FAIL kind=replay-failed reason=${reason}`);
-    // Plan 13.1-02: when no sidecar was found AND none was explicitly
-    // requested, point users at the convention so they can flip this branch
-    // into verdict=match by writing the missing sidecar.
+    // When no sidecar was found AND none was explicitly requested, tell users
+    // where the conventional sidecar belongs.
     if (appliedSidecar === null && !sidecarExplicit) {
       deps.stderr(
         `hint: Provide --sidecar <path> or place a sidecar at .lattice/sidecars/${receiptId}.json. See lattice-sidecar/v1 spec.`,
@@ -329,10 +326,10 @@ export async function runRepro(
     return;
   }
 
-  // Recompute hash the same way Phase 9-04 commits to it:
+  // Recompute the hash using the receipt issuance formula:
   //   fingerprintArtifactValue(outputs) -> sha256(JSON.stringify(outputs))
   // We replicate the formula inline rather than importing the private
-  // helper, preserving the CLI-06 public-export boundary.
+  // helper, preserving the public-export boundary.
   const canonical = JSON.stringify(result.outputs);
   const actualHash = await sha256Hex(canonical);
 

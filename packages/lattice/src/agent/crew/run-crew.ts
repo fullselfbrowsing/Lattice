@@ -1,5 +1,5 @@
 /**
- * runAgentCrew — Phase 39 (v1.3).
+ * runAgentCrew (v1.3).
  *
  * Opt-in multi-agent orchestration over the existing single-agent runtime.
  * The crew surface composes a literal `AgentSpec` tree, validates a

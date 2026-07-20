@@ -1,31 +1,30 @@
 /**
- * AgentHost — Phase 20 (v1.2).
+ * AgentHost (v1.2).
  *
- * The pluggable host adapter for `runAgent`. Promotes the Phase 19
- * forward-declared `AgentHost` to a full interface with three optional
+ * The pluggable host adapter for `runAgent` exposes three optional
  * seams: scheduler (how iterations yield between provider calls),
  * transport (how provider calls are dispatched), and storage (how the
  * agent state persists for resume after eviction).
  *
  * Composition surfaces:
- *   - SurvivabilityAdapter (Phase 18) handles serialize/deserialize/resume
+ *   - SurvivabilityAdapter handles serialize/deserialize/resume
  *     against the host's storage payload. The agent loop wires storage +
  *     SurvivabilityAdapter together to deliver the eviction-resume
  *     contract.
- *   - createCheckpointHook (Phase 16) continues to mint per-iteration
+ *   - createCheckpointHook mints per-iteration
  *     receipts via the OBSERVABILITY band; receipts can be embedded inside
  *     the `AgentSnapshot.lastReceiptId` (when callers want auditable
  *     resume).
  *
- * Phase 20 ships:
+ * This module ships:
  *   - The full `AgentHost` interface (3 seams: scheduler / transport / storage).
  *   - `AgentSnapshot` interface — the agent-state shape that gets serialized.
  *   - `createNoopAgentHost()` reference implementation suitable for Node tests
- *     and the Phase 19 default behavior (no scheduling delay, direct provider
+ *     and the default behavior (no scheduling delay, direct provider
  *     transport, no persistence).
  *
- * Concrete MV3 SW / Cloudflare Worker / Lambda hosts are out of scope —
- * they live in consumer codebases (FSB, etc.).
+ * Concrete MV3 service worker, Cloudflare Worker, and Lambda hosts live in
+ * consumer codebases rather than the runtime package.
  */
 
 import type { SerializedSnapshot } from "../runtime/survivability.js";
@@ -55,12 +54,12 @@ export interface AgentSnapshot {
   readonly providerName: string;
   readonly capturedAt: string;
   /**
-   * Phase 39 (v1.3): dispatch ancestry chain of crew `AgentSpec` ids
+   * Dispatch ancestry chain of crew `AgentSpec` ids
    * (root-first). Absent = root agent (single-agent runs never set it).
    * Optional so existing serialized `agent-snapshot/v1` snapshots
    * deserialize unchanged — the version literal stays `"agent-snapshot/v1"`
-   * (D-05; Pitfall 8). The crew dispatcher threads the chain through
-   * dispatch context in 39-05; cycle prevention rejects any dispatch whose
+   * without changing the version literal. The crew dispatcher threads the
+   * chain through dispatch context; cycle prevention rejects any dispatch whose
    * target id already appears in the chain.
    */
   readonly ancestry?: readonly string[];
@@ -86,10 +85,10 @@ export interface AgentScheduler {
  *
  * `call(provider, request)` wraps the provider's `execute()` invocation.
  * Default (noop): pass-through (`provider.execute!(request)`). Cross-process
- * bridges (FSB's offscreen-document host) override to dispatch via
+ * bridges such as an offscreen-document host can override it to dispatch via
  * `chrome.runtime.sendMessage`.
  *
- * Per the Phase 19 INV-03 parity invariant, the transport seam does NOT
+ * To preserve adapter parity, the transport seam does NOT
  * modify the `ProviderAdapter` interface — it operates on top of the
  * existing `execute()` method.
  */
@@ -104,7 +103,7 @@ export interface AgentTransport {
  * Storage seam — controls how agent state persists between iterations for
  * resume after host eviction.
  *
- * Phase 20 composes this with the Phase 18 `SurvivabilityAdapter`:
+ * The runtime composes this with `SurvivabilityAdapter`:
  *   - The adapter serializes `AgentSnapshot` to `SerializedSnapshot` on
  *     each AFTER_AGENT_ITERATION; storage.save() persists the snapshot.
  *   - On run start, the agent loop calls storage.load(). If a non-null
@@ -126,8 +125,8 @@ export interface AgentStorage {
  * The host adapter — three optional seams, all swappable independently.
  *
  * Callers pass `host` on `AgentIntent`. The agent runtime falls back to
- * `createNoopAgentHost()` when `intent.host` is absent (so Phase 19
- * single-shot Node usage continues to work without explicit configuration).
+ * `createNoopAgentHost()` when `intent.host` is absent, so single-shot Node
+ * usage continues to work without explicit configuration.
  */
 export interface AgentHost {
   readonly kind: "agent-host";
@@ -137,7 +136,7 @@ export interface AgentHost {
 }
 
 /**
- * Reference implementation suitable for Node tests + the Phase 19 default
+ * Reference implementation suitable for Node tests and the default
  * behavior.
  *
  * - scheduler: resolves immediately (no yield between iterations).

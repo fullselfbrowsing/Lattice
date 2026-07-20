@@ -16,8 +16,7 @@ export interface FakeProviderOptions {
     | ((request: ProviderRunRequest) => ProviderRunResponse | Promise<ProviderRunResponse>);
   readonly artifacts?: readonly ArtifactInput[];
   /**
-   * Phase 7 addition: when provided, REPLACES the default single-capability
-   * array so callers (notably Plan 07-04's modality/privacy reject tests)
+   * When provided, REPLACES the default single-capability array so callers
    * can construct a fake adapter with arbitrary
    * `inputModalities` / `outputModalities` / `dataPolicy` / `pricing`
    * without mutating the returned adapter's readonly `capabilities` array.

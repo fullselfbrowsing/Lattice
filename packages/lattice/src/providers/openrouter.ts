@@ -21,14 +21,11 @@ import { createRunEvent } from "../tracing/tracing.js";
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
- * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ * STREAMING: supported through the OpenAI-compatible stream path.
  *
- * DEFERRED (D-17 carryforward; Phase 4 ships the named adapter as a
- * first-class OpenAI-compat wrapper):
- *   - per-message routing  -- deferred.
- *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter).
- *
- * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03: thin wrapper; D-17: model-routing deferred).
+ * Not supported by this adapter:
+ *   - per-message routing
+ *   - resume-from-eviction, which belongs to the survivability adapter
  */
 export interface OpenRouterProviderOptions
   extends Omit<OpenAICompatibleProviderOptions, "id" | "baseUrl"> {
@@ -36,18 +33,18 @@ export interface OpenRouterProviderOptions
   /** Defaults to `https://openrouter.ai/api/v1`. Override for proxies. */
   readonly baseUrl?: string;
   /**
-   * D-08: TTL for per-instance /models response cache, in milliseconds.
-   * Default: 300_000ms (5 minutes). 0 = always refetch (tests). Infinity = process-lifetime.
+   * TTL for the per-instance /models response cache, in milliseconds.
+   * Default: 300_000ms (5 minutes). 0 = always refetch. Infinity = process lifetime.
    */
   readonly modelsCacheTtlMs?: number;
   /**
-   * D-11: Number of retries on transient /models fetch errors. Default: 2.
+   * Number of retries on transient /models fetch errors. Default: 2.
    * Retry schedule: immediate + 200ms + 1000ms (3 total attempts at retryCount=2).
    * 0 = no retries (1 attempt total).
    */
   readonly modelsRetryCount?: number;
   /**
-   * D-12: Optional event sink for observability. When provided, the adapter
+   * Optional event sink for observability. When provided, the adapter
    * emits a "capabilities.negotiation.fallback" RunEvent on transient /models failure.
    * If absent, no event is emitted (silent fallback).
    */
@@ -77,7 +74,7 @@ function observedModelFromRawResponse(rawResponse: unknown): string | undefined 
 }
 
 /**
- * Phase 34 — D-03 — OpenRouter quirks block. Values verified against
+ * OpenRouter quirks block. Values verified against
  * OpenRouter API documentation and observed behavior.
  *
  * CITED: https://openrouter.ai/docs/provider-routing
@@ -99,16 +96,16 @@ const OPENROUTER_QUIRKS: OpenRouterQuirks = {
 };
 
 /**
- * Phase 34 — D-03 / D-05..D-12 — Extended OpenRouter provider factory.
+ * Extended OpenRouter provider factory.
  *
  * Returns a `ProviderAdapter` narrowed to expose:
  *   - `quirks: OpenRouterQuirks` — static adapter capability flags (8 booleans)
  *   - `negotiateCapabilities(modelId)` — live /api/v1/models fetch with rich /models
  *     intersection (supported_parameters -> nativeToolCalling + structuredOutputs,
- *     top_provider.context_length -> contextWindow) intersected with Phase 33 registry
+ *     top_provider.context_length -> contextWindow) intersected with the registry
  *     for knownFailureModes + recommendedSanitizers.
  *
- * CRITICAL for ANCHOR CASE STUDY (session_1780792387779):
+ * Representative registry-intersection flow:
  *   negotiate("openai/gpt-oss-120b:free") MUST resolve to:
  *     - result.knownFailureModes.includes("internal_envelope_leak") -> TRUE
  *     - result.recommendedSanitizers.includes("unwrapInternalEnvelope") -> TRUE
@@ -116,9 +113,8 @@ const OPENROUTER_QUIRKS: OpenRouterQuirks = {
  *   This proves: live-fetch -> id suffix-strip via stripOpenRouterVariant
  *   -> registry intersection -> getRecommendedSanitizers derivation.
  *
- * Anti-pattern (RESEARCH §Anti-pattern, lines 534-535):
- *   The /api/v1/models endpoint is UNAUTHENTICATED (public discovery surface verified
- *   Phase 33). Do NOT send Authorization Bearer to this endpoint -- it is NOT required
+ * The /api/v1/models endpoint is an unauthenticated public discovery surface.
+ * Do NOT send Authorization Bearer to this endpoint; it is not required
  *   and would add unnecessary API key exposure surface in transit logs.
  */
 export function createOpenRouterProvider(
@@ -131,7 +127,7 @@ export function createOpenRouterProvider(
   const fetchImpl = options.fetch ?? fetch;
   const fallbackModels = normalizeFallbackModels(options.fallbackModels);
 
-  // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
+  // Per-instance cache and inflight Maps live inside the closure so
   // each createOpenRouterProvider({}) call gets its own Map (no cross-contamination).
   const ttlMs = options.modelsCacheTtlMs ?? 300_000;
   const retryCount = options.modelsRetryCount ?? 2;
@@ -139,19 +135,19 @@ export function createOpenRouterProvider(
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   /**
-   * D-07 lazy expiry + Q7 inflight coalescing + Pitfall 4 .finally cleanup.
+   * Lazy expiry plus inflight coalescing with `.finally` cleanup.
    * Public surface: `adapter.negotiateCapabilities(modelId)`.
    */
   async function negotiate(modelId: string): Promise<NegotiatedCapabilities> {
-    // 1. Cache check (D-07 lazy expiry)
+    // 1. Cache check (lazy expiry)
     const cached = cache.get(modelId);
     if (cached !== undefined && cached.expiresAt > Date.now()) return cached.result;
 
-    // 2. Inflight coalesce (Q7)
+    // 2. Coalesce inflight requests.
     const existing = inflight.get(modelId);
     if (existing !== undefined) return existing;
 
-    // 3. New fetch promise; clear inflight in .finally (Pitfall 4)
+    // 3. New fetch promise; clear inflight in `.finally`.
     const fetchPromise = (async () => {
       try {
         const result = await fetchAndNegotiate(modelId);
@@ -169,23 +165,22 @@ export function createOpenRouterProvider(
   }
 
   /**
-   * Phase 34 — D-09..D-11 — Fetches /api/v1/models and merges with registry.
+   * Fetches /api/v1/models and merges with the registry.
    *
    * URL: ${baseUrl}/api/v1/models (NOTE: /api/v1/models -- different prefix from
    *   OpenAI's /v1/models; OpenRouter's discovery endpoint is under /api/v1/)
    * Auth: NONE -- OpenRouter /api/v1/models is a public unauthenticated endpoint.
-   *   Per RESEARCH §Anti-pattern (lines 534-535): do NOT send Authorization Bearer
-   *   to this endpoint. This is a known anti-pattern; do not "fix" it.
-   * Retry: [0ms, 200ms, 1000ms] backoff on transient errors (D-11).
-   * Auth error (401/403): throws NegotiationAuthError (D-10, no fallback) -- defensive,
+   *   Do NOT send Authorization Bearer to this endpoint because doing so
+   *   would expose the API key without changing discovery behavior.
+   * Retry: [0ms, 200ms, 1000ms] backoff on transient errors.
+   * Auth error (401/403): throws NegotiationAuthError with no fallback -- defensive,
    *   even though the endpoint is unauthenticated today, OpenRouter may add auth later.
-   * Transient error (5xx/network): falls back to registry with "registry-fallback" (D-09).
+   * Transient error (5xx/network): falls back to registry with "registry-fallback".
    */
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     // NOTE: URL is /api/v1/models (NOT /v1/models -- OpenRouter uses /api/v1/ prefix)
     const url = `${baseUrl}/api/v1/models`;
-    // Anti-pattern guard: NO Authorization header on this call.
-    // RESEARCH §Anti-pattern (lines 534-535): OpenRouter /api/v1/models is unauthenticated.
+    // OpenRouter /api/v1/models is unauthenticated, so omit Authorization.
     // Sending Bearer here would expose the API key unnecessarily.
     const headers: Record<string, string> = {
       "accept": "application/json",
@@ -209,7 +204,7 @@ export function createOpenRouterProvider(
 
         if (resp.status === 401 || resp.status === 403) {
           // Defensive: even though the endpoint is unauthenticated today, treat
-          // auth errors as fatal per D-10 (same as other adapters)
+          // auth errors as fatal, matching the other adapters.
           throw new NegotiationAuthError(
             "openrouter",
             modelId,
@@ -225,12 +220,12 @@ export function createOpenRouterProvider(
         const body: unknown = await resp.json();
         return mergeOpenRouterModelsWithRegistry(modelId, body);
       } catch (err) {
-        if (err instanceof NegotiationAuthError) throw err; // D-10: auth never falls back
+        if (err instanceof NegotiationAuthError) throw err; // Auth never falls back.
         lastErr = err;
       }
     }
 
-    // All retries exhausted -- fallback + event (D-09/D-12)
+    // All retries exhausted -- fallback + event.
     emitFallbackEvent({
       adapter: "openrouter",
       modelId,
@@ -243,21 +238,21 @@ export function createOpenRouterProvider(
   /**
    * RICH /models intersection: consumes OpenRouter's /api/v1/models structured data
    * to populate NegotiatedCapabilities.supports.* from upstream (THICK derivation where
-   * available), then intersects with Phase 33 registry for knownFailureModes +
+   * available), then intersects with the registry for knownFailureModes +
    * recommendedSanitizers.
    *
    * ANCHOR CASE STUDY (session_1780792387779) flow:
    *   1. Find "openai/gpt-oss-120b:free" (or strip suffix -> "openai/gpt-oss-120b")
    *   2. Build canonical key: "openrouter:openai/gpt-oss-120b" (via stripOpenRouterVariant)
-   *   3. getCapabilityProfile("openrouter:openai/gpt-oss-120b") -> Phase 33 profile with
+   *   3. getCapabilityProfile("openrouter:openai/gpt-oss-120b") -> profile with
    *      knownFailureModes: ["internal_envelope_leak", "system_prompt_echo", "malformed_tool_arguments"]
    *   4. getRecommendedSanitizers(knownFailureModes) -> ["unwrapInternalEnvelope"]
    *   5. result.recommendedSanitizers.includes("unwrapInternalEnvelope") -> TRUE
    *
-   * Pitfall 3 / A1 precedence chain (RESEARCH §Q5):
+   * Context-window precedence:
    *   contextWindow = top_provider.context_length ?? context_length ?? registryProfile.contextWindow
    *
-   * Lenient parsing per Pitfall 1: all field accesses use optional chaining.
+   * All field accesses use optional chaining for lenient parsing.
    */
   function mergeOpenRouterModelsWithRegistry(
     modelId: string,
@@ -286,7 +281,7 @@ export function createOpenRouterProvider(
         })
       : undefined;
 
-    // Build canonical registry key using suffix-strip (D-11 via stripOpenRouterVariant from Phase 33)
+    // Build the canonical registry key with stripOpenRouterVariant.
     // "openai/gpt-oss-120b:free" -> "openai/gpt-oss-120b" -> "openrouter:openai/gpt-oss-120b"
     const stripped = stripOpenRouterVariant(modelId);
     const canonicalKey = `openrouter:${stripped}`;
@@ -301,10 +296,10 @@ export function createOpenRouterProvider(
         fallbackSource: "registry-fallback",
       });
       // Still use registry intersection -- the registry may have the profile even
-      // when /models didn't return it (Test 6 fallback case)
+      // when /models did not return it.
       return {
         ...synthesizeNegotiatedCapabilitiesFromRegistry("openrouter", stripped, "registry-fallback"),
-        // Preserve the input modelId verbatim (per Test 4 acceptance criterion)
+        // Preserve the input modelId verbatim for forward compatibility.
         modelId,
       };
     }
@@ -312,8 +307,8 @@ export function createOpenRouterProvider(
     const foundRec = found as Record<string, unknown>;
     const topProvider = foundRec.top_provider as Record<string, unknown> | undefined;
 
-    // Pitfall 3 / A1 precedence chain: prefer top_provider.context_length, then context_length,
-    // then registry (RESEARCH §Q5 verified against live OpenRouter data)
+    // Prefer top_provider.context_length, then context_length,
+    // then registry (verified against live OpenRouter data).
     const contextWindow =
       typeof topProvider?.context_length === "number" && topProvider.context_length > 0
         ? topProvider.context_length
@@ -321,7 +316,7 @@ export function createOpenRouterProvider(
           ? foundRec.context_length
           : (registryProfile?.contextWindow ?? 0);
 
-    // THICK derivation from supported_parameters (RESEARCH §Q5)
+    // Derive capabilities from supported_parameters.
     const supportedParams = Array.isArray(foundRec.supported_parameters)
       ? (foundRec.supported_parameters as unknown[]).map(String)
       : [];
@@ -342,7 +337,7 @@ export function createOpenRouterProvider(
     const recommendedSanitizers = getRecommendedSanitizers(knownFailureModes);
 
     return {
-      // PRESERVE the input modelId verbatim (per Test 4 / anchor case study acceptance criteria)
+      // Preserve the input modelId verbatim for forward compatibility.
       modelId,
       contextWindow,
       supports: {
@@ -359,8 +354,8 @@ export function createOpenRouterProvider(
   }
 
   /**
-   * D-12: Emit capabilities.negotiation.fallback RunEvent via the optional sink.
-   * SECURITY (T-34-04-02): stringifyErr extracts err.message only -- NOT err.stack
+   * Emit capabilities.negotiation.fallback RunEvent via the optional sink.
+   * SECURITY: stringifyErr extracts err.message only -- NOT err.stack
    * or JSON.stringify(headers), so the apiKey cannot leak into the event payload.
    * Synthetic runId pattern: negotiate happens outside a run; documented here.
    */
@@ -463,7 +458,7 @@ export function createOpenRouterProvider(
 }
 
 /**
- * T-34-04-02: Returns err.message only -- NOT err.stack (which could include
+ * Returns err.message only -- NOT err.stack, which could include
  * headers or the apiKey via a fetch rejection), NOT JSON.stringify(err).
  */
 function stringifyErr(err: unknown): string {

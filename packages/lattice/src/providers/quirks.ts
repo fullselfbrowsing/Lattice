@@ -1,17 +1,16 @@
-// Phase 34 — D-03 — Adapter-level capability disclosure interfaces.
-// QUIRK-01 surface.
+// Adapter-level capability disclosure interfaces.
 //
-// D-03 discriminant-narrowing contract:
+// Discriminant-narrowing contract:
 //   TypeScript cannot automatically narrow `adapter.quirks` to `AnthropicQuirks`
 //   after `if (adapter.id === "anthropic")` because the `quirks` field on the
 //   base `ProviderAdapter` is typed as `AdapterQuirks`. Consumers have two options:
 //     1. Use the typed factory return (e.g., `const a = createAnthropicProvider({...})`
 //        gives `a.quirks: AnthropicQuirks` directly since factories narrow the return type).
 //     2. Cast: `(adapter.quirks as AnthropicQuirks).promptCachingSupported`.
-//   Plans 02-05 document this per-adapter in the factory return type.
+//   Factory return types document this per adapter.
 
 /**
- * Universal 5-boolean shape every first-party adapter populates (SC-1 / D-03).
+ * Universal 5-boolean shape every first-party adapter populates.
  *
  * - `supportsToolChoice`     — adapter supports tool_choice / forced-tool-call mode
  * - `parallelToolCalls`      — adapter supports parallel (multi-tool) calls in one turn

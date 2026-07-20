@@ -2,7 +2,7 @@
  * Filesystem ArtifactLoader for `lattice repro`.
  *
  * Reads `<fixturesDir>/<sha256-hex>.bin` and constructs an `ArtifactInput`
- * the Phase 10 materializer (`materializeReplayEnvelope`) can consume.
+ * `materializeReplayEnvelope` can consume.
  *
  * Path-traversal defense: the hash MUST match `/^[a-f0-9]{64}$/u` (the exact
  * sha256-hex shape) BEFORE any filesystem call. A malicious receipt whose

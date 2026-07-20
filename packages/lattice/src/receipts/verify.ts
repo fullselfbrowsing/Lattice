@@ -97,14 +97,14 @@ function kidMismatch(
  * Pure receipt verifier.
  *
  * Returns a typed VerifyResult — never throws across the verification
- * boundary (PITFALLS.md security: "Verifier panics on malformed receipts
- * -> DoS via crafted input"). All parsing failures become typed errors.
+ * boundary. All malformed input and parsing failures become typed errors,
+ * preventing crafted receipts from causing verifier panics.
  *
  * Decision tree (first match wins):
  *   1. decodeEnvelope throws OR signatures[] empty       -> envelope-malformed
  *   2. payload bytes are not valid JSON                  -> envelope-malformed
  *   3. body shape check fails OR version unknown literal -> version-mismatch
- *   4. body.version === undefined OR "lattice-receipt/v1"-> schema-version-too-low (CRYPTO-01)
+ *   4. body.version === undefined OR "lattice-receipt/v1" -> schema-version-too-low
  *   5. version/profile matrix is invalid                 -> signature-profile-mismatch
  *   6. keySet.lookup(keyid) === undefined                -> key-not-found
  *   7. entry.state === "revoked"                         -> key-revoked
@@ -150,14 +150,14 @@ export async function verifyReceipt(
     );
   }
 
-  // Step 4: receipt-downgrade defense (CRYPTO-01).
+  // Step 4: receipt-downgrade defense.
   // Reject receipts whose body.version is absent or equals the v1 literal.
   // v1 receipts predate the v1.1 step-marker integrity surface and the v1.2
   // modelClass audit tag; an attacker holding a valid signing key could mint a
   // v1-shaped body and submit it to bypass newer schema commitments.
   // Short-circuits before any cryptographic work (keyset lookup, canonical
   // re-check, signature verify) so the downgrade verdict is unambiguous.
-  // See SECURITY.md (Phase 26 threat model) and Radicle 2026-03 precedent.
+  // See SECURITY.md (threat model) and Radicle 2026-03 precedent.
   if (body.version === undefined || body.version === "lattice-receipt/v1") {
     return fail(
       "schema-version-too-low",
@@ -176,7 +176,7 @@ export async function verifyReceipt(
     );
   }
 
-  // Step 6: keyset lookup (use first signature; multi-sig deferred to a future schema).
+  // Step 6: keyset lookup. This schema authenticates the first signature only.
   const firstSig = decoded.signatures[0]!;
   const entry: KeyEntry | undefined = keySet.lookup(firstSig.keyid);
   if (entry === undefined) {

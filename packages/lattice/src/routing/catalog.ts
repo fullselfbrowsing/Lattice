@@ -64,7 +64,7 @@ export function defaultCapabilityForProvider(providerId: string): ModelCapabilit
  * falls back to dividing the legacy per-1M fields by 1000 when only those
  * are present. Returns `undefined` per side when neither shape supplies a
  * value, so callers can distinguish "free / zero" (`0`) from "unknown"
- * (`undefined`) — Phase 7 cost normalization treats unknown pricing as
+ * (`undefined`); cost normalization treats unknown pricing as
  * `usage.costUsd === null`, not `0`.
  */
 export function effectivePer1kPricing(

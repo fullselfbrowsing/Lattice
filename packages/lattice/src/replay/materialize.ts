@@ -1,5 +1,5 @@
 /**
- * Phase 10 — materializeReplayEnvelope.
+ * materializeReplayEnvelope.
  *
  * Reconstructs a `ReplayEnvelope` from a signed `ReceiptEnvelope` plus a
  * pluggable artifact loader. The flow is:
@@ -16,7 +16,7 @@
  * v1.1 limitation: the receipt body does NOT carry the original task string,
  * outputs schema, or policy snapshot. Callers may supply them via the options
  * bag; when omitted, the envelope's `task` defaults to "" and `outputs`
- * remains undefined. Phase 11's `lattice repro` CLI accepts a sidecar JSON
+ * remains undefined. The `lattice repro` CLI accepts a sidecar JSON
  * file to populate these fields.
  *
  * Errors NEVER cross the boundary as plain `Error`. All failures surface as
@@ -82,8 +82,8 @@ function fail(
 
 /**
  * Async callback that resolves an artifact body from its sha256 hex digest.
- * Phase 10 ships only the in-memory variant for tests. Phase 11's CLI plugs
- * in a filesystem-backed loader reading from `.lattice/fixtures/<sha256>.bin`.
+ * The CLI supplies a filesystem-backed loader reading from
+ * `.lattice/fixtures/<sha256>.bin`.
  */
 export type ArtifactLoader = (hash: string) => Promise<ArtifactInput>;
 
@@ -100,7 +100,7 @@ export interface MaterializeReplayEnvelopeOptions<
    * Optional caller-supplied outputs map. When provided, the resulting
    * `ReplayEnvelope.outputs` is populated and `replayOffline` will return
    * an `ok: true` result. When omitted, `replayOffline` reports an
-   * `execution_unavailable` failure (current Phase 5 semantics).
+   * `execution_unavailable` failure.
    */
   readonly outputs?: InferOutputMap<TOutputs>;
   readonly policy?: PolicySpec;
@@ -144,7 +144,7 @@ export async function materializeReplayEnvelope<
   const loadedInputs: ArtifactInput[] = [];
   for (const hash of body.inputHashes) {
     if (hash === "") {
-      // Skip empty-hash slots — Phase 9 emits "" for unfingerprintable
+      // Skip empty-hash slots emitted for unfingerprintable
       // values (e.g., undefined artifact bodies). They have no resolvable
       // content and the replay artifacts array preserves order via the
       // remaining loaded entries.
@@ -167,7 +167,7 @@ export async function materializeReplayEnvelope<
   // Step 3: assemble the ExecutionPlan envelope shell. The receipt does NOT
   // carry the full RouteDecision/ContextPack — we synthesize a minimal but
   // valid plan that reproduces the receipt's route + usage fields. This is
-  // intentionally lossy and matches the v1.1 limitation note in 10-CONTEXT.md.
+  // intentionally lossy because receipts do not contain the full plan.
   const artifactRefs = loadedInputs.map(toArtifactRef);
   const outputsMap = (options.outputs !== undefined
     ? (Object.fromEntries(

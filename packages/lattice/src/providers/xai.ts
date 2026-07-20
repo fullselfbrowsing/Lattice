@@ -17,24 +17,21 @@ import { createRunEvent } from "../tracing/tracing.js";
  * Thin wrapper around {@link createOpenAICompatibleProvider} pinned to
  * xAI's base URL `https://api.x.ai/v1`. The wire shape is identical to
  * OpenAI Chat Completions, with one provider-specific quirk preserved:
- * `response.usage.completion_tokens_details.reasoning_tokens` (xAI's
- * separate reasoning-token accounting; see FSB
- * `extension/ai/universal-provider.js:585-594` for the production reference).
+ * `response.usage.completion_tokens_details.reasoning_tokens`, which xAI
+ * reports separately from completion tokens.
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
- * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ * STREAMING: supported through the OpenAI-compatible stream path.
  *
- * DEFERRED (Phase 4 carryforward notes):
- *   - tool-streaming -- deferred
- *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
+ * Not supported by this adapter:
+ *   - tool streaming
+ *   - resume-from-eviction, which belongs to the survivability adapter
  *
- * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03 + D-07: thin wrapper; reasoning_tokens quirk preserved).
- *
- * Phase 34 additions:
- *   - `modelsCacheTtlMs?` — D-05/D-06/D-08; default 300_000ms; 0 disables; Infinity = process-lifetime
- *   - `modelsRetryCount?` — D-11; default 2; 0 disables retry
- *   - `runEventSink?`     — D-12; fires "capabilities.negotiation.fallback" on transient errors
+ * Capability negotiation options:
+ *   - `modelsCacheTtlMs?` — default 300_000ms; 0 disables; Infinity = process lifetime
+ *   - `modelsRetryCount?` — default 2; 0 disables retry
+ *   - `runEventSink?`     — emits "capabilities.negotiation.fallback" on transient errors
  */
 export interface XaiProviderOptions extends Omit<OpenAICompatibleProviderOptions, "id" | "baseUrl"> {
   readonly id?: string;
@@ -45,14 +42,14 @@ export interface XaiProviderOptions extends Omit<OpenAICompatibleProviderOptions
 const DEFAULT_XAI_BASE_URL = "https://api.x.ai/v1";
 
 // ---------------------------------------------------------------------------
-// Internal helpers (mirroring Plan 34-02 Anthropic reference implementation)
+// Internal helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Phase 34 — D-12 — Emit a "capabilities.negotiation.fallback" RunEvent if
+ * Emit a "capabilities.negotiation.fallback" RunEvent if
  * a sink is provided. Uses a synthetic runId (negotiation is outside a run).
  *
- * T-34-03-01: errorReason uses stringifyErr (message only, not stack) to
+ * errorReason uses stringifyErr (message only, not stack) to
  * prevent apiKey leaking via fetch error strings that may embed request headers.
  */
 function emitFallbackEvent(
@@ -67,7 +64,7 @@ function emitFallbackEvent(
   if (sink === undefined) return;
   const event = createRunEvent("capabilities.negotiation.fallback", {
     // Synthetic runId: negotiation happens outside a run context.
-    // Pattern documented in Plan 34-02 (Anthropic reference impl).
+    // The stable synthetic id makes out-of-run negotiation events inspectable.
     runId: `negotiate-${payload.adapter}-${payload.modelId}`,
     providerId: payload.adapter,
     modelId: payload.modelId,
@@ -85,27 +82,21 @@ function emitFallbackEvent(
  * Stringify an error for event metadata. Returns only the message (NOT the
  * stack) to prevent apiKey or sensitive header values from leaking into event
  * payloads via fetch errors that may embed the request init.
- * T-34-03-01 mitigation.
  */
 function stringifyErr(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
 /**
- * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — Merge an xAI /v1/models sparse
- * OpenAI-shaped response with the Phase 33 registry.
+ * Merge a sparse, OpenAI-shaped xAI /v1/models response with the registry.
  *
- * RESEARCH §A1 (INFERRED): xAI's /v1/models shape is undocumented; the
+ * xAI's /v1/models shape is undocumented; the
  * endpoint is assumed to return an OpenAI-compatible sparse list based on
  * the shared OpenAI-compat wire format used for chat completions.
- * LENIENT-PARSE is mandatory per Pitfall 1 (RESEARCH §Q4): if xAI changes
+ * LENIENT-PARSE is mandatory: if xAI changes
  * their response shape, the adapter must not crash.
  *
- * CITED: Pitfall 1 — "When integrating with less-documented endpoints like
- * xAI's /v1/models, lenient parsing prevents runtime crashes when the
- * endpoint returns an unexpected shape."
- *
- * Source semantics per D-09:
+ * Source semantics:
  *   - "live" when the model id is found in the response AND body.data is an array
  *   - "registry-fallback" when body.data is not an array (unexpected shape)
  *     OR when the model id is not in the response
@@ -115,7 +106,7 @@ function mergeXaiModelsWithRegistry(
   body: unknown,
   emitFallback: () => void,
 ): NegotiatedCapabilities {
-  // LENIENT-PARSE: body may be malformed or have an unexpected shape (Pitfall 1 + RESEARCH §A1).
+  // LENIENT-PARSE: body may be malformed or have an unexpected shape.
   // If body.data is not an array, fall back to registry immediately without crashing.
   const rawData = (body as { data?: unknown } | null | undefined)?.data;
   if (!Array.isArray(rawData)) {
@@ -137,13 +128,13 @@ function mergeXaiModelsWithRegistry(
 
   // Model found in /models response — source supports.* from registry profile.
   // xAI /models is sparse (OpenAI-shaped: id, object, created, owned_by only);
-  // no capabilities block. Source supports.* from the Phase 33 registry instead.
+  // no capabilities block. Source supports.* from the registry instead.
   const registryProfile = getCapabilityProfile(`xai:${modelId}`);
   if (registryProfile !== undefined) {
     return _mapProfileToNegotiatedCapabilities(registryProfile, "live");
   }
 
-  // Model exists in org per /models but Phase 33 registry doesn't have it.
+  // Model exists in the org but the registry does not have it.
   // Preserve the live model id instead of collapsing to a registry fallback.
   // This keeps new xAI/GitFly ids like grok-4-1-fast-* inspectable while
   // remaining conservative about capabilities we cannot prove from /models.
@@ -164,30 +155,27 @@ function mergeXaiModelsWithRegistry(
 }
 
 /**
- * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — xAI provider factory.
+ * xAI provider factory.
  *
  * Extends the base OpenAI-compat execution wrapper with:
- *   1. `quirks: XaiQuirks` — verified per RESEARCH §Q6 xAI vocabulary.
+ *   1. `quirks: XaiQuirks` — verified against xAI behavior.
  *   2. `negotiateCapabilities(modelId)` — queries xAI /v1/models GET with
  *      Authorization: Bearer header; LENIENT-PARSE sparse OpenAI-shaped
- *      response; intersects with Phase 33 registry for supports.*.
+ *      response; intersects with the registry for supports.*.
  *
- * CITED: RESEARCH §Q4 (INFERRED) — xAI /v1/models shape is undocumented;
- * assumed OpenAI-compatible based on the chat completions wire format.
- *
- * CITED: RESEARCH §A1 — Pitfall 1 lenient parse: if xAI publishes a
- * different /models shape, only the parsing logic updates; the contract
+ * xAI /v1/models is assumed OpenAI-compatible based on the chat completions
+ * wire format. If xAI publishes a different shape, only parsing changes; the contract
  * (source values, NegotiatedCapabilities shape) holds.
  *
- * The negotiate() pattern mirrors Plan 34-02 (Anthropic thick reference):
+ * Negotiation uses:
  *   - Per-instance TTL cache (modelsCacheTtlMs, default 300_000ms)
- *   - Single-flight inflight coalescing with .finally cleanup (Pitfall 4)
+ *   - Single-flight inflight coalescing with `.finally` cleanup
  *   - Retry with [0, 200, 1000]ms backoff (modelsRetryCount, default 2)
- *   - 401/403 throws NegotiationAuthError with adapter: "xai" (D-10)
+ *   - 401/403 throws NegotiationAuthError with adapter: "xai"
  *   - 5xx/network/timeout falls back to registry + emits fallback event
  *
- * SECURITY (T-34-03-07): inflight Map MUST use .finally cleanup to prevent
- * leak on rejection. Verifiable: grep `.finally` in this file.
+ * SECURITY: the inflight Map MUST use `.finally` cleanup to prevent
+ * rejected promises from leaking cache entries.
  */
 export function createXaiProvider(
   options: XaiProviderOptions,
@@ -200,18 +188,18 @@ export function createXaiProvider(
   const retryCount = options.modelsRetryCount ?? 2;
   const fetchImpl = options.fetch ?? fetch;
 
-  // Per-instance TTL cache (D-05/D-06/D-07/D-08). One Map per factory call.
+  // Per-instance TTL cache. One Map per factory call.
   const cache = new Map<string, { result: NegotiatedCapabilities; expiresAt: number }>();
-  // Per-instance inflight coalescing Map (Q7). .finally cleanup is mandatory (Pitfall 4).
+  // Per-instance inflight coalescing Map; `.finally` cleanup is mandatory.
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     // For xAI, the baseUrl already includes "/v1" (default: https://api.x.ai/v1),
     // so we append "/models" not "/v1/models". This produces: https://api.x.ai/v1/models.
     const url = `${resolvedBaseUrl}/models`;
-    // IN-02: omit Authorization entirely when apiKey is undefined; sending
+    // Omit Authorization entirely when apiKey is undefined; sending
     // "Bearer " literal would trigger noisy 401s and intrusion-detection flags.
-    // Mirrors the OpenAI-compat execute path (adapters.ts:137).
+    // Keep authentication behavior identical to the OpenAI-compatible execute path.
     const headers: Record<string, string> = {
       "accept": "application/json",
       ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
@@ -251,7 +239,7 @@ export function createXaiProvider(
           });
         });
       } catch (err) {
-        if (err instanceof NegotiationAuthError) throw err; // D-10: auth never retries
+        if (err instanceof NegotiationAuthError) throw err; // Auth never retries.
         lastErr = err;
       }
     }
@@ -266,15 +254,15 @@ export function createXaiProvider(
   }
 
   async function negotiate(modelId: string): Promise<NegotiatedCapabilities> {
-    // 1. Cache check (D-07 lazy expiry).
+    // 1. Cache check (lazy expiry).
     const cached = cache.get(modelId);
     if (cached !== undefined && cached.expiresAt > Date.now()) return cached.result;
 
-    // 2. Inflight coalesce (Q7).
+    // 2. Coalesce inflight requests.
     const existing = inflight.get(modelId);
     if (existing !== undefined) return existing;
 
-    // 3. New fetch promise; clear inflight in .finally (Pitfall 4).
+    // 3. New fetch promise; clear inflight in `.finally`.
     const fetchPromise = (async () => {
       try {
         const result = await fetchAndNegotiate(modelId);
@@ -298,19 +286,19 @@ export function createXaiProvider(
   const innerExecute = inner.execute;
   const innerExecuteStream = inner.executeStream;
 
-  // Wrap the execute function to add xAI reasoning_tokens quirk preservation (D-07).
+  // Wrap the execute function to add xAI reasoning_tokens quirk preservation.
   const wrappedExecute =
     innerExecute === undefined
       ? undefined
       : async (request: Parameters<typeof innerExecute>[0]) => {
           const response = await innerExecute(request);
-          // D-07: PRESERVE xAI's `completion_tokens_details.reasoning_tokens`
+          // Preserve xAI's `completion_tokens_details.reasoning_tokens`
           // quirk. The default OpenAI-compat usage extractor does not surface
           // reasoning_tokens; we inspect rawResponse and augment the legacy
-          // UsageRecord when the field is present. The Phase 7 normalized
-          // `Usage` (promptTokens/completionTokens/costUsd) is unchanged by
-          // design -- normalized usage represents billable tokens; reasoning_tokens
-          // is xAI-extra-counts that consumers access via rawResponse for now.
+          // UsageRecord when the field is present. Normalized
+          // `Usage` (promptTokens/completionTokens/costUsd) is unchanged because
+          // normalized usage represents billable prompt and completion tokens;
+          // consumers can inspect reasoning_tokens through rawResponse.
           const reasoningTokens = reasoningTokensFromRawResponse(response.rawResponse);
           if (typeof reasoningTokens === "number" && response.usage !== undefined) {
             const inputTokens = response.usage.inputTokens ?? 0;
@@ -319,8 +307,8 @@ export function createXaiProvider(
               ...response,
               usage: {
                 ...response.usage,
-                // Recompute totalTokens INCLUDING reasoning tokens (matches
-                // FSB universal-provider.js:593 production behavior).
+                // Include xAI's separately reported reasoning tokens in the
+                // legacy total so its usage record remains internally consistent.
                 totalTokens: inputTokens + outputTokens + reasoningTokens,
               },
             };
@@ -366,10 +354,10 @@ export function createXaiProvider(
   } = {
     id: inner.id,
     kind: inner.kind,
-    // Phase 34 — QUIRK-02 / XaiQuirks — verified per RESEARCH §Q6 xAI vocabulary.
+    // XaiQuirks values verified against xAI behavior.
     // CITED: xAI API docs — https://docs.x.ai/api/endpoints
     //   - reasoningTokensReported: completion_tokens_details.reasoning_tokens reported
-    //     in xAI API responses — verified in xai.ts (D-07 carryforward from Phase 4)
+    //     in xAI API responses
     //   - logprobsSupported: grok-4.20 silently ignores logprobs param per observed behavior
     //     (docs.x.ai citation); flag set to false since logprobs fields are not populated
     //     for current grok-4 models despite the parameter being accepted

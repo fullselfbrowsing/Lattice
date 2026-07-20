@@ -4,8 +4,8 @@ import type {
 } from "./types.js";
 
 /**
- * Default redaction policy id for v1.1. Free-form string per
- * 09-CONTEXT.md — registry enforcement deferred to v1.2.
+ * Default redaction policy id for v1.1. The value remains a free-form string
+ * for wire compatibility; no registry lookup is performed.
  */
 export const DEFAULT_REDACTION_POLICY_ID = "lattice.default.v1";
 
@@ -18,12 +18,11 @@ export interface RedactionResult {
  * Redact a receipt body BEFORE canonicalization (and BEFORE signing).
  *
  * The signed digest commits to canonicalize(redact(body)). NEVER the
- * other way around. See 09-CONTEXT.md "Redact-Then-Sign Ordering
- * (UNRETROFITTABLE)" and PITFALLS.md Pitfall #1.
+ * other way around. Redaction-before-signing is a protocol invariant.
  *
  * For v1.1 the default policy is minimal — the heavy lifting already
  * happened upstream:
- *   - Tripwire evaluator emits {detector, substring} for no-pii (T-08-01).
+ *   - Tripwire evaluator emits {detector, substring} for no-pii.
  *   - Provider responses are hashed into inputHashes/outputHash, never
  *     embedded raw.
  *   - Router reject messages do not contain PII by construction.

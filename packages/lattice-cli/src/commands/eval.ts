@@ -9,31 +9,30 @@
  * with layered determinism classes, and prints a structured JSON report on
  * stdout for programmatic consumers (with human-readable lines on stderr).
  *
- * Exit-code matrix (CONTEXT.md "Subcommand Shape"):
- *   - 0 : session completed AND no fixture is invalid or regressed (includes empty
- *         fixtures dir per CONTEXT.md — no fixtures is not an error).
- *   - 0 : `--init-baseline` ran AND writeBaseline succeeded.
- *   - 1 : session completed AND `summary.regressed > 0`.
- *   - 2 : any fixture is invalid/unevaluable, the session aborts before producing
+ * Exit-code matrix:
+ *   - 0: session completed AND no fixture is invalid or regressed; an empty
+ *         fixtures directory is not an error.
+ *   - 0: `--init-baseline` ran AND writeBaseline succeeded.
+ *   - 1: session completed AND `summary.regressed > 0`.
+ *   - 2: any fixture is invalid/unevaluable, the session aborts before producing
  *         a report, or --init-baseline cannot write a complete valid baseline.
  *
  * Output streams:
- *   - stdout : ONE line, `JSON.stringify(report)`. `report.exitCode` mirrors
+ *   - stdout: ONE line, `JSON.stringify(report)`. `report.exitCode` mirrors
  *              the process exit code (set BEFORE serialization).
- *   - stderr : one human line per fixture (`<id> verdict=... regressionKind=...
+ *   - stderr: one human line per fixture (`<id> verdict=... regressionKind=...
  *              deltaCostPct=... deltaQuality=... loadFailedStage=...
  *              loadFailedReason=...`) followed by a final aggregate line.
  *              Session-wide failures that prevent enumeration emit only
  *              `FAIL kind=<kind> reason=<msg>` and no JSON report.
  *
- * Redaction discipline (CLI-05): the JSON report surfaces `usage.costUsd` as
- * a string (Plan 12-01's I-JSON decision) but NEVER emits input/output hashes
+ * Redaction discipline: the JSON report surfaces `usage.costUsd` as an
+ * I-JSON-compatible string but NEVER emits input/output hashes
  * or model fingerprints. Drift surfaces as `regressionKind:
  * "output-hash-mismatch"` — the raw hashes stay inside the receipt.
  *
- * Tested via `runEval(args, deps)` with captured stdout/stderr/exit (mock
- * argv pattern from Phase 11's repro/verify handlers). `deps.runSession`,
- * `deps.writeBaseline`, and `deps.now` are injection points for unit tests.
+ * `runEval(args, deps)` accepts injectable session, baseline, clock, and
+ * output dependencies so callers can capture effects without subprocesses.
  */
 
 import { defineCommand } from "citty";
@@ -108,7 +107,7 @@ export interface RunEvalArgs {
   readonly judgeCache?: string;
   readonly artifacts?: string;
   /**
-   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Default
+   * Directory holding `<receipt-id>.json` sidecars. Default
    * `.lattice/sidecars`. Each fixture's sidecar (when present) is applied to
    * `materializeReplayEnvelope` so the cost-regression gate is reachable;
    * fixtures without a sidecar surface as `verdict: "load-failed"` with
@@ -124,7 +123,7 @@ export interface RunEvalArgs {
 }
 
 /**
- * Build an `EvalConfig` from `RunEvalArgs` with all CONTEXT.md defaults
+ * Build an `EvalConfig` from `RunEvalArgs` with all defaults
  * filled in. Exposed for tests so the default surface is asserted directly.
  */
 export function buildEvalConfig(args: RunEvalArgs): EvalConfig {
@@ -385,8 +384,8 @@ export async function runEval(
   report = reconcileLoadFailed(report);
 
   // --init-baseline: write a new baseline from the current run AND exit 0.
-  // Per CONTEXT.md "Baseline-Relative Gating": this is the documented way to
-  // bootstrap a baseline. The runner returned every fixture as verdict=match
+  // This is the supported way to bootstrap a baseline. The runner returned
+  // every fixture as verdict=match
   // (initBaseline mode skips baseline loading); we project per-fixture
   // usage+qualityScore into BaselineEntry shape.
   if (config.initBaseline) {

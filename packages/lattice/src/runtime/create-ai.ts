@@ -126,7 +126,7 @@ export interface AI {
     intent: RunIntent<TOutputs>,
   ): Promise<RunResult<TOutputs>>;
   /**
-   * Phase 19 (v1.2): single-agent execution loop. Drives multiple provider
+   * Single-agent execution loop. Drives multiple provider
    * iterations under one call, dispatching tool requests between iterations.
    * Composes with the v1.2 hook pipeline (SAFETY-band veto, OBSERVABILITY-band
    * checkpoint receipts) and the v1.2 capability receipts (when
@@ -138,7 +138,7 @@ export interface AI {
     intent: import("../agent/types.js").AgentIntent<TOutputs>,
   ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
   /**
-   * Phase 39 (v1.3): opt-in multi-agent crew execution. Runs a literal
+   * Opt-in multi-agent crew execution. Runs a literal
    * `AgentSpec` tree through the existing single-agent loop plus the crew
    * dispatcher, with shared budget/rate-limit coordination and chained
    * completion receipts.
@@ -724,7 +724,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         continue;
       }
 
-      // Phase 8 tripwire evaluation — TRIP-02, TRIP-03, TRIP-04, TRIP-05.
+      // Tripwire evaluation runs only after output schema validation.
       // Runs ONLY when output schema validation succeeded (we are inside the
       // `validation.ok === true` branch). First violation aborts the run
       // and short-circuits the fallback chain (terminal by construction —
@@ -1669,7 +1669,7 @@ function createRunId(): string {
 /**
  * Normalize an adapter response into the `RunResult.usage` shape.
  *
- * Prefers `ProviderRunResponse.normalizedUsage` (the Phase 7 shape emitted by
+ * Prefers `ProviderRunResponse.normalizedUsage` emitted by
  * openai / openai-compat / ai-sdk / fake adapters). Falls back to mapping the
  * legacy `UsageRecord` (inputTokens / outputTokens) so v1.0 adapters that have
  * not yet been re-rolled still surface a usable Usage value.
@@ -1707,7 +1707,7 @@ function gatewayResponseMetadataForEvents(
 }
 
 /**
- * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
+ * Hash each artifact's canonical value via SHA-256 and return the
  * hex digests in declaration order. Missing/undefined values produce an
  * empty string so the array length matches `artifacts.length` exactly.
  */
@@ -1725,7 +1725,7 @@ async function hashInputArtifacts(
 }
 
 /**
- * Phase 9 — SHA-256 hex of `canonicalize(contract)` for the receipt's
+ * SHA-256 hex of `canonicalize(contract)` for the receipt's
  * contractHash field. Returns null when no contract is attached or when
  * canonicalize cannot serialize the input.
  */

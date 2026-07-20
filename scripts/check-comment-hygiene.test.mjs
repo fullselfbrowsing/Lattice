@@ -116,8 +116,43 @@ test("durable uses of workflow, phase, plan, and protocol terms are allowed", ()
     "// ExecutionPlan is the public inspectable route contract.",
     "// This workflow cancels superseded pull requests.",
     "// SHA-256 binds the canonical payload bytes.",
+    "// ISO-8601 timestamps and UTF-8 strings are part of the wire format.",
+    "// IEEE-754 defines the numeric representation.",
   ].join("\n");
   assert.deepEqual(scanSource({ source, language: "typescript" }), []);
+});
+
+test("repository-specific ticket namespaces are rejected", () => {
+  const source = [
+    "// CAPS-01 tracks capability discovery.",
+    "// RECEIPT-05 tracks envelope verification.",
+    "// REL-03 tracks publishing.",
+    "// Q7 records an open question.",
+    "// A2 records an audit answer.",
+    "// P2-B records a planning section.",
+  ].join("\n");
+  assert.deepEqual(
+    scanSource({ source, language: "typescript" }).map(({ line, ruleId }) => ({
+      line,
+      ruleId,
+    })),
+    [
+      { line: 1, ruleId: "CH005_TICKET_REFERENCE" },
+      { line: 2, ruleId: "CH005_TICKET_REFERENCE" },
+      { line: 3, ruleId: "CH005_TICKET_REFERENCE" },
+      { line: 4, ruleId: "CH005_TICKET_REFERENCE" },
+      { line: 5, ruleId: "CH005_TICKET_REFERENCE" },
+      { line: 6, ruleId: "CH005_TICKET_REFERENCE" },
+    ],
+  );
+});
+
+test("workflow pitfall narration is rejected", () => {
+  const [finding] = scanSource({
+    source: "// Pitfall 3 motivated this branch.",
+    language: "typescript",
+  });
+  assert.equal(finding.ruleId, "CH006_WORKFLOW_NARRATION");
 });
 
 test("findings are deterministically ordered by location and rule", () => {

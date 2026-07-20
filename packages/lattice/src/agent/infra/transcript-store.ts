@@ -1,5 +1,5 @@
 /**
- * TranscriptStore — Phase 21 (v1.2).
+ * TranscriptStore (v1.2).
  *
  * Records the running conversation log with filtered tail reads sized for
  * context-window management. Always preserves the FIRST user turn (the

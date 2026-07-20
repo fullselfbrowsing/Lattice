@@ -18,7 +18,7 @@ export interface LatticeConfig {
   readonly tracing?: TracerLike | false;
   readonly events?: RunEventSink | readonly RunEventSink[];
   /**
-   * Phase 9 — when configured, every terminal branch of `ai.run` emits a
+   * When configured, every terminal branch of `ai.run` emits a
    * signed `CapabilityReceipt` attached to `RunResult.receipt`. When absent,
    * no receipts are issued and `RunResult.receipt` is undefined.
    */

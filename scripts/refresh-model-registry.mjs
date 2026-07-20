@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Phase 33 — D-16 / D-17 / D-18 — Build-time OpenRouter snapshot generator.
+ * Build-time OpenRouter snapshot generator.
  *
  * Fetches https://openrouter.ai/api/v1/models, classifies each entry via
  * scripts/capabilities/classifier.mjs, sorts by (adapter, id), and writes
@@ -8,23 +8,23 @@
  *
  * Modes:
  *   (default)  Write the file.
- *   --check    Diff against committed file; exit 1 on bit-exact drift (D-17);
- *              exit 0 with stderr WARN on upstream fetch failure (D-18).
+ *   --check    Diff against committed file; exit 1 on bit-exact drift;
+ *              exit 0 with stderr WARN on upstream fetch failure.
  *
  * Zero external dependencies — node: built-ins only (scripts/ invariant).
  *
- * Determinism rules (RESEARCH §Pattern 2):
+ * Determinism rules:
  *   - No timestamps anywhere in the file body
  *   - Sort by (adapter, id) before emit
  *   - Explicit key-order in every row literal
  *   - Trailing newline always present
  *
- * Pitfalls handled:
- *   - Pitfall 1: sort before emit
- *   - Pitfall 2: top_provider.context_length ?? context_length
- *   - Pitfall 3: classifier returns null for ~latest aliases; filter
+ * Feed normalization rules:
+ *   - Sort before emitting.
+ *   - Prefer top_provider.context_length over context_length.
+ *   - Filter ~latest aliases when the classifier returns null.
  *
- * Build-time only per D-02. Never bundled into the published tarball.
+ * Build-time only. Never bundled into the published tarball.
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -65,7 +65,7 @@ const FOOTER = `] as const satisfies readonly ModelCapabilityProfile[];
  * timeout (30s). Network unreachable / non-2xx / JSON parse failure all
  * surface as the final thrown error after exhausting retries.
  *
- * Backoff: 500ms / 1000ms / 2000ms between attempts (D-18 expectation).
+ * Backoff: 500ms / 1000ms / 2000ms between attempts.
  */
 async function fetchWithRetry(url, attempts = 3) {
   let lastErr;
@@ -166,9 +166,9 @@ function renderRow(profile) {
 }
 
 /**
- * Sort profiles by (adapter, id) before emit (Pitfall 1). OpenRouter
+ * Sort profiles by (adapter, id) before emit. OpenRouter
  * returns models in non-deterministic order; sorting here is what makes
- * the --check drift gate (D-17) work bit-exactly.
+ * the --check drift gate work bit-exactly.
  */
 export function render(profiles) {
   const sorted = [...profiles].sort((a, b) => {
@@ -180,15 +180,15 @@ export function render(profiles) {
 
 /**
  * Transform the raw OpenRouter feed into typed profile objects. Filters
- * out `null` classifications (Pitfall 3 ~latest aliases) and rows with
- * missing ids. `contextWindow` uses the top_provider precedence (Pitfall
- * 2 / A1) — what OpenRouter routing will actually accept on a request.
+ * out `null` classifications (~latest aliases) and rows with
+ * missing ids. `contextWindow` prefers top_provider.context_length because
+ * it represents what OpenRouter routing will actually accept on a request.
  */
 export function transformFeed(rawFeed) {
   const profiles = [];
   for (const raw of rawFeed.data ?? []) {
     const classified = classify(raw);
-    if (classified === null) continue; // Pitfall 3 ~latest skip
+    if (classified === null) continue; // Skip ~latest aliases.
     if (typeof raw.id !== "string" || raw.id.length === 0) {
       console.warn(`[refresh-model-registry] WARN — skipping row with missing id`);
       continue;
@@ -204,7 +204,7 @@ export function transformFeed(rawFeed) {
       trainingClass: classified.trainingClass,
       reasoningSurface: classified.reasoningSurface,
       toolCallSurface: classified.toolCallSurface,
-      // Pitfall 2 / A1: top_provider.context_length is the routing-tier truth.
+      // top_provider.context_length is the routing-tier truth.
       contextWindow: raw.top_provider?.context_length ?? raw.context_length ?? 0,
       ...(pricing !== undefined ? { pricing } : {}),
       ...(inputModalities !== undefined ? { inputModalities } : {}),
@@ -226,7 +226,7 @@ async function main() {
   } catch (err) {
     const msg = err?.message ?? String(err);
     if (checkMode) {
-      // D-18: upstream outage is not a CI block; surface as WARN, exit 0.
+      // An upstream outage is not a CI block; surface a warning and exit 0.
       console.warn(
         `[refresh-model-registry] WARN — upstream fetch failed (${msg}). Skipping drift check (D-18).`,
       );
@@ -240,7 +240,7 @@ async function main() {
   const generated = render(transformFeed(feed));
 
   if (checkMode) {
-    // D-17: bit-exact diff. Any byte difference fails.
+    // The drift check is bit-exact; any byte difference fails.
     const committed = await readFile(REGISTRY_PATH, "utf8").catch(() => "");
     if (generated !== committed) {
       console.error("[refresh-model-registry] FAIL — registry.generated.ts is stale.");

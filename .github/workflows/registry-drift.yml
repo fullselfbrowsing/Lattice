@@ -1,32 +1,29 @@
 # Lattice Registry Drift Workflow
-# Phase 33 -- D-19 -- CAPS-04
-#
 # Weekly cron + manual dispatch. Auto-opens a refresh PR when the
 # OpenRouter snapshot diverges from the committed
 # packages/lattice/src/capabilities/registry.generated.ts.
 #
-# PR-time ci.yml does NOT call OpenRouter (per D-19 -- keeps PR loop
-# network-free and fast). Drift is checked weekly on a predictable
+# PR-time ci.yml does NOT call OpenRouter, which keeps the PR loop
+# network-free and fast. Drift is checked weekly on a predictable
 # cadence (Monday 06:00 UTC) or manually via workflow_dispatch.
 #
-# Permissions discipline (Phase 28 inheritance):
+# Permissions discipline:
 #   - Workflow-level: contents: read (default-locked-down)
 #   - Job-level: contents: write + pull-requests: write (minimum needed)
-#   - NO OIDC token-mint scope anywhere (this workflow does not publish;
-#     blast-radius mitigation per Phase 28 SUMMARY)
+#   - NO OIDC token-mint scope anywhere because this workflow does not publish
 #
-# All third-party actions SHA-pinned per CI-02. peter-evans/create-pull-request
-# pinned to v8.1.1 SHA per A4 (Node 24 runner support).
+# All third-party actions are SHA-pinned. peter-evans/create-pull-request is
+# pinned to the v8.1.1 commit for Node 24 runner support.
 #
 # Prerequisite repo setting:
 #   Settings -> Actions -> General -> Workflow permissions ->
 #   "Allow GitHub Actions to create and approve pull requests" (must be enabled)
-# Inherited from Phase 29 (changesets/action Version Packages flow needs the same setting).
+# The changesets Version Packages flow requires the same repository setting.
 name: registry-drift
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Monday 06:00 UTC (D-19)
+    - cron: '0 6 * * 1'  # Monday 06:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -61,7 +58,7 @@ jobs:
         run: node scripts/refresh-model-registry.mjs
 
       - name: Open refresh PR
-        # SHA pin per CI-02; v8.1.1 per A4 (Node 24 runner support).
+        # Pinned to the v8.1.1 commit for Node 24 runner support.
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

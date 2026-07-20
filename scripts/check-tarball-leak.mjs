@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Phase 25 Plan 01 — D-04 tarball-leak audit gate.
+ * Tarball-leak audit gate.
  *
  * Runs `pnpm pack` against each publishable package, extracts the in-tarball
  * `package.json`, and fails if any unscoped "lattice" reference appears in:
@@ -9,15 +9,14 @@
  *   - types field (string)
  *   - tsd.compilerOptions.paths keys
  *
- * Phase 49 extension:
+ * Additional package constraints:
  *   - published packages must not ship install-time lifecycle scripts
  *   - the core runtime package must not depend directly on optional native/heavy integrations
  *
  * Package-page docs extension:
  *   - published packages must ship a non-empty README.md so npm renders docs
  *
- * Implements PITFALLS RENAME-1 / RENAME-3 forever-guard: catches a regression
- * where the rename to @full-self-browsing/* leaves a stale bare "lattice"
+ * Catches regressions where the rename to @full-self-browsing/* leaves a stale bare "lattice"
  * reference that would ship to the registry tarball.
  *
  * Exit codes:
@@ -25,7 +24,7 @@
  *   1 — at least one offender found, or pnpm pack failed
  *
  * Dependencies: zero external npm packages. Uses node: built-ins plus the
- * `pnpm` binary (workspace package manager, present on CI per D-08) and the
+ * `pnpm` binary (the workspace package manager, present on CI) and the
  * `tar` binary (ubuntu-latest standard).
  */
 import { mkdtemp, readdir, rm } from "node:fs/promises";
@@ -45,8 +44,7 @@ const PACKAGES = [
 ];
 
 // Matches the bare token "lattice" when it is NOT preceded by the
-// @full-self-browsing/ scope. Same logic the Phase 24 tarball-inspection
-// step used.
+// @full-self-browsing/ scope.
 const BARE_LATTICE = /(?<!@full-self-browsing\/)\blattice\b/;
 
 const INSTALL_LIFECYCLE_SCRIPTS = [

@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * Phase 25 Plan 01 — D-06 workflow safety audit gate.
+ * Workflow safety audit gate.
  *
  * Scans .github/workflows/*.yml for two failure modes:
  *
- *   Check A — pull_request_target ban (D-11, PITFALLS OIDC-1):
+ *   Check A — pull_request_target ban:
  *     ANY workflow line that starts the YAML key `pull_request_target:` (after
  *     leading whitespace) is a violation. This is the GitHub Actions
  *     "pwn-request" trigger: it runs with the base-branch secrets and
  *     write-token, against PR-author-controlled code. There is no legitimate
  *     use case for it in this repository.
  *
- *   Check B — id-token: write scope (D-10, PITFALLS OIDC-1):
+ *   Check B — id-token: write scope:
  *     The OIDC blast radius lesson from the TanStack May 2026 supply-chain
  *     incident: an OIDC `id-token: write` permission granted at workflow root
  *     (or to a non-publish job) lets every step in every job mint an npm
@@ -19,9 +19,8 @@
  *     single job literally named `publish` inside `release.yml`. Any other
  *     occurrence is a violation.
  *
- * On the current tree where .github/workflows/ does not yet exist (Plan 02
- * creates it), this script vacuously passes. Once Plan 02 lands ci.yml and
- * Phase 28 lands release.yml, the same scan runs against both.
+ * If .github/workflows/ does not exist, this script vacuously passes. Once
+ * workflows are present, the same checks apply to every YAML file.
  *
  * Exit codes:
  *   0 — no workflows present, or all workflows pass both checks

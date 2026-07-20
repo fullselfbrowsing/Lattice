@@ -1,13 +1,11 @@
 /**
- * Shared eval types (Plan 12-01).
+ * Shared eval types.
  *
- * These types are imported by the Plan 02 runner and judge-cache wiring. The
- * stdout JSON shape is locked to the CONTEXT.md "Output Format" block and
- * MUST NOT drift without a `lattice-eval/<version>` bump.
+ * These types are imported by the runner and judge-cache wiring. The versioned
+ * stdout JSON shape MUST NOT drift without a `lattice-eval/<version>` bump.
  *
- * `tripwireOutcomes: readonly never[]` is the v1.1 forward-compat hook
- * (CONTEXT.md "Tripwires-as-Eval-Scorers (Deferred Hook)"): always empty in
- * v1.1, reserved so a v1.2 reader can populate it without an envelope bump.
+ * `tripwireOutcomes: readonly never[]` is the v1.1 forward-compat hook. It is
+ * always empty in v1.1 so a newer reader can populate it without an envelope bump.
  */
 
 export type FixtureVerdict = "match" | "drift" | "regression" | "load-failed";
@@ -36,22 +34,19 @@ export interface FixtureReportUsage {
 }
 
 /**
- * Discriminator for `verdict: "load-failed"` entries (Plan 13.1-02). The
+ * Discriminator for `verdict: "load-failed"` entries. The
  * field is additive to `lattice-eval/v1` — older readers MUST ignore it; no
- * version bump is required (per the v1.1.1 sub-phase decision in
- * 13.1-CONTEXT.md "Sidecar File Format"). For every non-load-failed fixture
+ * version bump is required. For every non-load-failed fixture
  * (match / drift / regression) the value is `null`.
  *
  * Taxonomy:
- *   - "no-sidecar"          : walker yielded the receipt but no sidecar pair
- *                              (the EVAL-02/EVAL-06 forward-compat case the
- *                              v1.1 audit said was unreachable).
- *   - "verify-failed"       : materialize/verifyReceipt rejected the envelope
- *   - "replay-failed"       : replayOffline returned ok:false
- *   - "malformed-sidecar"   : walker surfaced a sidecar-side load error
+ *   - "no-sidecar": walker yielded the receipt but no sidecar pair
+ *   - "verify-failed": materialize/verifyReceipt rejected the envelope
+ *   - "replay-failed": replayOffline returned ok:false
+ *   - "malformed-sidecar": walker surfaced a sidecar-side load error
  *                              (malformed / version-mismatch /
  *                              unsupported-output-shape)
- *   - "outputhash-missing"  : verified body.outputHash === null (failure
+ *   - "outputhash-missing": verified body.outputHash === null (failure
  *                              receipts have no diff target)
  */
 export type LoadFailedReason =
@@ -75,9 +70,9 @@ export interface FixtureReport {
   readonly deltaQuality: number | null;
   readonly loadFailedStage: LoadFailedStage;
   /**
-   * Sub-discriminator for `verdict: "load-failed"` (Plan 13.1-02). `null` for
-   * every other verdict. Additive field — consumers that pre-date Plan 13.1
-   * MAY ignore it without a version bump.
+   * Sub-discriminator for `verdict: "load-failed"`. `null` for
+   * every other verdict. Existing consumers may ignore this additive field
+   * without a version bump.
    */
   readonly loadFailedReason: LoadFailedReason;
 }
@@ -107,12 +102,12 @@ export interface EvalConfig {
   readonly judgeCacheDir: string;
   /**
    * Directory containing on-disk artifact bytes keyed by `<sha256-hex>.bin`.
-   * The Phase 11 filesystem ArtifactLoader (`createFilesystemArtifactLoader`)
+   * The filesystem ArtifactLoader (`createFilesystemArtifactLoader`)
    * is rooted here.
    */
   readonly artifactsDir: string;
   /**
-   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Default
+   * Directory holding `<receipt-id>.json` sidecars. Default
    * `.lattice/sidecars`. Paired with each receipt by `walkReceiptsWithSidecars`
    * so per-fixture `{ task, outputs, policy, contract }` quadruples flow into
    * `materializeReplayEnvelope`. Fixtures without a sidecar surface as

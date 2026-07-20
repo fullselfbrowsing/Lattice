@@ -1,12 +1,11 @@
-// Phase 33 — D-09 / D-10 / D-11 — Public lookup surface for the model
-// capability registry. CAPS-02 surface.
+// Public lookup surface for the model capability registry.
 //
 // Three exported functions:
-//   - getCapabilityProfile(canonicalKey)   — strict, exact `${adapter}:${id}` lookup (D-09)
-//   - findCapabilityProfile(id)            — fuzzy, multi-adapter, OpenRouter suffix-strip (D-10)
-//   - stripOpenRouterVariant(id)           — pure helper, OpenRouter-shape only (D-11)
+//   - getCapabilityProfile(canonicalKey)   — strict, exact `${adapter}:${id}` lookup
+//   - findCapabilityProfile(id)            — fuzzy, multi-adapter, OpenRouter suffix-strip
+//   - stripOpenRouterVariant(id)           — pure helper, OpenRouter-shape only
 //
-// Phase 34 (quirks) and Phase 36 (sanitizers) reuse stripOpenRouterVariant.
+// Quirk negotiation and sanitizers reuse stripOpenRouterVariant.
 // The lazy Map cache is built once on first lookup from STATIC + GENERATED
 // arrays and reused across calls; _resetLookupCacheForTests is exported for
 // vitest case isolation but is NOT re-exported from the public surface.
@@ -16,7 +15,7 @@ import { GENERATED_PROFILES } from "./registry.generated.js";
 import { STATIC_PROFILES } from "./registry.static.js";
 
 /**
- * D-10 adapter order — direct adapters first, OpenRouter last. The
+ * Adapter order keeps direct adapters first and OpenRouter last. The
  * `findCapabilityProfile` helper walks this list and concatenates hits in
  * order, so consumers iterating over the result see direct-adapter
  * profiles before the OpenRouter routing equivalent. This makes the
@@ -34,11 +33,11 @@ const ADAPTER_ORDER: ReadonlyArray<CapabilityAdapter> = [
 ];
 
 /**
- * D-11 — anchored, bounded OpenRouter variant regex. Matches the live
+ * Anchored, bounded OpenRouter variant regex. Matches the live
  * variant set verified against the OpenRouter feed on 2026-06-08:
  * `:free` and `:thinking` only. Linear-time worst case — no nested
- * quantifiers, finite alternation, anchored on both ends (Pitfall 4 +
- * threat T-33-02-02 mitigation).
+ * quantifiers, finite alternation, and anchors on both ends prevent
+ * pathological backtracking.
  *
  * Pattern: `vendor/model:variant` where `vendor` and `model` are each
  * non-empty non-`/` segments. Direct-adapter canonical keys like
@@ -51,10 +50,10 @@ const OPENROUTER_VARIANT_RE = /^[^/]+\/[^/]+:(?:free|thinking)$/;
  * OpenRouter-shaped id (`vendor/model:variant`). Other adapter id shapes
  * pass through verbatim — does not, for example, alter
  * `anthropic:claude-opus-4` (direct-adapter canonical key) or
- * `openai/gpt-4o:beta` (unrecognized variant per Pitfall 4).
+ * `openai/gpt-4o:beta` (an unrecognized variant).
  *
- * Exported because Phase 34 (adapter quirks) and Phase 36 (output
- * sanitizers) need the same normalization. Phase 33 D-11 scope.
+ * Exported because adapter quirks and output sanitizers need the same
+ * normalization.
  */
 export function stripOpenRouterVariant(id: string): string {
   if (!OPENROUTER_VARIANT_RE.test(id)) return id;
@@ -78,12 +77,12 @@ function getLookupMap(): Map<string, ModelCapabilityProfile> {
   // overwrite. By current design STATIC and GENERATED do not share keys
   // (static profiles use direct adapters; generated entries use the
   // openrouter adapter), but the iteration order documents the
-  // precedence in case a future plan introduces overlap.
+  // precedence if the registries ever overlap.
   //
   // The explicit `readonly ModelCapabilityProfile[]` widening is required
   // because the bootstrap arrays ship as `readonly []` (an empty tuple)
-  // via `[] as const satisfies readonly ModelCapabilityProfile[]`. Plan
-  // 04 populates them with real rows; the iteration variable type stays
+  // via `[] as const satisfies readonly ModelCapabilityProfile[]`. Once
+  // populated with real rows, the iteration variable type stays
   // `ModelCapabilityProfile` either way.
   const staticProfiles: readonly ModelCapabilityProfile[] = STATIC_PROFILES;
   const generatedProfiles: readonly ModelCapabilityProfile[] = GENERATED_PROFILES;
@@ -109,7 +108,7 @@ export function _resetLookupCacheForTests(): void {
 }
 
 /**
- * D-09 strict lookup — return the capability profile for the exact
+ * Strict lookup returns the capability profile for the exact
  * `${adapter}:${modelId}` canonical key. Returns `undefined` if the key
  * is not registered. No fuzzy matching — use `findCapabilityProfile`
  * for that.
@@ -119,8 +118,8 @@ export function _resetLookupCacheForTests(): void {
  *   getCapabilityProfile("anthropic:claude-opus-4")        -> profile
  *   getCapabilityProfile("not-a-real-key")                  -> undefined
  *
- * The lookup is case-sensitive on the canonical key. Threat T-33-02-01
- * mitigation: backing store is `Map<string, ModelCapabilityProfile>`,
+ * The lookup is case-sensitive on the canonical key. The backing store is
+ * `Map<string, ModelCapabilityProfile>`,
  * not a plain object literal, so `__proto__` and other prototype-chain
  * keys are safe (Map uses SameValueZero, not property lookup).
  */
@@ -131,7 +130,7 @@ export function getCapabilityProfile(
 }
 
 /**
- * D-10 fuzzy lookup — strip the OpenRouter variant suffix (if any) and
+ * Fuzzy lookup strips the OpenRouter variant suffix (if any) and
  * return ALL matching profiles across every adapter, in deterministic
  * order: direct adapters first (anthropic, openai, gemini, xai,
  * openai-compat, lm-studio), then OpenRouter.
@@ -141,7 +140,7 @@ export function getCapabilityProfile(
  * and pick the first compatible one. Returns `[]` when no match is
  * found across any adapter.
  *
- * Suffix-strip is OpenRouter-shape-only per D-11. Direct-adapter ids
+ * Suffix stripping applies only to OpenRouter-shaped ids. Direct-adapter ids
  * pass through verbatim:
  *   findCapabilityProfile("openai/gpt-oss-120b:free")
  *     -> [openrouter:openai/gpt-oss-120b]

@@ -16,7 +16,7 @@ export interface RunSuccess<TOutputs extends OutputContractMap> {
   readonly events?: readonly RunEvent[];
   readonly gateway?: ProviderGatewayMetadata;
   /**
-   * Phase 9 — signed capability receipt issued when `LatticeConfig.signer`
+   * Signed capability receipt issued when `LatticeConfig.signer`
    * is configured. Undefined when no signer is set.
    */
   readonly receipt?: ReceiptEnvelope;
@@ -33,7 +33,7 @@ export interface RunFailure {
   readonly events?: readonly RunEvent[];
   readonly gateway?: ProviderGatewayMetadata;
   /**
-   * Phase 9 — signed capability receipt issued when `LatticeConfig.signer`
+   * Signed capability receipt issued when `LatticeConfig.signer`
    * is configured. Undefined when no signer is set.
    */
   readonly receipt?: ReceiptEnvelope;
