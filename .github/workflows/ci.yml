@@ -75,6 +75,9 @@ jobs:
       - name: Audit workflows for OIDC and PR-target drift
         run: node scripts/check-workflow-safety.mjs
 
+      - name: Validate production comment hygiene
+        run: pnpm check:comment-hygiene
+
   packed-consumer:
     name: packed-consumer-node-${{ matrix.node }}
     runs-on: ubuntu-latest
