@@ -1,23 +1,28 @@
 # Lattice Modular Entrypoints
 
-Phase 50 defines the public modular adoption contract for `@full-self-browsing/lattice`. The root package export remains supported, but new subpaths let applications import the piece they need without treating the full agent runtime as the default integration path.
+The root `@full-self-browsing/lattice` export remains supported, while public subpaths let
+applications import the piece they need without treating the full agent runtime as the
+default integration path.
 
-This does not lower the package-level engine. The package manifest still declares Node `>=24` for the full runtime. The compatibility labels below describe each module facade's intended support target and are validated by later milestone phases where Node 20 execution is in scope.
+Every entrypoint shares the package-level Node `>=24` boundary. Lattice 1.6.0 is validated
+on Node 24 LTS and Node 26 Current. The compatibility labels distinguish portable
+Node-24-plus modules from surfaces whose actual support also depends on the selected
+provider or storage adapter.
 
 ## Module Table
 
 | Import Path | Compatibility | Intended Surface |
 |-------------|---------------|------------------|
 | `@full-self-browsing/lattice/providers` | `adapter-specific` | Provider factories, provider contracts, streaming helpers, capability negotiation, and prompt scaffold helpers. |
-| `@full-self-browsing/lattice/audit` | `node20-compatible` | Capability receipts, signing, verification, CID, replay envelopes, redaction, materialization, and receipt OTel attributes. |
-| `@full-self-browsing/lattice/context` | `node20-compatible` | Context packing, token estimates, and artifact reference extraction. |
-| `@full-self-browsing/lattice/artifacts` | `node20-compatible` | Artifact builders, refs, metadata, storage references, and lineage types. |
-| `@full-self-browsing/lattice/routing` | `node20-compatible` | Deterministic routing, catalogs, policy, capability profiles, and negotiation helpers. |
-| `@full-self-browsing/lattice/tools` | `node20-compatible` | Tool definitions, tool execution, MCP-like imports, and tool-call validation types. |
+| `@full-self-browsing/lattice/audit` | `node24-plus` | Capability receipts, signing, verification, CID, replay envelopes, redaction, materialization, and receipt OTel attributes. |
+| `@full-self-browsing/lattice/context` | `node24-plus` | Context packing, token estimates, and artifact reference extraction. |
+| `@full-self-browsing/lattice/artifacts` | `node24-plus` | Artifact builders, refs, metadata, storage references, and lineage types. |
+| `@full-self-browsing/lattice/routing` | `node24-plus` | Deterministic routing, catalogs, policy, capability profiles, and negotiation helpers. |
+| `@full-self-browsing/lattice/tools` | `node24-plus` | Tool definitions, tool execution, MCP-like imports, and tool-call validation types. |
 | `@full-self-browsing/lattice/storage` | `adapter-specific` | Memory and Node filesystem artifact stores plus storage contracts. |
-| `@full-self-browsing/lattice/eval` | `node20-compatible` | Standalone evaluation kernels for regression checks. |
-| `@full-self-browsing/lattice/agents` | `node24-runtime` | Opt-in single-agent, crew, host, and agent infrastructure runtime surfaces. |
-| `@full-self-browsing/lattice/core` | `node20-compatible` | Non-agent artifact, context, output, contract, routing, provider-contract, storage-contract, and result primitives. |
+| `@full-self-browsing/lattice/eval` | `node24-plus` | Standalone evaluation kernels for regression checks. |
+| `@full-self-browsing/lattice/agents` | `node24-plus` | Opt-in single-agent, crew, host, and agent infrastructure runtime surfaces. |
+| `@full-self-browsing/lattice/core` | `node24-plus` | Non-agent artifact, context, output, contract, routing, provider-contract, storage-contract, and result primitives. |
 
 The machine-readable source of truth for this table is `packages/lattice/package.json` under `lattice.modules`.
 
@@ -92,19 +97,27 @@ const receipt = await createReceipt(
   signer,
 );
 
-await verifyReceipt(
+const verification = await verifyReceipt(
   receipt,
   createMemoryKeySet([{ kid: "local", publicKeyJwk: signer.publicKeyJwk, state: "active" }]),
+  { legacyPolicy: "reject" },
 );
+
+if (!verification.ok) throw new Error(verification.error.message);
 ```
 
 This path does not require the Lattice runtime to choose or execute a model.
 
-### Node 20 signing
+Lattice SDK 1.6.0 mints standard DSSE `lattice-receipt/v1.4` bodies. There is no
+`lattice-receipt/v1.6` body. `verifyReceipt` keeps observable historical compatibility by
+default; `legacyPolicy: "reject"` disables only the deprecated signature fallback. New
+issuance cannot select a historical signature profile.
+The sibling CLI maps `--standard-only` to the same strict read policy.
 
-Node 20 logs an experimental warning when `crypto.subtle.sign` uses the `Ed25519`
-algorithm. To avoid this on the signing path, swap `createInMemorySigner` for
-`createNobleEd25519Signer` from the same import:
+### Alternative signing
+
+Use `createNobleEd25519Signer` when a pure JavaScript Ed25519 signing path is preferable to
+the WebCrypto-backed `createInMemorySigner`:
 
 ```ts
 import { createNobleEd25519Signer } from "@full-self-browsing/lattice/audit";
@@ -118,12 +131,9 @@ const signer = createNobleEd25519Signer(privateKeyJwk, {
 });
 ```
 
-`createNobleEd25519Signer` uses `@noble/ed25519` for signing (pure JS, stable
-WebCrypto SHA-512 internally, with no experimental warning on the signing path).
-`verifyReceipt` and `generateEd25519KeyPairJwk` are unchanged; they still use
-WebCrypto Ed25519 and can still emit the Node 20 experimental warning when called
-in the same process. A noble-backed verify/keygen helper is a possible fast
-follow.
+`createNobleEd25519Signer` uses `@noble/ed25519` for signing. Verification and key
+generation continue to use WebCrypto Ed25519. Both signer choices emit the same standard
+v1.4 receipt profile.
 
 ## Core-Only
 
@@ -161,7 +171,7 @@ void prepared;
 void routeDeterministically;
 ```
 
-This path is for applications that already have a model execution layer and only need Lattice's shared primitives. `prepareCoreRun` returns a non-executing prepared core record with artifact refs, context pack, advisory route decision, input hashes, warnings, and an execution plan that downstream executors, audit helpers, and debugging tools can inspect.
+This path is for applications that already have a model execution layer and only need Lattice's shared primitives. `prepareCoreRun` returns a non-executing prepared core record with artifact refs, context pack, advisory route decision, input hashes, warnings, and an execution plan that downstream executors, audit helpers, and debugging tools can inspect. Full runtime execution additionally materializes one route-specific provider projection and uses it consistently for packaging, hashes, attempts, receipts, and replay evidence.
 
 ## Context/Artifact-Only
 
@@ -306,10 +316,12 @@ const result = await runAgent(
 
 if (result.kind === "success") {
   result.output.build.command;
+  result.receipt;
+  result.iterations[0]?.receipt;
 }
 ```
 
-Importing `@full-self-browsing/lattice/agents` is the explicit opt-in point for agent and crew runtime behavior. The `check:module-boundaries` script enforces provider-only, audit-only, tools-only, and core-only separation from agent modules.
+Importing `@full-self-browsing/lattice/agents` is the explicit opt-in point for agent and crew runtime behavior. Automatic iteration and terminal fields carry the exact issued envelopes; resume reuses the stored ledger, and crew results reuse member terminal envelopes in root, serial-child, parent order. The `check:module-boundaries` script enforces provider-only, audit-only, tools-only, and core-only separation from agent modules.
 
 ## Full Runtime
 
@@ -327,16 +339,21 @@ const result = await ai.run({
 void result;
 ```
 
-The full runtime remains documented as Node `>=24` through package metadata. Node 20 validation is scoped to module facades labelled `node20-compatible`.
+The full runtime and every modular facade share the Node `>=24` package engine.
 
 ## Validation Commands
 
-The v1.5.0 compatibility and dogfood checks are executable:
+The v1.6.0 modular and distribution checks are executable:
 
 ```bash
-pnpm check:node20-modules
-pnpm --filter @full-self-browsing/lattice test -- gitfly-dogfood
+pnpm check:module-boundaries
+pnpm check:core-boundary
+pnpm check:packed-consumer
 pnpm example:external-consumer
 ```
 
-`check:node20-modules` builds Lattice, locates a real Node 20 binary (or uses `NODE20_BIN`), and imports every built facade labelled `node20-compatible`. `example:external-consumer` imports built modular subpaths and demonstrates core, tools/MCP, audit, and eval adoption slices.
+`check:packed-consumer` installs real runtime and CLI tarballs into an isolated ESM project,
+rejects unresolved workspace links, and exercises standard and historical receipt plus CLI
+behavior. CI runs that gate on Node 24 LTS and Node 26 Current. The optional provider canary
+is scheduled/manual only; its protected configuration and sanitized tri-state evidence are
+documented in [Provider canaries](./provider-canaries.md).

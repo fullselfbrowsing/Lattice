@@ -112,12 +112,20 @@ import {
   createMemorySessionStore,
 } from "@full-self-browsing/lattice";
 
+const sessions = createMemorySessionStore();
+await sessions.create({
+  id: "migration-session",
+  tenantId: "tenant-example",
+  privacy: "standard",
+  retention: "session",
+});
+
 const ai = createAI({
   providers: [
     createFakeProvider({ response: { rawOutputs: { answer: "stored" } } }),
   ],
   storage: createMemoryArtifactStore(),
-  sessions: createMemorySessionStore(),
+  sessions,
 });
 
 const result = await ai.run({
@@ -127,6 +135,7 @@ const result = await ai.run({
   session: ai.session("migration-session"),
   policy: {
     tenantId: "tenant-example",
+    privacy: "standard",
     retention: "session",
     missingArtifactRef: "error",
   },
