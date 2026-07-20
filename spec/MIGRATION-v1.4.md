@@ -8,6 +8,10 @@ issuance is `lattice-receipt/v1.4` with the signed field
 The normative algorithm and result ordering are in [SPEC.md](./SPEC.md); the closed body
 shape is [schema/v1.4.json](./schema/v1.4.json).
 
+This guide covers the receipt protocol transition. For the broader SDK 1.5 to 1.6
+upgrade, including Node support, runtime state, audit policy, agent evidence, and release
+validation, see [Migrating to Lattice SDK v1.6](../docs/MIGRATION-v1.6.md).
+
 ## PAE Change
 
 Earlier Lattice releases signed PAE containing the envelope's base64 payload text. v1.4

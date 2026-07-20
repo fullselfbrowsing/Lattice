@@ -2,6 +2,9 @@
 
 **Status:** Normative
 **Spec version:** 1.1-draft (tied to receipt schema v1.4)
+**SDK mapping:** Lattice SDK 1.6.0 emits receipt schema `lattice-receipt/v1.4`.
+SDK and receipt schema versions are independent; this specification does not define a
+`lattice-receipt/v1.6` body.
 **Normative authority:** This specification and the versioned JSON Schemas in
 `spec/schema/` define the public protocol. An implementation MUST NOT require access to the
 Lattice TypeScript source to reproduce signing or verification. Where normative prose and a
@@ -65,6 +68,11 @@ a CID for receipt chaining. Verification follows a strict 12-step decision tree 
 short-circuits at the first failure. The downgrade defense (step 4) fires before any
 cryptographic operation, ensuring that receipts with deprecated version strings cannot be
 accepted even when a valid-but-revoked key is presented.
+
+The current SDK release does not alter that version boundary. SDK 1.6.0 mints only
+`lattice-receipt/v1.4` bodies. Direct verification entrypoints retain the bounded
+compatibility default in § 5.3; strict readers opt into rejection of the deprecated
+historical signature path.
 
 ---
 

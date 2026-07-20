@@ -23,6 +23,11 @@ commands report `profile=` and `deprecated=`. `verify` retains exit 0 for succes
 typed verification failure, and 2 for load failure; `repro` retains exit 0 for a match, 1
 for drift, and 2 for prerequisite or replay failure.
 
+Lattice SDK 1.6.0 is the first SDK release to ship this corrected protocol bridge. SDK
+version 1.6.0 does not introduce a receipt schema v1.6: current issuance remains exactly
+`lattice-receipt/v1.4`, historical issuance remains unavailable, and strict historical
+rejection remains an explicit reader option rather than a universal default.
+
 This release adds the closed `spec/schema/v1.4.json` schema and
 `spec/MIGRATION-v1.4.md`. Conformance evidence is separated into immutable historical
 (`vectors/legacy`) and current standard (`vectors/standard`) corpora; the corrected standard

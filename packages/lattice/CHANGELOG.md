@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.6.0
+
+### Minor Changes
+
+* Correct capability receipt issuance to standard DSSE v1.0 over canonical payload bytes. New receipts use the signed body type `lattice-receipt/v1.4` and `signatureProfile: "dsse-v1"`; historical receipts remain readable only through the explicit, observable compatibility policy.
+* Add strict TypeScript, Python, CLI, schema, vector, independent-oracle, and packed-consumer conformance for the standard receipt profile. Direct verification remains compatibility-first by default, while `legacyPolicy: "reject"` and the CLI `--standard-only` flag provide strict read boundaries.
+* Make one route-specific materialized context projection authoritative for provider requests, hashes, receipts, attempts, and replay evidence. Add scoped session continuity, selected-only reference loading, normalized summaries, exact store-returned refs, configurable missing-reference handling, and typed persistence failures.
+* Add `off`, `best-effort`, and `required` receipt issuance modes with bounded audit failures, complete evaluation failure accounting, atomic baseline initialization, and one shared cost estimator that distinguishes known zero cost from unknown pricing.
+* Attach the exact issued receipt envelopes to agent iterations and terminal results. Resume preserves stable execution identities and completed receipt ledgers, while crews reuse those envelopes in root, child-completion, parent-completion order without reminting.
+* Validate packed runtime and CLI consumers on Node 24 LTS and Node 26 Current, add bounded optional provider canaries for OpenAI-compatible, Anthropic, and Gemini wire families, and enforce production comment hygiene in CI.
+
+### Compatibility
+
+* Raise the supported package boundary to Node.js 24 or newer. Node 24 LTS and Node 26 Current are the validated release lines.
+* Keep receipt schema versioning independent from SDK versioning: SDK 1.6.0 emits `lattice-receipt/v1.4`; there is no `lattice-receipt/v1.6` payload type.
+* Preserve the default read bridge for historical v1.1-v1.3 receipts. New issuance cannot mint a historical signature profile, and a v1.4 signature failure never falls back to legacy verification.
+
+### Validation
+
+* Package, type, lint, test, tarball, boundary, packed-consumer, workflow-safety, provider-canary, and comment-hygiene gates pass for the release candidate.
+
 ## 1.5.1
 
 ### Patch Changes
