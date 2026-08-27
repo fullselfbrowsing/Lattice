@@ -10,6 +10,7 @@ import {
   normalizeConfig,
   type LatticeConfig,
 } from "../src/runtime/config.js";
+import { resolveReceiptPolicy } from "../src/receipts/policy.js";
 import { createMemoryArtifactStore } from "../src/storage/memory.js";
 import type { TracerLike } from "../src/tracing/tracing.js";
 
@@ -66,6 +67,9 @@ describe("phase 1 runtime contracts", () => {
       noUpload: true,
       noPublicUrl: true,
       noLogging: false,
+      tenantId: "tenant:default",
+      retention: "session",
+      missingArtifactRef: "error",
       metadata: {
         scope: "default",
       },
@@ -83,6 +87,8 @@ describe("phase 1 runtime contracts", () => {
     const runPolicy: PolicySpec = {
       maxCostUsd: 2,
       noLogging: true,
+      tenantId: "tenant:run",
+      missingArtifactRef: "omit",
       metadata: {
         scope: "run",
       },
@@ -104,6 +110,9 @@ describe("phase 1 runtime contracts", () => {
       noUpload: true,
       noPublicUrl: true,
       noLogging: true,
+      tenantId: "tenant:run",
+      retention: "session",
+      missingArtifactRef: "omit",
       metadata: {
         scope: "run",
       },
@@ -181,5 +190,20 @@ describe("phase 1 runtime contracts", () => {
 
     expect(enabled.storage).toBe(storage);
     expect(enabled.tracing).toBe(tracing);
+  });
+
+  it("preserves explicit receipt mode and signer-only compatibility", () => {
+    const signer = {
+      kid: "config-key",
+      publicKeyJwk: { kty: "OKP" },
+      sign: async () => new Uint8Array([1]),
+    };
+    const explicit = normalizeConfig({ signer, receiptMode: "off" });
+    const shorthand = normalizeConfig({ signer });
+
+    expect(explicit.receiptMode).toBe("off");
+    expect(resolveReceiptPolicy({ mode: "off", signer }).mode).toBe("off");
+    expect(shorthand.receiptMode).toBeUndefined();
+    expect(resolveReceiptPolicy({ signer }).mode).toBe("best-effort");
   });
 });

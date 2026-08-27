@@ -281,7 +281,13 @@ describe("runEvalSession", () => {
     expect(fxReport.regressionKind).toBe(null);
     expect(fxReport.qualityScore).toBe(null);
     expect(judgeCalls).toBe(0);
-    expect(report.summary).toEqual({ total: 1, passed: 1, regressed: 0, newFixtures: 0 });
+    expect(report.summary).toEqual({
+      total: 1,
+      passed: 1,
+      regressed: 0,
+      newFixtures: 0,
+      loadFailed: 0,
+    });
     expect(report.tripwireOutcomes).toEqual([]);
   });
 
@@ -542,11 +548,14 @@ describe("runEvalSession", () => {
     expect(report.fixtures).toHaveLength(1);
     const fxReport = report.fixtures[0]!;
     expect(fxReport.verdict).toBe("load-failed");
+    expect(fxReport.loadFailedStage).toBe("load");
+    expect(fxReport.loadFailedReason).toBe("receipt-load-failed");
     expect(fxReport.regressionKind).toBe(null);
     expect(fxReport.usage).toBe(null);
     expect(fxReport.qualityScore).toBe(null);
     expect(report.summary.regressed).toBe(0);
     expect(report.summary.passed).toBe(0);
+    expect(report.summary.loadFailed).toBe(1);
   });
 
   it("Test 7 (judge cache hit): two runs over same fixture with qualityFloor -> judge calls === 3 total (3 first, 0 second)", async () => {
@@ -786,6 +795,7 @@ describe("runEvalSession", () => {
       passed: 2,
       regressed: 1,
       newFixtures: 1,
+      loadFailed: 1,
     });
     const verdictsById: Record<string, string> = {};
     for (const fx of report.fixtures) {
@@ -819,7 +829,13 @@ describe("runEvalSession", () => {
     );
 
     expect(report.fixtures).toEqual([]);
-    expect(report.summary).toEqual({ total: 0, passed: 0, regressed: 0, newFixtures: 0 });
+    expect(report.summary).toEqual({
+      total: 0,
+      passed: 0,
+      regressed: 0,
+      newFixtures: 0,
+      loadFailed: 0,
+    });
     expect(report.tripwireOutcomes).toEqual([]);
   });
 
@@ -902,8 +918,10 @@ describe("runEvalSession", () => {
     const withSc = byId["fx-with-sc"]!;
     const withoutSc = byId["fx-without-sc"]!;
     expect(withSc.verdict).toBe("match");
+    expect(withSc.loadFailedStage).toBe(null);
     expect(withSc.loadFailedReason).toBe(null);
     expect(withoutSc.verdict).toBe("load-failed");
+    expect(withoutSc.loadFailedStage).toBe("load");
     expect(withoutSc.loadFailedReason).toBe("no-sidecar");
     expect(withoutSc.usage).toBe(null);
     expect(withoutSc.qualityScore).toBe(null);
@@ -942,6 +960,7 @@ describe("runEvalSession", () => {
     expect(report.fixtures).toHaveLength(1);
     const fx = report.fixtures[0]!;
     expect(fx.verdict).toBe("load-failed");
+    expect(fx.loadFailedStage).toBe("load");
     expect(fx.loadFailedReason).toBe("malformed-sidecar");
   });
 
@@ -1007,5 +1026,133 @@ describe("runEvalSession", () => {
     expect(fx.regressionKind).toBe("cost-regression");
     expect(fx.loadFailedReason).toBe(null);
     expect(report.summary.regressed).toBe(1);
+  });
+
+  it("[EVAL16-01] retains every invalid stage in fixture order with bounded diagnostics", async () => {
+    const paths = await makeSandbox();
+    const noSidecar = await buildFixture("stage-no-sidecar");
+    const verifyFailure = await buildFixture("stage-verify");
+    const materializeFailure = await buildFixture("stage-materialize", [
+      artifact.text("SECRET_ARTIFACT_BODY", { id: "artifact:stage-materialize" }),
+    ]);
+    const replayFailure = await buildFixture("stage-replay");
+    const outputMissing = await buildFixture("stage-output-missing");
+
+    await writeFile(
+      join(paths.receiptsDir, "a-load.json"),
+      "{ SECRET_RECEIPT_BYTES",
+      "utf8",
+    );
+    await seedFixtureOnDisk(paths, "b-no-sidecar", noSidecar, {
+      skipSidecar: true,
+    });
+    await seedFixtureOnDisk(paths, "c-verification", verifyFailure);
+    await seedFixtureOnDisk(paths, "d-materialization", materializeFailure);
+    await seedFixtureOnDisk(paths, "e-replay", replayFailure);
+    await seedFixtureOnDisk(paths, "f-output", outputMissing);
+    await writeKeyset(paths, [
+      keyEntry(noSidecar.kid, noSidecar.publicKeyJwk),
+      keyEntry(materializeFailure.kid, materializeFailure.publicKeyJwk),
+      keyEntry(replayFailure.kid, replayFailure.publicKeyJwk),
+      keyEntry(outputMissing.kid, outputMissing.publicKeyJwk),
+    ]);
+    await writeBaseline(paths.baselinePath, makeBaseline({}));
+
+    vi.doMock("@full-self-browsing/lattice", async (importOriginal) => {
+      const mod = await importOriginal<typeof import("@full-self-browsing/lattice")>();
+      const realVerify = mod.verifyReceipt;
+      const outputsByKid: Record<string, Record<string, unknown>> = {
+        [replayFailure.kid]: replayFailure.outputs,
+        [outputMissing.kid]: outputMissing.outputs,
+      };
+
+      return {
+        ...mod,
+        verifyReceipt: vi.fn(async (envelope, keySet) => {
+          const result = await realVerify(envelope, keySet);
+          if (!result.ok) return result;
+          return envelope.signatures[0]?.keyid === outputMissing.kid
+            ? { ...result, body: { ...result.body, outputHash: null } }
+            : result;
+        }),
+        replayOffline: vi.fn(async (envelopeReplay: any) => {
+          const kid = envelopeReplay.receipt?.signatures?.[0]?.keyid as string;
+          if (kid === replayFailure.kid) {
+            return {
+              ok: false,
+              error: {
+                kind: "execution_unavailable",
+                message: "SECRET_REPLAY_CAUSE",
+              },
+              usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+              plan: envelopeReplay.plan,
+              events: [],
+            };
+          }
+          return {
+            ok: true,
+            outputs: outputsByKid[kid] ?? {},
+            artifacts: [],
+            usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+            plan: envelopeReplay.plan,
+            events: [],
+          };
+        }),
+      };
+    });
+
+    const { runEvalSession } = await import("../src/eval/runner.js");
+    const report = await runEvalSession(
+      makeConfig(
+        {},
+        {
+          fixturesDir: paths.receiptsDir,
+          baselinePath: paths.baselinePath,
+          judgeCacheDir: paths.judgeCacheDir,
+          artifactsDir: paths.fixturesDir,
+          keyPath: paths.keysetPath,
+          sidecarsDir: paths.sidecarsDir,
+        },
+      ),
+      {
+        buildArtifactLoader: () => async () => {
+          throw new Error("SECRET_ARTIFACT_LOAD_CAUSE");
+        },
+      },
+    );
+
+    expect(report.fixtures.map((fixture) => fixture.fixtureId)).toEqual([
+      "a-load",
+      "b-no-sidecar",
+      "c-verification",
+      "d-materialization",
+      "e-replay",
+      "f-output",
+    ]);
+    expect(
+      report.fixtures.map((fixture) => [
+        fixture.loadFailedStage,
+        fixture.loadFailedReason,
+      ]),
+    ).toEqual([
+      ["load", "receipt-load-failed"],
+      ["load", "no-sidecar"],
+      ["verification", "verify-failed"],
+      ["materialization", "artifact-load-failed"],
+      ["replay", "replay-failed"],
+      ["unevaluable-output", "outputhash-missing"],
+    ]);
+    expect(report.summary).toEqual({
+      total: 6,
+      passed: 0,
+      regressed: 0,
+      newFixtures: 0,
+      loadFailed: 6,
+    });
+    const serialized = JSON.stringify(report);
+    expect(serialized).not.toContain("SECRET_RECEIPT_BYTES");
+    expect(serialized).not.toContain("SECRET_ARTIFACT_LOAD_CAUSE");
+    expect(serialized).not.toContain("SECRET_REPLAY_CAUSE");
+    expect(serialized).not.toContain("SECRET_ARTIFACT_BODY");
   });
 });

@@ -1,5 +1,6 @@
 packages:
   - "packages/*"
+  - "conformance/*"
 
 catalog:
   "@noble/ed25519": 3.1.0

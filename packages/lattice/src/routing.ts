@@ -6,6 +6,19 @@ export {
   modalRank,
 } from "./routing/catalog.js";
 export type { CapabilityCatalog } from "./routing/catalog.js";
+export {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
+} from "./routing/cost.js";
+export type {
+  CostDimensionEstimate,
+  CostEstimate,
+  CostEstimateStatus,
+  CostPricingSource,
+  CostUnknownReason,
+  EstimateCostInput,
+} from "./routing/cost.js";
 export { routeDeterministically } from "./routing/router.js";
 export type { RouteRequest } from "./routing/router.js";
 export { mergePolicy } from "./policy/policy.js";

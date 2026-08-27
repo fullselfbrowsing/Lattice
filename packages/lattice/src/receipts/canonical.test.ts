@@ -35,7 +35,7 @@ function makeBody(
     redactionPolicyId: "lattice.default.v1",
     redactions: [],
     ...overrides,
-  };
+  } as CapabilityReceiptBody;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

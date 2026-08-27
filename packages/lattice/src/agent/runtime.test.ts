@@ -5,10 +5,54 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { BAND, createHookPipeline } from "../contract/bands.js";
 import { contract } from "../contract/contract.js";
 import { createFakeProvider } from "../providers/fake.js";
+import type {
+  ModelCapability,
+  ProviderPricingHint,
+  ProviderRunResponse,
+} from "../providers/provider.js";
+import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
+import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
+} from "../routing/cost.js";
+import { fc } from "../test-support/fast-check.js";
 import { defineTool } from "../tools/tools.js";
 
-import { runAgent, runAgentInternal } from "./runtime.js";
+import type { AgentHost } from "./host.js";
+import {
+  runAgent,
+  runAgentInternal,
+  type RunAgentInternalOptions,
+} from "./runtime.js";
 import type { AgentIntent } from "./types.js";
+
+function countingSigner(options: {
+  readonly reject?: boolean;
+  readonly secret?: string;
+} = {}): {
+  readonly signer: ReceiptSigner;
+  readonly calls: { value: number };
+} {
+  const calls = { value: 0 };
+  const signer: ReceiptSigner = {
+    kid: options.secret ?? "agent-policy-test-key",
+    publicKeyJwk: {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: "test",
+    } as JsonWebKey,
+    async sign(): Promise<Uint8Array> {
+      calls.value += 1;
+      if (options.reject === true) {
+        throw new Error(options.secret ?? "SECRET-SIGNER-FAILURE");
+      }
+      return new Uint8Array([1, 2, 3]);
+    },
+  };
+  return { signer, calls };
+}
 
 function makeSchema(): StandardSchemaV1 {
   return {
@@ -57,6 +101,33 @@ function makeTool(
   });
 }
 
+function capabilityForCost(
+  id: string,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  const base = {
+    ...defaultCapabilityForProvider(id),
+    modelId: `${id}:cost-test`,
+  };
+  if (pricing !== undefined) {
+    return { ...base, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = base;
+  return inheritedPricing === undefined ? base : unpriced;
+}
+
+function costProvider(
+  pricing: ProviderPricingHint | undefined,
+  response: () => ProviderRunResponse,
+  id = "cost-provider",
+) {
+  return createFakeProvider({
+    id,
+    capabilities: [capabilityForCost(id, pricing)],
+    response,
+  });
+}
+
 describe("runAgent — final-answer path", () => {
   it("exits on iteration 0 when the provider returns a final-answer text", async () => {
     let calls = 0;
@@ -75,6 +146,9 @@ describe("runAgent — final-answer path", () => {
     if (result.kind === "success") {
       expect(result.output).toEqual({ answer: "Hello, world." });
       expect(result.iterations.length).toBe(1);
+      expect(result.iterations[0]?.iterationId).toMatch(
+        /^agent-execution:[^:]+:iteration:0$/,
+      );
       expect(result.iterations[0]?.provider).toBe("fake");
       expect(result.usage.promptTokens).toBe(5);
       expect(result.usage.completionTokens).toBe(3);
@@ -383,6 +457,245 @@ describe("runAgent — cost budget", () => {
       expect(result.reason).toMatch(/Cost budget/);
     }
   });
+
+  it.each([
+    {
+      name: "exact equality",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 1 },
+      budget: 0.512,
+      expectedKind: "success",
+      expectedCalls: 1,
+    },
+    {
+      name: "known free equality",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+      budget: 0,
+      expectedKind: "success",
+      expectedCalls: 1,
+    },
+    {
+      name: "known overage",
+      pricing: { inputPer1kTokens: 0, outputPer1kTokens: 1 },
+      budget: 0.511,
+      expectedKind: "no-contract-match",
+      expectedCalls: 0,
+    },
+  ] as const)(
+    "preflights $name before transport",
+    async ({ pricing, budget, expectedKind, expectedCalls }) => {
+      let calls = 0;
+      const provider = costProvider(pricing, () => {
+        calls += 1;
+        return {
+          rawOutputs: { answer: "done" },
+          normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+        };
+      });
+      const result = await runAgent(
+        {
+          task: "bounded",
+          tools: [],
+          contract: contract({ budget: { maxCostUsd: budget } }),
+        },
+        { providers: [provider] },
+      );
+
+      expect(result.kind).toBe(expectedKind);
+      expect(calls).toBe(expectedCalls);
+    },
+  );
+
+  it("fails closed on unknown pricing only when a hard ceiling exists", async () => {
+    let calls = 0;
+    const provider = costProvider(undefined, () => {
+      calls += 1;
+      return {
+        rawOutputs: { answer: "done" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+      };
+    });
+    const bounded = await runAgent(
+      {
+        task: "bounded unknown",
+        tools: [],
+        contract: contract({ budget: { maxCostUsd: 1 } }),
+      },
+      { providers: [provider] },
+    );
+    expect(bounded.kind).toBe("no-contract-match");
+    expect(calls).toBe(0);
+
+    const unbounded = await runAgent(
+      { task: "unbounded unknown", tools: [] },
+      { providers: [provider] },
+    );
+    expect(unbounded.kind).toBe("success");
+    expect(calls).toBe(1);
+    expect(unbounded.usage.costUsd).toBeNull();
+  });
+
+  it("uses cumulative remaining budget before a second provider call", async () => {
+    let calls = 0;
+    const provider = costProvider(
+      { inputPer1kTokens: 0, outputPer1kTokens: 0.1953125 },
+      () => {
+        calls += 1;
+        return {
+          rawOutputs: {
+            answer:
+              calls === 1
+                ? '{"tool_calls":[{"id":"c","name":"noop","args":{}}]}'
+                : "must not execute",
+          },
+          normalizedUsage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            costUsd: 0.06,
+          },
+        };
+      },
+    );
+    const result = await runAgent(
+      {
+        task: "cumulative",
+        tools: [makeTool("noop")],
+        contract: contract({ budget: { maxCostUsd: 0.15 } }),
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.kind).toBe("no-contract-match");
+    expect(result.usage.costUsd).toBe(0.06);
+    expect(result.iterations).toHaveLength(1);
+    expect(calls).toBe(1);
+  });
+
+  it("fills null actual usage from static pricing while reported cost wins", async () => {
+    const pricing = { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 };
+    const estimated = await runAgent(
+      { task: "estimate actual", tools: [] },
+      {
+        providers: [
+          costProvider(pricing, () => ({
+            rawOutputs: { answer: "done" },
+            normalizedUsage: {
+              promptTokens: 1_000,
+              completionTokens: 500,
+              costUsd: null,
+            },
+          })),
+        ],
+      },
+    );
+    expect(estimated.usage.costUsd).toBe(0.002);
+
+    const reported = await runAgent(
+      { task: "reported actual", tools: [] },
+      {
+        providers: [
+          costProvider(
+            { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+            () => ({
+              rawOutputs: { answer: "done" },
+              normalizedUsage: {
+                promptTokens: 1_000,
+                completionTokens: 500,
+                costUsd: 0.25,
+              },
+            }),
+          ),
+        ],
+      },
+    );
+    expect(reported.usage.costUsd).toBe(0.25);
+  });
+
+  it("emits bounded estimate diagnostics without task content", async () => {
+    const secret = "SECRET-AGENT-COST-PROMPT";
+    const events: Array<{ name: string; attributes?: Record<string, unknown> }> = [];
+    const provider = costProvider(undefined, () => ({
+      rawOutputs: { answer: "must not execute" },
+    }));
+    const result = await runAgent(
+      {
+        task: secret,
+        tools: [],
+        contract: contract({ budget: { maxCostUsd: 1 } }),
+        tracer: {
+          kind: "tracer",
+          event(name, attributes) {
+            events.push({ name, ...(attributes !== undefined ? { attributes } : {}) });
+          },
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.kind).toBe("no-contract-match");
+    const diagnostic = events.find((event) => event.name === "agent.cost.estimate");
+    expect(diagnostic?.attributes).toMatchObject({
+      version: COST_ESTIMATOR_VERSION,
+      status: "unknown",
+      outputTokens: 512,
+    });
+    expect(diagnostic?.attributes).not.toHaveProperty("totalCostUsd");
+    expect(JSON.stringify(events)).not.toContain(secret);
+  });
+
+  it("property: generated first-call budgets preserve equality and reject overage", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          outputRateMicros: fc.integer({ min: 1, max: 100_000 }),
+          task: fc.string({ minLength: 0, maxLength: 100 }),
+          relation: fc.constantFrom("under", "equal", "over"),
+        }),
+        async ({ outputRateMicros, task, relation }) => {
+          const pricing = {
+            inputPer1kTokens: 0,
+            outputPer1kTokens: outputRateMicros / 1_000_000,
+          };
+          const totalCostUsd = estimateCost({
+            pricing,
+            inputTokens: 1,
+            outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+          }).totalCostUsd!;
+          const maxCostUsd =
+            relation === "under"
+              ? totalCostUsd * 2
+              : relation === "equal"
+                ? totalCostUsd
+                : totalCostUsd / 2;
+          let calls = 0;
+          const provider = costProvider(pricing, () => {
+            calls += 1;
+            return {
+              rawOutputs: { answer: "done" },
+              normalizedUsage: {
+                promptTokens: 1,
+                completionTokens: 1,
+                costUsd: 0,
+              },
+            };
+          });
+          const result = await runAgent(
+            {
+              task,
+              tools: [],
+              contract: contract({ budget: { maxCostUsd } }),
+            },
+            { providers: [provider] },
+          );
+
+          expect(calls).toBe(relation === "over" ? 0 : 1);
+          expect(result.kind).toBe(
+            relation === "over" ? "no-contract-match" : "success",
+          );
+        },
+      ),
+      { numRuns: 40 },
+    );
+  });
 });
 
 describe("runAgent — lifecycle events", () => {
@@ -568,5 +881,599 @@ describe("runAgent — provider error path", () => {
     if (result.kind !== "success") {
       expect(result.reason).toMatch(/Simulated provider failure/);
     }
+  });
+});
+
+describe("runAgent — receipt policy", () => {
+  it("attaches the exact issued terminal envelope across terminal result classes", async () => {
+    type Observer = NonNullable<RunAgentInternalOptions["onReceiptOutcome"]>;
+    type TerminalResult = {
+      readonly kind: string;
+      readonly receipt?: ReceiptEnvelope;
+    };
+    const finalProvider = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+    const invalidProvider = createFakeProvider({
+      response: () => ({ rawOutputs: { build: { command: 42 } } }),
+    });
+    const throwingProvider = createFakeProvider({
+      response: () => {
+        throw new Error("provider failed");
+      },
+    });
+    const unknownCostProvider = costProvider(undefined, () => ({
+      rawOutputs: { answer: "must not run" },
+    }));
+    const deniedPipeline = createHookPipeline();
+    deniedPipeline.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => controls?.deny("denied"),
+      { band: BAND.SAFETY },
+    );
+    const cases: ReadonlyArray<{
+      readonly name: string;
+      readonly expectedKind: string;
+      readonly run: (
+        signer: ReceiptSigner,
+        onReceiptOutcome: Observer,
+      ) => Promise<TerminalResult>;
+    }> = [
+      {
+        name: "success",
+        expectedKind: "success",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "success",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "provider error",
+        expectedKind: "provider_execution",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "provider error",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [throwingProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "validation",
+        expectedKind: "validation",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "validation",
+              tools: [],
+              outputs: { build: makeBuildConfigSchema() },
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [invalidProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "denial",
+        expectedKind: "agent-iteration-denied",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "denied",
+              tools: [],
+              pipeline: deniedPipeline,
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "iteration budget",
+        expectedKind: "agent-max-iterations",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no iterations",
+              tools: [],
+              contract: contract({ budget: { maxIterations: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "wall budget",
+        expectedKind: "agent-wall-time-exceeded",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no wall time",
+              tools: [],
+              contract: contract({ budget: { maxWallTimeMs: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [finalProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "cost budget",
+        expectedKind: "no-contract-match",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "unknown cost",
+              tools: [],
+              contract: contract({ budget: { maxCostUsd: 1 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [unknownCostProvider] },
+            { onReceiptOutcome },
+          ),
+      },
+      {
+        name: "no provider",
+        expectedKind: "execution_unavailable",
+        run: (signer, onReceiptOutcome) =>
+          runAgentInternal(
+            {
+              task: "no provider",
+              tools: [],
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [] },
+            { onReceiptOutcome },
+          ),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const signerState = countingSigner();
+      const terminalEnvelopes: ReceiptEnvelope[] = [];
+      const result = await testCase.run(signerState.signer, (event) => {
+        if (event.scope === "terminal" && event.outcome.status === "issued") {
+          terminalEnvelopes.push(event.outcome.envelope);
+        }
+      });
+
+      expect(result.kind, testCase.name).toBe(testCase.expectedKind);
+      expect(terminalEnvelopes, testCase.name).toHaveLength(1);
+      expect(result.receipt, testCase.name).toBe(terminalEnvelopes[0]);
+      expect(Object.isFrozen(result), testCase.name).toBe(true);
+      expect(signerState.calls.value, testCase.name).toBe(1);
+    }
+  });
+
+  it("clears successful host state only after terminal finalization", async () => {
+    const { signer } = countingSigner();
+    const order: string[] = [];
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+    const host: AgentHost = {
+      kind: "agent-host",
+      storage: {
+        async load() {
+          return null;
+        },
+        async save() {},
+        async clear() {
+          order.push("clear");
+        },
+      },
+    };
+
+    const result = await runAgentInternal(
+      {
+        task: "finalize then clear",
+        tools: [],
+        host,
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        onReceiptOutcome(event) {
+          if (event.scope === "terminal" && event.outcome.status === "issued") {
+            order.push("terminal");
+          }
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(result.receipt).toBeDefined();
+    expect(order).toEqual(["terminal", "clear"]);
+  });
+
+  it("keeps managed checkpoints invocation-local when a pipeline is reused", async () => {
+    const { signer, calls } = countingSigner();
+    const pipeline = createHookPipeline();
+    let userAfterCalls = 0;
+    pipeline.register(
+      "AFTER_AGENT_ITERATION",
+      () => {
+        userAfterCalls += 1;
+      },
+      { band: BAND.EXTENSION },
+    );
+    const checkpointEnvelopes: unknown[] = [];
+    const tracer = {
+      kind: "tracer" as const,
+      event(name: string, attributes?: Record<string, unknown>) {
+        if (name === "step.transition" && attributes?.["envelope"] !== undefined) {
+          checkpointEnvelopes.push(attributes["envelope"]);
+        }
+      },
+    };
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const first = await runAgent(
+      { task: "first", tools: [], pipeline, signer, tracer },
+      { providers: [fake] },
+    );
+    const second = await runAgent(
+      { task: "second", tools: [], pipeline, signer, tracer },
+      { providers: [fake] },
+    );
+
+    expect(first.kind).toBe("success");
+    expect(second.kind).toBe("success");
+    expect(userAfterCalls).toBe(2);
+    expect(checkpointEnvelopes).toHaveLength(2);
+    expect(calls.value).toBe(4);
+    expect(first.iterations[0]?.receipt).toBe(checkpointEnvelopes[0]);
+    expect(second.iterations[0]?.receipt).toBe(checkpointEnvelopes[1]);
+    expect(first.iterations[0]?.iterationId).not.toBe(
+      second.iterations[0]?.iterationId,
+    );
+  });
+
+  it("preflights required missing signer before host storage or provider transport", async () => {
+    const calls = { storage: 0, transport: 0, provider: 0 };
+    const fake = createFakeProvider({
+      response: () => {
+        calls.provider += 1;
+        return { rawOutputs: { answer: "must not run" } };
+      },
+    });
+    const host: AgentHost = {
+      kind: "agent-host",
+      storage: {
+        async load() {
+          calls.storage += 1;
+          return null;
+        },
+        async save() {
+          calls.storage += 1;
+        },
+        async clear() {
+          calls.storage += 1;
+        },
+      },
+      transport: {
+        async call(provider, request) {
+          calls.transport += 1;
+          return provider.execute!(request);
+        },
+      },
+    };
+
+    const result = await runAgent(
+      { task: "Do not run.", tools: [], host },
+      { providers: [fake], receiptMode: "required" },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signer-missing",
+      stage: "pre-execution",
+      terminal: true,
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      iterations: [],
+    });
+    expect(calls).toEqual({ storage: 0, transport: 0, provider: 0 });
+  });
+
+  it("lets an invocation mode override config and resolves the invocation signer first", async () => {
+    const configSigner = countingSigner({ reject: true });
+    const localSigner = countingSigner();
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const offResult = await runAgent(
+      {
+        task: "No receipt.",
+        tools: [],
+        receiptMode: "off",
+        signer: configSigner.signer,
+      },
+      { providers: [fake], receiptMode: "required" },
+    );
+    expect(offResult.kind).toBe("success");
+    expect(configSigner.calls.value).toBe(0);
+
+    const localResult = await runAgent(
+      {
+        task: "Use local signer.",
+        tools: [],
+        signer: localSigner.signer,
+        autoRegisterCheckpoint: false,
+      },
+      {
+        providers: [fake],
+        receiptMode: "required",
+        signer: configSigner.signer,
+      },
+    );
+    expect(localResult.kind).toBe("success");
+    expect(localSigner.calls.value).toBe(1);
+    expect(configSigner.calls.value).toBe(0);
+  });
+
+  it("reuses a required checkpoint failure after one final-answer provider call", async () => {
+    const secret = "SECRET-CHECKPOINT-KMS-FAILURE";
+    const { signer, calls } = countingSigner({ reject: true, secret });
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return {
+          rawOutputs: { answer: "completed output" },
+          normalizedUsage: { promptTokens: 4, completionTokens: 2, costUsd: 0.01 },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Complete once.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [fake] },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      usage: { promptTokens: 4, completionTokens: 2, costUsd: 0.01 },
+    });
+    expect(result.iterations).toHaveLength(1);
+    expect(providerCalls).toBe(1);
+    expect(calls.value).toBe(1);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("stops a tool loop after the first required checkpoint failure", async () => {
+    const { signer, calls } = countingSigner({ reject: true });
+    let providerCalls = 0;
+    let toolCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return {
+          rawOutputs: {
+            answer:
+              providerCalls === 1
+                ? `{"tool_calls":[{"id":"c1","name":"once","args":{}}]}`
+                : "must not reach a second provider call",
+          },
+        };
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Use one tool.",
+        tools: [
+          makeTool("once", () => {
+            toolCalls += 1;
+            return "done";
+          }),
+        ],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [fake] },
+    );
+
+    expect(result.kind).toBe("audit");
+    expect(providerCalls).toBe(1);
+    expect(toolCalls).toBe(1);
+    expect(calls.value).toBe(1);
+  });
+
+  it("turns a required terminal signer failure after provider error into safe audit failure", async () => {
+    const secret = "SECRET-PROVIDER-TERMINAL-SIGNER";
+    const { signer, calls } = countingSigner({ reject: true, secret });
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        throw new Error("provider failed");
+      },
+    });
+
+    const result = await runAgent(
+      {
+        task: "Fail once.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+    );
+
+    expect(result).toMatchObject({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+    });
+    expect(providerCalls).toBe(1);
+    expect(calls.value).toBe(1);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("finalizes denied, zero-budget, and validation branches exactly once", async () => {
+    const cases: Array<{
+      readonly name: string;
+      readonly run: (signer: ReceiptSigner) => Promise<unknown>;
+      readonly expectedProviderCalls: number;
+    }> = [];
+    let providerCalls = 0;
+    const fake = createFakeProvider({
+      response: () => {
+        providerCalls += 1;
+        return { rawOutputs: { build: { command: 42 } } };
+      },
+    });
+    const deniedPipeline = createHookPipeline();
+    deniedPipeline.register(
+      "BEFORE_AGENT_ITERATION",
+      (_ctx, controls) => controls?.deny("denied"),
+      { band: BAND.SAFETY },
+    );
+    cases.push(
+      {
+        name: "denied",
+        expectedProviderCalls: 0,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "Denied.",
+              tools: [],
+              pipeline: deniedPipeline,
+              signer,
+              receiptMode: "required",
+            },
+            { providers: [fake] },
+          ),
+      },
+      {
+        name: "zero-budget",
+        expectedProviderCalls: 0,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "No iterations.",
+              tools: [],
+              contract: contract({ budget: { maxIterations: 0 } }),
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [fake] },
+          ),
+      },
+      {
+        name: "validation",
+        expectedProviderCalls: 1,
+        run: (signer) =>
+          runAgent(
+            {
+              task: "Invalid output.",
+              tools: [],
+              outputs: { build: makeBuildConfigSchema() },
+              signer,
+              receiptMode: "required",
+              autoRegisterCheckpoint: false,
+            },
+            { providers: [fake] },
+          ),
+      },
+    );
+
+    for (const testCase of cases) {
+      providerCalls = 0;
+      const signerState = countingSigner({ reject: true });
+      const result = await testCase.run(signerState.signer);
+      expect(result, testCase.name).toMatchObject({ kind: "audit" });
+      expect(signerState.calls.value, testCase.name).toBe(1);
+      expect(providerCalls, testCase.name).toBe(testCase.expectedProviderCalls);
+    }
+  });
+
+  it("keeps best-effort signer failure non-terminal and explicit off skips signing", async () => {
+    const bestEffort = countingSigner({ reject: true });
+    const off = countingSigner({ reject: true });
+    const fake = createFakeProvider({
+      response: () => ({ rawOutputs: { answer: "done" } }),
+    });
+
+    const bestEffortResult = await runAgent(
+      {
+        task: "Best effort.",
+        tools: [],
+        signer: bestEffort.signer,
+      },
+      { providers: [fake] },
+    );
+    const offResult = await runAgent(
+      {
+        task: "Off.",
+        tools: [],
+        signer: off.signer,
+        receiptMode: "off",
+      },
+      { providers: [fake] },
+    );
+
+    expect(bestEffortResult.kind).toBe("success");
+    expect(bestEffortResult.receipt).toBeUndefined();
+    expect(bestEffort.calls.value).toBe(2);
+    expect(offResult.kind).toBe("success");
+    expect(offResult.receipt).toBeUndefined();
+    expect(off.calls.value).toBe(0);
+  });
+
+  it("issues one required terminal receipt on the no-provider branch", async () => {
+    const { signer, calls } = countingSigner();
+    const result = await runAgent(
+      {
+        task: "No provider.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+      },
+      { providers: [] },
+    );
+
+    expect(result.kind).toBe("execution_unavailable");
+    expect(calls.value).toBe(1);
   });
 });

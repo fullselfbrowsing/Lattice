@@ -1,4 +1,8 @@
-import type { ArtifactRef } from "../artifacts/artifact.js";
+import type {
+  ArtifactPrivacy,
+  ArtifactRef,
+} from "../artifacts/artifact.js";
+import type { ArtifactRetentionPolicy } from "../policy/policy.js";
 
 export interface SessionRef {
   readonly id: string;
@@ -10,6 +14,9 @@ export interface SessionTurn {
   readonly task: string;
   readonly artifactRefs: readonly ArtifactRef[];
   readonly planId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
   readonly outputArtifactRefs: readonly ArtifactRef[];
   readonly createdAt: string;
 }
@@ -26,6 +33,9 @@ export interface SessionRecord extends SessionRef {
   readonly kind: "session-ref";
   readonly parentId?: string;
   readonly branchPointRunId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
   readonly turns: readonly SessionTurn[];
   readonly summaries: readonly SessionSummary[];
   readonly artifactRefs: readonly ArtifactRef[];
@@ -38,6 +48,9 @@ export interface CreateSessionOptions {
   readonly id?: string;
   readonly parentId?: string;
   readonly branchPointRunId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
 }
 
 export interface AppendSessionTurnInput {
@@ -46,6 +59,9 @@ export interface AppendSessionTurnInput {
   readonly artifactRefs: readonly ArtifactRef[];
   readonly outputArtifactRefs?: readonly ArtifactRef[];
   readonly planId?: string;
+  readonly tenantId?: string;
+  readonly privacy?: ArtifactPrivacy;
+  readonly retention?: ArtifactRetentionPolicy;
 }
 
 export interface SessionStore {
@@ -60,6 +76,32 @@ export interface SessionStore {
 
 export interface MemorySessionStoreOptions {
   readonly id?: string;
+}
+
+export function validateSessionAppendResult(
+  session: SessionRecord,
+  input: AppendSessionTurnInput,
+): SessionTurn {
+  const turn = session.turns.at(-1);
+
+  if (
+    session.id !== input.sessionId ||
+    turn === undefined ||
+    turn.task !== input.task ||
+    turn.planId !== input.planId ||
+    turn.tenantId !== input.tenantId ||
+    turn.privacy !== input.privacy ||
+    turn.retention !== input.retention ||
+    !structurallyEqual(turn.artifactRefs, input.artifactRefs) ||
+    !structurallyEqual(
+      turn.outputArtifactRefs,
+      input.outputArtifactRefs ?? [],
+    )
+  ) {
+    throw new Error("Session append result does not match the requested continuity.");
+  }
+
+  return turn;
 }
 
 export function createMemorySessionStore(
@@ -81,6 +123,7 @@ export function createMemorySessionStore(
         ...(createOptions.branchPointRunId !== undefined
           ? { branchPointRunId: createOptions.branchPointRunId }
           : {}),
+        ...sessionScopeFields(createOptions),
         turns: [],
         summaries: [],
         artifactRefs: [],
@@ -108,14 +151,23 @@ export function createMemorySessionStore(
 
     async branch(parentId, branchOptions = {}) {
       const parent = sessions.get(parentId);
-      const branched = await this.create({
-        ...branchOptions,
-        parentId,
-      });
 
       if (parent === undefined) {
-        return branched;
+        return this.create({
+          ...branchOptions,
+          parentId,
+        });
       }
+
+      assertCompatibleSessionScope(parent, branchOptions, "branch");
+      const branched = await this.create({
+        ...(branchOptions.id !== undefined ? { id: branchOptions.id } : {}),
+        ...(branchOptions.branchPointRunId !== undefined
+          ? { branchPointRunId: branchOptions.branchPointRunId }
+          : {}),
+        parentId,
+        ...sessionScopeFields(parent),
+      });
 
       const inherited: SessionRecord = {
         ...branched,
@@ -131,13 +183,23 @@ export function createMemorySessionStore(
     },
 
     async appendTurn(input) {
-      const existing = sessions.get(input.sessionId) ?? await this.create({ id: input.sessionId });
+      const stored = sessions.get(input.sessionId);
+      const existing = stored ?? await this.create({
+        id: input.sessionId,
+        ...sessionScopeFields(input),
+      });
+
+      if (stored !== undefined) {
+        assertCompatibleSessionScope(existing, input, "append");
+      }
+
       const turn: SessionTurn = {
         id: createTurnId(),
         task: input.task,
         artifactRefs: clone(input.artifactRefs),
         outputArtifactRefs: clone(input.outputArtifactRefs ?? []),
         ...(input.planId !== undefined ? { planId: input.planId } : {}),
+        ...sessionScopeFields(existing),
         createdAt: new Date().toISOString(),
       };
       const artifactRefs = mergeArtifactRefs(
@@ -162,6 +224,33 @@ export function createMemorySessionStore(
       return clone(next);
     },
   };
+}
+
+type SessionScope = Pick<
+  SessionRecord,
+  "tenantId" | "privacy" | "retention"
+>;
+
+function sessionScopeFields(scope: SessionScope): SessionScope {
+  return {
+    ...(scope.tenantId !== undefined ? { tenantId: scope.tenantId } : {}),
+    ...(scope.privacy !== undefined ? { privacy: scope.privacy } : {}),
+    ...(scope.retention !== undefined ? { retention: scope.retention } : {}),
+  };
+}
+
+function assertCompatibleSessionScope(
+  current: SessionScope,
+  requested: SessionScope,
+  operation: "append" | "branch",
+): void {
+  for (const field of ["tenantId", "privacy", "retention"] as const) {
+    const requestedValue = requested[field];
+
+    if (requestedValue !== undefined && requestedValue !== current[field]) {
+      throw new Error(`Session ${operation} scope conflicts on ${field}.`);
+    }
+  }
 }
 
 function mergeArtifactRefs(
@@ -201,4 +290,35 @@ function clone<T>(value: T): T {
   } catch {
     return value;
   }
+}
+
+function structurallyEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) {
+    return true;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => structurallyEqual(value, right[index]))
+    );
+  }
+
+  if (!isRecord(left) || !isRecord(right)) {
+    return false;
+  }
+
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+
+  return (
+    structurallyEqual(leftKeys, rightKeys) &&
+    leftKeys.every((key) => structurallyEqual(left[key], right[key]))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -1,7 +1,7 @@
 /**
- * Disk-backed judge cache and the cache-key hash recipe (Plan 12-01).
+ * Disk-backed judge cache and the cache-key hash recipe.
  *
- * Per CONTEXT.md "Judge Caching":
+ * Cache key:
  *   cache key = SHA-256(fixtureId || NUL || modelFingerprint || NUL ||
  *                       judgePrompt || NUL || outputCanonical)
  *
@@ -10,7 +10,7 @@
  * arbitrary UTF-8 strings (JSON-encoded outputs cannot legally contain raw
  * `\u0000` outside of escapes).
  *
- * Pitfall #1 (path traversal): cache keys are gated by /^[a-f0-9]{64}$/u
+ * To prevent path traversal, cache keys are gated by /^[a-f0-9]{64}$/u
  * before any filesystem call — same precedent as `artifact-loader.ts`.
  *
  * Atomicity: `set` writes to `<path>.tmp` then renames; `get` is best-effort

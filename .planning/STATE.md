@@ -1,167 +1,103 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5.0
-milestone_name: Modular Adoption + Execution Parity
-status: awaiting_next_milestone
-stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-06-23T19:16:50.000Z"
-last_activity: 2026-06-23 - Refreshed the root README for Lattice 1.5.1
+milestone: v1.6
+milestone_name: Protocol and Runtime Integrity Bridge
+status: Awaiting next milestone
+last_updated: "2026-07-20T14:49:44.961Z"
+last_activity: "2026-07-20 - Milestone v1.6 completed and archived"
 progress:
   total_phases: 6
   completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 31
+  completed_plans: 31
   percent: 100
+stopped_at: Milestone v1.6 archived; ready to define the next milestone
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-20)
+See: .planning/PROJECT.md (updated 2026-07-20)
 
-**Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** Awaiting next milestone
+**Core value:** Developers can run one capability-first task across mixed text,
+image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses,
+packages, routes, and explains the underlying model work.
+**Current focus:** Planning the next milestone from the shipped v1.6 baseline.
 
 ## Current Position
 
-Phase: Milestone v1.5.0 complete
-Plan: n/a
+Phase: Milestone v1.6 complete
+Plan: None
 Status: Awaiting next milestone
-Last activity: 2026-06-23 - Refreshed the root README for Lattice 1.5.1
+Last activity: 2026-07-20 - Milestone v1.6 completed and archived
 
-## Performance Metrics
+## Recent Milestone Snapshot
 
-**Velocity:**
+| Milestone | Status | Requirements | Audit |
+|-----------|--------|--------------|-------|
+| v1.6 Protocol and Runtime Integrity Bridge | Shipped 2026-07-20 | 42/42 complete | passed |
+| v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client | Shipped 2026-07-06 | 26/26 complete | passed |
+| v1.5.0 Modular Adoption + Execution Parity | Shipped 2026-06-20 | 30/30 complete | passed |
 
-- Total plans completed (lifetime): 31 (v1.0 + v1.1 + v1.2)
-- v1.2 plans: 25 across 9 phases
-- v1.3 completed phase plans: 42 across Phases 24, 25, 26, 29, 33, 34, 35, 36, 37, 38, and Phase 39 plans 1-8; Phases 27 and 28 were externally/configuration driven with no per-plan files.
-- Resets per milestone
+## Quick Tasks Completed
 
-**Recent Trend:**
-
-- v1.2 milestone shipped 2026-05-31 with 9 phases, 25 plans, 46/46 REQ-IDs wired, 733/733 tests passing.
-- v1.3 milestone opened 2026-06-03 and expanded to 16 phases after the model-capability registry and multi-agent surface were added. It closed on 2026-06-15 with Phases 30-32 superseded by FSB-via-npm dogfooding.
-- `@full-self-browsing/lattice@1.3.0` and `@full-self-browsing/lattice-cli@1.3.0` are live on npm with SLSA provenance attestations and `latest` dist-tags. GitHub Release `v1.3.0` exists.
-- FSB dogfood validation passed against the published npm package for v1.3 and against the packed local package candidate for v1.4. Phase 49's candidate run installed from tarball in an isolated temp consumer, ran a generated FSB-side v1.4 smoke, and ran FSB's compatible provider smoke with 47 PASS assertions.
-
-*Updated after each plan completion*
+| Quick Task | Date | Summary |
+|------------|------|---------|
+| 260706-scq Refresh paper for v1.5 protocol and conformance | 2026-07-07 | Updated `paper/main.tex`, `paper/refs.bib`, and `spec/SPEC.md` for v1.5 protocol/conformance facts; built with `tectonic`. |
+| 260706-tm8 Fix review findings: conformance vector sig encoding and package README docs | 2026-07-07 | Fixed NEG-01 DSSE signature encoding, regenerated vector manifest, and replaced shipped package READMEs with docs matching current package surfaces. |
+| 260707-efh Style journal draft like existing main PDF | 2026-07-07 | Restyled `paper/journal-main.tex` to IEEE two-column form, added lifecycle and auditability diagrams, and rebuilt `paper/journal-main.pdf`. |
+| 260707-00u Lattice journal paper reframe | 2026-07-07 | Created a separate professor-ready journal manuscript, PDF, literature matrix, ABDC shortlist, and professor cover note for the IS / AI governance track. |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
+The full decision history is recorded in `.planning/PROJECT.md` and the archived
+phase context files. v1.6 established these durable boundaries:
 
-v1.5.0 opened 2026-06-20 (requirements and roadmap draft pending approval). Carryforward decisions affecting v1.5.0:
-
-- [Validation]: FSB consumes Lattice via the published npm package (real-world dogfooding); the synthetic canary (Phases 30–32) was superseded and the initial FSB dogfood suite passed 426 / 426 checks.
-- [Deploy story]: A managed/hosted runtime is out of scope; a lightweight deploy-adapter framing is parked for possible future pickup.
-- [v1.5.0 scope]: Modular adoption + execution parity. Provider-only, audit-only, context/artifact-only, routing advisory, MCP/tools-only, storage, eval, and full-runtime adoption paths must be independently usable.
-- [Compatibility]: Node 20 compatibility is in scope for modular layers where feasible; Node 24 remains acceptable for the full runtime or APIs that require Node 24-only primitives.
-- [Dogfood]: GitFly-style flows and a generic external-consumer example define milestone success before implementation is considered complete.
-- [Provider parity]: Provider-only native execution is opt-in through `ProviderRunRequest.nativeTools`, `nativeToolChoice`, and `nativeStructuredOutput`; `ai.run()` and `ai.runAgent()` keep existing behavior unless callers use those fields directly.
-- [External audit]: External executors can call `createExternalExecutionAudit` to mint signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes without adopting Lattice provider adapters or agent runtime.
-- [Standalone core]: External runtimes can call `prepareCoreRun` from the core subpath to get artifact refs, optional storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider or agent execution.
-- [Tools/MCP optionality]: Tools-only consumers can import MCP artifact helpers and returned tool-call validation from the tools subpath without agent imports; `runAgent` callers who opt in can request typed final outputs.
+- New receipt issuance is standard DSSE v1.4 only; legacy verification is an
+  explicit observable read policy and cannot serve as fallback for corrected data.
+- Normative schemas, byte fixtures, manifests, reciprocal clients, and an independent
+  oracle define conformance without relying on production TypeScript source.
+- Route-local materialized context and store-returned references are authoritative
+  for provider requests, persistence, sessions, receipts, replay, and telemetry.
+- Receipt modes, invalid evaluation accounting, and structured cost estimation use
+  shared policies across runtime, agents, crews, routing, and diagnostics.
+- Stable agent execution identities retain exact iteration and terminal envelopes
+  across resume; crew results reuse the same envelopes and CIDs in order.
+- Clean Node 24/26 tarball consumers are the deterministic release authority;
+  scheduled provider canaries are bounded optional operational evidence.
 
 ### Pending Todos
 
-- None carried forward as blockers. The Phase 30/32 canary todos were superseded at v1.3 close, and FSB-via-npm dogfooding now has both published-package and packed-candidate validation runs. The Lattice version-stamping bug was closed in Phase 40.
+None for v1.6.
 
-### Blockers/Concerns
+### Blockers / Concerns
 
-- None open. v1.3's canary-related blockers (separate canary repo, real-provider API-key secrets, cross-repo dispatch) were resolved by supersession, and FSB-via-npm dogfooding validated the published `1.3.0` tarball path. The v1.3.0 publish and GitHub Release `v1.3.0` are complete.
-- Phase 40 closed the version-stamping bug: `latticeVersion` and CLI banner version are stamped from package manifests.
-- Phase 49 closed the residual FSB coverage risk for v1.4 by adding a generated FSB-side package-candidate smoke that explicitly checks new public exports, version stamping, `collectStream`, `evalAgentRun`, and v1.3 receipt compatibility alongside FSB's compatible provider smoke.
-
-### v1.4 Phase 49 validation
-
-- Offline v1.4 validation passed via `examples/v14-validation`: streaming, gateway, OTel observability, and failure behavior all run against fake providers.
-- FSB package-candidate dogfood passed from an isolated temp install of the packed runtime tarball. The original FSB checkout remained untouched; its two dirty generated files were pre-existing and unchanged.
-- Tarball validation now checks packed runtime/CLI tarballs for stale bare `lattice` refs, install-time scripts, and native/heavy dependency leakage into core.
-- `49-MILESTONE-EVIDENCE.md` maps all 44 v1.4 requirements to phase summaries, tests, package checks, or scoped deferral notes.
+None. The v1.6 milestone audit passed.
 
 ## Deferred Items
 
-Items acknowledged and deferred at v1.5.0 milestone close on 2026-06-20:
+The 2026-07-20 pre-close artifact audit found five stale quick-task index entries.
+They were acknowledged as historical metadata and are not v1.6 product gaps.
 
 | Category | Item | Status |
 |----------|------|--------|
-| quick_task | 260422-gle-create-lattice-readme-matching-existing- | missing (stale index entry) |
-| quick_task | 260609-ewo-clean-planning-state-after-v1-3-code-reg | missing (stale index entry) |
-| quick_task | 260615-5m0-author-ieee-latex-paper-on-lattice-capab | missing (stale index entry) |
-| quick_task | 260615-689-polish-lattice-paper-mention-lattice-in- | missing (stale index entry) |
-| quick_task | 260615-6t9-record-fsb-via-npm-dogfood-validation-an | missing (stale index entry) |
-| quick_task | 260615-7qq-update-paper-author-name-to-lakshman-tur | missing (stale index entry) |
-| quick_task | 260615-ei0-capitalize-t-in-paper-author-last-name-a | missing (stale index entry) |
-
-The Phase-25 partial human-UAT and one verification gap moved into `milestones/v1.3-phases/` with the archive and are documented in `milestones/v1.3-MILESTONE-AUDIT.md`.
-
-## Recent Plan Metrics Snapshot
-
-| Plan | Duration | Tasks | Files |
-|------|----------|-------|-------|
-| Phase 40 P01 | 18 min | 3 tasks | 8 files |
-| Phase 40 P02 | 3 min | 2 tasks | 2 files |
-| Phase 40 P03 | 5 min | 3 tasks | 5 files |
-| Phase 41 P01 | 5 min | 3 tasks | 6 files |
-| Phase 41 P02 | 5 min | 3 tasks | 6 files |
-| Phase 41 P03 | 4 min | 3 tasks | 7 files |
-| Phase 42 P01 | 15 min | 3 tasks | 4 files |
-| Phase 42 P03 | 6 min | 3 tasks | 9 files |
-| Phase 42 P02 | 5 min | 3 tasks | 6 files |
-| Phase 44 P01 | 12min | 3 tasks | 11 files |
-| Phase 44 P02 | 5min | 2 tasks | 2 files |
-| Phase 44 P03 | 4min | 2 tasks | 2 files |
-| Phase 44 P04 | 3min | 3 tasks | 3 files |
-| Phase 53 P01 | 12min | 3 tasks | 5 files |
-| Phase 54 P01 | 22min | 4 tasks | 12 files |
-| Phase 55 P01 | 18min | 4 tasks | 5 files |
-
-## Quick Tasks Completed
-
-| Date | Task | Outcome |
-| --- | --- | --- |
-| 2026-06-23 | Refresh root README | Replaced stale v1.2 and v1.3 release narrative with a current Lattice 1.5.1 README covering status, quick start, runtime usage, modular entrypoints, providers, audit, tools, agents, CLI, and development. |
-| 2026-06-23 | Track paper PDF | Added `paper/main.pdf` to git by allowing the file through the paper ignore rules and preserving the 8-page rebuilt PDF alongside the source. |
-| 2026-06-23 | Merge paper PR #15 | Reconciled the paper refresh branch with current `main`, resolved the planning state conflict, reran paper merge checks, and prepared PR #15 for merge. |
-| 2026-06-21 | Ship GitFly Node 20 audit signer patch release | Added `createNobleEd25519Signer`, exported it from root and audit subpaths, moved `@noble/ed25519` to runtime dependencies, prepared `1.5.1` package metadata and changelogs, generated release notes preview, passed full local release gates, and verified Node 20 modular imports. |
-| 2026-06-21 | Refresh IEEE paper for v1.5.0 | Updated the paper's release facts, modular adoption coverage, external audit and standalone core sections, CLI command coverage, evaluation chart, limitations, and future work. Rebuilt the ignored PDF locally with `tectonic`; it remains 8 pages. |
-| 2026-06-21 | Prepare v1.5.0 release metadata, PR CI hardening, and tag plan | Normalized runtime and CLI versions to `1.5.0`, added release changelog sections, generated release notes preview, hardened the CLI test script for clean CI runners, and passed the local release gates before PR merge and tag operations. |
-| 2026-06-09 | Clean planning state after v1.3 code/registry audit | Reconciled `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, and `PROJECT.md` against code, git refs, and npm registry state. |
-| 2026-06-09 | Execute Phase 35 prompt scaffolding helpers | Added deterministic prompt scaffold helpers, snapshots, fake-provider regressions, tsd/public-surface tests, and changeset. |
-| 2026-06-09 | Execute Phase 36 output sanitizer hook | Added opt-in `sanitizeOutput` across 7 adapters, built-in sanitizers, all-seven parity tests, tsd/public-surface coverage, and changeset. |
-| 2026-06-09 | Plan Phase 37 tool-call validation layer | Authored VALID requirements, inline research/pattern map, and 3 execution plans after GSD subagent research failed with `Unsupported service_tier: flex`. |
-| 2026-06-09 | Execute Phase 37 tool-call validation layer | Added opt-in returned tool-call validation across all 7 adapters, normalized `ProviderRunResponse.toolCalls`, runtime preference for validated calls, all-seven parity tests, package type tests, and changeset. |
-| 2026-06-09 | Verify Phase 37 UAT | Completed conversational UAT with 4/4 checkpoints passed and 0 issues. |
-| 2026-06-09 | Plan Phase 38 receipt v1.2 schema + modelClass tag | Authored RECEIPT12 requirements, inline research/pattern map, validation strategy, and 3 execution plans. |
-| 2026-06-09 | Execute Phase 38 receipt v1.2 schema + modelClass tag | Added receipt v1.2 `modelClass`, runtime strict registry issuance, public type tests, changeset, and final verification gates. |
-| 2026-06-11 | Execute Phase 39 plan 06 runAgentCrew orchestrator | Added `runAgentCrew`, `createAI().runAgentCrew`, public crew/rate-limit/CID exports, and public integration tests. |
-| 2026-06-11 | Execute Phase 39 plan 07 agent crew showcase | Added `examples/agent-crew/` with built-dist receipt verification plus `evalAgentRun` crew regression coverage. |
-| 2026-06-11 | Execute Phase 39 plan 08 public-contract closure | Flipped AGENTS/gap-row docs, added crew `tsd` coverage, staged changeset, and passed full phase gates. |
-| 2026-06-11 | Execute Phase 29 wave 1 and plan 02 local preflight | Added stable README/release-note extraction, refreshed stale model registry snapshot, passed full local release preflight, and stopped at GitHub Actions workflow permission checkpoint. |
-| 2026-06-11 | Resolve Phase 29 GitHub Actions workflow permission gate | Used FSB + GitHub device flow to refresh `gh` with `admin:org`, enabled org and repo `can_approve_pull_request_reviews`, and verified both settings true. |
-| 2026-06-11 | Complete Phase 29 stable v1.3.0 publish | Merged Version Packages PR #8, pushed `v1.3.0`, approved `npm-publish`, verified both npm packages at `1.3.0` with signatures/provenance, repaired GitHub Release notes, and closed PUB-02..04. |
-| 2026-06-15 | Author IEEE LaTeX paper on Lattice capability receipts and verifiable replay | Created top-level `paper/` (IEEEtran two-column `main.tex`, 19-entry `refs.bib`, README, Makefile, .gitignore). All quantitative claims verified against the codebase by 4 parallel agents and corrected vs stale planning docs (960 tests/82 files, 332 profiles, 7 providers, 7 verify error kinds). No-dash style enforced; pure ASCII. No TeX toolchain present, so PDF not compiled (verified structurally). See `.planning/quick/260615-5m0-author-ieee-latex-paper-on-lattice-capab/`. |
-| 2026-06-15 | Polish Lattice paper (title, author, Times fonts, diagrams, graph) | Retitled to lead with "Lattice:", switched to Times fonts (newtxtext/newtxmath), updated author to Venkat Lakshman Turlapati (preferred Lakshman Turlapati) and email to lakshmanturlapati@gmail.com, and added TikZ diagrams (run-lifecycle figure*, receipt-construction flow) plus a pgfplots test-suite bar chart. Installed tectonic 0.16.9; `main.pdf` compiles clean (0 overfull, 8 pages) and was visually verified page by page. See `.planning/quick/260615-689-polish-lattice-paper-mention-lattice-in-/`. |
-| 2026-06-15 | Correct paper author name spelling | Updated `paper/main.tex` and `paper/README.md` to use `Lakshman Turlapati`, then rebuilt `paper/main.pdf` from the corrected LaTeX source. See `.planning/quick/260615-7qq-update-paper-author-name-to-lakshman-tur/`. |
-| 2026-06-15 | Capitalize paper author last name | Updated the paper author spelling to `Lakshman Turlapati` with an uppercase `T` in the last name, then rebuilt `paper/main.pdf`. See `.planning/quick/260615-ei0-capitalize-t-in-paper-author-last-name-a/`. |
-| 2026-06-15 | Record FSB-via-npm dogfood validation and version-stamping follow-up | Recorded that FSB validates `@full-self-browsing/lattice@1.3.0` as a real npm downstream consumer with `npm run test:lattice` at 426 PASS / 0 FAIL, including `modelClass` signed-body coverage. Captured the remaining Lattice-side version-stamping bug as low-severity follow-up. |
-| 2026-06-16 | Fix Codex PR #12 review findings (260616-eu5) | Verified each finding against code before changing anything. P1: added `stream_options.include_usage` to the OpenAI-compatible streaming request builder so streamed runs capture cost/usage. P2-1: broadened `lattice receipt diff` to compare all receipt body fields (incl. `contractVerdict`, `contractHash`, `modelClass`, redaction, step markers). P2-3: folded provider-packaged artifacts into the receipt lineage Merkle root and added a regression guard proving the wiring fails-loud if reverted. P2-2 (Gemini `noPublicUrl`/`fileUri`) initially judged NOT a bug — **later overturned** by the local Codex review and fixed in 260616-g8h. No version bump, no new changeset (fix-ups to already-changeset'd v1.4 features). 6 code commits on `recon` feeding PR #12; full CI mirror green. See `.planning/quick/260616-eu5-fix-codex-pr-12-review-findings-openai-s/`. |
-| 2026-06-16 | Fix local-Codex review findings (260616-g8h) | A local `codex exec` review of the eu5 fix set (run after the GitHub Codex bot hit its code-review quota) surfaced three findings, all verified against code. **P2-B (security/privacy):** `noPublicUrl` was bypassable via the Gemini `file-id` transport — an artifact with an `https://` value in `fileUri`/`geminiFileUri`/`providerFileUri` metadata leaked the URL to Gemini. Added a `chooseTransport` guard that blocks file-id under `noPublicUrl` when the resolved value is a public http(s) URL (provider-internal `files/…` handles still pass); corrected the incorrect "not a bug" comment from eu5. This overturns eu5's P2-2 verdict. **P2-A:** extended packaged-artifact lineage to the `validation-failed` and `tripwire-violated` receipts (eu5 covered only the success path). **P3:** added an end-to-end test asserting streaming usage surfaces into `result.usage` and the signed receipt. 5 commits on `recon` (TDD RED/GREEN); the P2-B guard was proven load-bearing by reverting it; full CI mirror green. See `.planning/quick/260616-g8h-fix-local-codex-review-findings-nopublic/`. |
-| 2026-06-16 | Harden noPublicUrl enforcement (260616-h31) | A `noPublicUrl` audit (triggered by the second local Codex review) found the policy is decided at the packaging boundary and correctly honored by the Anthropic and Gemini adapters, but the **OpenAI-compatible adapter** (`createOpenAICompatibleRequestBody`, shared by OpenAI/OpenRouter/xAI/LM Studio/LiteLLM) ignored the packaging transport and emitted artifact `url`/`value` raw — leaking a public URL under `noPublicUrl`. Gated url/value emission on `transport === "url"` (non-URL text content unaffected), promoted `isHttpUrl` to a shared export, and added a 5-test cross-adapter parity block (OpenAI-compat blocked url + value, positive no-over-block, Anthropic + Gemini regression locks) so the invariant can't silently drift again. Guard proven load-bearing. The executor agent hit a transient API 500 mid-run; the orchestrator reviewed/completed the staged fix, fixed a tsc-only type error in the parity tests, and ran the CI gate. 3 commits on `recon`; full CI mirror green. See `.planning/quick/260616-h31-harden-nopublicurl-enforcement-openai-co/`. |
-| 2026-06-16 | Single-chokepoint noPublicUrl egress enforcement (260616-inn) | After three rounds of per-site patches, a third local Codex review showed `noPublicUrl` still had gaps (gateway metadata, base64-string mislabeling, custom adapters) because there was no single enforcement point. Added `assertNoPublicUrlEgress` (new `providers/no-public-url.ts`): a shared egress assertion called right before every run-request `fetch` in all three adapter families (OpenAI-compatible, Anthropic, Gemini — execute + stream). Under `noPublicUrl` it derives the set of public http(s) URLs from `request.artifacts` (value + string metadata) and throws a typed `NoPublicUrlEgressError` (surfaced as a RunFailure) if any appears in the serialized body — a fail-closed backstop that catches paths the per-site gating misses (e.g. a URL mislabeled as `metadata.base64Data`). **Scope decision:** `noPublicUrl` governs artifact-derived URLs, NOT user-set `policy.gateway.metadata` (documented in the module). New `parity.test.ts` + `no-public-url.test.ts` lock it across adapters; proven load-bearing (disabling the throw fails 7 tests). The executor caught and fixed a false-GREEN test design (mislabel artifacts needed `providerPackaging` to reach the body). 3 commits on `recon`; full CI mirror green. New public export `NoPublicUrlEgressError` added to the surface inventory; no new changeset (part of the already-changeset'd v1.4 multimodal feature). See `.planning/quick/260616-inn-add-single-chokepoint-nopublicurl-egress/`. |
-| 2026-06-16 | Fix PR #12 review threads (260616-ldk) | Addressed all 8 current review findings: data URL MIME preservation, gateway policy deep merge, stream-capable routing, OTel one-shot span cleanup and usage export, agent eval baseline bootstrap, receipt diff field coverage, and Gemini `noPublicUrl` direct-regression tests. Targeted core/CLI tests and package typechecks passed. See `.planning/quick/260616-ldk-fix-pr-12-review-threads-data-url-mime-g/`. |
-| 2026-06-20 | Patch external audit failure replay semantics | Updated external audit replay envelopes so non-success verdicts keep sidecar/receipt evidence but omit replayable outputs and inspect as failed plans/attempts. Added regression coverage for failed executions with and without raw outputs. See `.planning/quick/260620-382-patch-external-audit-failure-replay-sema/`. |
-
-## Session Continuity
-
-Last session: 2026-06-20T03:39:07Z
-Stopped at: v1.5.0 archived; awaiting next milestone
-Resume: `/gsd-new-milestone`
+| quick_task | 260422-gle-create-lattice-readme-matching-existing- | unknown (stale index entry) |
+| quick_task | 260609-ewo-clean-planning-state-after-v1-3-code-reg | unknown (stale index entry) |
+| quick_task | 260615-6t9-record-fsb-via-npm-dogfood-validation-an | unknown (stale index entry) |
+| quick_task | 260616-eu5-fix-codex-pr-12-review-findings-openai-s | unknown (stale index entry) |
+| quick_task | 260616-ldk-fix-pr-12-review-threads-data-url-mime-g | unknown (stale index entry) |
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start the next milestone with `$gsd-new-milestone`.
+- Use the archived v1.6 audit, roadmap, requirements, research, and phase records as
+  the shipped baseline.
+
+## Performance Summary
+
+| Milestone | Phases | Plans | Tasks | Requirements | Timeline |
+|-----------|-------:|------:|------:|-------------:|----------|
+| v1.6 | 6 | 31 | 61 | 42/42 | 2026-07-16 to 2026-07-20 |

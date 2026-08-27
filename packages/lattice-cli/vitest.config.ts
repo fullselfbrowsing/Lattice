@@ -18,6 +18,10 @@ export default defineConfig({
   test: {
     exclude: ["**/node_modules/**", "**/dist/**", "test-d/**"],
     environment: "node",
+    // Several CLI integration suites change process.cwd() and dynamically
+    // mock the same built package alias. Both are process-wide, so files must
+    // run serially to keep one fixture's loader state out of another.
+    fileParallelism: false,
     // The showcase-e2e test spawns child processes (pnpm build + node showcase
     // + several separate CLI invocations) and the default 5s timeout is too
     // tight. Other tests in this package complete in <1s; this raised ceiling

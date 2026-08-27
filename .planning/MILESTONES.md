@@ -1,19 +1,78 @@
 # Milestones
 
-## v1.5.0 Modular Adoption + Execution Parity (Shipped: 2026-06-20)
+## v1.6 Protocol and Runtime Integrity Bridge (Shipped: 2026-07-20)
 
-**Phases completed:** 6 phases, 6 plans, 7 tasks
+**Phases completed:** 6 phases, 31 plans, 61 tasks
+**Delivered:** A standards-correct, independently reproducible receipt bridge and
+one authoritative runtime evidence model, released as aligned 1.6.0 runtime and
+CLI packages.
+**Audit:** Passed - 42 / 42 requirements satisfied
+(`milestones/v1.6-MILESTONE-AUDIT.md`).
+**Validation:** 1,381 runtime tests, 175 CLI tests, 1,632 type tests, 28 generator
+tests, TypeScript/Python reciprocal conformance, independent DSSE oracle, clean
+Node 24/26 package consumers, bounded provider canaries, and comment hygiene.
+**Known deferred items at close:** 5 stale quick-task index entries (see
+`STATE.md` Deferred Items).
 
 **Key accomplishments:**
 
-- Modular package subpaths with compatibility metadata, source boundary enforcement, and type/package tests
-- Provider-only native tools, native structured outputs, finish metadata, and model-ID preservation
-- External execution audit helper with signed receipts, compatible sidecars, replay envelopes, and raw envelope hashes
-- Non-executing core preparation helper for artifact refs, optional storage, context packs, advisory routes, hashes, and inspectable execution plans
-- Tools/MCP-only artifact helpers and returned tool-call validation without agent adoption
-- Node 20 modular smoke, GitFly-style dogfood, and generic external-consumer example
+- Corrected TypeScript and Python issuance to raw-byte DSSE PAE under signed
+  `lattice-receipt/v1.4` and `dsse-v1`, with historical verification isolated
+  behind an explicit observable allow/reject policy.
+- Published a normative schema/spec/migration contract, separate immutable legacy
+  and generated standard corpora, exact manifests, reciprocal TypeScript/Python
+  minting, and a test-only `securesystemslib==1.4.0` oracle.
+- Made one policy-permitted route-local materialization authoritative for provider
+  requests, fallback packaging, persistence, sessions, plans, receipts, replay,
+  events, and OpenTelemetry evidence.
+- Unified required/best-effort/off receipt behavior, exhaustive evaluation failure
+  accounting, and known/free/partial/unknown cost semantics across runtime, agents,
+  crews, routing, contracts, providers, and diagnostics.
+- Attached exact checkpoint and terminal envelopes to stable agent identities,
+  preserved them across resume without reminting, and reused those envelopes and
+  CIDs in deterministic crew order.
+- Released aligned runtime and CLI 1.6.0 packages with clean Node 24/26 consumers,
+  bounded OpenAI-compatible/Anthropic/Gemini canaries, executable documentation
+  drift checks, and zero-baseline production comment hygiene.
 
-**Audit:** Passed, 30/30 requirements satisfied. Known deferred items at close: 7 stale missing quick-task index entries already acknowledged in `STATE.md`.
+**Stats:** 350 files changed across the implementation range, 42,066 insertions,
+5,304 deletions, and five calendar days from Phase 57 start to audit completion.
+
+**Git range:** `14707f1` -> `a1bb201`
+
+**What's next:** No milestone is active; define the next requirements from the
+shipped v1.6 baseline.
+
+---
+
+## v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client (Shipped: 2026-07-06)
+
+**Phases completed:** 7 phases, 11 plans, 11 tasks
+**Audit:** Passed - 26 / 26 REQ-IDs satisfied (`milestones/v1.5-MILESTONE-AUDIT.md`)
+**Validation:** Manifest check, TypeScript conformance, Python pytest harness, cross-mint parity, workflow-safety check, full workspace build/typecheck/test, type tests, lint/package checks.
+
+**Key accomplishments:**
+
+- Language-neutral receipt protocol: normative `spec/SPEC.md`, exact DSSE/JCS/Ed25519 worked example, v1.1/v1.2/v1.3 JSON Schemas, changelog, downgrade-defense ordering, and I-JSON numeric constraints.
+- Committed conformance vectors: fixed test keypair, 3 positive vectors, 9 adversarial negative vectors covering every `VerifyErrorKind`, RFC 8785 reference cross-checks, and `MANIFEST.sha256` over all 12 vectors.
+- TypeScript self-verification: private `@lattice-conformance/verify-ts` package re-derives manifest hashes, canonical bytes, PAE bytes, signatures, and exact verdicts against the committed vector set.
+- Python reference client: in-repo `lattice_receipt` package implementing verify, replay, and mint with typed errors, RFC 8785 canonicalization, DSSE PAE, Ed25519 JWK handling, verify-first replay, and I-JSON numeric rejection.
+- Cross-language parity and CI: TypeScript verifies a Python-minted receipt, and `.github/workflows/conformance.yml` gates spec/conformance/Python drift with manifest -> TS -> Python -> parity ordering and SHA-pinned setup actions.
+
+---
+
+## v1.5.0 Modular Adoption + Execution Parity (Shipped: 2026-06-20)
+
+**Phases completed:** 6 phases, 6 plans, 7 tasks
+**Audit:** Passed - 30 / 30 REQ-IDs satisfied (`milestones/v1.5.0-MILESTONE-AUDIT.md`)
+
+**Key accomplishments:**
+
+- Modular package subpaths with compatibility metadata, source-boundary enforcement, and package/type tests.
+- Provider-only native tools and structured outputs with finish metadata and model-ID preservation.
+- External execution audit receipts, sidecars, replay envelopes, and raw-envelope hashes.
+- Standalone core preparation for artifact refs, optional storage, context packs, advisory routes, hashes, and plans.
+- Tools/MCP artifact helpers, typed agent final outputs, Node 20 modular smoke coverage, and external-consumer dogfood.
 
 ---
 

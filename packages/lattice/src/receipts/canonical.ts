@@ -13,8 +13,8 @@ const encoder = new TextEncoder();
  * RFC 8785 requires deterministic float-to-string; using JS Number→string
  * directly is unsafe across V8 versions (Grisu3 vs Dragonbox). We pin the
  * format by routing through Number.prototype.toString() for FINITE numbers
- * only, and treat NaN/Infinity as null. This matches "I-JSON only" from
- * 09-CONTEXT.md — receipts NEVER carry non-finite floats.
+ * only, and treat NaN/Infinity as null. Receipts follow I-JSON and NEVER
+ * carry non-finite floats.
  */
 export function stringifyCostUsd(costUsd: number | null): string | null {
   if (costUsd === null) return null;
@@ -40,7 +40,7 @@ export function usageToCanonical(usage: Usage): ReceiptUsageCanonical {
  *
  * INVARIANT: callers MUST pass an already-redacted body. The redactor in
  * redact.ts produces the input to this function — never the cleartext.
- * See 09-CONTEXT.md "Redact-Then-Sign Ordering (UNRETROFITTABLE)".
+ * Redaction-before-signing is a protocol invariant.
  *
  * Throws if canonicalize returns undefined (impossible for valid bodies
  * — surfaces a programmer error rather than silently producing zero

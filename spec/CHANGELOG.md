@@ -1,0 +1,87 @@
+# Lattice Receipt Protocol — Changelog
+
+This changelog documents per-version field additions to the Lattice capability-receipt body schema. For full normative specifications, see spec/SPEC.md and spec/schema/.
+
+---
+
+## lattice-receipt/v1.4
+
+v1.4 corrects Lattice issuance to standard DSSE v1.0 semantics. PAE now commits to the
+decoded RFC 8785 canonical payload bytes; the envelope's standard-base64 `payload` remains
+transport encoding and is no longer the signed PAE payload. New receipts authenticate the
+required `signatureProfile: "dsse-v1"` field.
+
+Verification exposes which path succeeded through `verificationProfile` and `deprecated`:
+standard verification reports `dsse-v1` and `false`, while the bounded historical path
+reports `lattice-legacy-base64-pae` and `true`. The direct-library bridge defaults to policy
+`allow` for read-only verification of historical base64-text-PAE receipts; strict consumers
+select `reject`. A corrected v1.4 signature failure never falls back. The new typed errors
+are `signature-profile-mismatch` and `legacy-profile-rejected`.
+
+The CLI bridge uses `--standard-only` for policy `reject`. Successful `verify` and `repro`
+commands report `profile=` and `deprecated=`. `verify` retains exit 0 for success, 1 for a
+typed verification failure, and 2 for load failure; `repro` retains exit 0 for a match, 1
+for drift, and 2 for prerequisite or replay failure.
+
+Lattice SDK 1.6.0 is the first SDK release to ship this corrected protocol bridge. SDK
+version 1.6.0 does not introduce a receipt schema v1.6: current issuance remains exactly
+`lattice-receipt/v1.4`, historical issuance remains unavailable, and strict historical
+rejection remains an explicit reader option rather than a universal default.
+
+This release adds the closed `spec/schema/v1.4.json` schema and
+`spec/MIGRATION-v1.4.md`. Conformance evidence is separated into immutable historical
+(`vectors/legacy`) and current standard (`vectors/standard`) corpora; the corrected standard
+corpus is introduced separately from this specification update.
+
+---
+
+## lattice-receipt/v1.3
+
+Introduced in Phase 39 (receipt chaining / crew receipts) and Phase 46 (artifact lineage provenance). These are additive optional fields.
+
+**Added optional fields:**
+
+- `parentReceiptCid` (optional string): The `sha256:<lowercase-hex>` CID of the parent envelope. Used for receipt chaining in crew (multi-agent) workflows — holds the root receipt's CID, computed as `sha256:<hex>` of the parent envelope's decoded DSSE payload bytes (see `receipts/cid.ts`). Absent on root and non-crew receipts. Pattern: `^sha256:[0-9a-f]{64}$`. See SPEC.md §4.8 and §7.3.
+
+- `lineageMerkleRoot` (optional string): The `sha256:<lowercase-hex>` provenance root for descriptor-only artifact lineage graphs. Commits to artifact lineage without embedding artifact payloads. Absent when no lineage graph is attached to the run. Pattern: `^sha256:[0-9a-f]{64}$`.
+
+Signing and verification behaviour is unchanged. These are additive optional fields. v1.3 receipts verify against the same algorithm as v1.1 and v1.2 receipts.
+
+---
+
+## lattice-receipt/v1.2
+
+Introduced in Phase 38 (model-aware SDK + TrainingClass audit surface).
+
+**Added optional field:**
+
+- `modelClass` (optional string enum): Model training-class audit tag. Populated from the Phase 33 capability registry when runtime issuance has a known selected provider/model. Absent on synthetic, unknown-route, or legacy v1.1 receipts. Accepted values: `"frontier_rlhf"`, `"mid_tier_rlhf"`, `"open_weight_instruct"`, `"open_weight_base"`, `"local_quantized"` (from `TrainingClass` in `packages/lattice/src/capabilities/profile.ts`).
+
+Signing and verification behaviour is unchanged.
+
+---
+
+## lattice-receipt/v1.1
+
+Introduced in Phase 2 (initial receipts implementation: RFC 8785 JCS canonicalization, Ed25519 signing, DSSE envelope, `kid`/`KeySet`, redaction manifest).
+
+**Initial versioned schema.** Introduced:
+
+- Step-marker fields (all optional): identifiers for step-transition receipts emitted during multi-step runs. Step-marker fields are stable identifiers, not user content, and are intentionally excluded from the redaction manifest.
+  - `stepName` (optional string): Name of the step emitting this receipt.
+  - `stepIndex` (optional integer): Zero-based ordinal index of the step. I-JSON safe integer (maximum `9007199254740991`; MUST be encoded as a bare integer without fraction or exponent).
+  - `parentStepName` (optional string): Name of the parent step in a hierarchical step tree.
+  - `previousStepName` (optional string): Name of the immediately preceding sibling step.
+  - `sessionId` (optional string): Session identifier linking step receipts within the same session.
+  - `timestamp` (optional string, format: `date-time`): ISO 8601 / RFC 3339 timestamp at which the step occurred.
+
+- `redactionPolicyId` (string, required): Identifier of the redaction policy applied to the receipt body before signing. Default value: `"lattice.default.v1"` (from `redact.ts` `DEFAULT_REDACTION_POLICY_ID`).
+
+- `redactions[]` (array, required): Per-field redaction manifest. Each entry contains:
+  - `path` (string): JCS-addressable path of the redacted field.
+  - `reason` (string): Human-readable rationale for redaction (e.g. `"no-pii-detector-substring-only"`).
+  Entries are sorted ascending by `path` before canonicalization to ensure deterministic ordering.
+
+---
+
+Note: `lattice-receipt/v1` (the unversioned predecessor) is permanently rejected by the verifier at step 4 of the verification algorithm (downgrade defense CRYPTO-01). It predates the step-marker fields and the `modelClass` audit surface. Receipts carrying `version: "lattice-receipt/v1"` or no `version` field are rejected before any cryptographic work is performed.

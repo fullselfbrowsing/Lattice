@@ -1,5 +1,5 @@
 /**
- * evalAgentRun - Phase 22 (v1.2).
+ * evalAgentRun (v1.2).
  *
  * Pure helper that gates a baseline-relative regression on iterations-to-goal
  * and total cost for an agent run. Standalone (no I/O). Callers wire fixture

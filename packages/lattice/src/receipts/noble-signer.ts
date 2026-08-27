@@ -9,7 +9,7 @@
  * The factory is synchronous. The 32-byte seed is decoded from the JWK `d`
  * field lazily on the first sign() call (same pattern as createInMemorySigner).
  *
- * Out-of-scope: verifyReceipt and generateEd25519KeyPairJwk still use
+ * Not supported here: verifyReceipt and generateEd25519KeyPairJwk still use
  * WebCrypto Ed25519; only the signing path is swapped here.
  */
 

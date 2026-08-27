@@ -15,6 +15,10 @@ import type {
 } from "../plan/plan.js";
 import { estimateArtifactTokens, estimateTokens } from "../context/context-pack.js";
 import type { CapabilityCatalog } from "./catalog.js";
+import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  estimateCost,
+} from "./cost.js";
 
 export interface RouteRequest {
   readonly task: string;
@@ -63,6 +67,7 @@ export function routeDeterministically(
             modelId: selected.modelId,
             score: selected.score,
             estimates: selected.estimates,
+            contextWindow: selected.capability.contextWindow,
             inputModalities: selected.capability.inputModalities,
             outputModalities: selected.capability.outputModalities,
             fileTransport: selected.capability.fileTransport,
@@ -75,6 +80,7 @@ export function routeDeterministically(
       providerId: candidate.providerId,
       modelId: candidate.modelId,
       score: candidate.score,
+      estimates: candidate.estimates,
       reason: "policy-preserving-fallback",
     })),
     noRouteReasons:
@@ -156,9 +162,7 @@ function evaluateCapability(
   const estimates = estimateRoute(capability, input.estimatedInputTokens);
   addPolicyRejectReasons(reasons, capability, estimates, input.policy);
 
-  // Phase 7 contract preflight — reuse the router's own output-token estimate
-  // so preflight and the router agree on the projected output size (one source
-  // of truth, consumed by Phase 9 receipts).
+  // Contract preflight consumes the same token projection used by route evidence.
   const contractResult = evaluateContractAgainstRoute(input.contract, {
     capability,
     estimatedInputTokens: input.estimatedInputTokens,
@@ -250,15 +254,19 @@ function addPolicyRejectReasons(
     });
   }
 
-  if (
-    policy.maxCostUsd !== undefined &&
-    estimates.costUsd !== undefined &&
-    estimates.costUsd > policy.maxCostUsd
-  ) {
-    reasons.push({
-      code: "budget-exceeded",
-      message: `${capability.modelId} estimated cost ${estimates.costUsd} exceeds maxCostUsd ${policy.maxCostUsd}.`,
-    });
+  if (policy.maxCostUsd !== undefined) {
+    const costEstimate = estimates.costEstimate;
+    if (costEstimate === undefined || costEstimate.status === "unknown") {
+      reasons.push({
+        code: "budget-exceeded",
+        message: `${capability.modelId} pricing unknown; maxCostUsd ${policy.maxCostUsd} requires a known estimate.`,
+      });
+    } else if (costEstimate.totalCostUsd! > policy.maxCostUsd) {
+      reasons.push({
+        code: "budget-exceeded",
+        message: `${capability.modelId} estimated cost ${costEstimate.totalCostUsd} exceeds maxCostUsd ${policy.maxCostUsd}.`,
+      });
+    }
   }
 }
 
@@ -266,21 +274,19 @@ function estimateRoute(
   capability: ModelCapability,
   inputTokens: number,
 ): RouteEstimates {
-  const outputTokens = 512;
-  const inputCost =
-    capability.pricing?.inputCostPer1M === undefined
-      ? undefined
-      : (inputTokens / 1_000_000) * capability.pricing.inputCostPer1M;
-  const outputCost =
-    capability.pricing?.outputCostPer1M === undefined
-      ? undefined
-      : (outputTokens / 1_000_000) * capability.pricing.outputCostPer1M;
+  const outputTokens = CANONICAL_PROJECTED_OUTPUT_TOKENS;
+  const costEstimate = estimateCost({
+    ...(capability.pricing !== undefined ? { pricing: capability.pricing } : {}),
+    inputTokens,
+    outputTokens,
+  });
 
   return {
     inputTokens,
     outputTokens,
-    ...(inputCost !== undefined || outputCost !== undefined
-      ? { costUsd: (inputCost ?? 0) + (outputCost ?? 0) }
+    costEstimate,
+    ...(costEstimate.totalCostUsd !== null
+      ? { costUsd: costEstimate.totalCostUsd }
       : {}),
     latencyMs: capability.latency === "interactive" ? 1_000 : 10_000,
   };
@@ -291,7 +297,13 @@ function scoreCapability(
   estimates: RouteEstimates,
   index: number,
 ): number {
-  const costScore = Math.round((estimates.costUsd ?? 0) * 1_000_000);
+  const costScore =
+    estimates.costEstimate?.status === "known"
+      ? Math.min(
+          Math.round(estimates.costEstimate.totalCostUsd! * 1_000_000),
+          999_999_000_000,
+        )
+      : 1_000_000_000_000;
   const latencyScore = capability.latency === "interactive" ? 0 : 100_000;
   const contextHeadroom = Math.max(0, capability.contextWindow - estimates.inputTokens);
   const contextScore = Math.max(0, 10_000 - Math.min(contextHeadroom, 10_000));
@@ -302,6 +314,12 @@ function scoreCapability(
 function compareCandidates(left: RouteCandidate, right: RouteCandidate): number {
   if (left.accepted !== right.accepted) {
     return left.accepted ? -1 : 1;
+  }
+
+  const leftCostKnown = left.estimates.costEstimate?.status === "known";
+  const rightCostKnown = right.estimates.costEstimate?.status === "known";
+  if (leftCostKnown !== rightCostKnown) {
+    return leftCostKnown ? -1 : 1;
   }
 
   if (left.score !== right.score) {

@@ -1,9 +1,9 @@
 /**
- * PermissionContext — Phase 21 (v1.2).
+ * PermissionContext (v1.2).
  *
  * Gates tool execution per-tool / per-iteration / per-resource. Includes
  * a SAFETY-band hook helper that wires the context into the agent loop's
- * BEFORE_TOOL pipeline via the Phase 19 `controls.deny(reason)` veto.
+ * BEFORE_TOOL pipeline via the `controls.deny(reason)` veto.
  */
 
 import { BAND, type HookHandler, type RegisterOptions } from "../../contract/bands.js";

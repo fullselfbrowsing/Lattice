@@ -1,5 +1,5 @@
 /**
- * `lattice repro <receipt-id-or-path> [--key <keyset-path>] [--fixtures <dir>]`
+ * `lattice repro <receipt-id-or-path> [--key <path>] [--fixtures <dir>] [--standard-only]`
  *
  * Local-repro-of-a-prod-thumbs-down: load a signed receipt, verify it,
  * materialize a `ReplayEnvelope` from on-disk fixture artifacts, run
@@ -22,10 +22,10 @@
  *      - actualHash === body.outputHash -> exit 0 (verdict=match)
  *      - else                       -> exit 1 (verdict=drift)
  *
- * Redaction discipline (CLI-05): the summary surfaces ONLY redacted-body
+ * Redaction discipline: the summary surfaces ONLY redacted-body
  * fields (receiptId, kid, contractVerdict, model.requested, route.providerId,
- * route.capabilityId, usage.costUsd, verdict). inputHashes are NEVER printed.
- * outputHash appears only on drift, as the diff target.
+ * route.capabilityId, usage.costUsd, profile, deprecated, verdict). inputHashes
+ * are never printed. outputHash appears only on drift, as the diff target.
  *
  * Tested via mock argv: `runRepro(args, deps)`. `deps` is a `{ stdout, stderr,
  * exit }` injection point so tests assert without touching process globals.
@@ -40,7 +40,9 @@ import {
   replayOffline,
   verifyReceipt,
   type CapabilityReceiptBody,
+  type LegacyReceiptPolicy,
   type ReceiptEnvelope,
+  type VerificationProfile,
 } from "@full-self-browsing/lattice";
 
 import {
@@ -78,14 +80,16 @@ export interface RunReproArgs {
   readonly target: string;
   readonly key?: string;
   readonly fixtures?: string;
-  /** Explicit sidecar path (Plan 13.1-02). Highest precedence. */
+  /** Explicit sidecar path. Highest precedence. */
   readonly sidecar?: string;
   /**
-   * Directory holding `<receipt-id>.json` sidecars (Plan 13.1-02). Second
+   * Directory holding `<receipt-id>.json` sidecars. Second
    * precedence: looked up after --sidecar, before the convention path
    * `<receiptsDir>/../sidecars/<id>.json`.
    */
   readonly sidecarDir?: string;
+  /** Reject receipts that require the deprecated legacy verification profile. */
+  readonly standardOnly?: boolean;
   /** Test-only knob (cwd-independent receipt resolution). NOT exposed via citty args. */
   readonly receiptsDir?: string;
 }
@@ -117,12 +121,14 @@ function readErrorMessage(value: unknown): string {
 
 function printSummary(
   body: CapabilityReceiptBody,
+  verificationProfile: VerificationProfile,
+  deprecated: boolean,
   verdict: "match" | "drift",
   deps: ReproDeps,
   diff?: { expected: string; actual: string },
 ): void {
   // Order is stable so downstream scripts can grep. Every field below is
-  // already redacted by Phase 9 before signing — printing it does NOT leak
+  // already redacted before signing, so printing it does NOT leak
   // anything the signer didn't already commit to.
   deps.stdout(`receiptId=${body.receiptId}`);
   deps.stdout(`kid=${body.kid}`);
@@ -131,6 +137,8 @@ function printSummary(
   deps.stdout(`route.providerId=${body.route.providerId}`);
   deps.stdout(`route.capabilityId=${body.route.capabilityId}`);
   deps.stdout(`usage.costUsd=${body.usage.costUsd ?? "null"}`);
+  deps.stdout(`profile=${verificationProfile}`);
+  deps.stdout(`deprecated=${String(deprecated)}`);
   deps.stdout(`verdict=${verdict}`);
   if (verdict === "drift" && diff !== undefined) {
     deps.stdout(`expected.outputHash=${diff.expected.slice(0, 200)}`);
@@ -147,9 +155,10 @@ export async function runRepro(
   args: RunReproArgs,
   deps: ReproDeps = defaultDeps,
 ): Promise<void> {
-  // Stage 1: load receipt. Capture the full `LoadedReceipt` so Stage 3.5
-  // (Plan 13.1-02) can derive the sidecar convention path from the resolved
-  // receipt path.
+  const legacyPolicy: LegacyReceiptPolicy = args.standardOnly
+    ? "reject"
+    : "allow";
+  // Stage 1: load the full receipt so sidecar resolution can use its path.
   let envelope: ReceiptEnvelope;
   let loaded: LoadedReceipt;
   try {
@@ -184,7 +193,7 @@ export async function runRepro(
   const fixturesDir = args.fixtures ?? ".lattice/fixtures";
   const artifactLoader = createFilesystemArtifactLoader(fixturesDir);
 
-  // Stage 3.5 (Plan 13.1-02): resolve sidecar.
+  // Stage 3.5: resolve sidecar.
   // Precedence (highest → lowest):
   //   1. --sidecar <path>                                    (explicit)
   //   2. --sidecar-dir <dir>/<receipt-id>.json               (explicit dir)
@@ -246,7 +255,7 @@ export async function runRepro(
     }
   }
 
-  // Stage 4: materialize. Phase 10's materializer verifies FIRST — a tampered
+  // Stage 4: materialize. The materializer verifies FIRST, so a tampered
   // receipt never touches artifactLoader. Loader-thrown ArtifactLoaderError
   // values get re-wrapped by materialize as MaterializationError
   // { kind: "artifact-load-failed", message }.
@@ -260,6 +269,7 @@ export async function runRepro(
     envelopeReplay = await materializeReplayEnvelope(envelope, {
       artifactLoader,
       keySet,
+      legacyPolicy,
       ...(appliedSidecar !== null ? appliedSidecar : {}),
     });
   } catch (err) {
@@ -278,9 +288,9 @@ export async function runRepro(
   // Stage 5: obtain typed body for the summary. We re-run verifyReceipt
   // because materializeReplayEnvelope verifies internally but does not expose
   // the verified body to callers. Ed25519 verify is microsecond-level —
-  // acceptable for a CLI. Re-using the public surface keeps CLI-06 intact
-  // (no private imports from lattice/src/*).
-  const verifyResult = await verifyReceipt(envelope, keySet);
+  // acceptable for a CLI. Reusing the public surface avoids private imports
+  // from lattice/src/*.
+  const verifyResult = await verifyReceipt(envelope, keySet, { legacyPolicy });
   if (!verifyResult.ok) {
     // Unreachable in practice (materialize already verified). Defensive.
     deps.stderr(
@@ -296,9 +306,8 @@ export async function runRepro(
   if (!result.ok) {
     const reason = `${result.error.kind}: ${result.error.message ?? ""}`;
     deps.stderr(`FAIL kind=replay-failed reason=${reason}`);
-    // Plan 13.1-02: when no sidecar was found AND none was explicitly
-    // requested, point users at the convention so they can flip this branch
-    // into verdict=match by writing the missing sidecar.
+    // When no sidecar was found AND none was explicitly requested, tell users
+    // where the conventional sidecar belongs.
     if (appliedSidecar === null && !sidecarExplicit) {
       deps.stderr(
         `hint: Provide --sidecar <path> or place a sidecar at .lattice/sidecars/${receiptId}.json. See lattice-sidecar/v1 spec.`,
@@ -317,26 +326,39 @@ export async function runRepro(
     return;
   }
 
-  // Recompute hash the same way Phase 9-04 commits to it:
+  // Recompute the hash using the receipt issuance formula:
   //   fingerprintArtifactValue(outputs) -> sha256(JSON.stringify(outputs))
   // We replicate the formula inline rather than importing the private
-  // helper, preserving the CLI-06 public-export boundary.
+  // helper, preserving the public-export boundary.
   const canonical = JSON.stringify(result.outputs);
   const actualHash = await sha256Hex(canonical);
 
   if (actualHash === body.outputHash) {
-    printSummary(body, "match", deps);
+    printSummary(
+      body,
+      verifyResult.verificationProfile,
+      verifyResult.deprecated,
+      "match",
+      deps,
+    );
     deps.exit(0);
     return;
   }
-  printSummary(body, "drift", deps, {
-    expected: body.outputHash,
-    actual: actualHash,
-  });
+  printSummary(
+    body,
+    verifyResult.verificationProfile,
+    verifyResult.deprecated,
+    "drift",
+    deps,
+    {
+      expected: body.outputHash,
+      actual: actualHash,
+    },
+  );
   deps.exit(1);
 }
 
-export default defineCommand({
+export const reproCommand = defineCommand({
   meta: {
     name: "repro",
     description:
@@ -369,6 +391,10 @@ export default defineCommand({
       description:
         "Directory holding `<receipt-id>.json` sidecars. Default: <receiptsDir>/../sidecars/.",
     },
+    "standard-only": {
+      type: "boolean",
+      description: "Reject receipts that use the deprecated legacy signature profile.",
+    },
   },
   async run({ args }) {
     // exactOptionalPropertyTypes: conditionally spread optional fields so
@@ -382,7 +408,10 @@ export default defineCommand({
       ...(args["sidecar-dir"] !== undefined
         ? { sidecarDir: args["sidecar-dir"] }
         : {}),
+      ...(args["standard-only"] === true ? { standardOnly: true } : {}),
     };
     await runRepro(callArgs);
   },
 });
+
+export default reproCommand;

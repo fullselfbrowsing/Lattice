@@ -1,5 +1,5 @@
 /**
- * ActionHistory — Phase 21 (v1.2).
+ * ActionHistory (v1.2).
  *
  * Detects stuck patterns in the agent loop's tool-call sequence:
  *   - "consecutive-identical-tool-call" — same (toolName, argsHash) N+ times in a row

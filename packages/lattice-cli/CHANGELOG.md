@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.0
+
+### Minor Changes
+
+* Track `@full-self-browsing/lattice` 1.6.0 and its standard `lattice-receipt/v1.4` issuance profile.
+* Add `--standard-only` to `lattice verify` and `lattice repro`; successful compatibility reads report both `profile=` and `deprecated=`.
+* Make `lattice eval` retain every invalid or unevaluable fixture row, report aggregate load failures, return exit 2 for invalid input, and refuse partial baseline writes.
+* Support Node.js 24 or newer, with packed CLI validation on Node 24 LTS and Node 26 Current.
+
+### Compatibility
+
+* The default CLI read path continues to allow observable historical receipt verification. Strict mode rejects only the deprecated historical signature path; it does not reject a historical body that carries a valid standard DSSE signature.
+
+### Validation
+
+* Packed install, help/version, receipt verification, replay, type, and workspace test gates pass against the 1.6.0 runtime.
+
 ## 1.5.1
 
 ### Patch Changes

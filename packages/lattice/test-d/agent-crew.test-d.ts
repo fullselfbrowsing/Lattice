@@ -17,13 +17,16 @@ import {
   withRateLimit,
 } from "@full-self-browsing/lattice";
 import type {
+  AgentFailure,
   AgentResult,
+  AgentSnapshot,
   AgentSpec,
   AgentTransport,
   BudgetInvariant,
   CrewAgentResult,
   CrewPolicy,
   CrewResult,
+  IterationRecord,
   ProviderRunRequest,
   ProviderRunResponse,
   RateLimitGroup,
@@ -123,6 +126,35 @@ expectType<string>(crewResult.perAgent[0]!.id);
 expectType<Usage>(crewResult.perAgent[0]!.usage);
 expectType<number>(crewResult.perAgent[0]!.iterations);
 expectType<readonly string[]>(crewResult.perAgent[0]!.receiptCids);
+expectType<ReceiptEnvelope | undefined>(crewResult.result.receipt);
+expectType<string | undefined>(crewResult.result.iterations[0]!.iterationId);
+
+const legacyIteration: IterationRecord = {
+  index: 0,
+  provider: "legacy-provider",
+  promptTokens: 0,
+  completionTokens: 0,
+  costUsd: null,
+  durationMs: 0,
+  toolCalls: [],
+};
+const legacySnapshot: AgentSnapshot = {
+  version: "agent-snapshot/v1",
+  iterationIndex: 0,
+  conversation: [],
+  cumulativeUsage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  providerName: "legacy-provider",
+  capturedAt: "2026-07-17T00:00:00.000Z",
+};
+const recoveryFailure = {
+  kind: "agent-recovery-failed",
+  reason: "snapshot-invalid",
+  usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  iterations: [],
+} satisfies AgentFailure;
+expectType<string | undefined>(legacyIteration.iterationId);
+expectType<string | undefined>(legacySnapshot.executionId);
+expectType<"agent-recovery-failed">(recoveryFailure.kind);
 
 const rateLimitOptions = {
   requestsPerMinute: 5,

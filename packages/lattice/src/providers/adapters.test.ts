@@ -10,7 +10,7 @@ import { createGeminiProvider } from "./gemini.js";
 import { createFakeProvider } from "./fake.js";
 import { collectStream } from "./streaming.js";
 import { artifact } from "../artifacts/artifact.js";
-import type { ModelCapability } from "./provider.js";
+import type { ModelCapability, ProviderPricingHint } from "./provider.js";
 import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
@@ -227,6 +227,121 @@ describe("Phase 7 adapter usage normalization", () => {
       completionTokens: 5,
       costUsd: null,
     });
+  });
+
+  it.each(
+    [
+      {
+        name: "modern",
+        pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+        expected: 0.002,
+      },
+      {
+        name: "equivalent legacy",
+        pricing: { inputCostPer1M: 1, outputCostPer1M: 2 },
+        expected: 0.002,
+      },
+      {
+        name: "preferred fields win conflicts",
+        pricing: {
+          inputPer1kTokens: 0.001,
+          outputPer1kTokens: 0.002,
+          inputCostPer1M: 999,
+          outputCostPer1M: 999,
+        },
+        expected: 0.002,
+      },
+      {
+        name: "known free",
+        pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+        expected: 0,
+      },
+      {
+        name: "partial pricing",
+        pricing: { inputPer1kTokens: 0.001 },
+        expected: null,
+      },
+    ] satisfies readonly {
+      readonly name: string;
+      readonly pricing: ProviderPricingHint;
+      readonly expected: number | null;
+    }[],
+  )(
+    "openai-compatible usage delegates $name pricing to the kernel",
+    async ({ pricing, expected }) => {
+      const adapter = createOpenAICompatibleProvider({
+        model: "test",
+        baseUrl: "http://fake",
+        pricing,
+        fetch: makeFakeFetch({
+          choices: [{ message: { content: "hi" } }],
+          usage: { prompt_tokens: 1_000, completion_tokens: 500 },
+        }),
+      });
+      const response = await adapter.execute!({
+        task: "t",
+        artifacts: [],
+        outputs: ["text"],
+      });
+
+      if (expected === null) {
+        expect(response.normalizedUsage?.costUsd).toBeNull();
+      } else {
+        expect(response.normalizedUsage?.costUsd).toBeCloseTo(expected, 12);
+      }
+      expect(adapter.capabilities?.[0]?.pricing).toEqual(pricing);
+    },
+  );
+
+  it("retains provider-reported OpenAI-compatible and AI SDK costs", async () => {
+    const openAICompatible = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      fetch: makeFakeFetch({
+        choices: [{ message: { content: "hi" } }],
+        usage: {
+          prompt_tokens: 1_000,
+          completion_tokens: 500,
+          costUsd: 0.125,
+        },
+      }),
+    });
+    const openAIResponse = await openAICompatible.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(openAIResponse.normalizedUsage?.costUsd).toBe(0.125);
+    expect(openAIResponse.usage?.costUsd).toBe(0.125);
+
+    const aiSdk = createAISdkProvider({
+      model: "sdk",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      generate: () => ({
+        rawOutputs: { text: "hi" },
+        normalizedUsage: {
+          promptTokens: 10,
+          completionTokens: 5,
+          costUsd: 0.25,
+        },
+      }),
+    });
+    const aiSdkResponse = await aiSdk.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(aiSdkResponse.normalizedUsage?.costUsd).toBe(0.25);
+  });
+
+  it("removes inherited free pricing when adapter pricing is absent", () => {
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch: makeFakeFetch({ choices: [{ message: { content: "hi" } }] }),
+    });
+    expect(adapter.capabilities?.[0]?.pricing).toBeUndefined();
   });
 
   it("fake provider emits a deterministic normalized usage", async () => {
@@ -453,6 +568,81 @@ describe("Phase 51: OpenAI-compatible native provider execution", () => {
   });
 });
 
+describe("OpenAI-compatible output token ceiling", () => {
+  it("serializes an explicit ceiling while preserving signal and usage", async () => {
+    const { fetch, inits } = makeMultiRouteFetch([
+      {
+        body: {
+          choices: [{ message: { content: "bounded" } }],
+          usage: { prompt_tokens: 3, completion_tokens: 2 },
+        },
+      },
+    ]);
+    const controller = new AbortController();
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    const response = await adapter.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+      signal: controller.signal,
+    });
+
+    const body = JSON.parse(String(inits[0]?.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
+    expect(inits[0]?.signal).toBe(controller.signal);
+    expect(response.usage).toEqual({
+      inputTokens: 3,
+      outputTokens: 2,
+    });
+    expect(response.normalizedUsage).toEqual({
+      promptTokens: 3,
+      completionTokens: 2,
+      costUsd: null,
+    });
+  });
+
+  it("omits max_tokens when no ceiling is configured", async () => {
+    const { fetch, inits } = makeMultiRouteFetch([
+      { body: { choices: [{ message: { content: "default" } }], usage: {} } },
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+    });
+
+    await adapter.execute!({ task: "t", artifacts: [], outputs: ["text"] });
+
+    const body = JSON.parse(String(inits[0]?.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("max_tokens");
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid maxOutputTokens=%s before transport",
+    (maxOutputTokens) => {
+      let transports = 0;
+      const fetch = (async () => {
+        transports += 1;
+        return new Response();
+      }) as unknown as typeof globalThis.fetch;
+
+      expect(() => createOpenAICompatibleProvider({
+        model: "test",
+        baseUrl: "http://fake",
+        fetch,
+        maxOutputTokens,
+      })).toThrow("maxOutputTokens must be a positive integer");
+      expect(transports).toBe(0);
+    },
+  );
+});
+
 describe("Phase 44: OpenAI-compatible streaming adapter", () => {
   it("advertises streaming capability", () => {
     const adapter = createOpenAICompatibleProvider({
@@ -492,6 +682,32 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
     expect(body.stream_options).toEqual({ include_usage: true });
   });
 
+  it("streaming request body uses the configured output ceiling", async () => {
+    const { fetch, requests } = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "ok" } }] }),
+      sseData("[DONE]"),
+    ]);
+    const adapter = createOpenAICompatibleProvider({
+      model: "test",
+      baseUrl: "http://fake",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const first = requests[0];
+    if (first === undefined) {
+      throw new Error("Expected streaming request.");
+    }
+    const body = JSON.parse(String(first.init.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
+  });
+
   it("streaming request body includes stream_options include_usage and captures usage from final chunk", async () => {
     const { fetch, requests } = makeStreamingFetch([
       sseData({ choices: [{ delta: { content: "hi" } }] }),
@@ -502,6 +718,7 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
       model: "test",
       baseUrl: "http://fake/",
       fetch,
+      pricing: { inputCostPer1M: 1, outputCostPer1M: 2 },
     });
 
     const response = await collectStream(await adapter.executeStream!({
@@ -518,6 +735,7 @@ describe("Phase 44: OpenAI-compatible streaming adapter", () => {
     expect(reqBody.stream_options).toEqual({ include_usage: true });
     expect(response.normalizedUsage?.promptTokens).toBeGreaterThan(0);
     expect(response.normalizedUsage?.completionTokens).toBeGreaterThan(0);
+    expect(response.normalizedUsage?.costUsd).toBeCloseTo(0.000015, 12);
   });
 
   it("text chunks collect to final output", async () => {

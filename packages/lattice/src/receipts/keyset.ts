@@ -3,7 +3,7 @@ import type { KeyEntry, KeySet } from "./types.js";
 /**
  * In-memory KeySet factory.
  *
- * Verification flow (plan 09-03):
+ * Verification flow:
  *   - keySet.lookup(kid) returns undefined  → VerifyError {kind: "key-not-found"}
  *   - entry.state === "revoked"             → VerifyError {kind: "key-revoked"}
  *   - entry.state === "retired"             → VerifyOk + keyState: "retired" (caller may warn)
@@ -13,7 +13,7 @@ import type { KeyEntry, KeySet } from "./types.js";
  * Empty entries array is legal — every lookup returns undefined.
  * Returned KeySet exposes only `lookup` — no enumeration.
  *
- * See 09-CONTEXT.md "Key Management (UNRETROFITTABLE)".
+ * Key-state semantics are part of the verification protocol.
  */
 export function createMemoryKeySet(entries: readonly KeyEntry[]): KeySet {
   const byKid = new Map<string, KeyEntry>();

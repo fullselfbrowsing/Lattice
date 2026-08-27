@@ -1,7 +1,7 @@
 /**
  * Receipt id-or-path loader for `lattice repro`.
  *
- * Resolution heuristic (CONTEXT.md decision):
+ * Resolution heuristic:
  *   - target contains "/" OR ends with ".json" -> treat as a path; resolve via path.resolve.
  *   - otherwise                                  -> resolve as `<receiptsDir>/<target>.json`,
  *                                                   default receiptsDir is `.lattice/receipts/`

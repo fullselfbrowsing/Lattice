@@ -6,47 +6,72 @@
 | --- | --- | --- | --- |
 | v1.0 milestone | Shipped | 2026-04-22 | `.planning/milestones/v1.0-ROADMAP.md` |
 | v1.1 Capability Receipts | Shipped | 2026-05-12 | `.planning/milestones/v1.1-ROADMAP.md` |
-| v1.2 FSB Integration + Agent Capability | Shipped | 2026-05-31 | `.planning/milestones/v1.2-ROADMAP.md` · `.planning/milestones/v1.2-REQUIREMENTS.md` · `.planning/milestones/v1.2-MILESTONE-AUDIT.md` |
-| v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface | Shipped | 2026-06-15 | `.planning/milestones/v1.3-ROADMAP.md` · `.planning/milestones/v1.3-REQUIREMENTS.md` · `.planning/milestones/v1.3-MILESTONE-AUDIT.md` |
-| v1.4 Provider Breadth + Live Multimodal + Observability Export | Shipped | 2026-06-16 | `.planning/milestones/v1.4-ROADMAP.md` · `.planning/milestones/v1.4-REQUIREMENTS.md` · `.planning/milestones/v1.4-MILESTONE-AUDIT.md` |
-| v1.5.0 Modular Adoption + Execution Parity | Shipped | 2026-06-20 | `.planning/milestones/v1.5.0-ROADMAP.md` · `.planning/milestones/v1.5.0-REQUIREMENTS.md` · `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md` |
+| v1.2 FSB Integration + Agent Capability | Shipped | 2026-05-31 | `.planning/milestones/v1.2-ROADMAP.md` |
+| v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface | Shipped | 2026-06-15 | `.planning/milestones/v1.3-ROADMAP.md` |
+| v1.4 Provider Breadth + Live Multimodal + Observability Export | Shipped | 2026-06-16 | `.planning/milestones/v1.4-ROADMAP.md` |
+| v1.5.0 Modular Adoption + Execution Parity | Shipped | 2026-06-20 | `.planning/milestones/v1.5.0-ROADMAP.md` |
+| v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client | Shipped | 2026-07-06 | `.planning/milestones/v1.5-ROADMAP.md` |
+| v1.6 Protocol and Runtime Integrity Bridge | Shipped | 2026-07-20 | `.planning/milestones/v1.6-ROADMAP.md` |
 
-## Phases
+## Shipped Milestone History
 
 <details>
-<summary><b>Shipped milestones (collapsed)</b></summary>
+<summary><b>Shipped milestones</b></summary>
 
 ### v1.0 milestone (shipped 2026-04-22)
 
-Phases 1 to 6. Package/API spine, artifact lifecycle, deterministic planning, sessions/context/packaging, tools/replay/observability, work-inbox showcase. See `.planning/milestones/v1.0-ROADMAP.md`.
+Phases 1 to 6. Package/API spine, artifact lifecycle, deterministic planning,
+sessions/context/packaging, tools/replay/observability, and work-inbox showcase.
 
 ### v1.1 Capability Receipts (shipped 2026-05-12)
 
-Phases 7 to 13 (plus sub-phases 13.1 + 13.2). Contracts + pre-flight + cost accounting, tripwire invariants with terminal semantics, RFC 8785 JCS canonicalization + Ed25519 signed receipts with `kid` and `KeySet`, receipts inside the replay envelope, `lattice` CLI (`repro` / `verify` / `eval`), sidecar support that closes the replay round-trip, showcase enrichment exercising all 36 v1.1 REQ-IDs. See `.planning/milestones/v1.1-ROADMAP.md`.
+Phases 7 to 13 plus sub-phases 13.1 and 13.2. Contract-bound signed receipts,
+replay envelope integration, `lattice` CLI repro/verify/eval, and showcase
+validation of all 36 v1.1 requirements.
 
 ### v1.2 FSB Integration + Agent Capability (shipped 2026-05-31)
 
-Phases 14 to 22 (plus the Phase 23 milestone audit). Two tracks delivered in one milestone.
-
-- **Track A (Phases 14 to 18):** public surface index + packaging readiness; receipt v1.1 schema extension + tripwire band pipeline + lifecycle events; step-transition tracing + checkpoint hook; five new provider adapters (Anthropic Messages, Gemini, xAI, OpenRouter, LM Studio) + INV-03 parity smoke across 7 logical providers; survivability adapter contract.
-- **Track B (Phases 19 to 22):** delegation surface flip + `ai.runAgent(intent)` runtime entrypoint with uniform prompt-reencoded tool-use across 7 providers; pluggable `AgentHost` interface (scheduler / transport / storage seams) + recovery markers closing v1.1 TRACE-EXT-01; five agent infrastructure primitives (cost / transcript / goal-progress / action-history / permission); `examples/agent-loop` showcase + `evalAgentRun` regression-gate kernel.
-
-46 / 46 REQ-IDs wired end-to-end. 733 / 733 workspace tests passing. One non-blocking limitation documented (V1.2-LIMITATION-1: native tool-use deferred). v1.2 branch merged to `main` via PR #1 (merge commit `5ca3e33`); tag `v1.2.0` cut and pushed. See `.planning/milestones/v1.2-ROADMAP.md` and `.planning/milestones/v1.2-MILESTONE-AUDIT.md`.
+Phases 14 to 22. Public surface readiness, receipt v1.1 schema extension, hook
+bands, checkpoint receipts, five provider adapters, survivability, `ai.runAgent`,
+`AgentHost`, agent primitives, and agent showcase.
 
 ### v1.3 Public Release + Model-Aware SDK + Multi-Agent Surface (shipped 2026-06-15)
 
-Phases 24 to 39 (16 planned; 13 shipped). First public npm release under `@full-self-browsing/*` via OIDC Trusted Publisher + SLSA provenance (`@full-self-browsing/lattice@1.3.0` + `@full-self-browsing/lattice-cli@1.3.0`, GitHub Release `v1.3.0`). Plus a model-aware SDK upgrade — capability registry (~337 profiles from the OpenRouter feed + static supplements), adapter quirk flags + capability negotiation, prompt scaffolds, opt-in output sanitizers + tool-call validators across all 7 adapters, receipt v1.2 + `modelClass` — and a first-class opt-in multi-agent delegation surface (`defineAgent` / `runAgentCrew`, crew budgets, prompt-cache-prefix sharing, rate-limit groups, chained receipts). 64 / 87 REQ-IDs shipped; the 23 canary REQ-IDs (Phases 30–32) were **superseded** by the decision to dogfood the published package through FSB-via-npm instead of a synthetic canary. See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-MILESTONE-AUDIT.md`.
+Phases 24 to 39. First public npm release under `@full-self-browsing/*`, model
+capability registry, adapter quirks and negotiation, prompt scaffolds, output and
+tool-call hardening, receipt v1.2, and opt-in multi-agent crews.
 
 ### v1.4 Provider Breadth + Live Multimodal + Observability Export (shipped 2026-06-16)
 
-Phases 40 to 49. Provider breadth via LiteLLM/OpenRouter gateway delegation, deterministic OpenRouter catalog refresh, normalized streaming across seven logical providers, Anthropic/Gemini multimodal request shaping, realtime direction, receipt lineage/KMS signer shapes, OpenTelemetry export with Langfuse/Phoenix OTLP paths, eval/diagnostics CLI expansion, offline validation, tarball checks, and FSB package-candidate dogfood. 44 / 44 REQ-IDs shipped. See `.planning/milestones/v1.4-ROADMAP.md` and `.planning/milestones/v1.4-MILESTONE-AUDIT.md`.
+Phases 40 to 49. LiteLLM/OpenRouter gateway delegation, streaming, multimodal
+request shaping, realtime direction, receipt lineage, OpenTelemetry export,
+diagnostics CLI, package checks, and dogfood validation.
 
 ### v1.5.0 Modular Adoption + Execution Parity (shipped 2026-06-20)
 
-Phases 50 to 55. Modular package subpaths and compatibility metadata, provider-only native tools/structured outputs, external execution audit receipts/replay, standalone core preparation records, tools/MCP-only helpers, typed agent final outputs, Node 20 modular smoke coverage, GitFly-style dogfood, and a generic external-consumer example. 30 / 30 REQ-IDs shipped. See `.planning/milestones/v1.5.0-ROADMAP.md` and `.planning/milestones/v1.5.0-MILESTONE-AUDIT.md`.
+Phases 50 to 55 in the canonical mainline history. Modular package subpaths,
+provider-native execution, external audit helpers, standalone core preparation,
+optional tools/MCP and agent adoption, and external-consumer dogfood. All 30
+requirements passed.
+
+### v1.5 Polyglot Receipt Protocol + Conformance Vectors + Python Client (shipped 2026-07-06)
+
+Phases 50 to 56 in the reconciled polyglot history. Language-neutral receipt
+specification, committed conformance vectors, TypeScript verifier, Python
+verify/replay/mint client, cross-mint parity, and conformance CI. All 26
+requirements passed.
+
+### v1.6 Protocol and Runtime Integrity Bridge (shipped 2026-07-20)
+
+Phases 57 to 62. Corrected-only DSSE v1.4 issuance with a bounded historical-read
+bridge, independent cross-language conformance, authoritative context and
+persistence, shared audit/evaluation/cost semantics, exact agent and crew receipt
+evidence, and a documented 1.6.0 release validated through clean Node 24/26
+consumers and bounded provider canaries. All 42 requirements passed.
 
 </details>
 
-## Active Milestone
+## Next Milestone
 
-No active milestone. Start the next milestone with `/gsd-new-milestone`.
+No milestone is active. Start the next cycle with `$gsd-new-milestone` so its
+requirements, research, and phase roadmap begin from the shipped v1.6 baseline.

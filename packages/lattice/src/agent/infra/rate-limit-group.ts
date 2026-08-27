@@ -1,13 +1,13 @@
 /**
- * RateLimitGroup — Phase 39 (v1.3).
+ * RateLimitGroup (v1.3).
  *
  * Standalone dual-dimension (requests/min + input tokens/min) token-bucket
  * rate limiter with a lease-based async interface. Pure infra following the
- * CostTracker precedent (Phase 21): no dependency on the agent runtime, and
+ * CostTracker precedent: no dependency on the agent runtime, and
  * usable to gate ANY async work — plain `runAgent` calls, crews, or consumer
- * code outside Lattice entirely (D-12).
+ * code outside Lattice entirely.
  *
- * Zero new runtime dependencies (D-17/D-18). The implementation is in-process
+ * Zero new runtime dependencies. The implementation is in-process
  * only; the lease interface (`acquire`/`release`) is the seam a future
  * cross-process implementation (Redis / Durable Object) can satisfy without
  * changing callers.
@@ -240,7 +240,7 @@ export function createRateLimitGroup(
 /**
  * chars/4 heuristic for lease reservation (matches the transcript-store
  * default `TokenEstimator`). Persistent estimation error is benign: `release`
- * reconciles every lease against the actual `Usage.promptTokens` (A2).
+ * reconciles every lease against the actual `Usage.promptTokens`.
  */
 function estimateInputTokens(task: string): number {
   return Math.ceil(task.length / 4);
@@ -250,9 +250,9 @@ function estimateInputTokens(task: string): number {
  * Wrap an `AgentTransport` so every provider call is gated through `group`.
  *
  * Every transport wrapped with the SAME group instance shares one bucket —
- * `runAgentCrew` (39-06) wraps parent + child hosts with one shared group per
- * adapter instance, structurally guaranteeing crew-wide coordination (D-13).
- * `ProviderAdapter` is never modified (INV-03 parity invariant intact).
+ * `runAgentCrew` wraps parent and child hosts with one shared group per
+ * adapter instance, structurally guaranteeing crew-wide coordination.
+ * `ProviderAdapter` is never modified (parity invariant intact).
  *
  * - `inner` provided → dispatch nests through `inner.call(provider, request)`,
  *   composing with consumer transports (e.g. cross-process bridges).

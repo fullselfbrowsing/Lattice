@@ -93,6 +93,46 @@ describe("local filesystem artifact store", () => {
     await expect(store.has(first.id)).resolves.toBe(false);
   });
 
+  it("preserves tenant, retention, and privacy scope in persisted metadata", async () => {
+    const rootDir = await createTempDir();
+    const store = createLocalArtifactStore(rootDir, { id: "local-scoped" });
+    const input = {
+      ...artifact.text("scoped", {
+        id: "artifact:text:scoped",
+        privacy: "sensitive",
+      }),
+      storage: {
+        storeId: "lifecycle-hint",
+        key: "lifecycle-hint",
+        tenantId: "tenant:a",
+        retention: "durable" as const,
+      },
+    };
+
+    const ref = await store.put(input);
+    const artifactDir = join(rootDir, "artifacts", encodeURIComponent(input.id));
+    const envelope = JSON.parse(
+      await readFile(join(artifactDir, "metadata.json"), "utf8"),
+    );
+
+    expect(ref).toMatchObject({
+      privacy: "sensitive",
+      storage: {
+        storeId: "local-scoped",
+        key: input.id,
+        tenantId: "tenant:a",
+        retention: "durable",
+      },
+    });
+    expect(envelope.ref).toEqual(ref);
+    await expect(store.get(input.id)).resolves.toEqual(ref);
+    await expect(store.load(input.id)).resolves.toEqual({
+      ...ref,
+      value: "scoped",
+    });
+    await expect(store.list()).resolves.toEqual([ref]);
+  });
+
   it("uses local as the default store id", () => {
     expect(createLocalArtifactStore("/tmp/lattice-artifacts").id).toBe("local");
     expect(createLocalArtifactStore("/tmp/lattice-artifacts").kind).toBe("artifact-store");

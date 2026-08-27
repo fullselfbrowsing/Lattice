@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ModelCapability } from "../providers/provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { COST_ESTIMATOR_VERSION, estimateCost } from "../routing/cost.js";
 import { contract } from "./contract.js";
 import {
   estimateRouteCost,
@@ -158,5 +159,56 @@ describe("evaluateContractAgainstRoute", () => {
       estimatedOutputTokens: 256,
     });
     expect(noCost).toBeNull();
+  });
+
+  it("delegates legacy, preferred, and partial pricing to the structured kernel", () => {
+    const modern = baseCapability({
+      pricing: { inputPer1kTokens: 0.002, outputPer1kTokens: 0.004 },
+    });
+    const legacy = baseCapability({
+      pricing: { inputCostPer1M: 2, outputCostPer1M: 4 },
+    });
+    const input = { estimatedInputTokens: 1_000, estimatedOutputTokens: 512 };
+    const modernCost = estimateRouteCost({ capability: modern, ...input });
+    const legacyCost = estimateRouteCost({ capability: legacy, ...input });
+    const structured = estimateCost({
+      pricing: modern.pricing!,
+      inputTokens: input.estimatedInputTokens,
+      outputTokens: input.estimatedOutputTokens,
+    });
+
+    expect(structured.version).toBe(COST_ESTIMATOR_VERSION);
+    expect(modernCost).toBe(structured.totalCostUsd);
+    expect(legacyCost).toBe(structured.totalCostUsd);
+
+    const partial = baseCapability({ pricing: { inputPer1kTokens: 0.002 } });
+    expect(estimateRouteCost({ capability: partial, ...input })).toBeNull();
+  });
+
+  it("accepts exact equality and rejects a known overage", () => {
+    const capability = baseCapability({
+      pricing: { inputPer1kTokens: 0.002, outputPer1kTokens: 0.004 },
+    });
+    const input = {
+      capability,
+      estimatedInputTokens: 1_000,
+      estimatedOutputTokens: 512,
+    };
+    const exact = estimateRouteCost(input)!;
+
+    expect(
+      evaluateContractAgainstRoute(
+        contract({ budget: { maxCostUsd: exact } }),
+        input,
+      ).ok,
+    ).toBe(true);
+    expect(
+      evaluateContractAgainstRoute(
+        contract({ budget: { maxCostUsd: exact / 2 } }),
+        input,
+      ).reasons,
+    ).toEqual([
+      expect.objectContaining({ code: "contract-budget-exceeded" }),
+    ]);
   });
 });

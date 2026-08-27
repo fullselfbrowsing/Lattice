@@ -4,6 +4,7 @@
 *.out
 *.pdf
 !main.pdf
+!journal-main.pdf
 *.bbl
 *.blg
 *.fls

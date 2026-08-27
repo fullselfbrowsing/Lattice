@@ -22,6 +22,7 @@ export type RunEventKind =
   | "fallback.activated"
   | "validation.complete"
   | "validation.failed"
+  | "receipt.issuance"
   | "artifact.created"
   | "run.complete"
   | "run.failed"
@@ -29,14 +30,14 @@ export type RunEventKind =
   | "replay.offline"
   | "replay.live"
   | "step.transition"
-  // Phase 20 (v1.2): recovery / eviction-resume markers paired with the
-  // AgentHost storage seam + SurvivabilityAdapter. Closes TRACE-EXT-01.
+  // Recovery / eviction-resume markers paired with the AgentHost storage seam
+  // and SurvivabilityAdapter.
   | "recovery.start"
   | "recovery.complete"
   | "recovery.failed"
-  // Phase 34 (v1.3): capability-negotiation fallback marker. Fires when
+  // Capability-negotiation fallback marker. Fires when
   // adapter.negotiateCapabilities() falls back from /models to the static
-  // Phase 33 registry due to transient (5xx, network, timeout) failure.
+  // registry due to transient (5xx, network, timeout) failure.
   // Auth errors (401, 403) do NOT fire this event -- they throw
   // NegotiationAuthError instead.
   | "capabilities.negotiation.fallback";

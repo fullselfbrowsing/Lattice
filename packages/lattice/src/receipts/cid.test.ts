@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import { canonicalizeReceiptBody } from "./canonical.js";
+import { PAYLOAD_TYPE, base64Encode, buildPae } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
 import { createInMemorySigner, generateEd25519KeyPairJwk } from "./sign.js";
-import type { ReceiptSigner } from "./types.js";
+import type {
+  CapabilityReceiptBody,
+  ReceiptEnvelope,
+  ReceiptSigner,
+} from "./types.js";
 import { verifyReceipt } from "./verify.js";
 
 import { createReceipt, type CreateReceiptInput } from "./receipt.js";
@@ -54,6 +60,64 @@ describe("cid.ts — determinism", () => {
     const cid1 = await receiptCid(env);
     const cid2 = await receiptCid(env);
     expect(cid1).toBe(cid2);
+  });
+
+  it("keeps content identity independent of the signature profile", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("profile-cid");
+    const body: CapabilityReceiptBody = {
+      version: "lattice-receipt/v1.3",
+      receiptId: "00000000-0000-4000-8000-000000000057",
+      runId: "profile-cid-run",
+      issuedAt: "2026-07-16T00:00:00.000Z",
+      kid: "profile-cid",
+      model: { requested: "test", observed: null },
+      route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      contractVerdict: "success",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: null,
+      redactionPolicyId: "lattice.default.v1",
+      redactions: [],
+    };
+    const payloadBytes = canonicalizeReceiptBody(body);
+    const payload = base64Encode(payloadBytes);
+    const standardSignature = await signer.sign(
+      buildPae(PAYLOAD_TYPE, payloadBytes),
+    );
+    const legacyPae = new TextEncoder().encode(
+      `DSSEv1 ${PAYLOAD_TYPE.length} ${PAYLOAD_TYPE} ${payload.length} ${payload}`,
+    );
+    const legacySignature = await signer.sign(legacyPae);
+    const standard: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload,
+      signatures: [
+        { keyid: signer.kid, sig: base64Encode(standardSignature) },
+      ],
+    };
+    const legacy: ReceiptEnvelope = {
+      payloadType: PAYLOAD_TYPE,
+      payload,
+      signatures: [
+        { keyid: signer.kid, sig: base64Encode(legacySignature) },
+      ],
+    };
+    const keySet = createMemoryKeySet([
+      { kid: signer.kid, publicKeyJwk, state: "active" },
+    ]);
+
+    const standardResult = await verifyReceipt(standard, keySet);
+    const legacyResult = await verifyReceipt(legacy, keySet);
+    expect(standardResult).toMatchObject({
+      ok: true,
+      verificationProfile: "dsse-v1",
+    });
+    expect(legacyResult).toMatchObject({
+      ok: true,
+      verificationProfile: "lattice-legacy-base64-pae",
+    });
+    expect(await receiptCid(standard)).toBe(await receiptCid(legacy));
   });
 });
 

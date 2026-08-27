@@ -14,6 +14,11 @@ export {
   estimateRouteCost,
   evaluateContractAgainstRoute,
 } from "./contract/preflight.js";
+export {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
+} from "./routing/cost.js";
 export { evaluateTripwires } from "./contract/tripwire.js";
 export {
   createLangfuseOtlpConfig,
@@ -32,6 +37,11 @@ export {
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
+export {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+} from "./receipts/policy.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
   ExternalExecutionAuditInput,
@@ -71,7 +81,7 @@ export {
   replayOffline,
   rerunLive,
 } from "./replay/replay.js";
-// Agent runtime (v1.2 Phase 19) — single-agent execution loop.
+// Agent runtime (v1.2) — single-agent execution loop.
 export { runAgent } from "./agent/runtime.js";
 export {
   formatToolsForProvider,
@@ -96,7 +106,7 @@ export type {
   FormattedToolsHandle,
 } from "./agent/format-tools.js";
 export type { HookControls, HookDenyDirective } from "./contract/bands.js";
-// Agent crew surface (v1.3 Phase 39) — opt-in parent/child delegation
+// Agent crew surface (v1.3) — opt-in parent/child delegation
 // composed over AgentSpec values. The internal dispatch seam and
 // CrewDispatcher stay private.
 export { defineAgent } from "./agent/crew/agent-spec.js";
@@ -108,9 +118,9 @@ export type {
   CrewResult,
   RunAgentCrewOptions,
 } from "./agent/crew/run-crew.js";
-// AgentHost adapter (v1.2 Phase 20) — pluggable scheduler / transport /
+// AgentHost adapter (v1.2) — pluggable scheduler / transport /
 // storage seams + recovery markers. Composes with the SurvivabilityAdapter
-// shipped in Phase 18 for cross-process resumption.
+// for cross-process resumption.
 export { createNoopAgentHost } from "./agent/host.js";
 export type {
   AgentScheduler,
@@ -118,12 +128,16 @@ export type {
   AgentStorage,
   AgentTransport,
 } from "./agent/host.js";
-// Agent infrastructure primitives (v1.2 Phase 21) — small, standalone
+// Agent infrastructure primitives (v1.2) — small, standalone
 // modules for cost tracking, transcript management, stuck detection,
 // action-history dedup, and tool-permission gating. Each ships pure
 // (no I/O); compose with the agent runtime via hook handlers.
 export { createCostTracker } from "./agent/infra/cost-tracker.js";
-export type { CostTracker, CostBudgetStatus } from "./agent/infra/cost-tracker.js";
+export type {
+  CostTracker,
+  CostTrackerOptions,
+  CostBudgetStatus,
+} from "./agent/infra/cost-tracker.js";
 export { createTranscriptStore } from "./agent/infra/transcript-store.js";
 export type { TranscriptStore, TokenEstimator } from "./agent/infra/transcript-store.js";
 export { createGoalProgressTracker } from "./agent/infra/goal-progress.js";
@@ -168,7 +182,7 @@ export {
   createRealtimeReceiptDescriptors,
   realtimeStepName,
 } from "./realtime/realtime.js";
-// Agent eval helper (v1.2 Phase 22).
+// Agent eval helper (v1.2).
 export { evalAgentRun } from "./eval/agent-run.js";
 export type {
   AgentEvalResult,
@@ -195,8 +209,14 @@ export type { AI, RunIntent } from "./runtime/create-ai.js";
 export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
   ArtifactInput,
   ArtifactKind,
+  ArtifactLifecycleKind,
+  ArtifactLifecycleReport,
+  ArtifactLifecycleSkipReason,
   ArtifactLineage,
   ArtifactOptions,
   ArtifactParentRef,
@@ -206,6 +226,7 @@ export type {
   ArtifactSource,
   ArtifactStorageRef,
   ArtifactStore,
+  ArtifactRetentionPolicy,
   ArtifactTransformDescriptor,
   ArtifactTransformKind,
   BudgetInvariant,
@@ -215,7 +236,23 @@ export type {
   CollectStreamOptions,
   ContractRejectReasonCode,
   ContractVerdict,
+  CostDimensionEstimate,
+  CostEstimate,
+  CostEstimateStatus,
+  CostPricingSource,
+  CostUnknownReason,
+  ContextMaterializationError,
+  ContextMaterializationFailureReason,
+  ContextPackItemPlan,
+  ContextPackPlan,
+  ContextProjectionPlan,
+  CreateSessionOptions,
+  AppendSessionTurnInput,
+  ExecutionPlan,
+  ExecutionPlanStage,
   ExecutionPlanStub,
+  EstimateCostInput,
+  EffectiveReceiptPolicy,
   FieldFromTableInvariant,
   InferOutput,
   InferOutputMap,
@@ -224,11 +261,15 @@ export type {
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   LatticeConfig,
   LatticeRunError,
   MatchesInvariant,
   MaterializationError,
+  MaterializeContextInput,
   MaterializeReplayEnvelopeOptions,
+  MaterializedContext,
+  MissingArtifactRefPolicy,
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
@@ -248,8 +289,12 @@ export type {
   PiiDetector,
   PiiDetectorResult,
   PolicySpec,
+  PreservedArtifactLifecycleReport,
   ProviderAdapter,
+  ProviderAttemptRecord,
+  ProviderPackagedArtifactPlan,
   ProviderGatewayMetadata,
+  ProviderPackagingPlan,
   ProviderRef,
   ProviderRunRequest,
   ProviderRunResponse,
@@ -277,9 +322,13 @@ export type {
   RealtimeSupportLevel,
   RealtimeTransportKind,
   ReceiptEnvelope,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
   ReceiptModel,
+  ReceiptPolicyInput,
   ReceiptRedaction,
   ReceiptRoute,
+  ReceiptSignatureProfile,
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
@@ -295,20 +344,31 @@ export type {
   RunFailure,
   RunResult,
   RunSuccess,
+  SessionRecord,
   SessionRef,
+  SessionStore,
+  SessionSummary,
+  SessionTurn,
+  SelectedRoute,
+  SkippedArtifactLifecycleReport,
   StorageLike,
   StoredArtifactEnvelope,
+  StoredArtifactLifecycleReport,
   StoredArtifactPayloadDescriptor,
   TracerLike,
   TripwireEvidence,
   TripwireResult,
   TripwireViolationError,
+  PersistenceError,
+  PersistenceLifecycleKind,
   Usage,
   ValidationIssue,
+  VerificationProfile,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "./runtime/public-types.js";
 
@@ -320,12 +380,12 @@ export type {
   UnsubscribeFn,
 } from "./runtime/survivability.js";
 
-// Phase 33 — Model Capability Registry (CAPS-01 / CAPS-02)
+// Model Capability Registry
 // Typed capability profile + 6 closed string-literal unions describing how
 // each model class misbehaves and which prompt strategy it wants. Sibling
 // to the v1.0 `ModelCapability` modality/cost surface — they answer
-// orthogonal questions. Plan 33-04 will populate the static + generated
-// registries; the lookup surface (CAPS-02) is wired below.
+// orthogonal questions. Static and generated registries share one lookup
+// surface below.
 export type {
   CapabilityAdapter,
   KnownFailureMode,
@@ -346,21 +406,21 @@ export {
   stripOpenRouterVariant,
 } from "./capabilities/index.js";
 
-// Phase 34 — Adapter Quirk Flags + Capability Negotiation API
-// SanitizerKey dispatch keys + recommendation table (D-13/D-14/D-15/D-16)
+// Adapter Quirk Flags + Capability Negotiation API
+// SanitizerKey dispatch keys and recommendation table.
 export type { SanitizerKey } from "./capabilities/index.js";
 export {
   SANITIZER_BY_FAILURE_MODE,
   getRecommendedSanitizers,
 } from "./capabilities/index.js";
-// Phase 34 — NegotiatedCapabilities + NegotiationAuthError + helpers (D-02/D-04)
+// NegotiatedCapabilities, NegotiationAuthError, and helpers.
 export type { NegotiatedCapabilities } from "./capabilities/index.js";
 export {
   NegotiationAuthError,
   negotiateCapabilities,
   synthesizeNegotiatedCapabilitiesFromRegistry,
 } from "./capabilities/index.js";
-// Phase 34 — AdapterQuirks base + per-adapter narrowed sub-interfaces (D-03)
+// AdapterQuirks base and per-adapter narrowed sub-interfaces.
 export type {
   AdapterQuirks,
   AnthropicQuirks,
@@ -373,9 +433,9 @@ export type {
   XaiQuirks,
 } from "./providers/quirks.js";
 
-// Phase 35 — Prompt scaffold helpers (SCAFF-01 / SCAFF-02 / SCAFF-03)
+// Prompt scaffold helpers
 // Strategy-specific prompt fragments for structured-output and tool-use
-// contracts. These helpers consume the Phase 33 RecommendedPromptStrategy
+// contracts. These helpers consume RecommendedPromptStrategy
 // enum and render deterministic canonical JSON payloads for prompt assembly.
 export {
   PROMPT_SCAFFOLD_VERSION,
@@ -384,7 +444,7 @@ export {
   getToolUseContract,
 } from "./prompts/index.js";
 
-// Phase 36 — Output Sanitizer Hook (SANITIZE-02 / SANITIZE-03)
+// Output Sanitizer Hook
 // Opt-in output cleanup helpers for provider adapters and consumers handling
 // model-family-specific output-shape leaks.
 export {

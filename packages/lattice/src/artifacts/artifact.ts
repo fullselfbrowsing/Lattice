@@ -1,4 +1,7 @@
-import type { PolicySpec } from "../policy/policy.js";
+import type {
+  ArtifactRetentionPolicy,
+  PolicySpec,
+} from "../policy/policy.js";
 import type {
   ArtifactLineage,
   ArtifactTransformDescriptor,
@@ -45,6 +48,8 @@ export interface ArtifactFingerprint {
 export interface ArtifactStorageRef {
   readonly storeId: string;
   readonly key: string;
+  readonly tenantId?: string;
+  readonly retention?: ArtifactRetentionPolicy;
 }
 
 export interface ArtifactOptions {
@@ -183,6 +188,36 @@ export function isArtifactRef(value: unknown): value is ArtifactRef {
     isArtifactSource(value.source) &&
     isArtifactPrivacy(value.privacy)
   );
+}
+
+export function artifactPrivacyRank(privacy: ArtifactPrivacy): number {
+  switch (privacy) {
+    case "standard":
+      return 0;
+    case "sensitive":
+      return 1;
+    case "restricted":
+      return 2;
+  }
+}
+
+export function mostRestrictiveArtifactPrivacy(
+  ...privacies: readonly ArtifactPrivacy[]
+): ArtifactPrivacy {
+  return privacies.reduce<ArtifactPrivacy>(
+    (mostRestrictive, privacy) =>
+      artifactPrivacyRank(privacy) > artifactPrivacyRank(mostRestrictive)
+        ? privacy
+        : mostRestrictive,
+    "standard",
+  );
+}
+
+export function isArtifactPrivacyAtLeast(
+  actual: ArtifactPrivacy,
+  required: ArtifactPrivacy,
+): boolean {
+  return artifactPrivacyRank(actual) >= artifactPrivacyRank(required);
 }
 
 function createArtifact(

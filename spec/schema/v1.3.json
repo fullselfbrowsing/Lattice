@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lattice-protocol.dev/spec/schema/v1.3.json",
+  "title": "Lattice Capability Receipt Body v1.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "receiptId",
+    "runId",
+    "issuedAt",
+    "kid",
+    "model",
+    "route",
+    "usage",
+    "contractVerdict",
+    "contractHash",
+    "inputHashes",
+    "outputHash",
+    "redactionPolicyId",
+    "redactions"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["lattice-receipt/v1.3"]
+    },
+    "receiptId": {
+      "type": "string",
+      "$comment": "UUID v4 format required per normative prose (§ 3.1). Pattern not enforced here to avoid regex dialect drift across validators."
+    },
+    "runId": {
+      "type": "string"
+    },
+    "issuedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "kid": {
+      "type": "string"
+    },
+    "model": {
+      "type": "object",
+      "required": ["requested", "observed"],
+      "additionalProperties": false,
+      "properties": {
+        "requested": {
+          "type": "string"
+        },
+        "observed": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "required": ["providerId", "capabilityId", "attemptNumber"],
+      "additionalProperties": false,
+      "properties": {
+        "providerId": {
+          "type": "string"
+        },
+        "capabilityId": {
+          "type": "string"
+        },
+        "attemptNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "$comment": "I-JSON safe integer (2^53-1). MUST be encoded as bare integer without fraction or exponent (5 not 5.0 or 5e0)."
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["promptTokens", "completionTokens", "costUsd"],
+      "additionalProperties": false,
+      "properties": {
+        "promptTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "$comment": "I-JSON safe integer (2^53-1). MUST be encoded as bare integer without fraction or exponent (5 not 5.0 or 5e0)."
+        },
+        "completionTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "$comment": "I-JSON safe integer (2^53-1). MUST be encoded as bare integer without fraction or exponent (5 not 5.0 or 5e0)."
+        },
+        "costUsd": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+            },
+            { "type": "null" }
+          ],
+          "$comment": "NaN and Infinity are represented as null per canonical.ts stringifyCostUsd. MUST NOT be a JSON number."
+        }
+      }
+    },
+    "contractVerdict": {
+      "type": "string",
+      "enum": [
+        "success",
+        "tripwire-violated",
+        "no-contract-match",
+        "execution-failed",
+        "validation-failed"
+      ]
+    },
+    "contractHash": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "inputHashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+        "$comment": "Each entry is bare lowercase hex SHA-256 (64 chars). NO sha256: prefix."
+      }
+    },
+    "outputHash": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        { "type": "null" }
+      ],
+      "$comment": "Bare lowercase hex SHA-256 (64 chars). NO sha256: prefix. See fingerprint.ts fingerprintArtifactValue."
+    },
+    "redactionPolicyId": {
+      "type": "string"
+    },
+    "redactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "modelClass": {
+      "type": "string",
+      "enum": [
+        "frontier_rlhf",
+        "mid_tier_rlhf",
+        "open_weight_instruct",
+        "open_weight_base",
+        "local_quantized"
+      ]
+    },
+    "parentReceiptCid": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "lineageMerkleRoot": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "stepName": {
+      "type": "string"
+    },
+    "stepIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "$comment": "I-JSON safe integer (2^53-1). MUST be encoded as bare integer without fraction or exponent (5 not 5.0 or 5e0)."
+    },
+    "parentStepName": {
+      "type": "string"
+    },
+    "previousStepName": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "noRouteReasons": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "tripwireEvidence": {
+      "type": "object"
+    }
+  }
+}

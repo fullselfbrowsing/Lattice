@@ -1,8 +1,8 @@
 /**
- * formatToolsForProvider — Phase 19 (v1.2).
+ * formatToolsForProvider (v1.2).
  *
  * The agent loop runs over the existing v1.1 + v1.2 `ProviderAdapter`
- * interface unchanged (CONTEXT.md Q2). Adapters accept only a single
+ * interface unchanged. Adapters accept only a single
  * `task: string` plus `outputs[]` — they have no native multi-turn or
  * tool-use surface.
  *
@@ -18,9 +18,8 @@
  * response (`ProviderRunResponse.rawOutputs`) and never touches the
  * provider-specific request shape. Native tool_use (Anthropic Messages-API
  * `tools[]`, OpenAI Chat-Completions `tools[]`, Gemini `function_declarations`)
- * is DEFERRED to a follow-on milestone where the `ProviderAdapter` interface
- * can be additively extended without breaking the INV-03 parity contract
- * shipped in v1.2 Phase 17.
+ * is not supported by this prompt-reencoded compatibility layer. Adding it
+ * requires an additive `ProviderAdapter` extension that preserves parity.
  *
  * Returned closure shape:
  *   {
@@ -60,8 +59,8 @@ export type FormatToolsMode = "native" | "prompt-reencoded" | "auto";
 export interface FormatToolsOptions {
   /**
    * Tool-use protocol mode. Defaults to `"auto"`, which currently resolves
-   * to `"prompt-reencoded"` for ALL 7 providers (Phase 19 simplification —
-   * native tool_use deferred to a follow-on milestone). Reserved for
+   * to `"prompt-reencoded"` for ALL 7 providers because native tool use is
+   * not supported by the base adapter contract. Reserved for
    * forward compatibility.
    */
   readonly mode?: FormatToolsMode;
@@ -80,10 +79,10 @@ export interface FormattedToolsHandle {
    */
   readonly buildTask: (conversation: readonly ConversationTurn[]) => string;
   /**
-   * Phase 39 (v1.3): body-only sibling of `buildTask` — identical turn
+   * Body-only sibling of `buildTask`: identical turn
    * rendering minus the leading system block, so the byte-stable
    * `describeForSystem()` prefix can be hoisted once per crew for
-   * prompt-cache sharing without duplication (39-05).
+   * prompt-cache sharing without duplication.
    *
    * Invariant: `describeForSystem() + "\n" + buildTaskBody(conversation)`
    * reconstructs `buildTask(conversation)` byte-for-byte.
@@ -118,7 +117,7 @@ export const toolSchemaToJsonSchema = standardSchemaToJsonSchema;
 /**
  * Builds the prompt-reencoded tool-use protocol handle for any provider.
  *
- * Phase 19 ships a uniform implementation across all 7 logical providers
+ * The implementation is uniform across all 7 logical providers
  * (openai, openai-compat, anthropic, gemini, xai, openrouter, lm-studio).
  * The `providerName` argument is accepted for forward compatibility but
  * does not branch the implementation in v1.2.

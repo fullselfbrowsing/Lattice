@@ -6,7 +6,6 @@ import type { Usage } from "../providers/provider.js";
 import { canonicalizeReceiptBody, usageToCanonical } from "./canonical.js";
 import {
   PAYLOAD_TYPE,
-  base64Encode,
   buildPae,
   encodeEnvelope,
 } from "./envelope.js";
@@ -22,7 +21,7 @@ import type {
 
 /**
  * Public input to createReceipt. Mirrors CapabilityReceiptBody minus:
- *   - `version` (forced to "lattice-receipt/v1.3" per Phase 46)
+ *   - `version` and `signatureProfile` (forced to the current protocol)
  *   - `kid` (forced from signer.kid — caller cannot mismatch)
  *   - `redactions[]` (populated by redactReceiptBody)
  *   - `usage.costUsd` (converted to canonical string by usageToCanonical)
@@ -37,7 +36,7 @@ export interface CreateReceiptInput {
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
   readonly modelClass?: TrainingClass;
-  // Phase 39 (DELEG-06): chain-link to the parent receipt's CID
+  // Chain link to the parent receipt's CID
   // (`sha256:<hex>` of the parent envelope's canonical payload bytes,
   // derived via receipts/cid.ts receiptCid). Omit for root/non-crew receipts.
   readonly parentReceiptCid?: string;
@@ -50,10 +49,9 @@ export interface CreateReceiptInput {
   readonly redactionPolicyId?: string;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
-  // Phase 2 v1.1 step-marker fields. All optional; populated when a step
-  // transition emits a receipt. Phase 26 (CRYPTO-01) collapsed the v1/v1.1
-  // version-bump heuristic to ALWAYS emit "lattice-receipt/v1.1" since v1
-  // receipts can no longer pass verifyReceipt (receipt-downgrade defense).
+  // v1.1 step-marker fields. All are optional and populated when a step
+  // transition emits a receipt. Always emit at least "lattice-receipt/v1.1"
+  // because v1 receipts cannot pass verifyReceipt's downgrade defense.
   readonly stepName?: string;
   readonly stepIndex?: number;
   readonly parentStepName?: string;
@@ -65,7 +63,7 @@ export interface CreateReceiptInput {
 /**
  * Build, redact, canonicalize, sign, and envelope a CapabilityReceipt.
  *
- * Ordering INVARIANT (09-CONTEXT.md, PITFALLS.md Pitfall #1):
+ * Ordering invariant:
  *   redact -> canonicalize -> PAE -> sign -> encode
  *
  * The signed digest commits to canonicalize(redact(body)). The function
@@ -90,14 +88,13 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
-  // Phase 46: always emit v1.3. v1.1/v1.2 remain verifier-compatible, but
-  // new receipts can carry the optional lineageMerkleRoot provenance field.
-  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.3";
+  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.4";
 
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).
   const body0: CapabilityReceiptBody = {
     version,
+    signatureProfile: "dsse-v1",
     receiptId,
     runId: input.runId,
     issuedAt,
@@ -136,16 +133,13 @@ export async function createReceipt(
   // Step 3: canonicalize the redacted body (RFC 8785 JCS).
   const payloadBytes = canonicalizeReceiptBody(body);
 
-  // Step 4: base64-encode for the envelope (DSSE wire format).
-  const payload = base64Encode(payloadBytes);
+  // Step 4: build PAE over the raw canonical payload bytes.
+  const pae = buildPae(PAYLOAD_TYPE, payloadBytes);
 
-  // Step 5: build PAE — Pre-Authentication Encoding per DSSE v1.0.
-  const pae = buildPae(PAYLOAD_TYPE, payload);
-
-  // Step 6: sign the PAE bytes.
+  // Step 5: sign the PAE bytes.
   const sig = await signer.sign(pae);
 
-  // Step 7: assemble the envelope. signer.kid duplicated in signatures[]
+  // Step 6: assemble the envelope. signer.kid duplicated in signatures[]
   // even though it is ALSO inside the signed body (defense in depth).
   return encodeEnvelope({
     payloadBytes,

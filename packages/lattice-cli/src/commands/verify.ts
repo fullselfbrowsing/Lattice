@@ -1,31 +1,35 @@
 /**
- * `lattice verify <receipt-path> [--key <keyset-path>]`
+ * `lattice verify <receipt-path> [--key <keyset-path>] [--standard-only]`
  *
  * Offline integrity check for a signed capability receipt. Reads the
  * receipt JSON, loads the keyset JSON file (default `~/.lattice/keyset.json`),
  * and runs `verifyReceipt` from the lattice public surface.
  *
- * Output contract (CONTEXT.md exit-code matrix):
- *   exit 0 — success    : single stdout line `OK kid=<kid> verdict=<contractVerdict>`
+ * Output contract (exit-code matrix):
+ *   exit 0 — success: single stdout line with the receipt verdict,
+ *                         verification profile, and deprecation status
  *   exit 1 — verify FAIL: single stderr line `FAIL kind=<VerifyErrorKind> reason=<message>`
- *   exit 2 — load FAIL  : single stderr line `FAIL kind=keyset-load-failed reason=...`
+ *   exit 2 — load FAIL: single stderr line `FAIL kind=keyset-load-failed reason=...`
  *                         or `FAIL kind=receipt-load-failed reason=...`
  *
- * Redaction discipline (CLI-05): the success line ONLY surfaces fields
- * already present on the signed body (`kid`, `contractVerdict`). No payload
- * bytes, no input/output hashes, no signatures.
+ * Redaction discipline: the success line only surfaces signed-body
+ * metadata plus verifier-owned profile metadata. It never prints payload
+ * bytes, input/output hashes, or signatures.
  *
  * The handler is split into a named exported `runVerify(args, deps)` plus
  * the default-exported `defineCommand`. Tests import `runVerify` and inject
- * a capturing `VerifyDeps` — the "subcommand handlers tested via mock argv,
- * no spawn" pattern documented in 11-CONTEXT.md.
+ * a capturing `VerifyDeps`, avoiding subprocesses.
  */
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { defineCommand } from "citty";
-import { verifyReceipt, type ReceiptEnvelope } from "@full-self-browsing/lattice";
+import {
+  verifyReceipt,
+  type LegacyReceiptPolicy,
+  type ReceiptEnvelope,
+} from "@full-self-browsing/lattice";
 
 import {
   isKeysetLoadError,
@@ -60,6 +64,8 @@ function isReceiptEnvelopeShape(value: unknown): value is ReceiptEnvelope {
 export interface RunVerifyArgs {
   readonly receipt: string;
   readonly key?: string;
+  /** Reject receipts that require the deprecated legacy verification profile. */
+  readonly standardOnly?: boolean;
 }
 
 /**
@@ -110,9 +116,14 @@ export async function runVerify(
   // Step 3: verify. Branch on `result.ok` — the union narrows so we never
   // touch `result.error` on the success path or `result.body` on the failure
   // path (exactOptionalPropertyTypes safety).
-  const result = await verifyReceipt(envelope, keySet);
+  const legacyPolicy: LegacyReceiptPolicy = args.standardOnly
+    ? "reject"
+    : "allow";
+  const result = await verifyReceipt(envelope, keySet, { legacyPolicy });
   if (result.ok) {
-    deps.stdout(`OK kid=${result.body.kid} verdict=${result.body.contractVerdict}`);
+    deps.stdout(
+      `OK kid=${result.body.kid} verdict=${result.body.contractVerdict} profile=${result.verificationProfile} deprecated=${String(result.deprecated)}`,
+    );
     deps.exit(0);
     return;
   }
@@ -120,7 +131,7 @@ export async function runVerify(
   deps.exit(1);
 }
 
-export default defineCommand({
+export const verifyCommand = defineCommand({
   meta: {
     name: "verify",
     description:
@@ -137,15 +148,22 @@ export default defineCommand({
       description:
         "Path to the keyset JSON file (default: ~/.lattice/keyset.json).",
     },
+    "standard-only": {
+      type: "boolean",
+      description: "Reject receipts that use the deprecated legacy signature profile.",
+    },
   },
   async run({ args }) {
     // exactOptionalPropertyTypes: only set `key` when citty actually parsed a
     // value. Spreading conditionally avoids `key: undefined` reaching the
     // optional `RunVerifyArgs.key?: string`.
-    const callArgs: RunVerifyArgs =
-      args.key === undefined
-        ? { receipt: args.receipt }
-        : { receipt: args.receipt, key: args.key };
+    const callArgs: RunVerifyArgs = {
+      receipt: args.receipt,
+      ...(args.key !== undefined ? { key: args.key } : {}),
+      ...(args["standard-only"] === true ? { standardOnly: true } : {}),
+    };
     await runVerify(callArgs);
   },
 });
+
+export default verifyCommand;

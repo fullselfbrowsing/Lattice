@@ -1,10 +1,12 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
   ProviderFinishMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
+  ProviderPricingHint,
   ProviderStream,
   ProviderStructuredOutputRequest,
   ProviderToolChoice,
@@ -12,6 +14,7 @@ import type {
   Usage,
 } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { resolveUsageCostUsd } from "../routing/cost.js";
 import type { OpenAIQuirks, OpenAICompatQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import {
@@ -44,37 +47,31 @@ export interface OpenAICompatibleProviderOptions {
   readonly apiKey?: string;
   readonly gateway?: GatewayPolicy;
   readonly fetch?: typeof fetch;
+  /** Static pricing used only when the provider does not report a cost. */
+  readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling serialized as `max_tokens` when set. */
+  readonly maxOutputTokens?: number;
   /**
-   * Phase 7 addition: caller-supplied per-1k pricing. When provided, the
-   * adapter computes `normalizedUsage.costUsd` from the API-reported token
-   * counts. When omitted, `normalizedUsage.costUsd` is `null` so downstream
-   * consumers can distinguish "unmeasured" from "free" (per 07-CONTEXT.md).
-   */
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
-  /**
-   * Phase 34 — D-05/D-06/D-08 — TTL for the per-instance models cache.
+   * TTL for the per-instance models cache.
    * Default 300_000ms (5 minutes). Set to 0 to disable caching.
    * Set to Infinity for process-lifetime caching.
    *
    * NOTE: for createOpenAICompatibleProvider, this option is accepted for
    * option-bag uniformity but is NOT USED — openai-compat has no /models
-   * endpoint (D-04). Document in JSDoc for consumers pointing at known servers.
+   * endpoint. Document in JSDoc for consumers pointing at known servers.
    */
   readonly modelsCacheTtlMs?: number;
   /**
-   * Phase 34 — D-11 — Number of retry attempts on transient /models errors
+   * Number of retry attempts on transient /models errors
    * (5xx, network, timeout). Default 2. Set to 0 to disable retries.
    *
    * NOTE: for createOpenAICompatibleProvider, this option is accepted for
    * option-bag uniformity but is NOT USED — openai-compat has no /models
-   * endpoint (D-04).
+   * endpoint.
    */
   readonly modelsRetryCount?: number;
   /**
-   * Phase 34 — D-12 — Optional RunEventSink for capability negotiation events.
+   * Optional RunEventSink for capability negotiation events.
    * When provided, emits the "capabilities.negotiation.fallback" event on
    * transient /models errors (5xx, network, timeout).
    *
@@ -85,13 +82,13 @@ export interface OpenAICompatibleProviderOptions {
    */
   readonly runEventSink?: RunEventSink;
   /**
-   * Phase 36 — Optional output sanitizer pipeline. When provided, string
+   * Optional output sanitizer pipeline. When provided, string
    * rawOutputs are transformed in order after provider text extraction and
    * before the adapter returns.
    */
   readonly sanitizeOutput?: SanitizeOutputOption;
   /**
-   * Phase 37 — Optional returned tool-call validator. When provided, the
+   * Optional returned tool-call validator. When provided, the
    * adapter parses prompt-reencoded tool_calls envelopes and returns
    * normalized validated calls without mutating rawOutputs or rawResponse.
    */
@@ -105,10 +102,22 @@ export interface SdkLikeProviderOptions {
     readonly task: string;
     readonly outputNames: readonly string[];
   }) => Promise<ProviderRunResponse> | ProviderRunResponse;
+  /** Static pricing used only when the generated response does not report a cost. */
+  readonly pricing?: ProviderPricingHint;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateMaxOutputTokens(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
 }
 
 function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
@@ -302,6 +311,7 @@ function observedModelFromResponse(body: unknown): string | undefined {
 function createOpenAICompatibleRequestBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens?: number;
   readonly metadata?: Record<string, unknown>;
   readonly stream?: boolean;
 }): Record<string, unknown> {
@@ -311,6 +321,9 @@ function createOpenAICompatibleRequestBody(input: {
 
   return {
     model: input.model,
+    ...(input.maxOutputTokens !== undefined
+      ? { max_tokens: input.maxOutputTokens }
+      : {}),
     ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
     messages: [
       {
@@ -424,21 +437,17 @@ function openAIResponseFormat(
 }
 
 /**
- * Phase 34 — D-04 / QUIRK-02 — OpenAI-compatible provider factory.
+ * OpenAI-compatible provider factory.
  *
  * This factory is the prototypical "intentional no remote /models endpoint"
- * adapter per D-04. The consumer points this adapter at any OpenAI-shaped
+ * adapter. The consumer points this adapter at any OpenAI-shaped
  * endpoint (vLLM, TGI, Ollama, custom), and the factory returns conservative
  * defaults for the quirks block because the server could be anything.
  *
  * The `negotiateCapabilities` method performs NO fetch; it returns
  * synthesizeNegotiatedCapabilitiesFromRegistry with source: "registry"
  * (the intentional-no-endpoint signal, as distinct from "registry-fallback"
- * which signals a transient failure). Plan 34-05 (LM Studio) reuses this
- * same pattern.
- *
- * D-04 citation: "consumer adapters without a /models endpoint skip the
- * fetch layer entirely and delegate to synthesizeNegotiatedCapabilitiesFromRegistry."
+ * which signals a transient failure). LM Studio reuses this pattern.
  */
 export function createOpenAICompatibleProvider(
   options: OpenAICompatibleProviderOptions,
@@ -449,12 +458,13 @@ export function createOpenAICompatibleProvider(
   const id = options.id ?? "openai-compatible";
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = options.baseUrl.replace(/\/$/u, "");
+  const maxOutputTokens = validateMaxOutputTokens(options.maxOutputTokens);
 
-  // Phase 34 — D-04 — OpenAI-compat negotiate() is registry-only (no fetch,
+  // OpenAI-compat negotiate() is registry-only (no fetch,
   // no cache, no inflight). Source: "registry" signals intentional no-endpoint.
   const negotiate = async (modelId: string): Promise<NegotiatedCapabilities> => {
     const adapterId = (id) as CapabilityAdapter;
-    // No fetch; no cache; no inflight coalescing. Direct synthesis from registry per D-04.
+    // No fetch, cache, or inflight coalescing; synthesize directly from the registry.
     // Source: "registry" signals intentional no-endpoint (vs "registry-fallback"
     // which signals a transient failure we couldn't recover from).
     return synthesizeNegotiatedCapabilitiesFromRegistry(adapterId, modelId, "registry");
@@ -463,7 +473,7 @@ export function createOpenAICompatibleProvider(
   return {
     id,
     kind: "provider-adapter",
-    // Phase 34 — QUIRK-02 / OpenAICompatQuirks — conservative defaults.
+    // Conservative OpenAICompatQuirks defaults.
     // openai-compat servers (vLLM, TGI, Ollama, custom) vary widely in which
     // response_format and tool_choice features they implement. Defaults are
     // conservatively false except streamingDiverges which is true because
@@ -477,12 +487,12 @@ export function createOpenAICompatibleProvider(
     } satisfies OpenAICompatQuirks,
     negotiateCapabilities: negotiate,
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "extracted-text", "transcript"],
         streaming: true,
-      },
+      }, options.pricing),
     ],
     async execute(request) {
       const mergedGatewayPolicy = mergeGatewayPolicy(
@@ -493,6 +503,7 @@ export function createOpenAICompatibleProvider(
       const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
         model: options.model,
         request,
+        ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
         ...(metadata !== undefined ? { metadata } : {}),
       }));
       assertNoPublicUrlEgress(request, id, bodyStr);
@@ -579,6 +590,7 @@ export function createOpenAICompatibleProvider(
         baseUrl,
         fetchImpl,
         request,
+        ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
         ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
         ...(options.gateway !== undefined ? { providerGateway: options.gateway } : {}),
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
@@ -598,11 +610,9 @@ async function* streamOpenAICompatibleResponse(input: {
   readonly apiKey?: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens?: number;
   readonly providerGateway?: GatewayPolicy;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
@@ -614,6 +624,9 @@ async function* streamOpenAICompatibleResponse(input: {
   const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
     model: input.model,
     request: input.request,
+    ...(input.maxOutputTokens !== undefined
+      ? { maxOutputTokens: input.maxOutputTokens }
+      : {}),
     ...(metadata !== undefined ? { metadata } : {}),
     stream: true,
   }));
@@ -952,22 +965,19 @@ function parseToolArguments(value: string): unknown {
 }
 
 /**
- * Phase 7 normalization: maps raw provider usage payloads (OpenAI's
+ * Maps raw provider usage payloads (OpenAI's
  * `prompt_tokens`/`completion_tokens`, the Responses API's
  * `input_tokens`/`output_tokens`, or camelCase variants) to the shared
- * `Usage` shape. When `pricing` is supplied, `costUsd` is computed from
- * the normalized token counts. Otherwise `costUsd` is `null` so consumers
- * can distinguish "unmeasured" from "zero".
+ * `Usage` shape. A non-null reported cost wins; otherwise static pricing
+ * delegates to the shared cost kernel.
  */
 function normalizeUsageToRunUsage(
   rawUsage: unknown,
-  pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  },
+  pricing?: ProviderPricingHint,
 ): Usage {
   let promptTokens = 0;
   let completionTokens = 0;
+  let reportedCostUsd: number | undefined;
   if (typeof rawUsage === "object" && rawUsage !== null) {
     const record = rawUsage as Record<string, unknown>;
     promptTokens =
@@ -980,16 +990,14 @@ function normalizeUsageToRunUsage(
       numberField(record, "output_tokens") ??
       numberField(record, "outputTokens") ??
       0;
+    reportedCostUsd = reportedUsageCost(record);
   }
-  let costUsd: number | null = null;
-  if (
-    pricing !== undefined &&
-    (pricing.inputPer1kTokens !== undefined || pricing.outputPer1kTokens !== undefined)
-  ) {
-    const inputCost = ((pricing.inputPer1kTokens ?? 0) * promptTokens) / 1000;
-    const outputCost = ((pricing.outputPer1kTokens ?? 0) * completionTokens) / 1000;
-    costUsd = inputCost + outputCost;
-  }
+  const costUsd = resolveUsageCostUsd({
+    ...(pricing !== undefined ? { pricing } : {}),
+    ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
   return { promptTokens, completionTokens, costUsd };
 }
 
@@ -1003,12 +1011,23 @@ function normalizeUsage(usage: unknown): UsageRecord | undefined {
   const outputTokens =
     numberField(record, "completion_tokens") ?? numberField(record, "output_tokens");
   const totalTokens = numberField(record, "total_tokens");
+  const costUsd = reportedUsageCost(record);
 
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
   };
+}
+
+function reportedUsageCost(record: Record<string, unknown>): number | undefined {
+  return (
+    numberField(record, "costUsd") ??
+    numberField(record, "cost_usd") ??
+    numberField(record, "total_cost") ??
+    numberField(record, "cost")
+  );
 }
 
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
@@ -1018,11 +1037,11 @@ function numberField(record: Record<string, unknown>, key: string): number | und
 }
 
 /**
- * Phase 34 — D-12 — Emits a "capabilities.negotiation.fallback" RunEvent if
+ * Emits a "capabilities.negotiation.fallback" RunEvent if
  * a sink is provided. The runId uses a synthetic value since negotiation
  * happens outside a run context.
  *
- * T-34-03-01: errorReason is produced by stringifyErr (message only, NOT
+ * errorReason is produced by stringifyErr (message only, NOT
  * stack) to prevent apiKey leaking in error strings that include request headers.
  */
 function emitFallbackEvent(
@@ -1037,7 +1056,7 @@ function emitFallbackEvent(
   if (sink === undefined) return;
   const event = createRunEvent("capabilities.negotiation.fallback", {
     // Synthetic runId: negotiation happens outside a run context (no run.id available).
-    // Pattern documented in Plan 34-02 (Anthropic reference impl).
+    // The stable synthetic id makes out-of-run negotiation events inspectable.
     runId: `negotiate-${payload.adapter}-${payload.modelId}`,
     providerId: payload.adapter,
     modelId: payload.modelId,
@@ -1055,38 +1074,35 @@ function emitFallbackEvent(
  * Stringify an error for event metadata. Returns only the message (NOT the
  * stack) to prevent apiKey or sensitive header values from leaking into
  * event payloads via fetch errors that may embed the request init.
- * T-34-03-01 mitigation.
  */
 function stringifyErr(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
 /**
- * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — Merge an OpenAI /v1/models
- * sparse response with the Phase 33 registry.
+ * Merge a sparse OpenAI /v1/models response with the registry.
  *
- * OpenAI's /models response is famously SPARSE per RESEARCH §Q2:
+ * OpenAI's /models response is sparse:
  * `{ id, object, created, owned_by }` only. No capabilities block.
  * The /models call confirms the model EXISTS in the user's org, but
  * tells us nothing about its capabilities. We source supports.* from
- * the Phase 33 registry instead.
+ * the registry instead.
  *
- * Source semantics per D-09:
+ * Source semantics:
  *   - "live" when the model id is found in the /models response
  *     (the id was verified to exist — useful signal for org membership)
  *   - "registry-fallback" when the model is NOT in the /models response
  *     (model not in org, or stale; emit fallback event)
  *
- * Anti-pattern warning (RESEARCH §Anti-patterns): DO NOT assume OpenAI
- * /v1/models returns capability flags. It doesn't. Only id/object/created/
- * owned_by are returned. Source supports.* ONLY from the registry.
+ * Do not infer capabilities from OpenAI `/v1/models`; it returns only
+ * id/object/created/owned_by. Source `supports.*` only from the registry.
  */
 function mergeOpenAIModelsWithRegistry(
   modelId: string,
   body: unknown,
   emitFallback: () => void,
 ): NegotiatedCapabilities {
-  // LENIENT-PARSE: body may be malformed; defensive chaining throughout (Pitfall 1).
+  // LENIENT-PARSE: body may be malformed, so use defensive chaining throughout.
   const data = (body as { data?: unknown })?.data;
   const found = Array.isArray(data)
     ? (data as Array<unknown>).find(
@@ -1103,15 +1119,15 @@ function mergeOpenAIModelsWithRegistry(
 
   // Model found in /models response — source supports.* from registry profile.
   // The /models call confirmed the model EXISTS in the org (useful signal), but
-  // sparse /models tells us nothing about capabilities. Per RESEARCH §Q2 planning
-  // note 2: use source: "live" since the model id was verified to exist.
+  // sparse /models tells us nothing about capabilities. Use source "live"
+  // because the model id was verified to exist.
   const registryProfile = getCapabilityProfile(`openai:${modelId}`);
   if (registryProfile !== undefined) {
     return _mapProfileToNegotiatedCapabilities(registryProfile, "live");
   }
 
-  // Model exists in org (/models confirmed) but Phase 33 registry doesn't have it.
-  // Use source: "live" per planning_context note 2 (the model id was verified).
+  // Model exists in the org but the registry does not have it. Preserve source
+  // "live" because the model id was verified.
   // Supports.* are unknown — return empty-stub shape with source: "live".
   //
   // We construct the empty stub inline because synthesizeNegotiatedCapabilitiesFromRegistry
@@ -1135,25 +1151,24 @@ function mergeOpenAIModelsWithRegistry(
 }
 
 /**
- * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — OpenAI provider factory.
+ * OpenAI provider factory.
  *
  * Extends the base OpenAI-compat factory with:
- *   1. `quirks: OpenAIQuirks` — verified per RESEARCH §Q6 OpenAI vocabulary.
+ *   1. `quirks: OpenAIQuirks` — verified against OpenAI behavior.
  *   2. `negotiateCapabilities(modelId)` — queries OpenAI /v1/models GET with
- *      Authorization: Bearer header; SPARSE response; intersects with Phase 33
- *      registry for supports.* (per RESEARCH §Anti-patterns — don't assume
- *      OpenAI /v1/models returns capability flags, it doesn't).
+ *      an Authorization: Bearer header, verifies that the model id is visible
+ *      to the caller, and sources `supports.*` from the static registry.
  *
- * The negotiate() pattern mirrors Plan 34-02 (Anthropic thick reference):
+ * Negotiation uses:
  *   - Per-instance TTL cache (modelsCacheTtlMs, default 300_000ms)
- *   - Single-flight inflight coalescing with .finally cleanup (Pitfall 4)
+ *   - Single-flight inflight coalescing with `.finally` cleanup
  *   - Retry with [0, 200, 1000]ms backoff (modelsRetryCount, default 2)
- *   - 401/403 throws NegotiationAuthError (D-10: no retry, no fallback, no event)
+ *   - 401/403 throws NegotiationAuthError (no retry, no fallback, no event)
  *   - 5xx/network/timeout falls back to registry with source: "registry-fallback"
  *   - emitFallbackEvent fires the "capabilities.negotiation.fallback" RunEvent
  *
- * SECURITY (T-34-03-07): inflight Map MUST use .finally cleanup to prevent
- * leak on rejection. Verifiable: grep `.finally` in this file.
+ * SECURITY: the inflight Map MUST use `.finally` cleanup to prevent
+ * rejected promises from leaking cache entries.
  */
 export function createOpenAIProvider(
   options: OpenAICompatibleProviderOptions,
@@ -1167,16 +1182,16 @@ export function createOpenAIProvider(
   const ttlMs = options.modelsCacheTtlMs ?? 300_000;
   const retryCount = options.modelsRetryCount ?? 2;
 
-  // Per-instance TTL cache (D-05/D-06/D-07/D-08). One Map per factory call.
+  // Per-instance TTL cache. One Map per factory call.
   const cache = new Map<string, { result: NegotiatedCapabilities; expiresAt: number }>();
-  // Per-instance inflight coalescing Map (Q7). .finally cleanup is mandatory (Pitfall 4).
+  // Per-instance inflight coalescing Map; `.finally` cleanup is mandatory.
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     const url = `${baseUrl}/v1/models`;
-    // IN-02: omit Authorization entirely when apiKey is undefined; sending
+    // Omit Authorization entirely when apiKey is undefined; sending
     // "Bearer " literal would trigger noisy 401s and intrusion-detection flags.
-    // Mirrors the OpenAI-compat execute path (line 137).
+    // Keep authentication behavior identical to the execute path.
     const headers: Record<string, string> = {
       "accept": "application/json",
       ...(options.apiKey !== undefined ? { authorization: `Bearer ${options.apiKey}` } : {}),
@@ -1216,7 +1231,7 @@ export function createOpenAIProvider(
           });
         });
       } catch (err) {
-        if (err instanceof NegotiationAuthError) throw err; // D-10: auth never retries
+        if (err instanceof NegotiationAuthError) throw err; // Auth never retries.
         lastErr = err;
       }
     }
@@ -1231,15 +1246,15 @@ export function createOpenAIProvider(
   }
 
   async function negotiate(modelId: string): Promise<NegotiatedCapabilities> {
-    // 1. Cache check (D-07 lazy expiry).
+    // 1. Cache check (lazy expiry).
     const cached = cache.get(modelId);
     if (cached !== undefined && cached.expiresAt > Date.now()) return cached.result;
 
-    // 2. Inflight coalesce (Q7).
+    // 2. Coalesce inflight requests.
     const existing = inflight.get(modelId);
     if (existing !== undefined) return existing;
 
-    // 3. New fetch promise; clear inflight in .finally (Pitfall 4).
+    // 3. New fetch promise; clear inflight in `.finally`.
     const fetchPromise = (async () => {
       try {
         const result = await fetchAndNegotiate(modelId);
@@ -1263,13 +1278,13 @@ export function createOpenAIProvider(
 
   return {
     ...innerCompat,
-    // Phase 34 — QUIRK-02 / OpenAIQuirks — verified per RESEARCH §Q6 OpenAI vocabulary.
+    // OpenAIQuirks values verified against OpenAI behavior.
     // CITED: https://platform.openai.com/docs/guides/structured-outputs
     //   - strictModeSupported: function-calling strict:true available on gpt-4o-2024-08-06+, o1+
     //   - structuredOutputsTier2: json_schema response_format on gpt-4o and gpt-4o-mini series
-    // CITED: RESEARCH §Q6 — supportsToolChoice, parallelToolCalls, structuredOutputs,
+    // supportsToolChoice, parallelToolCalls, structuredOutputs, and
     //   responseFormatHonored all true for OpenAI. streamingDiverges false (OpenAI streaming
-    //   output matches buffered per RESEARCH §A7 caveat: parallel_tool_calls is supported but
+    //   output matches buffered. parallel_tool_calls is supported but
     //   disabled by default; the quirk flag reflects that the feature exists).
     quirks: {
       supportsToolChoice: true,
@@ -1291,24 +1306,46 @@ export function createAISdkProvider(options: SdkLikeProviderOptions): ProviderAd
     id,
     kind: "provider-adapter",
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         toolUse: true,
         streaming: true,
-      },
+      }, options.pricing),
     ],
     execute: async (request) => {
       const response = await options.generate({
         task: request.task,
         outputNames: request.outputs,
       });
+      const promptTokens =
+        response.normalizedUsage?.promptTokens ?? response.usage?.inputTokens ?? 0;
+      const completionTokens =
+        response.normalizedUsage?.completionTokens ?? response.usage?.outputTokens ?? 0;
+      const reportedCostUsd =
+        response.normalizedUsage?.costUsd ?? response.usage?.costUsd;
       const normalizedUsage: Usage = {
-        promptTokens: response.usage?.inputTokens ?? 0,
-        completionTokens: response.usage?.outputTokens ?? 0,
-        costUsd: null,
+        promptTokens,
+        completionTokens,
+        costUsd: resolveUsageCostUsd({
+          ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
+          ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+          inputTokens: promptTokens,
+          outputTokens: completionTokens,
+        }),
       };
       return { ...response, normalizedUsage };
     },
   };
+}
+
+function capabilityWithConfiguredPricing(
+  capability: ModelCapability,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  if (pricing !== undefined) {
+    return { ...capability, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = capability;
+  return inheritedPricing === undefined ? capability : unpriced;
 }

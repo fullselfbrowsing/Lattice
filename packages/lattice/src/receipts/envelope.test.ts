@@ -34,32 +34,45 @@ describe("envelope.ts — base64Encode / base64Decode", () => {
     expect(encoded).toBe("");
     expect(decoded.length).toBe(0);
   });
+
+  it.each(["e30", "e30===", "e3_9", "e30=\n", " e30="])(
+    "rejects non-canonical standard base64: %j",
+    (value) => {
+      expect(() => base64Decode(value)).toThrowError(
+        "value is not canonical standard base64",
+      );
+    },
+  );
 });
 
 describe("envelope.ts — buildPae (DSSE v1.0 PAE)", () => {
-  it("matches the DSSE v1.0 byte-for-byte fixture for payload=e30= and PAYLOAD_TYPE", () => {
-    const payloadType = "application/vnd.lattice.receipt+json"; // 36 chars
-    const payloadBase64 = "e30="; // 4 chars; base64("{}")
-    const pae = buildPae(payloadType, payloadBase64);
+  it("matches the DSSE v1.0 byte-for-byte fixture for raw payload bytes", () => {
+    const payloadType = "application/vnd.lattice.receipt+json";
+    const pae = buildPae(payloadType, new TextEncoder().encode("{}"));
     const decoded = new TextDecoder().decode(pae);
-    // Expected: "DSSEv1 " + len(payloadType) + " " + payloadType + " " + len(payload) + " " + payload
-    // payloadType length = 36, payload length = 4
     expect(decoded).toBe(
-      "DSSEv1 36 application/vnd.lattice.receipt+json 4 e30=",
+      "DSSEv1 36 application/vnd.lattice.receipt+json 2 {}",
     );
   });
 
   it("serializes ASCII length without zero-padding for length 1000", () => {
-    const longPayload = "a".repeat(1000);
+    const longPayload = new TextEncoder().encode("a".repeat(1000));
     const pae = buildPae("text/plain", longPayload);
     const decoded = new TextDecoder().decode(pae);
     expect(decoded.startsWith("DSSEv1 10 text/plain 1000 ")).toBe(true);
   });
 
-  it("serializes ASCII length 1 as the literal '1'", () => {
-    const pae = buildPae("t", "a");
-    const decoded = new TextDecoder().decode(pae);
-    expect(decoded).toBe("DSSEv1 1 t 1 a");
+  it("uses the UTF-8 byte length of the payload type", () => {
+    const pae = buildPae("text/\u03c0", new TextEncoder().encode("a"));
+    expect(new TextDecoder().decode(pae)).toBe("DSSEv1 7 text/\u03c0 1 a");
+  });
+
+  it("preserves arbitrary binary payload bytes", () => {
+    const pae = buildPae("t", new Uint8Array([0, 0xff]));
+    expect([...pae.slice(0, -2)]).toEqual([
+      ...new TextEncoder().encode("DSSEv1 1 t 2 "),
+    ]);
+    expect([...pae.slice(-2)]).toEqual([0, 0xff]);
   });
 });
 

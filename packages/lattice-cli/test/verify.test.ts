@@ -8,9 +8,10 @@
  * receipts integration".
  */
 
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -25,7 +26,24 @@ import {
   type ReceiptSigner,
 } from "@full-self-browsing/lattice";
 
-import { runVerify } from "../src/commands/verify.js";
+import { runVerify, verifyCommand } from "../src/commands/verify.js";
+
+const sourceDir = dirname(fileURLToPath(import.meta.url));
+const vectorsRoot = resolve(
+  sourceDir,
+  "..",
+  "..",
+  "..",
+  "conformance",
+  "vectors",
+);
+
+interface ProtocolVector {
+  readonly payloadBase64: string;
+  readonly signatureHex: string;
+  readonly publicKeyJwk: JsonWebKey;
+  readonly kid: string;
+}
 
 interface CaptureBag {
   readonly stdout: string[];
@@ -97,11 +115,41 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     sandbox = await mkdtemp(join(tmpdir(), "lattice-verify-"));
   });
 
+  async function writeProtocolFixture(
+    profile: "legacy" | "standard",
+    filename: string,
+  ): Promise<{ receiptPath: string; keysetPath: string }> {
+    const vector = JSON.parse(
+      await readFile(
+        join(vectorsRoot, profile, "positive", filename),
+        "utf8",
+      ),
+    ) as ProtocolVector;
+    const envelope: ReceiptEnvelope = {
+      payloadType: "application/vnd.lattice.receipt+json",
+      payload: vector.payloadBase64,
+      signatures: [
+        {
+          keyid: vector.kid,
+          sig: Buffer.from(vector.signatureHex, "hex").toString("base64"),
+        },
+      ],
+    };
+    const receiptPath = join(sandbox, `${profile}-receipt.json`);
+    const keysetPath = join(sandbox, `${profile}-keyset.json`);
+    await writeJson(receiptPath, envelope);
+    await writeJson(
+      keysetPath,
+      [entry(vector.kid, vector.publicKeyJwk, "active")],
+    );
+    return { receiptPath, keysetPath };
+  }
+
   afterEach(() => {
     // Ephemeral tmpdir — left alone; OS cleans up. No persistent state.
   });
 
-  it("Test 1 (OK): writes one stdout line `OK kid=<kid> verdict=<verdict>` and exits 0", async () => {
+  it("Test 1 (OK): reports current profile and deprecation under strict policy", async () => {
     const fixture = await makeReceiptFixture("ok-kid-1");
     const receiptPath = join(sandbox, "receipt.json");
     const keysetPath = join(sandbox, "keyset.json");
@@ -109,12 +157,76 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     await writeJson(keysetPath, [entry(fixture.kid, fixture.publicKeyJwk, "active")]);
 
     const { deps, bag } = captureDeps();
-    await runVerify({ receipt: receiptPath, key: keysetPath }, deps);
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, standardOnly: true },
+      deps,
+    );
 
     expect(bag.exitCode).toBe(0);
     expect(bag.stderr).toEqual([]);
     expect(bag.stdout).toHaveLength(1);
-    expect(bag.stdout[0]).toMatch(/^OK kid=ok-kid-1 verdict=success$/);
+    expect(bag.stdout[0]).toMatch(
+      /^OK kid=ok-kid-1 verdict=success profile=dsse-v1 deprecated=false$/,
+    );
+  });
+
+  it("accepts frozen legacy evidence by default and reports deprecation", async () => {
+    const { receiptPath, keysetPath } = await writeProtocolFixture(
+      "legacy",
+      "vec-00-v1.3.json",
+    );
+    const { deps, bag } = captureDeps();
+
+    await runVerify({ receipt: receiptPath, key: keysetPath }, deps);
+
+    expect(bag.exitCode).toBe(0);
+    expect(bag.stderr).toEqual([]);
+    expect(bag.stdout[0]).toBe(
+      "OK kid=spec-example-key-v0 verdict=success profile=lattice-legacy-base64-pae deprecated=true",
+    );
+  });
+
+  it("rejects frozen legacy evidence with the exact strict error", async () => {
+    const { receiptPath, keysetPath } = await writeProtocolFixture(
+      "legacy",
+      "vec-00-v1.3.json",
+    );
+    const { deps, bag } = captureDeps();
+
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, standardOnly: true },
+      deps,
+    );
+
+    expect(bag.exitCode).toBe(1);
+    expect(bag.stdout).toEqual([]);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=legacy-profile-rejected reason=/,
+    );
+  });
+
+  it("accepts the committed standard vector with standard-only", async () => {
+    const { receiptPath, keysetPath } = await writeProtocolFixture(
+      "standard",
+      "vec-00-v1.4-unicode-redaction.json",
+    );
+    const { deps, bag } = captureDeps();
+
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, standardOnly: true },
+      deps,
+    );
+
+    expect(bag.exitCode).toBe(0);
+    expect(bag.stdout[0]).toBe(
+      "OK kid=spec-example-key-v0 verdict=success profile=dsse-v1 deprecated=false",
+    );
+  });
+
+  it("defines the --standard-only boolean parser argument", () => {
+    expect(verifyCommand).toMatchObject({
+      args: { "standard-only": { type: "boolean" } },
+    });
   });
 
   it("Test 2 (signature-invalid FAIL): exit 1 with FAIL kind=signature-invalid", async () => {
@@ -268,7 +380,9 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     expect(bag.exitCode).toBe(0);
     expect(bag.stdout).toHaveLength(1);
     const line = bag.stdout[0]!;
-    expect(line).toMatch(/^OK kid=\S+ verdict=\S+$/);
+    expect(line).toMatch(
+      /^OK kid=\S+ verdict=\S+ profile=dsse-v1 deprecated=false$/,
+    );
 
     // Hashes / payload bytes must NOT appear in the printed line.
     if (body.outputHash !== null) {

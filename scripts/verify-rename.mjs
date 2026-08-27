@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Phase 25 Plan 01 — D-05 source-import rename audit gate.
+ * Source-import rename audit gate.
  *
  * Walks the workspace and fails if any source file outside the allowlist
  * still imports the unscoped name "lattice". The canonical scoped name is
- * @full-self-browsing/lattice; any bare "lattice" import is a Phase 24 rename
- * regression (PITFALLS RENAME-1) that the tarball gate would also catch but
+ * @full-self-browsing/lattice; any bare "lattice" import is a rename
+ * regression that the tarball gate would also catch, but
  * this script catches earlier — at commit time, not at pack time.
  *
  * Five anti-pattern shapes are matched:
@@ -16,12 +16,12 @@
  *   - vi.doUnmock("lattice")
  *
  * Allowlist (legitimate bare "lattice" strings that must not trigger failure):
- *   - packages/lattice-cli/package.json   (bin: { "lattice": ... } per RENAME-2)
+ *   - packages/lattice-cli/package.json   (bin: { "lattice": ... })
  *   - packages/lattice/scripts/check-cli-deps.mjs (its FORBIDDEN array context)
  *
- * Skipped directories: node_modules, dist, .git, .changeset, .planning,
- * coverage. .planning is excluded because PITFALLS / CONTEXT docs cite the
- * anti-patterns as illustrative examples, not code.
+ * Skipped directories: node_modules, dist, .git, .changeset, planning
+ * archives, and coverage. Historical documents intentionally cite the
+ * anti-patterns as illustrative examples rather than executable code.
  *
  * Exit codes:
  *   0 — workspace is clean

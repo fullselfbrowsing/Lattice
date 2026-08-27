@@ -1,57 +1,76 @@
 import canonicalize from "canonicalize";
 
 import type { ArtifactInput, ArtifactRef } from "../artifacts/artifact.js";
-import { toArtifactRef } from "../artifacts/artifact.js";
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import type { TrainingClass } from "../capabilities/profile.js";
 import type { CapabilityContract } from "../contract/contract.js";
 import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
-import {
-  buildContextPack,
-  type ContextPack,
-  type ContextSummarizer,
-} from "../context/context-pack.js";
+import type { ContextSummarizer } from "../context/context-pack.js";
+import { toContextProjectionPlan } from "../context/materialize.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMap } from "../outputs/validate.js";
 import {
-  createExecutionPlan,
+  createExecutionPlanStub,
   markStage,
+  withPlanAttemptEvidence,
   withPlanStatus,
+  type ContextPackPlan,
+  type ContextProjectionPlan,
   type ExecutionPlan,
+  type ProviderPackagingPlan,
   type ProviderAttemptRecord,
   type RouteRejectReason,
   type SelectedRoute,
   type UsageRecord,
 } from "../plan/plan.js";
-import { mergePolicy, type GatewayMetadataValue, type PolicySpec } from "../policy/policy.js";
-import { packageArtifactsForProvider } from "../providers/packaging.js";
+import type { PolicySpec } from "../policy/policy.js";
 import { collectStream } from "../providers/streaming.js";
 import type {
   ProviderAdapter,
+  ProviderGatewayMetadata,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
-import { createReceipt } from "../receipts/receipt.js";
+import {
+  issueReceiptFrom,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+  type EffectiveReceiptPolicy,
+} from "../receipts/policy.js";
 import type {
   ContractVerdict,
-  ReceiptEnvelope,
   ReceiptModel,
   ReceiptRoute,
 } from "../receipts/types.js";
-import { createCapabilityCatalog } from "../routing/catalog.js";
-import { routeDeterministically } from "../routing/router.js";
 import type { RunResult } from "../results/result.js";
-import type { SessionRecord, SessionRef } from "../sessions/session.js";
+import type { AuditErrorStage, PersistenceError } from "../results/errors.js";
+import {
+  validateSessionAppendResult,
+  type AppendSessionTurnInput,
+  type SessionRef,
+} from "../sessions/session.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
-import { runTool, type ToolCallResult, type ToolDefinition } from "../tools/tools.js";
+import type { ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
 import {
   normalizeConfig,
   type LatticeConfig,
   type NormalizedLatticeConfig,
 } from "./config.js";
+import {
+  gatewayMetadataForRoute,
+  prepareRun,
+  prepareRouteAttempt,
+  type PreparedRun,
+  type PreparedRouteSuccess,
+} from "./prepare-run.js";
+import {
+  ArtifactLifecycleFailure,
+  persistArtifactLifecycle,
+  type ArtifactLifecycleReport,
+} from "./artifact-lifecycle.js";
 
 export interface RuntimeOverrides {
   readonly provider?: string;
@@ -107,7 +126,7 @@ export interface AI {
     intent: RunIntent<TOutputs>,
   ): Promise<RunResult<TOutputs>>;
   /**
-   * Phase 19 (v1.2): single-agent execution loop. Drives multiple provider
+   * Single-agent execution loop. Drives multiple provider
    * iterations under one call, dispatching tool requests between iterations.
    * Composes with the v1.2 hook pipeline (SAFETY-band veto, OBSERVABILITY-band
    * checkpoint receipts) and the v1.2 capability receipts (when
@@ -119,7 +138,7 @@ export interface AI {
     intent: import("../agent/types.js").AgentIntent<TOutputs>,
   ): Promise<import("../agent/types.js").AgentResult<TOutputs>>;
   /**
-   * Phase 39 (v1.3): opt-in multi-agent crew execution. Runs a literal
+   * Opt-in multi-agent crew execution. Runs a literal
    * `AgentSpec` tree through the existing single-agent loop plus the crew
    * dispatcher, with shared budget/rate-limit coordination and chained
    * completion receipts.
@@ -129,96 +148,6 @@ export interface AI {
   runAgentCrew(
     options: import("../agent/crew/run-crew.js").RunAgentCrewOptions,
   ): Promise<import("../agent/crew/run-crew.js").CrewResult>;
-}
-
-interface BuiltPlan {
-  readonly plan: ExecutionPlan;
-  readonly artifacts: readonly ArtifactInput[];
-  readonly contextPack: ContextPack;
-  readonly packagedArtifacts: readonly ArtifactRef[];
-  readonly blockedPackaging: readonly string[];
-  readonly toolResults: readonly ToolCallResult[];
-  readonly mergedPolicy?: PolicySpec;
-  readonly sessionRecord?: SessionRecord;
-}
-
-function gatewayMetadataForRoute(
-  route: SelectedRoute,
-  policy: PolicySpec["gateway"] | undefined,
-): Record<string, unknown> | undefined {
-  if (policy === undefined) {
-    return undefined;
-  }
-
-  const sanitizedPolicy = sanitizeGatewayPolicyForEvents(policy);
-
-  return {
-    providerId: route.providerId,
-    selectedProviderId: route.providerId,
-    requestedModel: route.modelId,
-    ...(sanitizedPolicy !== undefined ? { policy: sanitizedPolicy } : {}),
-  };
-}
-
-function sanitizeGatewayPolicyForEvents(
-  policy: PolicySpec["gateway"] | undefined,
-): Record<string, unknown> | undefined {
-  if (policy === undefined) {
-    return undefined;
-  }
-
-  const metadata = sanitizeGatewayMetadataForEvents(policy.metadata);
-
-  return {
-    ...(policy.routeTags !== undefined && policy.routeTags.length > 0
-      ? { routeTags: [...policy.routeTags] }
-      : {}),
-    ...(policy.providerPreferences !== undefined && policy.providerPreferences.length > 0
-      ? { providerPreferences: [...policy.providerPreferences] }
-      : {}),
-    ...(metadata !== undefined ? { metadata } : {}),
-    ...(policy.allowFallbacks !== undefined ? { allowFallbacks: policy.allowFallbacks } : {}),
-  };
-}
-
-function sanitizeGatewayMetadataForEvents(
-  metadata: Record<string, GatewayMetadataValue> | undefined,
-): Record<string, unknown> | undefined {
-  if (metadata === undefined) {
-    return undefined;
-  }
-
-  const sanitized = Object.fromEntries(
-    Object.entries(metadata).flatMap(([key, value]) => {
-      if (isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(value)) {
-        return [];
-      }
-
-      return [[key, value]];
-    }),
-  );
-
-  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
-}
-
-function isSecretGatewayMetadataKey(key: string): boolean {
-  return /api[-_]?key|authorization|headers?|secret|token|password/iu.test(key);
-}
-
-function containsSecretGatewayMetadataValue(value: unknown): boolean {
-  if (typeof value === "string") {
-    return /^sk-[\w-]+/u.test(value);
-  }
-  if (Array.isArray(value)) {
-    return value.some(containsSecretGatewayMetadataValue);
-  }
-  if (typeof value === "object" && value !== null) {
-    return Object.entries(value).some(([key, nested]) => (
-      isSecretGatewayMetadataKey(key) || containsSecretGatewayMetadataValue(nested)
-    ));
-  }
-
-  return false;
 }
 
 export function createAI(config: LatticeConfig = {}): AI {
@@ -270,10 +199,72 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
 
   const runId = createRunId();
   const events: RunEvent[] = [];
+  const receiptPolicy = receiptPolicyForConfig(normalized);
+  const receiptPreflight = preflightReceiptPolicy(receiptPolicy);
+  if (receiptPreflight?.status === "failed") {
+    const plan = createExecutionPlanStub([receiptPreflight.error.message]);
+    await emitEvent(normalized, events, createRunEvent("run.start", { runId }));
+    await emitEvent(normalized, events, createRunEvent("receipt.issuance", {
+      runId,
+      planId: plan.id,
+      metadata: {
+        status: "failed",
+        code: receiptPreflight.error.code,
+        stage: receiptPreflight.error.stage,
+      },
+    }));
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: "audit", code: receiptPreflight.error.code },
+    }));
+
+    return {
+      ok: false,
+      error: receiptPreflight.error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+    };
+  }
   await emitEvent(normalized, events, createRunEvent("run.start", { runId }));
 
   const built = await buildPlan(normalized, intent, runId, events);
   let plan = built.plan;
+
+  if (!built.ok) {
+    const selectedFailureRoute = plan.route.selected;
+    const receiptInput: MaybeIssueReceiptInput = {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: [],
+      contractVerdict: "execution-failed",
+      model: {
+        requested: selectedFailureRoute?.modelId ?? intent.overrides?.model ?? "",
+        observed: null,
+      },
+      route: {
+        providerId: selectedFailureRoute?.providerId ?? "",
+        capabilityId: selectedFailureRoute?.modelId ?? "",
+        attemptNumber: 0,
+      },
+      usage: ZERO_USAGE,
+    };
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: built.error.kind },
+    }));
+
+    return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
+      ok: false,
+      error: built.error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+    });
+  }
+
   const selected = plan.route.selected;
 
   if (selected === undefined) {
@@ -285,10 +276,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         r.code === "contract-privacy-mismatch",
     );
     const isContractFailure = contractReasons.length > 0;
-    const receipt = await maybeIssueReceipt(normalized, {
+    const receiptInput: MaybeIssueReceiptInput = {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-      artifacts: intent.artifacts ?? [],
+      artifacts: [],
       contractVerdict: isContractFailure
         ? "no-contract-match"
         : "execution-failed",
@@ -301,7 +292,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       ...(isContractFailure
         ? { noRouteReasons: plan.route.noRouteReasons }
         : {}),
-    });
+    };
     const failure: RunResult<TOutputs> = isContractFailure
       ? {
           ok: false as const,
@@ -313,7 +304,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
         }
       : {
           ok: false as const,
@@ -325,7 +315,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
         };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
@@ -333,7 +322,54 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       metadata: { reason: isContractFailure ? "no-contract-match" : "no-route" },
     }));
 
-    return failure;
+    return finalizeRunResult(
+      normalized,
+      events,
+      receiptInput,
+      "pre-execution",
+      failure,
+    );
+  }
+
+  const materialized = built.materialized;
+
+  if (materialized === undefined) {
+    const error = {
+      kind: "context_materialization" as const,
+      message: "Selected route has no provider-visible context projection.",
+      reason: "missing-reference" as const,
+      terminal: true as const,
+    };
+    plan = withPlanStatus(plan, "failed", {
+      stages: markStage(plan.stages, "context-packing", "failed"),
+      attempts: [],
+    });
+    await emitEvent(normalized, events, createRunEvent("run.failed", {
+      runId,
+      planId: plan.id,
+      metadata: { reason: error.kind },
+    }));
+
+    return finalizeRunResult(normalized, events, {
+      runId,
+      ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+      artifacts: [],
+      inputHashes: [],
+      contractVerdict: "execution-failed",
+      model: { requested: selected.modelId, observed: null },
+      route: {
+        providerId: selected.providerId,
+        capabilityId: selected.modelId,
+        attemptNumber: 0,
+      },
+      usage: ZERO_USAGE,
+    }, "pre-execution", {
+      ok: false,
+      error,
+      usage: { ...ZERO_USAGE },
+      plan,
+      events,
+    });
   }
 
   const routes = [
@@ -343,7 +379,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         providerId: fallback.providerId,
         modelId: fallback.modelId,
         score: fallback.score,
-        estimates: selected.estimates,
+        estimates: fallback.estimates ?? selected.estimates,
+        ...(selected.contextWindow !== undefined
+          ? { contextWindow: selected.contextWindow }
+          : {}),
         inputModalities: selected.inputModalities,
         outputModalities: selected.outputModalities,
         fileTransport: selected.fileTransport,
@@ -352,6 +391,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   ];
   const attempts: ProviderAttemptRecord[] = [];
   let lastError: Error | undefined;
+  let lastExecutedRoute: SelectedRoute | undefined;
+  let lastExecutedPreparation: PreparedRouteSuccess | undefined;
   let anyExecutableAdapter = false;
   const streamingRequested = isStreamingRequested(built.mergedPolicy);
 
@@ -393,32 +434,180 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       }));
     }
 
-    const attemptPackaging = packageArtifactsForProvider({
-      artifacts: built.artifacts,
-      route,
-      ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
-    });
+    const preparedRoute =
+      index === 0
+        ? {
+            ok: true as const,
+            contextPack: built.contextPack,
+            materialized,
+            packaging: built.packaging,
+          }
+        : await prepareRouteAttempt(
+            normalized,
+            intent,
+            built.preparedArtifacts,
+            route,
+            {
+              ...(built.mergedPolicy !== undefined
+                ? { policy: built.mergedPolicy }
+                : {}),
+              ...(built.sessionRecord !== undefined
+                ? { sessionRecord: built.sessionRecord }
+                : {}),
+            },
+          );
+
+    if (!preparedRoute.ok) {
+      const completedAt = new Date().toISOString();
+      const failedAttempt = attemptFailed(
+        route.providerId,
+        route.modelId,
+        startedAt,
+        completedAt,
+        preparedRoute.error.message,
+        {
+          context: preparedRoute.contextPack,
+          warnings: [preparedRoute.error.message],
+        },
+      );
+      attempts.push(failedAttempt);
+      const failedStages = markStage(
+        markStage(plan.stages, preparedRoute.failedStage, "failed"),
+        "execution",
+        "skipped",
+      );
+      plan = withPlanAttemptEvidence(plan, "failed", {
+        route,
+        context: preparedRoute.contextPack,
+        attempts,
+        stages: failedStages,
+        warnings: [preparedRoute.error.message],
+        metadata: metadataForAttempt(plan, undefined),
+      });
+      await emitEvent(normalized, events, createRunEvent("context.packed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: {
+          status: "failed",
+          failureKind: preparedRoute.error.kind,
+          ...("reason" in preparedRoute.error
+            ? { failureReason: preparedRoute.error.reason }
+            : {}),
+        },
+      }));
+      await emitEvent(normalized, events, createRunEvent("run.failed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: { reason: preparedRoute.error.kind },
+      }));
+      const receiptInput: MaybeIssueReceiptInput = {
+        runId,
+        ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+        artifacts: [],
+        inputHashes: [],
+        contractVerdict: "execution-failed",
+        model: { requested: route.modelId, observed: null },
+        route: {
+          providerId: route.providerId,
+          capabilityId: route.modelId,
+          attemptNumber: attempts.length,
+        },
+        usage: ZERO_USAGE,
+      };
+
+      return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
+        ok: false,
+        error: preparedRoute.error,
+        usage: { ...ZERO_USAGE },
+        plan,
+        events,
+      });
+    }
+
+    const attemptMaterialized = preparedRoute.materialized;
+    const providerArtifacts = attemptMaterialized.artifacts;
+    const attemptPackaging = preparedRoute.packaging;
+    const attemptEvidence = evidenceForPreparedRoute(preparedRoute);
+    const projectionMetadata = projectionEventMetadata(preparedRoute);
+    if (index > 0) {
+      await emitEvent(normalized, events, createRunEvent("context.packed", {
+        runId,
+        planId: plan.id,
+        providerId: route.providerId,
+        modelId: route.modelId,
+        metadata: {
+          status: "completed",
+          estimatedTokens: preparedRoute.contextPack.estimatedTokens,
+          included: preparedRoute.contextPack.included.length,
+          summarized: preparedRoute.contextPack.summarized.length,
+          ...projectionMetadata,
+          inputHashes: attemptMaterialized.inputHashes,
+        },
+      }));
+    }
 
     if (attemptPackaging.blocked.length > 0) {
       const message = attemptPackaging.blocked.join("; ");
-      attempts.push(attemptFailed(route.providerId, route.modelId, startedAt, new Date().toISOString(), message));
+      attempts.push(
+        attemptFailed(
+          route.providerId,
+          route.modelId,
+          startedAt,
+          new Date().toISOString(),
+          message,
+          attemptEvidence,
+        ),
+      );
+      plan = withPlanAttemptEvidence(plan, "running", {
+        route,
+        context: preparedRoute.contextPack,
+        contextProjection: attemptEvidence.contextProjection,
+        providerPackaging: attemptPackaging.plan,
+        attempts,
+        warnings: attemptMaterialized.warnings,
+        metadata: metadataForAttempt(plan, undefined),
+      });
       lastError = new Error(message);
       continue;
     }
-
+    const gatewayMetadata = gatewayMetadataForRoute(
+      route.providerId,
+      route.modelId,
+      built.mergedPolicy?.gateway,
+    );
+    const runningAttempt: ProviderAttemptRecord = {
+      providerId: route.providerId,
+      modelId: route.modelId,
+      status: "running",
+      startedAt,
+      ...attemptEvidence,
+    };
+    plan = withPlanAttemptEvidence(plan, "running", {
+      route,
+      context: preparedRoute.contextPack,
+      contextProjection: attemptEvidence.contextProjection,
+      providerPackaging: attemptPackaging.plan,
+      attempts: [...attempts, runningAttempt],
+      stages: markStage(plan.stages, "execution", "running"),
+      warnings: attemptMaterialized.warnings,
+      metadata: metadataForAttempt(plan, gatewayMetadata),
+    });
     const request: ProviderRunRequest = {
       task: intent.task,
-      artifacts: built.artifacts,
+      artifacts: providerArtifacts,
       outputs: Object.keys(intent.outputs),
       outputContracts: intent.outputs,
       ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
       ...(intent.signal !== undefined ? { signal: intent.signal } : {}),
       plan,
-      contextPack: built.contextPack,
+      contextPack: preparedRoute.contextPack,
       providerPackaging: attemptPackaging.plan,
       packagedArtifacts: attemptPackaging.packagedArtifacts,
     };
-    const gatewayMetadata = gatewayMetadataForRoute(route, built.mergedPolicy?.gateway);
 
     try {
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
@@ -429,23 +618,13 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "started",
           fallback: index > 0,
+          ...projectionMetadata,
           ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
         },
       }));
       await intent.overrides?.hooks?.beforeProviderCall?.({ plan, request });
-
-      plan = withPlanStatus(plan, "running", {
-        stages: markStage(plan.stages, "execution", "running"),
-        attempts: [
-          ...attempts,
-          {
-            providerId: route.providerId,
-            modelId: route.modelId,
-            status: "running",
-            startedAt,
-          },
-        ],
-      });
+      lastExecutedRoute = route;
+      lastExecutedPreparation = preparedRoute;
 
       const response = streamingRequested
         ? await executeStreamingProvider({
@@ -470,8 +649,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         metadata: {
           status: "succeeded",
           fallback: index > 0,
+          ...projectionMetadata,
           normalizedUsage: normalizeAdapterUsage(response),
-          ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+          ...(response.gateway !== undefined
+            ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+            : {}),
         },
       }));
 
@@ -483,7 +665,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         startedAt,
         completedAt,
         response.usage,
-        response.gateway !== undefined ? { gateway: response.gateway } : undefined,
+        attemptEvidence,
+        response.gateway !== undefined
+          ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+          : undefined,
       );
 
       if (!validation.ok) {
@@ -501,16 +686,23 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           planId: plan.id,
           providerId: route.providerId,
           modelId: route.modelId,
-          metadata: { error: validation.error.message },
+          metadata: {
+            failureKind: "validation",
+            ...projectionMetadata,
+          },
         }));
         if (index === routes.length - 1) {
-          const receipt = await maybeIssueReceipt(normalized, {
+          const receiptInput: MaybeIssueReceiptInput = {
             runId,
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
-            artifacts: built.artifacts,
-            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
+            artifacts: providerArtifacts,
+            inputHashes: attemptMaterialized.inputHashes,
+            lineageArtifacts: [
+              ...providerArtifacts,
+              ...attemptPackaging.packagedArtifacts,
+            ],
             contractVerdict: "validation-failed",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -519,21 +711,20 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               attemptNumber: attempts.length,
             },
             usage: normalizeAdapterUsage(response),
-          });
-          return {
+          };
+          return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
             ...validation,
             usage: normalizeAdapterUsage(response),
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
-          };
+          });
         }
         lastError = new Error(validation.error.message);
         continue;
       }
 
-      // Phase 8 tripwire evaluation — TRIP-02, TRIP-03, TRIP-04, TRIP-05.
+      // Tripwire evaluation runs only after output schema validation.
       // Runs ONLY when output schema validation succeeded (we are inside the
       // `validation.ok === true` branch). First violation aborts the run
       // and short-circuits the fallback chain (terminal by construction —
@@ -582,13 +773,17 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
               },
             }),
           );
-          const receipt = await maybeIssueReceipt(normalized, {
+          const receiptInput: MaybeIssueReceiptInput = {
             runId,
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
-            artifacts: built.artifacts,
-            lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts],
+            artifacts: providerArtifacts,
+            inputHashes: attemptMaterialized.inputHashes,
+            lineageArtifacts: [
+              ...providerArtifacts,
+              ...attemptPackaging.packagedArtifacts,
+            ],
             contractVerdict: "tripwire-violated",
             model: { requested: route.modelId, observed: observedModelForReceipt(response) },
             route: {
@@ -598,10 +793,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             },
             usage: normalizeAdapterUsage(response),
             tripwireEvidence: tripwireResult.evidence,
-          });
+          };
           // TERMINAL by design — isTerminal(error) === true; fallback chain
           // bypassed via early return before the `for` loop advances.
-          return {
+          return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
             ok: false,
             error: {
               kind: "tripwire-violated" as const,
@@ -614,67 +809,175 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
-          };
+          });
         }
       }
 
       attempts.push(succeededAttempt);
-      const artifactRefs =
-        response.artifactRefs !== undefined
-          ? response.artifactRefs.map(toArtifactRef)
-          : [];
-      const completedPlan = withPlanStatus(plan, "completed", {
-        stages: markStage(
-          markStage(
-            markStage(
-              markStage(
-                markStage(plan.stages, "execution", "completed"),
-                "validation",
-                "completed",
-              ),
-              "persistence",
-              "completed",
-            ),
-            "tool-execution",
-            built.toolResults.length > 0 ? "completed" : "skipped",
-          ),
-          "tripwire",
-          invariants.length > 0 ? "completed" : "skipped",
-        ),
-        attempts,
+      const successValidation = validation as Extract<
+        typeof validation,
+        { ok: true }
+      >;
+      const partialOutputs = {
+        ...successValidation.outputs,
+      } as Record<string, unknown>;
+      const routeLifecycleReports = [
+        ...built.lifecycleReports,
+        ...(index > 0 ? attemptMaterialized.summaryLifecycleReports : []),
+      ];
+      const outputPersistence = await persistProviderOutputs({
+        response,
+        route,
+        projectionRefs: attemptMaterialized.artifactRefs,
+        normalized,
+        ...(built.mergedPolicy !== undefined
+          ? { policy: built.mergedPolicy }
+          : {}),
       });
+      const postProviderStages = markPostProviderStages(
+        plan.stages,
+        built.toolResults.length,
+        invariants.length,
+      );
 
-      if (built.sessionRecord !== undefined && normalized.sessions !== undefined) {
-        await normalized.sessions.appendTurn({
-          sessionId: built.sessionRecord.id,
-          task: intent.task,
-          artifactRefs: built.artifacts.map(toArtifactRef),
-          outputArtifactRefs: artifactRefs,
-          planId: completedPlan.id,
+      if (!outputPersistence.ok) {
+        const failedPlan = withPlanStatus(plan, "failed", {
+          stages: markPersistenceStage(
+            postProviderStages,
+            [...routeLifecycleReports, ...outputPersistence.reports],
+            {
+              failure: {
+                lifecycle: "provider-output",
+                ...(outputPersistence.error.artifactId !== undefined
+                  ? { artifactId: outputPersistence.error.artifactId }
+                  : {}),
+              },
+            },
+          ),
+          attempts,
+        });
+
+        return postProviderPersistenceFailure(normalized, {
+          runId,
+          intent,
+          error: outputPersistence.error,
+          plan: failedPlan,
+          events,
+          route,
+          preparedRoute,
+          attempts,
+          partialOutputs,
+          artifactRefs: outputPersistence.artifactRefs,
+          response,
+          lineageArtifacts: [
+            ...providerArtifacts,
+            ...attemptPackaging.packagedArtifacts,
+            ...outputPersistence.artifactRefs,
+          ],
         });
       }
+
+      const artifactRefs = outputPersistence.artifactRefs;
+      const persistenceReports: PersistenceStageReport[] = [
+        ...routeLifecycleReports.map(toPersistenceStageReport),
+        ...outputPersistence.reports.map(toPersistenceStageReport),
+      ];
+
+      if (built.sessionRecord !== undefined && normalized.sessions !== undefined) {
+        const sessionInputRefs = resolvableSessionRefs(
+          attemptMaterialized.artifactRefs,
+          normalized,
+          built.mergedPolicy,
+        );
+        const sessionOutputRefs = outputPersistence.reports.flatMap((report) =>
+          report.status === "stored" || report.status === "preserved"
+            ? [report.ref]
+            : [],
+        );
+
+        try {
+          const appendInput: AppendSessionTurnInput = {
+            sessionId: built.sessionRecord.id,
+            task: intent.task,
+            artifactRefs: sessionInputRefs,
+            outputArtifactRefs: sessionOutputRefs,
+            planId: plan.id,
+            ...(built.sessionRecord.tenantId !== undefined
+              ? { tenantId: built.sessionRecord.tenantId }
+              : {}),
+            ...(built.sessionRecord.privacy !== undefined
+              ? { privacy: built.sessionRecord.privacy }
+              : {}),
+            ...(built.sessionRecord.retention !== undefined
+              ? { retention: built.sessionRecord.retention }
+              : {}),
+          };
+          const appended = await normalized.sessions.appendTurn(appendInput);
+          validateSessionAppendResult(appended, appendInput);
+          persistenceReports.push({
+            lifecycle: "session",
+            status: "stored",
+            sessionId: built.sessionRecord.id,
+          });
+        } catch {
+          const error = postProviderSessionError(built.sessionRecord.id);
+          const failedPlan = withPlanStatus(plan, "failed", {
+            stages: markPersistenceStage(
+              postProviderStages,
+              persistenceReports,
+              {
+                failure: {
+                  lifecycle: "session",
+                  sessionId: built.sessionRecord.id,
+                },
+              },
+            ),
+            attempts,
+          });
+
+          return postProviderPersistenceFailure(normalized, {
+            runId,
+            intent,
+            error,
+            plan: failedPlan,
+            events,
+            route,
+            preparedRoute,
+            attempts,
+            partialOutputs,
+            artifactRefs,
+            response,
+            lineageArtifacts: [
+              ...providerArtifacts,
+              ...attemptPackaging.packagedArtifacts,
+              ...artifactRefs,
+            ],
+          });
+        }
+      }
+
+      const completedPlan = withPlanStatus(plan, "completed", {
+        stages: markPersistenceStage(postProviderStages, persistenceReports),
+        attempts,
+      });
 
       await emitEvent(normalized, events, createRunEvent("validation.complete", {
         runId,
         planId: completedPlan.id,
         providerId: route.providerId,
         modelId: route.modelId,
+        metadata: projectionMetadata,
       }));
-      await emitEvent(normalized, events, createRunEvent("run.complete", {
-        runId,
-        planId: completedPlan.id,
-      }));
-
-      const successValidation = validation as Extract<
-        typeof validation,
-        { ok: true }
-      >;
-      const receipt = await maybeIssueReceipt(normalized, {
+      const receiptInput: MaybeIssueReceiptInput = {
         runId,
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-        artifacts: built.artifacts,
-        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
+        artifacts: providerArtifacts,
+        inputHashes: attemptMaterialized.inputHashes,
+        lineageArtifacts: [
+          ...providerArtifacts,
+          ...attemptPackaging.packagedArtifacts,
+          ...artifactRefs,
+        ],
         contractVerdict: "success",
         model: { requested: route.modelId, observed: observedModelForReceipt(response) },
         route: {
@@ -684,38 +987,79 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         },
         usage: normalizeAdapterUsage(response),
         outputs: JSON.stringify(successValidation.outputs),
-      });
-
-      return {
-        ...validation,
-        artifacts: artifactRefs,
-        usage: normalizeAdapterUsage(response),
-        plan: completedPlan,
-        events,
-        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-        ...(receipt !== undefined ? { receipt } : {}),
       };
+
+      const finalized = await finalizeRunResult(
+        normalized,
+        events,
+        receiptInput,
+        "post-execution",
+        {
+          ...validation,
+          artifacts: artifactRefs,
+          usage: normalizeAdapterUsage(response),
+          plan: completedPlan,
+          events,
+          ...(response.gateway !== undefined
+            ? { gateway: response.gateway }
+            : {}),
+        },
+      );
+      await emitEvent(
+        normalized,
+        events,
+        createRunEvent(finalized.ok ? "run.complete" : "run.failed", {
+          runId,
+          planId: completedPlan.id,
+          providerId: route.providerId,
+          modelId: route.modelId,
+          metadata: finalized.ok
+            ? {
+                ...projectionMetadata,
+                persistenceStatus:
+                  completedPlan.stages.find(
+                    (stage) => stage.kind === "persistence",
+                  )?.status ?? "skipped",
+              }
+            : { reason: "audit" },
+        }),
+      );
+      return finalized;
     } catch (error) {
       const completedAt = new Date().toISOString();
       const message =
         error instanceof Error ? error.message : "Provider adapter execution failed.";
-      attempts.push(attemptFailed(route.providerId, route.modelId, startedAt, completedAt, message));
+      attempts.push(
+        attemptFailed(
+          route.providerId,
+          route.modelId,
+          startedAt,
+          completedAt,
+          message,
+          attemptEvidence,
+        ),
+      );
       lastError = error instanceof Error ? error : new Error(message);
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
         runId,
         planId: plan.id,
         providerId: route.providerId,
         modelId: route.modelId,
-        metadata: { status: "failed", error: message },
+        metadata: {
+          status: "failed",
+          failureKind: "provider_execution",
+          ...projectionMetadata,
+        },
       }));
     }
   }
 
   if (!anyExecutableAdapter) {
-    const receipt = await maybeIssueReceipt(normalized, {
+    const receiptInput: MaybeIssueReceiptInput = {
       runId,
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-      artifacts: built.artifacts,
+      artifacts: [],
+      inputHashes: [],
       contractVerdict: "execution-failed",
       model: { requested: selected.modelId, observed: null },
       route: {
@@ -724,8 +1068,8 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         attemptNumber: 0,
       },
       usage: ZERO_USAGE,
-    });
-    return {
+    };
+    return finalizeRunResult(normalized, events, receiptInput, "pre-execution", {
       ok: false,
       error: {
         kind: "execution_unavailable",
@@ -734,8 +1078,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       usage: { ...ZERO_USAGE },
       plan,
       events,
-      ...(receipt !== undefined ? { receipt } : {}),
-    };
+    });
   }
 
   const failedPlan = withPlanStatus(plan, "failed", {
@@ -745,38 +1088,47 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   await emitEvent(normalized, events, createRunEvent("run.failed", {
     runId,
     planId: failedPlan.id,
+    ...(lastExecutedRoute !== undefined
+      ? {
+          providerId: lastExecutedRoute.providerId,
+          modelId: lastExecutedRoute.modelId,
+        }
+      : {}),
     metadata: {
-      error: lastError?.message ?? "Provider adapter execution failed.",
+      reason: "provider_execution",
+      ...(lastExecutedPreparation !== undefined
+        ? projectionEventMetadata(lastExecutedPreparation)
+        : {}),
     },
   }));
 
-  const receipt = await maybeIssueReceipt(normalized, {
+  const receiptInput: MaybeIssueReceiptInput = {
     runId,
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-    artifacts: built.artifacts,
+    artifacts: lastExecutedPreparation?.materialized.artifacts ?? [],
+    inputHashes: lastExecutedPreparation?.materialized.inputHashes ?? [],
     contractVerdict: "execution-failed",
-    model: { requested: selected.modelId, observed: null },
+    model: { requested: lastExecutedRoute?.modelId ?? selected.modelId, observed: null },
     route: {
-      providerId: selected.providerId,
-      capabilityId: selected.modelId,
+      providerId: lastExecutedRoute?.providerId ?? selected.providerId,
+      capabilityId: lastExecutedRoute?.modelId ?? selected.modelId,
       attemptNumber: attempts.length,
     },
     usage: UNMEASURED_USAGE,
-  });
+  };
 
-  return {
+  return finalizeRunResult(normalized, events, receiptInput, "post-execution", {
     ok: false,
     error: {
       kind: "provider_execution",
       message: lastError?.message ?? "Provider adapter execution failed.",
-      providerId: selected.providerId,
-      modelId: selected.modelId,
+      providerId: lastExecutedRoute?.providerId ?? selected.providerId,
+      modelId: lastExecutedRoute?.modelId ?? selected.modelId,
     },
     usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
     events,
-    ...(receipt !== undefined ? { receipt } : {}),
-  };
+  });
 }
 
 async function buildPlan<const TOutputs extends OutputContractMap>(
@@ -784,187 +1136,11 @@ async function buildPlan<const TOutputs extends OutputContractMap>(
   intent: RunIntent<TOutputs>,
   runId = createRunId(),
   events: RunEvent[] = [],
-): Promise<BuiltPlan> {
-  const prepared = await prepareArtifacts(intent);
-  const artifacts = prepared.artifacts;
-  const mergedPolicy = mergePolicy(
-    mergePolicy(normalized.defaults.policy, intent.policy),
-    intent.overrides?.routingPolicy,
-  );
-  const sessionRecord =
-    intent.session !== undefined && normalized.sessions !== undefined
-      ? await loadOrCreateSession(normalized, intent.session)
-      : undefined;
-  const catalog = createCapabilityCatalog(normalized.providers);
-  const route = routeDeterministically(catalog, {
-    task: intent.task,
-    artifacts,
-    outputs: intent.outputs,
-    ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-    ...(intent.overrides?.provider !== undefined
-      ? { provider: intent.overrides.provider }
-      : {}),
-    ...(intent.overrides?.model !== undefined ? { model: intent.overrides.model } : {}),
-    ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-  });
-  const contextPack = buildContextPack({
-    task: intent.task,
-    artifacts,
-    ...(route.selected !== undefined ? { route: route.selected } : {}),
-    ...(sessionRecord !== undefined ? { session: sessionRecord } : {}),
-    ...(intent.overrides?.tokenBudget !== undefined
-      ? { tokenBudget: intent.overrides.tokenBudget }
-      : {}),
-  });
-  const summaryRefs =
-    contextPack.summarized.length > 0 && intent.overrides?.summarizer !== undefined
-      ? await intent.overrides.summarizer.summarize({
-          artifacts: artifacts.map(toArtifactRef),
-          budgetTokens: contextPack.tokenBudget,
-        })
-      : [];
-  const packaging = packageArtifactsForProvider({
-    artifacts,
-    ...(route.selected !== undefined ? { route: route.selected } : {}),
-    ...(mergedPolicy !== undefined ? { policy: mergedPolicy } : {}),
-  });
-  const gatewayMetadata = route.selected !== undefined
-    ? gatewayMetadataForRoute(route.selected, mergedPolicy?.gateway)
-    : undefined;
-  let plan = createExecutionPlan({
-    task: intent.task,
-    artifacts: artifacts.map(toArtifactRef),
-    outputs: intent.outputs,
-    route,
-    context: contextPack,
-    providerPackaging: packaging.plan,
-    warnings: packaging.blocked,
-    metadata: {
-      ...(intent.tools !== undefined
-        ? { tools: intent.tools.map((tool) => tool.name) }
-        : {}),
-      ...(summaryRefs.length > 0
-        ? { summaryArtifactIds: summaryRefs.map((summary) => summary.id) }
-        : {}),
-      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
-    },
-  });
-  plan = withPlanStatus(plan, plan.status, {
-    stages: markStage(
-      plan.stages,
-      "tool-execution",
-      prepared.toolResults.length > 0 ? "completed" : "skipped",
-      prepared.toolResults.length > 0
-        ? {
-            toolNames: prepared.toolResults.map((result) => result.toolName),
-          }
-        : undefined,
-    ),
-  });
-
-  for (const result of prepared.toolResults) {
-    await emitEvent(normalized, events, createRunEvent("tool.call", {
-      runId,
-      planId: plan.id,
-      artifactId: result.artifact.id,
-      metadata: {
-        toolName: result.toolName,
-        callId: result.callId,
-      },
-    }));
-    await emitEvent(normalized, events, createRunEvent("artifact.created", {
-      runId,
-      planId: plan.id,
-      artifactId: result.artifact.id,
-      metadata: {
-        source: "tool",
-      },
-    }));
-  }
-
-  for (const artifactRef of artifacts.map(toArtifactRef)) {
-    await emitEvent(normalized, events, createRunEvent("artifact.ingested", {
-      runId,
-      planId: plan.id,
-      artifactId: artifactRef.id,
-    }));
-  }
-
-  await emitEvent(normalized, events, createRunEvent("context.packed", {
+): Promise<PreparedRun> {
+  return prepareRun(normalized, intent, {
     runId,
-    planId: plan.id,
-    metadata: {
-      estimatedTokens: contextPack.estimatedTokens,
-      included: contextPack.included.length,
-      summarized: contextPack.summarized.length,
-      omitted: contextPack.omitted.length,
-    },
-  }));
-  await emitEvent(normalized, events, createRunEvent("router.candidates", {
-    runId,
-    planId: plan.id,
-    metadata: {
-      selected: route.selected?.modelId,
-      rejected: route.rejected.length,
-      fallbacks: route.fallbackChain.length,
-      ...(gatewayMetadata !== undefined ? { gateway: gatewayMetadata } : {}),
-    },
-  }));
-
-  return {
-    plan,
-    artifacts,
-    contextPack,
-    packagedArtifacts: packaging.packagedArtifacts,
-    blockedPackaging: packaging.blocked,
-    toolResults: prepared.toolResults,
-    ...(mergedPolicy !== undefined ? { mergedPolicy } : {}),
-    ...(sessionRecord !== undefined ? { sessionRecord } : {}),
-  };
-}
-
-async function prepareArtifacts<const TOutputs extends OutputContractMap>(
-  intent: RunIntent<TOutputs>,
-): Promise<{
-  readonly artifacts: readonly ArtifactInput[];
-  readonly toolResults: readonly ToolCallResult[];
-}> {
-  let artifacts = [...(intent.artifacts ?? [])];
-
-  for (const transform of intent.overrides?.transforms ?? []) {
-    const transformed = await transform.transform({
-      task: intent.task,
-      artifacts,
-    });
-    artifacts = artifacts.concat(Array.isArray(transformed) ? transformed : [transformed]);
-  }
-
-  const toolResults: ToolCallResult[] = [];
-
-  for (const tool of intent.tools ?? []) {
-    const result = await runTool(tool, intent.toolInputs?.[tool.name] ?? {});
-    toolResults.push(result);
-    artifacts.push(result.artifact);
-  }
-
-  return { artifacts, toolResults };
-}
-
-async function loadOrCreateSession(
-  normalized: NormalizedLatticeConfig,
-  session: SessionRef,
-): Promise<SessionRecord> {
-  const existing = await normalized.sessions?.load(session.id);
-
-  if (existing !== undefined) {
-    return existing;
-  }
-
-  if (normalized.sessions === undefined) {
-    throw new Error("Session storage is not configured.");
-  }
-
-  return normalized.sessions.create({ id: session.id });
+    emit: (event) => emitEvent(normalized, events, event),
+  });
 }
 
 function attemptSucceeded(
@@ -973,6 +1149,7 @@ function attemptSucceeded(
   startedAt: string,
   completedAt: string,
   usage?: UsageRecord,
+  evidence?: AttemptEvidence,
   metadata?: Record<string, unknown>,
 ): ProviderAttemptRecord {
   return {
@@ -982,6 +1159,7 @@ function attemptSucceeded(
     startedAt,
     completedAt,
     ...(usage !== undefined ? { usage } : {}),
+    ...(evidence !== undefined ? evidence : {}),
     ...(metadata !== undefined ? { metadata } : {}),
   };
 }
@@ -992,6 +1170,7 @@ function attemptFailed(
   startedAt: string,
   completedAt: string,
   error: string,
+  evidence?: Partial<AttemptEvidence>,
 ): ProviderAttemptRecord {
   return {
     providerId,
@@ -1000,7 +1179,353 @@ function attemptFailed(
     startedAt,
     completedAt,
     error,
+    ...(evidence !== undefined ? evidence : {}),
   };
+}
+
+interface AttemptEvidence {
+  readonly context: ContextPackPlan;
+  readonly contextProjection: ContextProjectionPlan;
+  readonly providerPackaging: ProviderPackagingPlan;
+  readonly inputHashes: readonly string[];
+  readonly warnings: readonly string[];
+}
+
+function evidenceForPreparedRoute(
+  prepared: PreparedRouteSuccess,
+): AttemptEvidence {
+  const contextProjection = toContextProjectionPlan(prepared.materialized);
+
+  return {
+    context: prepared.contextPack,
+    contextProjection,
+    providerPackaging: prepared.packaging.plan,
+    inputHashes: contextProjection.inputHashes,
+    warnings: prepared.materialized.warnings,
+  };
+}
+
+function projectionEventMetadata(
+  prepared: PreparedRouteSuccess,
+): Record<string, string | number> {
+  return {
+    projectionId: prepared.materialized.id,
+    artifactCount: prepared.materialized.artifacts.length,
+    summaryCount: prepared.materialized.summaryArtifactRefs.length,
+    omitted: prepared.contextPack.omitted.length,
+  };
+}
+
+function requestProjectionEventMetadata(
+  request: ProviderRunRequest,
+): Record<string, string | number> {
+  const projection = request.plan?.contextProjection;
+
+  return {
+    ...(projection !== undefined ? { projectionId: projection.id } : {}),
+    artifactCount: request.artifacts.length,
+    summaryCount: projection?.summaryArtifactRefs.length ?? 0,
+    omitted: request.contextPack?.omitted.length ?? 0,
+  };
+}
+
+function metadataForAttempt(
+  plan: ExecutionPlan,
+  gateway: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const metadata = { ...plan.metadata };
+  delete metadata.gateway;
+
+  if (gateway !== undefined) {
+    metadata.gateway = gateway;
+  }
+
+  return metadata;
+}
+
+interface ProviderOutputPersistenceSuccess {
+  readonly ok: true;
+  readonly artifactRefs: readonly ArtifactRef[];
+  readonly reports: readonly ArtifactLifecycleReport[];
+}
+
+interface ProviderOutputPersistenceFailure {
+  readonly ok: false;
+  readonly error: PersistenceError;
+  readonly artifactRefs: readonly ArtifactRef[];
+  readonly reports: readonly ArtifactLifecycleReport[];
+}
+
+type ProviderOutputPersistence =
+  | ProviderOutputPersistenceSuccess
+  | ProviderOutputPersistenceFailure;
+
+async function persistProviderOutputs(input: {
+  readonly response: ProviderRunResponse;
+  readonly route: SelectedRoute;
+  readonly projectionRefs: readonly ArtifactRef[];
+  readonly normalized: NormalizedLatticeConfig;
+  readonly policy?: PolicySpec;
+}): Promise<ProviderOutputPersistence> {
+  const artifactRefs: ArtifactRef[] = [];
+  const reports: ArtifactLifecycleReport[] = [];
+
+  for (const output of input.response.artifactRefs ?? []) {
+    const normalizedOutput: ArtifactInput = {
+      ...output,
+      ...(output.lineage === undefined
+        ? {
+            lineage: {
+              parents: input.projectionRefs,
+              transform: {
+                kind: "model-output" as const,
+                name: `${input.route.providerId}:${input.route.modelId}`,
+              },
+            },
+          }
+        : {}),
+    };
+
+    try {
+      const persisted = await persistArtifactLifecycle(
+        { artifact: normalizedOutput, lifecycle: "provider-output" },
+        {
+          ...(input.normalized.storage !== undefined
+            ? { storage: input.normalized.storage }
+            : {}),
+          ...(input.policy !== undefined ? { policy: input.policy } : {}),
+          postProvider: true,
+        },
+      );
+      artifactRefs.push(persisted.report.ref);
+      reports.push(persisted.report);
+    } catch (cause) {
+      return {
+        ok: false,
+        error: postProviderOutputError(cause, output.id),
+        artifactRefs,
+        reports,
+      };
+    }
+  }
+
+  return { ok: true, artifactRefs, reports };
+}
+
+function postProviderOutputError(
+  cause: unknown,
+  artifactId: string,
+): PersistenceError {
+  if (cause instanceof ArtifactLifecycleFailure) {
+    return {
+      kind: "persistence",
+      message: cause.message,
+      operation: cause.operation,
+      lifecycle: cause.lifecycle,
+      artifactId: cause.artifactId,
+      ...(cause.storeId !== undefined ? { storeId: cause.storeId } : {}),
+      postProvider: true,
+      terminal: true,
+    };
+  }
+
+  return {
+    kind: "persistence",
+    message: "Provider output lifecycle write failed.",
+    operation: "write",
+    lifecycle: "provider-output",
+    artifactId,
+    postProvider: true,
+    terminal: true,
+  };
+}
+
+function postProviderSessionError(sessionId: string): PersistenceError {
+  return {
+    kind: "persistence",
+    message: "Session continuity write failed.",
+    operation: "write",
+    lifecycle: "session",
+    sessionId,
+    postProvider: true,
+    terminal: true,
+  };
+}
+
+interface PersistenceStageReport {
+  readonly lifecycle: PersistenceError["lifecycle"];
+  readonly status: "stored" | "preserved" | "skipped";
+  readonly artifactId?: string;
+  readonly sessionId?: string;
+  readonly reason?: "unconfigured" | "policy";
+}
+
+function toPersistenceStageReport(
+  report: ArtifactLifecycleReport,
+): PersistenceStageReport {
+  return {
+    lifecycle: report.lifecycle,
+    status: report.status,
+    artifactId: report.artifactId,
+    ...(report.status === "skipped" ? { reason: report.reason } : {}),
+  };
+}
+
+function markPostProviderStages(
+  stages: ExecutionPlan["stages"],
+  toolCount: number,
+  invariantCount: number,
+): ExecutionPlan["stages"] {
+  return markStage(
+    markStage(
+      markStage(
+        markStage(stages, "execution", "completed"),
+        "validation",
+        "completed",
+      ),
+      "tool-execution",
+      toolCount > 0 ? "completed" : "skipped",
+    ),
+    "tripwire",
+    invariantCount > 0 ? "completed" : "skipped",
+  );
+}
+
+function markPersistenceStage(
+  stages: ExecutionPlan["stages"],
+  reports: readonly (ArtifactLifecycleReport | PersistenceStageReport)[],
+  input: {
+    readonly failure?: {
+      readonly lifecycle: PersistenceError["lifecycle"];
+      readonly artifactId?: string;
+      readonly sessionId?: string;
+    };
+  } = {},
+): ExecutionPlan["stages"] {
+  const safeReports = reports.map((report) =>
+    "ref" in report ? toPersistenceStageReport(report) : report,
+  );
+  const status = input.failure !== undefined
+    ? "failed"
+    : safeReports.some(
+        (report) => report.status === "stored" || report.status === "preserved",
+      )
+      ? "completed"
+      : "skipped";
+
+  return markStage(stages, "persistence", status, {
+    reports: safeReports,
+    ...(input.failure !== undefined
+      ? {
+          failure: {
+            lifecycle: input.failure.lifecycle,
+            ...(input.failure.artifactId !== undefined
+              ? { artifactId: input.failure.artifactId }
+              : {}),
+            ...(input.failure.sessionId !== undefined
+              ? { sessionId: input.failure.sessionId }
+              : {}),
+          },
+        }
+      : {}),
+  });
+}
+
+function resolvableSessionRefs(
+  refs: readonly ArtifactRef[],
+  normalized: NormalizedLatticeConfig,
+  policy: PolicySpec | undefined,
+): readonly ArtifactRef[] {
+  const storage = normalized.storage;
+  const retention = policy?.retention ?? "session";
+
+  if (storage === undefined || retention === "none") {
+    return [];
+  }
+
+  return refs.filter(
+    (ref) =>
+      ref.storage?.storeId === storage.id &&
+      ref.storage.tenantId === policy?.tenantId &&
+      (ref.storage.retention ?? "session") === retention,
+  );
+}
+
+async function postProviderPersistenceFailure<
+  const TOutputs extends OutputContractMap,
+>(
+  normalized: NormalizedLatticeConfig,
+  input: {
+    readonly runId: string;
+    readonly intent: RunIntent<TOutputs>;
+    readonly error: PersistenceError;
+    readonly plan: ExecutionPlan;
+    readonly events: RunEvent[];
+    readonly route: SelectedRoute;
+    readonly preparedRoute: PreparedRouteSuccess;
+    readonly attempts: readonly ProviderAttemptRecord[];
+    readonly partialOutputs: Record<string, unknown>;
+    readonly artifactRefs: readonly ArtifactRef[];
+    readonly response: ProviderRunResponse;
+    readonly lineageArtifacts: readonly (ArtifactInput | ArtifactRef)[];
+  },
+): Promise<RunResult<TOutputs>> {
+  await emitEvent(normalized, input.events, createRunEvent("run.failed", {
+    runId: input.runId,
+    planId: input.plan.id,
+    providerId: input.route.providerId,
+    modelId: input.route.modelId,
+    ...(input.error.artifactId !== undefined
+      ? { artifactId: input.error.artifactId }
+      : {}),
+    metadata: {
+      reason: "persistence",
+      failureKind: input.error.kind,
+      lifecycle: input.error.lifecycle,
+      persistenceStatus: "failed",
+      ...projectionEventMetadata(input.preparedRoute),
+    },
+  }));
+  const receiptInput: MaybeIssueReceiptInput = {
+    runId: input.runId,
+    ...(input.intent.contract !== undefined
+      ? { contract: input.intent.contract }
+      : {}),
+    artifacts: input.preparedRoute.materialized.artifacts,
+    inputHashes: input.preparedRoute.materialized.inputHashes,
+    lineageArtifacts: input.lineageArtifacts,
+    contractVerdict: "execution-failed",
+    model: {
+      requested: input.route.modelId,
+      observed: observedModelForReceipt(input.response),
+    },
+    route: {
+      providerId: input.route.providerId,
+      capabilityId: input.route.modelId,
+      attemptNumber: input.attempts.length,
+    },
+    usage: normalizeAdapterUsage(input.response),
+    outputs: JSON.stringify(input.partialOutputs),
+  };
+
+  return finalizeRunResult(
+    normalized,
+    input.events,
+    receiptInput,
+    "post-execution",
+    {
+      ok: false,
+      error: input.error,
+      usage: normalizeAdapterUsage(input.response),
+      partialOutputs: input.partialOutputs,
+      artifacts: input.artifactRefs,
+      plan: input.plan,
+      events: input.events,
+      ...(input.response.gateway !== undefined
+        ? { gateway: input.response.gateway }
+        : {}),
+    },
+  );
 }
 
 function findExecutableAdapter(
@@ -1039,6 +1564,7 @@ async function executeStreamingProvider(input: {
   readonly adapter: ProviderAdapter & Required<Pick<ProviderAdapter, "executeStream">>;
   readonly gatewayMetadata?: Record<string, unknown>;
 }): Promise<ProviderRunResponse> {
+  const projectionMetadata = requestProjectionEventMetadata(input.request);
   await emitEvent(input.normalized, input.events, createRunEvent("stream.start", {
     runId: input.runId,
     planId: input.plan.id,
@@ -1046,6 +1572,7 @@ async function executeStreamingProvider(input: {
     modelId: input.route.modelId,
     metadata: {
       status: "started",
+      ...projectionMetadata,
       ...(input.gatewayMetadata !== undefined ? { gateway: input.gatewayMetadata } : {}),
     },
   }));
@@ -1064,14 +1591,16 @@ async function executeStreamingProvider(input: {
       modelId: input.route.modelId,
       metadata: {
         status: "completed",
+        ...projectionMetadata,
         outputNames: Object.keys(response.rawOutputs),
-        ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
+        ...(response.gateway !== undefined
+          ? { gateway: gatewayResponseMetadataForEvents(response.gateway) }
+          : {}),
       },
     }));
 
     return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Provider stream execution failed.";
     await emitEvent(input.normalized, input.events, createRunEvent("stream.failed", {
       runId: input.runId,
       planId: input.plan.id,
@@ -1079,7 +1608,8 @@ async function executeStreamingProvider(input: {
       modelId: input.route.modelId,
       metadata: {
         status: "failed",
-        error: message,
+        failureKind: "provider_execution",
+        ...projectionMetadata,
       },
     }));
     throw error;
@@ -1104,6 +1634,7 @@ function routeFromCandidate(
     modelId,
     score: candidate.score,
     estimates: candidate.estimates,
+    contextWindow: candidate.capability.contextWindow,
     inputModalities: candidate.capability.inputModalities,
     outputModalities: candidate.capability.outputModalities,
     fileTransport: candidate.capability.fileTransport,
@@ -1138,7 +1669,7 @@ function createRunId(): string {
 /**
  * Normalize an adapter response into the `RunResult.usage` shape.
  *
- * Prefers `ProviderRunResponse.normalizedUsage` (the Phase 7 shape emitted by
+ * Prefers `ProviderRunResponse.normalizedUsage` emitted by
  * openai / openai-compat / ai-sdk / fake adapters). Falls back to mapping the
  * legacy `UsageRecord` (inputTokens / outputTokens) so v1.0 adapters that have
  * not yet been re-rolled still surface a usable Usage value.
@@ -1158,8 +1689,25 @@ function observedModelForReceipt(response: ProviderRunResponse): string | null {
   return response.gateway?.observedModel ?? null;
 }
 
+function gatewayResponseMetadataForEvents(
+  gateway: ProviderGatewayMetadata,
+): Record<string, unknown> {
+  return {
+    used: gateway.used,
+    ...(gateway.requestedModel !== undefined
+      ? { requestedModel: gateway.requestedModel }
+      : {}),
+    ...(gateway.observedModel !== undefined
+      ? { observedModel: gateway.observedModel }
+      : {}),
+    ...(gateway.fallbackModels !== undefined
+      ? { fallbackModels: gateway.fallbackModels }
+      : {}),
+  };
+}
+
 /**
- * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
+ * Hash each artifact's canonical value via SHA-256 and return the
  * hex digests in declaration order. Missing/undefined values produce an
  * empty string so the array length matches `artifacts.length` exactly.
  */
@@ -1177,7 +1725,7 @@ async function hashInputArtifacts(
 }
 
 /**
- * Phase 9 — SHA-256 hex of `canonicalize(contract)` for the receipt's
+ * SHA-256 hex of `canonicalize(contract)` for the receipt's
  * contractHash field. Returns null when no contract is attached or when
  * canonicalize cannot serialize the input.
  */
@@ -1200,6 +1748,7 @@ interface MaybeIssueReceiptInput {
   readonly runId: string;
   readonly contract?: CapabilityContract;
   readonly artifacts: readonly ArtifactInput[];
+  readonly inputHashes?: readonly string[];
   readonly lineageArtifacts?: readonly (ArtifactInput | ArtifactRef)[];
   readonly contractVerdict: ContractVerdict;
   readonly model: ReceiptModel;
@@ -1220,29 +1769,36 @@ function resolveReceiptModelClass(
     ?? getCapabilityProfile(`${route.providerId}:${model.requested}`)?.trainingClass;
 }
 
-/**
- * Phase 9 — issue a signed receipt at a terminal branch when a signer is
- * configured. Signer failures degrade gracefully to `undefined` so a faulty
- * signer never crashes `ai.run`.
- */
-async function maybeIssueReceipt(
+function receiptPolicyForConfig(
   normalized: NormalizedLatticeConfig,
+): EffectiveReceiptPolicy {
+  return resolveReceiptPolicy({
+    ...(normalized.receiptMode !== undefined
+      ? { mode: normalized.receiptMode }
+      : {}),
+    ...(normalized.signer !== undefined ? { signer: normalized.signer } : {}),
+  });
+}
+
+async function maybeIssueReceipt(
+  policy: EffectiveReceiptPolicy,
   input: MaybeIssueReceiptInput,
-): Promise<ReceiptEnvelope | undefined> {
-  if (normalized.signer === undefined) return undefined;
-  try {
-    const inputHashes = await hashInputArtifacts(input.artifacts);
-    const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
-      input.lineageArtifacts ?? input.artifacts,
-    );
-    const outputHash =
-      input.outputs === undefined
-        ? null
-        : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
-    const contractHash = await sha256HexOfCanonicalContract(input.contract);
-    const modelClass = resolveReceiptModelClass(input.route, input.model);
-    return await createReceipt(
-      {
+  stage: AuditErrorStage,
+) {
+  return issueReceiptFrom(
+    async () => {
+      const inputHashes =
+        input.inputHashes ?? await hashInputArtifacts(input.artifacts);
+      const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
+        input.lineageArtifacts ?? input.artifacts,
+      );
+      const outputHash =
+        input.outputs === undefined
+          ? null
+          : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
+      const contractHash = await sha256HexOfCanonicalContract(input.contract);
+      const modelClass = resolveReceiptModelClass(input.route, input.model);
+      return {
         runId: input.runId,
         model: input.model,
         route: input.route,
@@ -1259,12 +1815,68 @@ async function maybeIssueReceipt(
         ...(input.tripwireEvidence !== undefined
           ? { tripwireEvidence: input.tripwireEvidence }
           : {}),
-      },
-      normalized.signer,
-    );
-  } catch {
-    // Receipt emission is best-effort. A signer failure must NOT crash
-    // ai.run — the run result already encodes the verdict.
-    return undefined;
+      };
+    },
+    policy,
+    stage,
+  );
+}
+
+async function finalizeRunResult<const TOutputs extends OutputContractMap>(
+  normalized: NormalizedLatticeConfig,
+  events: RunEvent[],
+  receiptInput: MaybeIssueReceiptInput,
+  stage: AuditErrorStage,
+  result: RunResult<TOutputs>,
+): Promise<RunResult<TOutputs>> {
+  const policy = receiptPolicyForConfig(normalized);
+  const outcome = await maybeIssueReceipt(policy, receiptInput, stage);
+
+  if (outcome.status === "issued") {
+    return { ...result, receipt: outcome.envelope };
   }
+
+  if (outcome.status !== "failed") {
+    return result;
+  }
+
+  await emitEvent(normalized, events, createRunEvent("receipt.issuance", {
+    runId: receiptInput.runId,
+    planId: result.plan.id,
+    metadata: {
+      status: "failed",
+      code: outcome.error.code,
+      stage: outcome.error.stage,
+    },
+  }));
+
+  if (policy.mode !== "required") {
+    return result;
+  }
+
+  if (result.ok) {
+    return {
+      ok: false,
+      error: outcome.error,
+      usage: result.usage,
+      partialOutputs: result.outputs as Record<string, unknown>,
+      artifacts: result.artifacts,
+      plan: result.plan,
+      events,
+      ...(result.gateway !== undefined ? { gateway: result.gateway } : {}),
+    };
+  }
+
+  return {
+    ok: false,
+    error: outcome.error,
+    usage: result.usage,
+    ...(result.partialOutputs !== undefined
+      ? { partialOutputs: result.partialOutputs }
+      : {}),
+    ...(result.artifacts !== undefined ? { artifacts: result.artifacts } : {}),
+    plan: result.plan,
+    events,
+    ...(result.gateway !== undefined ? { gateway: result.gateway } : {}),
+  };
 }

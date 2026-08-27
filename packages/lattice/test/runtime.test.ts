@@ -82,7 +82,22 @@ describe("createAI runtime facade", () => {
       kind: "provider-adapter",
       execute: async (request) => {
         expect(request.task).toBe("Resolve support case");
-        expect(request.artifacts).toEqual([supportCase, audio]);
+        expect(request.artifacts).toEqual([
+          expect.objectContaining({
+            ...supportCase,
+            fingerprint: {
+              algorithm: "sha256",
+              value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+            },
+          }),
+          expect.objectContaining({
+            ...audio,
+            fingerprint: {
+              algorithm: "sha256",
+              value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+            },
+          }),
+        ]);
         expect(request.outputs).toEqual(["answer", "action", "evidence", "generated"]);
         expect(request.policy).toEqual({
           maxCostUsd: 2,
@@ -134,7 +149,10 @@ describe("createAI runtime facade", () => {
       },
     });
 
-    expect(result.ok).toBe(true);
+    expect(
+      result.ok,
+      result.ok ? undefined : JSON.stringify(result.error),
+    ).toBe(true);
     if (result.ok) {
       expect(result.outputs.answer).toBe("Refund approved.");
       expect(result.outputs.action.reason).toBe("billing mismatch");
@@ -149,6 +167,10 @@ describe("createAI runtime facade", () => {
           size: {
             bytes: 17,
             characters: 17,
+          },
+          fingerprint: {
+            algorithm: "sha256",
+            value: expect.stringMatching(/^[0-9a-f]{64}$/u),
           },
           lineage: {
             parents: [
@@ -176,6 +198,44 @@ describe("createAI runtime facade", () => {
             callId: "call_123",
             toolName: "refundPolicyCheck",
           },
+          fingerprint: {
+            algorithm: "sha256",
+            value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+          },
+          lineage: {
+            parents: [
+              {
+                id: expect.stringMatching(/^artifact:text:/),
+                kind: "text",
+                source: "inline",
+                privacy: "standard",
+                mediaType: "text/plain",
+                size: {
+                  bytes: 12,
+                  characters: 12,
+                },
+                fingerprint: {
+                  algorithm: "sha256",
+                  value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+                },
+              },
+              {
+                id: "artifact:audio:call",
+                kind: "audio",
+                source: "file",
+                privacy: "sensitive",
+                mediaType: "audio/mpeg",
+                fingerprint: {
+                  algorithm: "sha256",
+                  value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+                },
+              },
+            ],
+            transform: {
+              kind: "model-output",
+              name: "fixture:fixture:default",
+            },
+          },
         },
         {
           id: "artifact:file:provider-handle",
@@ -185,6 +245,10 @@ describe("createAI runtime facade", () => {
           metadata: {
             provider: "fixture",
             handle: "file_fixture_123",
+          },
+          fingerprint: {
+            algorithm: "sha256",
+            value: expect.stringMatching(/^[0-9a-f]{64}$/u),
           },
           lineage: {
             parents: [

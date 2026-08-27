@@ -54,8 +54,7 @@ const REQUIRED_BOUNDARIES = [
 ];
 
 const COMPATIBILITY_LABELS = new Set([
-  "node20-compatible",
-  "node24-runtime",
+  "node24-plus",
   "adapter-specific",
 ]);
 

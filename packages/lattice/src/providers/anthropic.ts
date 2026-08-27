@@ -1,7 +1,9 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
   ProviderFinishMetadata,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
@@ -14,6 +16,7 @@ import type { AnthropicQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import type { RunEventSink } from "../tracing/tracing.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { resolveUsageCostUsd } from "../routing/cost.js";
 import { NegotiationAuthError, synthesizeNegotiatedCapabilitiesFromRegistry } from "../capabilities/negotiate.js";
 import { getCapabilityProfile } from "../capabilities/lookup.js";
 import { getRecommendedSanitizers } from "../capabilities/sanitizer-recommendations.js";
@@ -41,22 +44,18 @@ import { assertNoPublicUrlEgress } from "./no-public-url.js";
 /**
  * Options for {@link createAnthropicProvider}.
  *
- * Mirrors `OpenAICompatibleProviderOptions` ergonomics (Phase 7 pattern) but
+ * Mirrors `OpenAICompatibleProviderOptions` ergonomics but
  * for the Anthropic Messages API at `/v1/messages` -- which uses a top-level
  * `system` field and a `content[0].text` response shape that diverges from
- * the OpenAI Chat Completions schema (see FSB v0.9.x `extension/ai/universal-provider.js`
- * lines 280-297 + 566-573 for the production reference).
+ * the OpenAI Chat Completions schema.
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
- * STREAMING (Phase 44): supported through native Anthropic Messages SSE events.
+ * STREAMING: supported through native Anthropic Messages SSE events.
  *
- * DEFERRED (Phase 4 carryforward notes):
- *   - prompt caching   (Phase 39: opt-in via `ProviderRunRequest.cacheSystemPrefix` —
- *                       emitted as a cache_control-marked system block when present)
- *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
- *
- * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-02 + D-07: full custom adapter; preserve top-level `system`).
+ * Prompt caching is opt-in via `ProviderRunRequest.cacheSystemPrefix`, which
+ * emits a cache_control-marked system block when present. Resume-from-eviction
+ * belongs to the survivability adapter rather than this transport.
  */
 export interface AnthropicProviderOptions {
   readonly id?: string;
@@ -67,25 +66,24 @@ export interface AnthropicProviderOptions {
   /** Defaults to `2023-06-01`. Override only if the consumer has tested a newer pinned version. */
   readonly anthropicVersion?: string;
   readonly fetch?: typeof fetch;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling. Defaults to 2000. */
+  readonly maxOutputTokens?: number;
   /**
-   * D-08: Per-instance TTL for the /v1/models response cache (milliseconds).
-   * Default 300_000 (5 minutes). `0` disables caching (always re-fetch -- for testing).
+   * Per-instance TTL for the /v1/models response cache (milliseconds).
+   * Default 300_000 (5 minutes). `0` disables caching and always re-fetches.
    * `Infinity` disables expiry (process-lifetime for the instance).
    */
   readonly modelsCacheTtlMs?: number;
   /**
-   * D-11: Number of retries for transient /v1/models fetch failures (5xx, network,
+   * Number of retries for transient /v1/models fetch failures (5xx, network,
    * timeout). Default 2 (3 total attempts). `0` disables retries.
    * Backoff schedule: [0ms, 200ms, 1000ms].
    */
   readonly modelsRetryCount?: number;
   /**
-   * D-12: Optional RunEventSink for emitting `capabilities.negotiation.fallback`
-   * events when the /v1/models fetch falls back to the Phase 33 static registry.
+   * Optional RunEventSink for emitting `capabilities.negotiation.fallback`
+   * events when the /v1/models fetch falls back to the static registry.
    * If absent, fallback emits no event (no-op). Auth errors (401/403) never emit
    * the fallback event -- they throw `NegotiationAuthError` instead.
    */
@@ -94,7 +92,7 @@ export interface AnthropicProviderOptions {
   readonly validateToolCalls?: ValidateToolCallsOption;
 }
 
-/** Internal TTL cache entry shape (D-07 lazy-expiry). */
+/** Internal TTL cache entry shape (lazy-expiry). */
 interface CacheEntry {
   readonly result: NegotiatedCapabilities;
   /** Date.now() + ttlMs; Infinity when ttlMs === Infinity */
@@ -106,8 +104,18 @@ const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_MAX_TOKENS = 2000;
 const DEFAULT_MODELS_CACHE_TTL_MS = 300_000;
 const DEFAULT_MODELS_RETRY_COUNT = 2;
-/** D-11: Backoff schedule for transient /v1/models failures -- immediate, 200ms, 1s. */
+/** Backoff schedule for transient /v1/models failures -- immediate, 200ms, 1s. */
 const MODELS_BACKOFF_MS = [0, 200, 1000] as const;
+
+function resolveMaxOutputTokens(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_MAX_TOKENS;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
+}
 
 interface AnthropicMessagesBodyResult {
   readonly body: Record<string, unknown>;
@@ -117,9 +125,10 @@ interface AnthropicMessagesBodyResult {
 async function createAnthropicMessagesBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
+  readonly maxOutputTokens: number;
   readonly stream?: boolean;
 }): Promise<AnthropicMessagesBodyResult> {
-  // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
+  // When an opt-in prompt-cache prefix is present, hoist
   // it to a `cache_control`-marked system content block. Conditional VALUE,
   // not conditional spread: the `system` key is always present per the
   // Messages API contract and prior golden-body tests.
@@ -157,7 +166,7 @@ async function createAnthropicMessagesBody(input: {
             : [...content.blocks, { type: "text", text: input.request.task }],
         },
       ],
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: input.maxOutputTokens,
       ...(input.stream === true ? { stream: true } : {}),
       ...(tools.length > 0 ? { tools } : {}),
       ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
@@ -279,21 +288,22 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/u, "");
   const anthropicVersion = options.anthropicVersion ?? DEFAULT_ANTHROPIC_VERSION;
+  const maxOutputTokens = resolveMaxOutputTokens(options.maxOutputTokens);
 
-  // D-08: TTL cache configuration
+  // TTL cache configuration.
   const ttlMs = options.modelsCacheTtlMs ?? DEFAULT_MODELS_CACHE_TTL_MS;
-  // D-11: Retry count (0 = no retries, so attempts = 1)
+  // Retry count (0 = no retries, so attempts = 1).
   const retryCount = options.modelsRetryCount ?? DEFAULT_MODELS_RETRY_COUNT;
 
-  // D-05 / D-06: Per-instance Maps; each createAnthropicProvider() call gets its own.
+  // Each createAnthropicProvider() call gets its own cache and inflight Maps.
   const cache = new Map<string, CacheEntry>();
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   /**
-   * D-12: Emits the `capabilities.negotiation.fallback` RunEvent via the
+   * Emits the `capabilities.negotiation.fallback` RunEvent via the
    * consumer-supplied sink. If no sink is provided, this is a no-op.
    *
-   * SECURITY (T-34-02-01): errorReason is derived from `err.message` ONLY --
+   * SECURITY: errorReason is derived from `err.message` ONLY --
    * not `err.stack`, `err.toString()`, or any serialization that could include
    * request headers (which carry the apiKey). `stringifyErr` enforces this.
    *
@@ -327,30 +337,30 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
   /**
    * Pure error message extractor. Returns `err.message` for Error instances,
    * `String(err)` for everything else. Deliberately does NOT include stack,
-   * headers, or other fields (T-34-02-01 mitigation).
+   * headers, or other fields.
    */
   function stringifyErr(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
   }
 
   /**
-   * Merges a live /v1/models response body with the Phase 33 static registry
+   * Merges a live /v1/models response body with the static registry
    * profile for the given modelId. Called on HTTP 200 responses only.
    *
-   * LENIENT PARSING (Pitfall 1): every field access uses optional chaining.
+   * LENIENT PARSING: every field access uses optional chaining.
    * Missing `capabilities.thinking` or other sub-fields default to false rather
    * than throwing. This ensures forward-compatibility with future API shape changes.
    *
    * contextWindow policy: Anthropic's max_input_tokens is set to 0 in the fixture
    * for models where it is unreliable. When 0, falls through to the registry profile's
-   * contextWindow (if present) or 0 as a final default (RESEARCH §Q1).
+   * contextWindow (if present) or 0 as a final default.
    */
   function mergeAnthropicModelsWithRegistry(
     modelId: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body: any,
   ): NegotiatedCapabilities {
-    // Pitfall 1: lenient parse -- never crash on unexpected shapes
+    // Lenient parse -- never crash on unexpected shapes.
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const found = body?.data?.find?.((m: unknown) => {
       if (typeof m !== "object" || m === null) return false;
@@ -362,7 +372,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       // (200 received but this modelId isn't listed; signal to consumer that
       // something is off, per planner advisory in task spec).
       //
-      // WR-04 (Phase 34 review): emit the fallback event here so consumers
+      // Emit the fallback event here so consumers
       // observing the event stream can detect that an Anthropic model was
       // missing from a successful /v1/models response. Matches the OpenAI
       // (adapters.ts:362-366), Gemini, and OpenRouter behavior.
@@ -411,12 +421,12 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
   }
 
   /**
-   * D-09 / D-10 / D-11: Core /v1/models fetch with retry-backoff, auth-error-throw,
+   * Core /v1/models fetch with retry backoff, auth-error throw,
    * and transient-fallback. Called only once per modelId (inflight coalescing prevents
    * concurrent duplicate fetches).
    *
    * URL shape: `${baseUrl}/v1/models?limit=1000` to page all models in one request.
-   * Headers per RESEARCH §Q1: x-api-key, anthropic-version, accept.
+   * Headers: x-api-key, anthropic-version, accept.
    */
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     const url = `${baseUrl}/v1/models?limit=1000`;
@@ -442,8 +452,8 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
           signal: AbortSignal.timeout(30_000),
         });
 
-        // D-10: auth errors throw immediately, never fall back, never retry
-        // T-34-02-04: message does NOT include the actual apiKey value
+        // Auth errors throw immediately and never fall back or retry.
+        // The message does NOT include the actual apiKey value.
         if (resp.status === 401 || resp.status === 403) {
           throw new NegotiationAuthError(
             "anthropic",
@@ -461,14 +471,14 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         const body = await resp.json();
         return mergeAnthropicModelsWithRegistry(modelId, body);
       } catch (err) {
-        // D-10: auth errors always propagate -- never retry, never fall back
+        // Auth errors always propagate -- never retry, never fall back.
         if (err instanceof NegotiationAuthError) throw err;
         lastErr = err;
         // Continue loop for transient errors (5xx, network, timeout)
       }
     }
 
-    // D-09 + D-12: all retries exhausted -- fall back to Phase 33 registry + emit event
+    // All retries exhausted -- fall back to the registry and emit an event.
     emitFallbackEvent({
       adapter: "anthropic",
       modelId,
@@ -479,33 +489,33 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
   }
 
   /**
-   * D-07: Lazy expiry cache check + D-Q7: inflight coalescing.
+   * Lazy expiry cache check plus inflight coalescing.
    *
    * Cache check: stale entries are evicted lazily on read (no background setInterval
    * -- library must not pin the Node event loop).
    *
    * Inflight coalescing: concurrent calls for the same modelId share one fetch
-   * Promise. Pitfall 4 mitigation: `.finally` block ALWAYS clears the inflight
+   * Promise. The `.finally` block ALWAYS clears the inflight
    * Map entry, even on rejection. This ensures that a rejected Promise doesn't
    * "poison" the Map -- the next caller after all concurrent calls settle will
    * trigger a fresh fetch attempt.
    */
   async function negotiateCapabilities(modelId: string): Promise<NegotiatedCapabilities> {
-    // 1. D-07: lazy TTL expiry check
+    // 1. Lazy TTL expiry check.
     const cached = cache.get(modelId);
     if (cached !== undefined && cached.expiresAt > Date.now()) {
       return cached.result;
     }
 
-    // 2. Q7: inflight coalescing -- return existing Promise if one is in-flight
+    // 2. Coalesce inflight requests by returning the existing Promise.
     const existing = inflight.get(modelId);
     if (existing !== undefined) return existing;
 
-    // 3. Start a new fetch Promise; .finally cleanup guarantees Map clearing (Pitfall 4)
+    // 3. Start a new fetch Promise; `.finally` guarantees Map cleanup.
     const fetchPromise = (async () => {
       try {
         const result = await fetchAndNegotiate(modelId);
-        // D-08: cache result when TTL > 0; Infinity disables expiry
+        // Cache the result when TTL > 0; Infinity disables expiry.
         if (ttlMs > 0) {
           cache.set(modelId, {
             result,
@@ -514,7 +524,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         }
         return result;
       } finally {
-        // Pitfall 4: ALWAYS remove from inflight Map -- even on rejection.
+        // ALWAYS remove from the inflight Map, even on rejection.
         // This prevents a failed fetch from permanently blocking future calls.
         inflight.delete(modelId);
       }
@@ -528,16 +538,16 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
     id,
     kind: "provider-adapter",
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
         streaming: true,
-      },
+      }, options.pricing),
     ],
     /**
-     * QUIRK-02: Anthropic adapter quirks block -- values verified against
-     * Anthropic documentation and /v1/models capabilities field (RESEARCH §Q6/§Q1).
+     * Anthropic adapter quirks block, verified against Anthropic documentation
+     * and the /v1/models capabilities field.
      *
      * Universal 5-boolean base (AdapterQuirks):
      *   - supportsToolChoice: true -- tool_choice is supported per Anthropic tool use docs
@@ -573,6 +583,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       const messagesBody = await createAnthropicMessagesBody({
         model: options.model,
         request,
+        maxOutputTokens,
       });
       const bodyStr = JSON.stringify(messagesBody.body);
       assertNoPublicUrlEgress(request, id, bodyStr);
@@ -658,6 +669,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
         anthropicVersion,
         fetchImpl,
         request,
+        maxOutputTokens,
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
         ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
         ...(options.validateToolCalls !== undefined
@@ -676,16 +688,15 @@ async function* streamAnthropicResponse(input: {
   readonly anthropicVersion: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly maxOutputTokens: number;
+  readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
   const messagesBody = await createAnthropicMessagesBody({
     model: input.model,
     request: input.request,
+    maxOutputTokens: input.maxOutputTokens,
     stream: true,
   });
   const streamBodyStr = JSON.stringify(messagesBody.body);
@@ -1072,32 +1083,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Anthropic uses `input_tokens` / `output_tokens` (not OpenAI's
  * `prompt_tokens` / `completion_tokens`). This helper maps to Lattice's
- * `Usage` shape and applies pricing when supplied (Phase 7 pattern).
+ * `Usage` shape, retaining reported cost before consulting static pricing.
  */
 function normalizeAnthropicUsageToRunUsage(
   rawUsage: unknown,
-  pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  },
+  pricing?: ProviderPricingHint,
 ): Usage {
   let promptTokens = 0;
   let completionTokens = 0;
+  let reportedCostUsd: number | undefined;
   if (typeof rawUsage === "object" && rawUsage !== null) {
     const record = rawUsage as Record<string, unknown>;
     promptTokens = numberField(record, "input_tokens") ?? numberField(record, "inputTokens") ?? 0;
     completionTokens =
       numberField(record, "output_tokens") ?? numberField(record, "outputTokens") ?? 0;
+    reportedCostUsd = reportedUsageCost(record);
   }
-  let costUsd: number | null = null;
-  if (
-    pricing !== undefined &&
-    (pricing.inputPer1kTokens !== undefined || pricing.outputPer1kTokens !== undefined)
-  ) {
-    const inputCost = ((pricing.inputPer1kTokens ?? 0) * promptTokens) / 1000;
-    const outputCost = ((pricing.outputPer1kTokens ?? 0) * completionTokens) / 1000;
-    costUsd = inputCost + outputCost;
-  }
+  const costUsd = resolveUsageCostUsd({
+    ...(pricing !== undefined ? { pricing } : {}),
+    ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
   return { promptTokens, completionTokens, costUsd };
 }
 
@@ -1112,14 +1119,36 @@ function normalizeAnthropicUsage(usage: unknown): UsageRecord | undefined {
     inputTokens !== undefined && outputTokens !== undefined
       ? inputTokens + outputTokens
       : undefined;
+  const costUsd = reportedUsageCost(record);
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
   };
+}
+
+function reportedUsageCost(record: Record<string, unknown>): number | undefined {
+  return (
+    numberField(record, "costUsd") ??
+    numberField(record, "cost_usd") ??
+    numberField(record, "total_cost") ??
+    numberField(record, "cost")
+  );
 }
 
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
   const value = record[key];
   return typeof value === "number" ? value : undefined;
+}
+
+function capabilityWithConfiguredPricing(
+  capability: ModelCapability,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  if (pricing !== undefined) {
+    return { ...capability, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = capability;
+  return inheritedPricing === undefined ? capability : unpriced;
 }

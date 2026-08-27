@@ -1,5 +1,5 @@
 /**
- * GoalProgressTracker — Phase 21 (v1.2).
+ * GoalProgressTracker (v1.2).
  *
  * Stuck-detection primitive. The caller declares a goal-satisfaction
  * score per iteration (0..1); the tracker reports a coarse status the

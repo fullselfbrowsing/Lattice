@@ -134,7 +134,7 @@ function chooseTransport(
     // noPublicUrl blocks "url" transport and also blocks "file-id" transport
     // when the referenced metadata value resolves to a public HTTP/HTTPS URL.
     // Provider-internal handles (e.g. "files/audio-123") are not public URLs and
-    // are permitted. See Codex PR #12 finding P2-B.
+    // remain permitted.
     if (policy?.noPublicUrl === true && transport === "url") {
       continue;
     }

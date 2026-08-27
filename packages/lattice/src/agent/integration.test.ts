@@ -34,7 +34,11 @@ import { createFakeProvider } from "../providers/fake.js";
 import { defineTool } from "../tools/tools.js";
 import { createHookPipeline, BAND } from "../contract/bands.js";
 
-import { runAgent } from "./runtime.js";
+import {
+  runAgent,
+  runAgentInternal,
+  type RunAgentInternalOptions,
+} from "./runtime.js";
 
 function makeSchema(): StandardSchemaV1 {
   return {
@@ -135,12 +139,18 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
       expect(mintedReceipts.length).toBe(2);
       // Each receipt verifies cleanly against the ephemeral KeySet (DSSE + JCS
       // round-trip preserved through the agent loop).
-      for (const envelope of mintedReceipts) {
+      for (const [index, envelope] of mintedReceipts.entries()) {
+        expect(result.iterations[index]?.receipt).toBe(envelope);
+        expect(result.iterations[index]?.iterationId).toBeTruthy();
         const verifyResult = await verifyReceipt(envelope, keySet);
         expect(verifyResult.ok).toBe(true);
         expect(envelope.signatures[0]?.keyid).toBe(kid);
         if (verifyResult.ok) {
           expect(verifyResult.body.modelClass).toBeUndefined();
+          expect(verifyResult.body.stepName).toBe(
+            result.iterations[index]?.iterationId,
+          );
+          expect(verifyResult.body.stepIndex).toBe(index);
         }
       }
     },
@@ -208,5 +218,94 @@ describe("Phase 19 integration smoke — agent loop + receipts + tool dispatch",
     expect(result.kind).toBe("success");
     // BEFORE_AGENT_ITERATION fired once (iteration 0 → final answer immediately).
     expect(safetyCallCount.value).toBe(1);
+  });
+
+  it("keeps an issued terminal envelope on the internal outcome channel", async () => {
+    const { signer, keySet } = await makeEphemeralSetup();
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: "Done." },
+        normalizedUsage: { promptTokens: 2, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+    const outcomes: Parameters<
+      NonNullable<RunAgentInternalOptions["onReceiptOutcome"]>
+    >[0][] = [];
+
+    const result = await runAgentInternal(
+      {
+        task: "Issue terminal evidence.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        onReceiptOutcome: (event) => {
+          outcomes.push(event);
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.scope).toBe("terminal");
+    expect(outcomes[0]?.outcome.status).toBe("issued");
+    if (outcomes[0]?.outcome.status === "issued") {
+      expect(result.receipt).toBe(outcomes[0].outcome.envelope);
+      expect(Object.isFrozen(result)).toBe(true);
+      const verification = await verifyReceipt(
+        outcomes[0].outcome.envelope,
+        keySet,
+      );
+      expect(verification.ok).toBe(true);
+      if (verification.ok) {
+        expect(verification.body.stepName).toMatch(
+          /^agent-execution:[^:]+:terminal$/,
+        );
+        expect(verification.body.stepName).not.toBe(
+          result.iterations[0]?.iterationId,
+        );
+      }
+    }
+  });
+
+  it("binds private crew lineage context into the returned terminal envelope", async () => {
+    const { signer, keySet } = await makeEphemeralSetup();
+    const parentReceiptCid = `sha256:${"ab".repeat(32)}`;
+    const fake = createFakeProvider({
+      response: () => ({
+        rawOutputs: { answer: "Child done." },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      }),
+    });
+
+    const result = await runAgentInternal(
+      {
+        task: "Run as a crew child.",
+        tools: [],
+        signer,
+        receiptMode: "required",
+        autoRegisterCheckpoint: false,
+      },
+      { providers: [fake] },
+      {
+        terminalReceipt: {
+          stepName: "crew-agent:child:terminal",
+          parentReceiptCid,
+        },
+      },
+    );
+
+    expect(result.kind).toBe("success");
+    expect(result.receipt).toBeDefined();
+    if (result.receipt === undefined) return;
+    const verification = await verifyReceipt(result.receipt, keySet);
+    expect(verification.ok).toBe(true);
+    if (verification.ok) {
+      expect(verification.body.stepName).toBe("crew-agent:child:terminal");
+      expect(verification.body.parentReceiptCid).toBe(parentReceiptCid);
+    }
   });
 });

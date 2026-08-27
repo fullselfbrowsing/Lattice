@@ -13,38 +13,35 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { stripOpenRouterVariant } from "../src/index.js";
+
 describe("Phase 33 lookup — stripOpenRouterVariant (D-11)", () => {
-  it("strips :free suffix on OpenRouter-shaped ids", async () => {
-    const { stripOpenRouterVariant } = await import("../src/index.js");
+  it("strips :free suffix on OpenRouter-shaped ids", () => {
     expect(stripOpenRouterVariant("openai/gpt-oss-120b:free")).toBe(
       "openai/gpt-oss-120b",
     );
   });
 
-  it("strips :thinking suffix on OpenRouter-shaped ids", async () => {
-    const { stripOpenRouterVariant } = await import("../src/index.js");
+  it("strips :thinking suffix on OpenRouter-shaped ids", () => {
     expect(stripOpenRouterVariant("openai/gpt-oss-120b:thinking")).toBe(
       "openai/gpt-oss-120b",
     );
   });
 
-  it("passes through ids without a variant suffix", async () => {
-    const { stripOpenRouterVariant } = await import("../src/index.js");
+  it("passes through ids without a variant suffix", () => {
     expect(stripOpenRouterVariant("openai/gpt-oss-120b")).toBe(
       "openai/gpt-oss-120b",
     );
   });
 
-  it("does NOT strip non-OpenRouter-shaped ids (D-11 scope discipline)", async () => {
-    const { stripOpenRouterVariant } = await import("../src/index.js");
+  it("does NOT strip non-OpenRouter-shaped ids (D-11 scope discipline)", () => {
     // Direct-adapter canonical key (no slash before colon) — passthrough.
     expect(stripOpenRouterVariant("anthropic:claude-opus-4")).toBe(
       "anthropic:claude-opus-4",
     );
   });
 
-  it("does NOT strip unrecognized variant suffixes (Pitfall 4 regression)", async () => {
-    const { stripOpenRouterVariant } = await import("../src/index.js");
+  it("does NOT strip unrecognized variant suffixes (Pitfall 4 regression)", () => {
     // `:beta` is NOT in the current OpenRouter variant set (`:free`,
     // `:thinking`) — passthrough.
     expect(stripOpenRouterVariant("openai/gpt-4o:beta")).toBe(

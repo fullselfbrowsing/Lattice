@@ -7,6 +7,7 @@ import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../receipts/sign.js";
+import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { replayOffline } from "../replay/replay.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
@@ -168,5 +169,54 @@ describe("createExternalExecutionAudit", () => {
 
     const replayed = await replayOffline(result.replayEnvelope);
     expect(replayed.ok).toBe(false);
+  });
+
+  it("throws only a bounded typed audit error when the signer rejects", async () => {
+    const secret = "SECRET-EXTERNAL-KMS-RESPONSE";
+    const calls = { value: 0 };
+    const signer: ReceiptSigner = {
+      kid: "external-fault-test",
+      publicKeyJwk: {
+        kty: "OKP",
+        crv: "Ed25519",
+        x: "test",
+      } as JsonWebKey,
+      async sign(): Promise<Uint8Array> {
+        calls.value += 1;
+        throw new Error(secret);
+      },
+    };
+
+    let thrown: unknown;
+    try {
+      await createExternalExecutionAudit(
+        {
+          task: "External execution completed.",
+          policy: {},
+          contract: contract(),
+          model: { requested: "external-model", observed: null },
+          route: {
+            providerId: "external",
+            capabilityId: "external-model",
+            attemptNumber: 1,
+          },
+          usage: { promptTokens: 2, completionTokens: 1, costUsd: 0.01 },
+          outputs: { answer: "completed" },
+        },
+        signer,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toEqual({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
+      terminal: true,
+    });
+    expect(calls.value).toBe(1);
+    expect(JSON.stringify(thrown)).not.toContain(secret);
   });
 });

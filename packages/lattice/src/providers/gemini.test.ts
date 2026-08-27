@@ -199,8 +199,55 @@ describe("Phase 4 Gemini adapter", () => {
     // generationConfig
     expect(body.generationConfig).toBeDefined();
     const cfg = body.generationConfig as Record<string, unknown>;
-    expect(typeof cfg.maxOutputTokens).toBe("number");
+    expect(cfg.maxOutputTokens).toBe(2000);
   });
+
+  it("serializes an explicit output ceiling while preserving signal and usage", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const controller = new AbortController();
+    const adapter = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    const response = await adapter.execute!({
+      task: "bounded",
+      artifacts: [],
+      outputs: ["text"],
+      signal: controller.signal,
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const config = body.generationConfig as Record<string, unknown>;
+    expect(config.maxOutputTokens).toBe(16);
+    expect(capture.init.signal).toBe(controller.signal);
+    expect(response.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 50,
+      totalTokens: 150,
+    });
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid maxOutputTokens=%s before transport",
+    (maxOutputTokens) => {
+      let transports = 0;
+      const fetch = (async () => {
+        transports += 1;
+        return new Response();
+      }) as unknown as typeof globalThis.fetch;
+
+      expect(() => createGeminiProvider({
+        model: "gemini-1.5-flash",
+        apiKey: "AIza-test",
+        fetch,
+        maxOutputTokens,
+      })).toThrow("maxOutputTokens must be a positive integer");
+      expect(transports).toBe(0);
+    },
+  );
 
   it("Gemini packages image artifacts as inlineData parts", async () => {
     const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
@@ -502,6 +549,58 @@ describe("Phase 4 Gemini adapter", () => {
     expect(response2.normalizedUsage?.costUsd).toBeNull();
   });
 
+  it("normalizes legacy and partial pricing while retaining reported cost", async () => {
+    const body = {
+      candidates: [{ content: { parts: [{ text: "hi" }] } }],
+      usageMetadata: { promptTokenCount: 1_000, candidatesTokenCount: 500 },
+    };
+    const { fetch: legacyFetch } = makeFakeFetch(body);
+    const legacy = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputCostPer1M: 1.25, outputCostPer1M: 5 },
+      fetch: legacyFetch,
+    });
+    const legacyResponse = await legacy.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(legacyResponse.normalizedUsage?.costUsd).toBeCloseTo(0.00375, 12);
+
+    const { fetch: partialFetch } = makeFakeFetch(body);
+    const partial = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputPer1kTokens: 0.00125 },
+      fetch: partialFetch,
+    });
+    const partialResponse = await partial.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(partialResponse.normalizedUsage?.costUsd).toBeNull();
+
+    const { fetch: reportedFetch } = makeFakeFetch({
+      ...body,
+      usageMetadata: { ...body.usageMetadata, costUsd: 0.5 },
+    });
+    const reported = createGeminiProvider({
+      model: "gemini-1.5-flash",
+      apiKey: "AIza-test",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      fetch: reportedFetch,
+    });
+    const reportedResponse = await reported.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(reportedResponse.normalizedUsage?.costUsd).toBe(0.5);
+    expect(reportedResponse.usage?.costUsd).toBe(0.5);
+  });
+
   it("Test 7 (D-09.7): AbortSignal wiring -- request.signal propagates to fetch", async () => {
     const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
     const adapter = createGeminiProvider({
@@ -749,6 +848,28 @@ describe("Phase 44: Gemini streaming", () => {
     expect(capture.url).toContain("alt=sse");
     expect(Array.isArray(body.contents)).toBe(true);
     expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("uses the configured output ceiling for streaming", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseData({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }),
+    ]);
+    const adapter = createGeminiProvider({
+      model: "gemini-2.0-flash",
+      apiKey: "AIza-test",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    const config = body.generationConfig as Record<string, unknown>;
+    expect(config.maxOutputTokens).toBe(16);
   });
 
   it("Gemini streaming uses the multimodal request body", async () => {

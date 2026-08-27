@@ -238,8 +238,54 @@ describe("Phase 4 Anthropic adapter", () => {
     const messages = body.messages as readonly { role: string; content: string }[];
     expect(messages[0]?.role).toBe("user");
     expect(messages[0]?.content).toBe("task-text-here");
-    expect(typeof body.max_tokens).toBe("number");
+    expect(body.max_tokens).toBe(2000);
   });
+
+  it("serializes an explicit output ceiling while preserving signal and usage", async () => {
+    const { fetch, capture } = makeFakeFetch(HAPPY_BODY);
+    const controller = new AbortController();
+    const adapter = createAnthropicProvider({
+      model: "claude-3-haiku",
+      apiKey: "sk-ant-test",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    const response = await adapter.execute!({
+      task: "bounded",
+      artifacts: [],
+      outputs: ["text"],
+      signal: controller.signal,
+    });
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
+    expect(capture.init.signal).toBe(controller.signal);
+    expect(response.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 50,
+      totalTokens: 150,
+    });
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid maxOutputTokens=%s before transport",
+    (maxOutputTokens) => {
+      let transports = 0;
+      const fetch = (async () => {
+        transports += 1;
+        return new Response();
+      }) as unknown as typeof globalThis.fetch;
+
+      expect(() => createAnthropicProvider({
+        model: "claude-3-haiku",
+        apiKey: "sk-ant-test",
+        fetch,
+        maxOutputTokens,
+      })).toThrow("maxOutputTokens must be a positive integer");
+      expect(transports).toBe(0);
+    },
+  );
 
   it("Anthropic packages image artifacts as base64 image blocks", async () => {
     const image = artifact.image(new Blob(["png"], { type: "image/png" }), {
@@ -451,6 +497,60 @@ describe("Phase 4 Anthropic adapter", () => {
       outputs: ["text"],
     });
     expect(response2.normalizedUsage?.costUsd).toBeNull();
+  });
+
+  it("normalizes legacy and partial pricing while retaining reported cost", async () => {
+    const { fetch: legacyFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500 },
+    });
+    const legacy = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputCostPer1M: 15, outputCostPer1M: 75 },
+      fetch: legacyFetch,
+    });
+    const legacyResponse = await legacy.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(legacyResponse.normalizedUsage?.costUsd).toBeCloseTo(0.0525, 12);
+
+    const { fetch: partialFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500 },
+    });
+    const partial = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputPer1kTokens: 0.015 },
+      fetch: partialFetch,
+    });
+    const partialResponse = await partial.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(partialResponse.normalizedUsage?.costUsd).toBeNull();
+
+    const { fetch: reportedFetch } = makeFakeFetch({
+      content: [{ text: "hi" }],
+      usage: { input_tokens: 1_000, output_tokens: 500, costUsd: 0.75 },
+    });
+    const reported = createAnthropicProvider({
+      model: "claude-3-opus",
+      apiKey: "sk-ant-test",
+      pricing: { inputPer1kTokens: 999, outputPer1kTokens: 999 },
+      fetch: reportedFetch,
+    });
+    const reportedResponse = await reported.execute!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    });
+    expect(reportedResponse.normalizedUsage?.costUsd).toBe(0.75);
+    expect(reportedResponse.usage?.costUsd).toBe(0.75);
   });
 
   it("Test 7 (D-09.7): AbortSignal wiring -- request.signal propagates to fetch", async () => {
@@ -677,6 +777,27 @@ describe("Phase 44: Anthropic streaming", () => {
     expect(capture.url).toMatch(/\/v1\/messages$/);
     expect(body.stream).toBe(true);
     expect(response.rawOutputs.text).toBe("hello");
+  });
+
+  it("uses the configured output ceiling for streaming", async () => {
+    const { fetch, capture } = makeStreamingFetch([
+      sseEvent("message_stop", { type: "message_stop" }),
+    ]);
+    const adapter = createAnthropicProvider({
+      model: "claude-opus-4-6",
+      apiKey: "sk-ant-test",
+      fetch,
+      maxOutputTokens: 16,
+    });
+
+    await collectStream(await adapter.executeStream!({
+      task: "t",
+      artifacts: [],
+      outputs: ["text"],
+    }));
+
+    const body = JSON.parse(String(capture.init.body)) as Record<string, unknown>;
+    expect(body.max_tokens).toBe(16);
   });
 
   it("Anthropic streaming uses the multimodal request body", async () => {

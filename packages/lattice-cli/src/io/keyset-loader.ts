@@ -16,8 +16,7 @@
  * pattern-match on `kind`.
  *
  * The loader does NOT deep-validate the JWK — `crypto.subtle.importKey` is
- * the source of truth at verify time. The CONTEXT.md note "keep the loader
- * tiny" is honored here.
+ * the source of truth at verify time, which keeps this loader small.
  */
 
 import { readFile } from "node:fs/promises";

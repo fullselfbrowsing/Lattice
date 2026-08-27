@@ -33,6 +33,10 @@ export type {
 export type { PiiDetector, PiiDetectorResult } from "../contract/pii-detectors.js";
 export type { TripwireEvidence, TripwireResult } from "../contract/tripwire.js";
 export type {
+  MaterializeContextInput,
+  MaterializedContext,
+} from "../context/materialize.js";
+export type {
   InferOutput,
   InferOutputMap,
 } from "../outputs/infer.js";
@@ -56,6 +60,7 @@ export type {
 export type {
   ContextPackItemPlan,
   ContextPackPlan,
+  ContextProjectionPlan,
   ExecutionPlan,
   ExecutionPlanStage,
   ExecutionPlanStub,
@@ -70,8 +75,20 @@ export type {
   SelectedRoute,
   UsageRecord,
 } from "../plan/plan.js";
-export type { PolicySpec } from "../policy/policy.js";
+export type {
+  ArtifactRetentionPolicy,
+  MissingArtifactRefPolicy,
+  PolicySpec,
+} from "../policy/policy.js";
 export type { TrainingClass } from "../capabilities/profile.js";
+export type {
+  CostDimensionEstimate,
+  CostEstimate,
+  CostEstimateStatus,
+  CostPricingSource,
+  CostUnknownReason,
+  EstimateCostInput,
+} from "../routing/cost.js";
 export type {
   CapabilityModality,
   ModelCapability,
@@ -120,11 +137,26 @@ export type {
   RealtimeTransportKind,
 } from "../realtime/realtime.js";
 export type {
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
+  ContextMaterializationError,
+  ContextMaterializationFailureReason,
   LatticeRunError,
+  PersistenceError,
+  PersistenceLifecycleKind,
   TripwireViolationError,
   ValidationIssue,
 } from "../results/errors.js";
 export type { RunFailure, RunResult, RunSuccess } from "../results/result.js";
+export type {
+  ArtifactLifecycleKind,
+  ArtifactLifecycleReport,
+  ArtifactLifecycleSkipReason,
+  PreservedArtifactLifecycleReport,
+  SkippedArtifactLifecycleReport,
+  StoredArtifactLifecycleReport,
+} from "./artifact-lifecycle.js";
 export type {
   AppendSessionTurnInput,
   CreateSessionOptions,
@@ -141,22 +173,32 @@ export type {
   StoredArtifactPayloadDescriptor,
 } from "../storage/storage.js";
 export type {
+  EffectiveReceiptPolicy,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
+  ReceiptPolicyInput,
+} from "../receipts/policy.js";
+export type {
   CapabilityReceiptBody,
   ContractVerdict,
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   ReceiptEnvelope,
   ReceiptModel,
   ReceiptRedaction,
   ReceiptRoute,
+  ReceiptSignatureProfile,
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  VerificationProfile,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "../receipts/types.js";
 export type {

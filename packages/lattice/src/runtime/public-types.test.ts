@@ -4,6 +4,7 @@ import type {
   BudgetInvariant,
   CapabilityContract,
   ContractRejectReasonCode,
+  CostEstimate,
   InvariantDeclaration,
   QualityFloorInvariant,
   RealtimeSessionSpec,
@@ -37,6 +38,11 @@ describe("Phase 7 public type exports", () => {
   it("Usage.costUsd is number | null (never undefined)", () => {
     const u: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
     expectTypeOf(u.costUsd).toEqualTypeOf<number | null>();
+  });
+
+  it("CostEstimate exposes known versus unknown totals", () => {
+    expectTypeOf<CostEstimate["status"]>().toEqualTypeOf<"known" | "unknown">();
+    expectTypeOf<CostEstimate["totalCostUsd"]>().toEqualTypeOf<number | null>();
   });
 
   it("ContractRejectReasonCode is the closed four-value union", () => {

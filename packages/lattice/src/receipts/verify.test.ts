@@ -66,12 +66,52 @@ async function signBody(
 ): Promise<ReceiptEnvelope> {
   const payloadBytes = canonicalizeReceiptBody(body);
   const payload = base64Encode(payloadBytes);
-  const pae = buildPae(PAYLOAD_TYPE, payload);
+  const pae = buildPae(PAYLOAD_TYPE, payloadBytes);
   const sig = await signer.sign(pae);
   return {
     payloadType: PAYLOAD_TYPE,
     payload,
     signatures: [{ keyid: signer.kid, sig: base64Encode(sig) }],
+  };
+}
+
+async function signLegacyBody(
+  body: CapabilityReceiptBody,
+  signer: ReceiptSigner,
+): Promise<ReceiptEnvelope> {
+  const payloadBytes = canonicalizeReceiptBody(body);
+  const payload = base64Encode(payloadBytes);
+  const pae = new TextEncoder().encode(
+    `DSSEv1 ${PAYLOAD_TYPE.length} ${PAYLOAD_TYPE} ${payload.length} ${payload}`,
+  );
+  const sig = await signer.sign(pae);
+  return {
+    payloadType: PAYLOAD_TYPE,
+    payload,
+    signatures: [{ keyid: signer.kid, sig: base64Encode(sig) }],
+  };
+}
+
+function historicalBody(
+  kid: string,
+  version: "lattice-receipt/v1.1" | "lattice-receipt/v1.2" | "lattice-receipt/v1.3" =
+    "lattice-receipt/v1.3",
+): CapabilityReceiptBody {
+  return {
+    version,
+    receiptId: "00000000-0000-4000-8000-000000000057",
+    runId: "legacy-bridge-run",
+    issuedAt: "2026-07-16T00:00:00.000Z",
+    kid,
+    model: { requested: "test", observed: null },
+    route: { providerId: "p", capabilityId: "p/x", attemptNumber: 1 },
+    usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+    contractVerdict: "success",
+    contractHash: null,
+    inputHashes: [],
+    outputHash: null,
+    redactionPolicyId: "lattice.default.v1",
+    redactions: [],
   };
 }
 
@@ -83,10 +123,13 @@ describe("verify.ts — happy path", () => {
     const result = await verifyReceipt(env, keySet);
       expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.modelClass).toBeUndefined();
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
+      expect(result.verificationProfile).toBe("dsse-v1");
+      expect(result.deprecated).toBe(false);
     }
   });
 
@@ -100,6 +143,143 @@ describe("verify.ts — happy path", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.keyState).toBe("retired");
+    }
+  });
+});
+
+describe("verify.ts — signature profile bridge", () => {
+  it("labels a valid historical base64-PAE receipt as deprecated", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("legacy-kid");
+    const envelope = await signLegacyBody(historicalBody("legacy-kid"), signer);
+    const keySet = createMemoryKeySet([
+      entryWith("legacy-kid", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.verificationProfile).toBe("lattice-legacy-base64-pae");
+      expect(result.deprecated).toBe(true);
+      expect(result.body.version).toBe("lattice-receipt/v1.3");
+    }
+  });
+
+  it("rejects a historical base64-PAE receipt under strict policy", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("legacy-strict");
+    const envelope = await signLegacyBody(
+      historicalBody("legacy-strict"),
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("legacy-strict", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet, {
+      legacyPolicy: "reject",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("legacy-profile-rejected");
+    }
+  });
+
+  it("accepts standard DSSE on a historical body without relabeling it legacy", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("historical-standard");
+    const envelope = await signBody(
+      historicalBody("historical-standard", "lattice-receipt/v1.2"),
+      signer,
+    );
+    const keySet = createMemoryKeySet([
+      entryWith("historical-standard", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet, {
+      legacyPolicy: "reject",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.verificationProfile).toBe("dsse-v1");
+      expect(result.deprecated).toBe(false);
+    }
+  });
+
+  it("never falls back when a v1.4/dsse-v1 body is signed with legacy PAE", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("corrected-no-fallback");
+    const body: CapabilityReceiptBody = {
+      ...historicalBody("corrected-no-fallback"),
+      version: "lattice-receipt/v1.4",
+      signatureProfile: "dsse-v1",
+    };
+    const envelope = await signLegacyBody(body, signer);
+    const keySet = createMemoryKeySet([
+      entryWith("corrected-no-fallback", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("signature-invalid");
+    }
+  });
+
+  it("rejects v1.4 with a missing signatureProfile independently", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("missing-profile");
+    const invalidBody = {
+      ...historicalBody("missing-profile"),
+      version: "lattice-receipt/v1.4",
+    } as unknown as CapabilityReceiptBody;
+    const envelope = await signBody(invalidBody, signer);
+    const keySet = createMemoryKeySet([
+      entryWith("missing-profile", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("signature-profile-mismatch");
+    }
+  });
+
+  it("rejects a corrected profile marker on a historical body", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("old-profile-marker");
+    const invalidBody = {
+      ...historicalBody("old-profile-marker"),
+      signatureProfile: "dsse-v1",
+    } as unknown as CapabilityReceiptBody;
+    const envelope = await signBody(invalidBody, signer);
+    const keySet = createMemoryKeySet([
+      entryWith("old-profile-marker", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(envelope, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("signature-profile-mismatch");
+    }
+  });
+
+  it("returns signature-invalid for corrupt historical cryptography under allow", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("legacy-corrupt");
+    const envelope = await signLegacyBody(
+      historicalBody("legacy-corrupt"),
+      signer,
+    );
+    const signature = base64Decode(envelope.signatures[0]!.sig);
+    signature[0] = signature[0]! ^ 0x01;
+    const corrupted: ReceiptEnvelope = {
+      ...envelope,
+      signatures: [
+        { keyid: envelope.signatures[0]!.keyid, sig: base64Encode(signature) },
+      ],
+    };
+    const keySet = createMemoryKeySet([
+      entryWith("legacy-corrupt", publicKeyJwk, "active"),
+    ]);
+
+    const result = await verifyReceipt(corrupted, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("signature-invalid");
     }
   });
 });
@@ -255,7 +435,7 @@ describe("verify.ts — error kinds", () => {
     };
     const payloadBytes = new TextEncoder().encode(JSON.stringify(v2Body));
     const payload = base64Encode(payloadBytes);
-    const pae = buildPae(PAYLOAD_TYPE, payload);
+    const pae = buildPae(PAYLOAD_TYPE, payloadBytes);
     const sig = await signer.sign(pae);
     const env: ReceiptEnvelope = {
       payloadType: PAYLOAD_TYPE,
@@ -431,7 +611,7 @@ describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
     }
   });
 
-  it("accepts a normally-minted v1.3 receipt with lineageMerkleRoot", async () => {
+  it("accepts a normally-minted v1.4 receipt with lineageMerkleRoot", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-46-verify-key");
     const env = await createReceipt(
       minimalInput({
@@ -446,7 +626,8 @@ describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.lineageMerkleRoot).toBe(`sha256:${"cd".repeat(32)}`);
     }
   });
@@ -666,7 +847,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     };
     const payloadBytes = new TextEncoder().encode(JSON.stringify(v2Body));
     const payload = base64Encode(payloadBytes);
-    const pae = buildPae(PAYLOAD_TYPE, payload);
+    const pae = buildPae(PAYLOAD_TYPE, payloadBytes);
     const sig = await signer.sign(pae);
     const env: ReceiptEnvelope = {
       payloadType: PAYLOAD_TYPE,
@@ -753,7 +934,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     }
   });
 
-  it("accepts a normally-minted v1.3 receipt (positive control regression guard)", async () => {
+  it("accepts a normally-minted v1.4 receipt (positive control regression guard)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
     const env = await createReceipt(
       {
@@ -770,7 +951,8 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
+      expect(result.body.signatureProfile).toBe("dsse-v1");
       expect(result.body.stepName).toBe("crypto-01-positive");
     }
   });

@@ -1,7 +1,7 @@
 /**
  * WebCrypto Ed25519 wrappers + in-memory signer factory.
  *
- * 09-CONTEXT.md (UNRETROFITTABLE):
+ * Signing contract:
  *   - Algorithm name is the LITERAL string "Ed25519" (no params object needed
  *     for sign/verify; Node 24 subtle accepts both forms).
  *   - ReceiptSigner returns 64-byte Ed25519 signatures.
@@ -9,16 +9,15 @@
  *   - Production users plug their own signer (KMS adapter / OS keyring).
  *     createInMemorySigner is the in-process default for tests and dev.
  *
- * Reconciled in plan 09-03 to import ReceiptSigner from ./types.js (plan 09-01
- * owns the spine). `ReceiptSigner_Local` retained as a deprecated alias for
- * backward compatibility with Wave 1 sibling imports.
+ * ReceiptSigner lives in ./types.js. `ReceiptSigner_Local` remains a
+ * deprecated alias for backward compatibility.
  */
 
 import type { ReceiptSigner } from "./types.js";
 
 /**
  * @deprecated Use ReceiptSigner from "./types.js". Retained as an alias
- * during the Wave 1 -> Wave 2 reconciliation.
+ * for backward compatibility.
  */
 export type ReceiptSigner_Local = ReceiptSigner;
 

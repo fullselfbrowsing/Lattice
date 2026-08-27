@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CANONICAL_PROJECTED_OUTPUT_TOKENS,
+  COST_ESTIMATOR_VERSION,
   collectStream,
   contract,
   createAI,
+  createCostTracker,
   createExternalExecutionAudit,
   createInMemorySigner,
   createLangfuseOtlpConfig,
@@ -16,6 +19,7 @@ import {
   createRealtimeCheckpointContext,
   createRemoteReceiptSigner,
   evaluateTripwires,
+  estimateCost,
   generateEd25519KeyPairJwk,
   inv,
   isTerminal,
@@ -26,6 +30,7 @@ import {
   getStructuredOutputContract,
   getToolUseContract,
   realtimeStepName,
+  resolveReceiptPolicy,
   sanitizeRunEventAttributes,
   stripChatTemplateArtifacts,
   stripOpenRouterVariant,
@@ -36,22 +41,31 @@ import {
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
 import type {
+  AgentFailure,
+  AgentSnapshot,
+  AuditError,
   BudgetInvariant,
   CapabilityContract,
   CapabilityReceiptBody,
   ContractRejectReasonCode,
   ContractVerdict,
+  CostEstimate,
+  CostTrackerOptions,
   FieldFromTableInvariant,
   InvariantDeclaration,
+  IterationRecord,
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   MatchesInvariant,
   MaterializationError,
   MustCiteInvariant,
   NoPiiInvariant,
   QualityFloorInvariant,
   ReceiptEnvelope,
+  ReceiptIssuanceMode,
+  ReceiptSignatureProfile,
   ReceiptSigner,
   RemoteReceiptSignRequest,
   RemoteReceiptSignerOptions,
@@ -62,7 +76,9 @@ import type {
   TripwireResult,
   TripwireViolationError,
   Usage,
+  VerificationProfile,
   VerifyError,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "../src/index.js";
 
@@ -71,6 +87,8 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "ALL_TRAINING_CLASSES",
   "AgentDeniedError",
   "BAND",
+  "CANONICAL_PROJECTED_OUTPUT_TOKENS",
+  "COST_ESTIMATOR_VERSION",
   "DEFAULT_CHECKPOINT_BAND",
   "NegotiationAuthError",
   "NoPublicUrlEgressError",
@@ -125,6 +143,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "defaultPiiDetectors",
   "defineAgent",
   "defineTool",
+  "estimateCost",
   "estimateRouteCost",
   "evalAgentRun",
   "evaluateContractAgainstRoute",
@@ -139,12 +158,14 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "importMcpTools",
   "inv",
   "isTerminal",
+  "issueReceipt",
   "latticeVersion",
   "materializeReplayEnvelope",
   "negotiateCapabilities",
   "output",
   "parseToolUseEnvelope",
   "permissionGuardRegisterOptions",
+  "preflightReceiptPolicy",
   "realtimeStepName",
   "receiptCid",
   "redactArtifactRef",
@@ -152,6 +173,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "redactReplayEnvelope",
   "replayOffline",
   "rerunLive",
+  "resolveReceiptPolicy",
   "runAgent",
   "runAgentCrew",
   "runTool",
@@ -172,6 +194,153 @@ describe("public-surface inventory", () => {
     const mod = await import("../src/index.js");
     expect(Object.keys(mod).sort()).toEqual([...EXPECTED_PUBLIC_VALUE_EXPORTS]);
     expect("default" in mod).toBe(false);
+  });
+
+  it("keeps authoritative orchestration internals out of the beginner root", async () => {
+    const mod = await import("../src/index.js");
+
+    for (const internalName of [
+      "ArtifactLifecycleFailure",
+      "ContextMaterializationFailure",
+      "createCrewDispatcher",
+      "materializeContext",
+      "persistArtifactLifecycle",
+      "persistArtifactLifecycleBatch",
+      "prepareRouteAttempt",
+      "runAgentInternal",
+      "toContextProjectionPlan",
+    ]) {
+      expect(internalName in mod).toBe(false);
+    }
+  });
+});
+
+describe("Phase 61 public type surface", () => {
+  it("reaches additive agent evidence while preserving historical literals", () => {
+    const envelope: ReceiptEnvelope = {
+      payloadType: "application/vnd.lattice.receipt+json",
+      payload: "e30=",
+      signatures: [{ keyid: "public", sig: "AA==" }],
+    };
+    const historicalIteration: IterationRecord = {
+      index: 0,
+      provider: "legacy-provider",
+      promptTokens: 1,
+      completionTokens: 1,
+      costUsd: null,
+      durationMs: 1,
+      toolCalls: [],
+    };
+    const evidenceIteration: IterationRecord = {
+      ...historicalIteration,
+      iterationId: "agent-execution:public:iteration:0",
+      receipt: envelope,
+    };
+    const historicalSnapshot: AgentSnapshot = {
+      version: "agent-snapshot/v1",
+      iterationIndex: 1,
+      conversation: [],
+      cumulativeUsage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+      providerName: "legacy-provider",
+      capturedAt: "2026-07-17T00:00:00.000Z",
+    };
+    const evidenceSnapshot: AgentSnapshot = {
+      ...historicalSnapshot,
+      executionId: "agent-execution:public",
+      iterations: [evidenceIteration],
+    };
+    const recoveryFailure: AgentFailure = {
+      kind: "agent-recovery-failed",
+      reason: "snapshot-invalid",
+      usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+      iterations: [],
+    };
+
+    expect(historicalIteration.iterationId).toBeUndefined();
+    expect(evidenceIteration.receipt).toBe(envelope);
+    expect(historicalSnapshot.executionId).toBeUndefined();
+    expect(evidenceSnapshot.iterations?.[0]).toBe(evidenceIteration);
+    expect(recoveryFailure.kind).toBe("agent-recovery-failed");
+  });
+});
+
+describe("Phase 60 public type surface", () => {
+  it("exposes receipt policy and structured cost values from the package root", () => {
+    const mode: ReceiptIssuanceMode = "required";
+    const policy = resolveReceiptPolicy({ mode });
+    const estimate: CostEstimate = estimateCost({
+      pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+      inputTokens: 1_000,
+      outputTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+    });
+    const trackerOptions: CostTrackerOptions = {
+      pricing: { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002 },
+    };
+    const tracker = createCostTracker(trackerOptions);
+    tracker.recordIteration({
+      promptTokens: 1_000,
+      completionTokens: CANONICAL_PROJECTED_OUTPUT_TOKENS,
+      costUsd: null,
+    });
+
+    expect(policy).toEqual({ mode: "required" });
+    expect(estimate.version).toBe(COST_ESTIMATOR_VERSION);
+    expect(tracker.latestEstimate()).toEqual(estimate);
+  });
+
+  it("keeps AuditError a bounded terminal discriminated type", () => {
+    const error: AuditError = {
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
+      terminal: true,
+    };
+
+    expect(error).toEqual({
+      kind: "audit",
+      code: "receipt-signing-failed",
+      stage: "post-execution",
+      message: "Receipt signing failed.",
+      terminal: true,
+    });
+  });
+});
+
+describe("Phase 59 public type surface", () => {
+  it("reaches stable authoritative-state contracts through the package root", () => {
+    type _ArtifactLifecycleReport =
+      import("../src/index.js").ArtifactLifecycleReport;
+    type _ArtifactRetentionPolicy =
+      import("../src/index.js").ArtifactRetentionPolicy;
+    type _ContextMaterializationError =
+      import("../src/index.js").ContextMaterializationError;
+    type _ContextProjectionPlan =
+      import("../src/index.js").ContextProjectionPlan;
+    type _MaterializeContextInput =
+      import("../src/index.js").MaterializeContextInput;
+    type _MaterializedContext = import("../src/index.js").MaterializedContext;
+    type _MissingArtifactRefPolicy =
+      import("../src/index.js").MissingArtifactRefPolicy;
+    type _PersistenceError = import("../src/index.js").PersistenceError;
+    type _ProviderAttemptRecord =
+      import("../src/index.js").ProviderAttemptRecord;
+    type _SessionRecord = import("../src/index.js").SessionRecord;
+    type _SessionStore = import("../src/index.js").SessionStore;
+
+    void (null as unknown as
+      | _ArtifactLifecycleReport
+      | _ArtifactRetentionPolicy
+      | _ContextMaterializationError
+      | _ContextProjectionPlan
+      | _MaterializeContextInput
+      | _MaterializedContext
+      | _MissingArtifactRefPolicy
+      | _PersistenceError
+      | _ProviderAttemptRecord
+      | _SessionRecord
+      | _SessionStore);
+    expect(true).toBe(true);
   });
 });
 
@@ -484,6 +653,10 @@ describe("Phase 9 public surface", () => {
     ]);
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.verificationProfile).toBe("dsse-v1");
+      expect(verifyResult.deprecated).toBe(false);
+    }
   });
 
   it("type-only: Phase 9 types compile and are reachable from the consumer-visible path", () => {
@@ -496,6 +669,13 @@ describe("Phase 9 public surface", () => {
     const _remoteRequest: RemoteReceiptSignRequest | undefined = undefined;
     const _remoteOptions: RemoteReceiptSignerOptions | undefined = undefined;
     const _keyState: KeyState | undefined = undefined;
+    const _legacyPolicy: LegacyReceiptPolicy = "reject";
+    const _signatureProfile: ReceiptSignatureProfile = "dsse-v1";
+    const _verificationProfile: VerificationProfile =
+      "lattice-legacy-base64-pae";
+    const _verifyOptions: VerifyReceiptOptions = {
+      legacyPolicy: _legacyPolicy,
+    };
     const _verifyResult: VerifyResult | undefined = undefined;
     const _verifyError: VerifyError | undefined = undefined;
     const _verdict: ContractVerdict | undefined = undefined;
@@ -507,6 +687,9 @@ describe("Phase 9 public surface", () => {
     void _remoteRequest;
     void _remoteOptions;
     void _keyState;
+    void _signatureProfile;
+    void _verificationProfile;
+    void _verifyOptions;
     void _verifyResult;
     void _verifyError;
     void _verdict;

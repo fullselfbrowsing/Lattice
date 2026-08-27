@@ -5,6 +5,7 @@ import type {
   ModelCapability,
   ProviderTransportMode,
 } from "../providers/provider.js";
+import type { CostEstimate } from "../routing/cost.js";
 
 export type ExecutionPlanStatus =
   | "stub"
@@ -61,6 +62,7 @@ export interface RouteCandidate {
 export interface RouteEstimates {
   readonly inputTokens: number;
   readonly outputTokens: number;
+  readonly costEstimate?: CostEstimate;
   readonly costUsd?: number;
   readonly latencyMs?: number;
 }
@@ -70,6 +72,7 @@ export interface SelectedRoute {
   readonly modelId: string;
   readonly score: number;
   readonly estimates: RouteEstimates;
+  readonly contextWindow?: number;
   readonly inputModalities: readonly CapabilityModality[];
   readonly outputModalities: readonly CapabilityModality[];
   readonly fileTransport: readonly ProviderTransportMode[];
@@ -79,6 +82,7 @@ export interface FallbackRoute {
   readonly providerId: string;
   readonly modelId: string;
   readonly score: number;
+  readonly estimates?: RouteEstimates;
   readonly reason: "policy-preserving-fallback";
 }
 
@@ -104,10 +108,23 @@ export interface ContextPackPlan {
 
 export interface ContextPackItemPlan {
   readonly artifactId?: string;
+  readonly artifactIds?: readonly string[];
+  readonly summaryArtifactIds?: readonly string[];
   readonly sessionTurnId?: string;
   readonly reason: string;
   readonly estimatedTokens: number;
   readonly trust: "developer" | "user" | "tool" | "model-summary";
+}
+
+export interface ContextProjectionPlan {
+  readonly id: string;
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly artifactRefs: readonly ArtifactRef[];
+  readonly summaryArtifactRefs: readonly ArtifactRef[];
+  readonly inputHashes: readonly string[];
+  readonly omittedArtifactIds: readonly string[];
+  readonly warnings: readonly string[];
 }
 
 export interface ProviderPackagingPlan {
@@ -152,6 +169,11 @@ export interface ProviderAttemptRecord {
   readonly completedAt?: string;
   readonly error?: string;
   readonly usage?: UsageRecord;
+  readonly context?: ContextPackPlan;
+  readonly contextProjection?: ContextProjectionPlan;
+  readonly providerPackaging?: ProviderPackagingPlan;
+  readonly inputHashes?: readonly string[];
+  readonly warnings?: readonly string[];
   readonly metadata?: Record<string, unknown>;
 }
 
@@ -175,6 +197,7 @@ export interface ExecutionPlan {
   readonly route: RouteDecision;
   readonly stages: readonly ExecutionPlanStage[];
   readonly context?: ContextPackPlan;
+  readonly contextProjection?: ContextProjectionPlan;
   readonly providerPackaging?: ProviderPackagingPlan;
   readonly attempts: readonly ProviderAttemptRecord[];
   readonly warnings: readonly string[];
@@ -198,6 +221,7 @@ export interface CreateExecutionPlanInput {
   readonly outputs: OutputContractMap;
   readonly route: RouteDecision;
   readonly context?: ContextPackPlan;
+  readonly contextProjection?: ContextProjectionPlan;
   readonly providerPackaging?: ProviderPackagingPlan;
   readonly warnings?: readonly string[];
   readonly metadata?: Record<string, unknown>;
@@ -207,10 +231,12 @@ export function createExecutionPlan(input: CreateExecutionPlanInput): ExecutionP
   const selected = input.route.selected;
   const status: ExecutionPlanStatus = selected === undefined ? "no-route" : "planned";
   const contextWarnings = input.context?.warnings ?? [];
+  const projectionWarnings = input.contextProjection?.warnings ?? [];
   const packagingWarnings = input.providerPackaging?.warnings ?? [];
   const warnings = [
     ...(input.warnings ?? []),
     ...contextWarnings,
+    ...projectionWarnings,
     ...packagingWarnings,
     ...input.route.noRouteReasons.map((reason) => reason.message),
   ];
@@ -227,6 +253,9 @@ export function createExecutionPlan(input: CreateExecutionPlanInput): ExecutionP
     route: input.route,
     stages: createDefaultStages(status, input.artifacts, warnings),
     ...(input.context !== undefined ? { context: input.context } : {}),
+    ...(input.contextProjection !== undefined
+      ? { contextProjection: input.contextProjection }
+      : {}),
     ...(input.providerPackaging !== undefined
       ? { providerPackaging: input.providerPackaging }
       : {}),
@@ -238,6 +267,16 @@ export function createExecutionPlan(input: CreateExecutionPlanInput): ExecutionP
               providerId: selected.providerId,
               modelId: selected.modelId,
               status: "pending",
+              ...(input.context !== undefined ? { context: input.context } : {}),
+              ...(input.contextProjection !== undefined
+                ? {
+                    contextProjection: input.contextProjection,
+                    inputHashes: input.contextProjection.inputHashes,
+                  }
+                : {}),
+              ...(input.providerPackaging !== undefined
+                ? { providerPackaging: input.providerPackaging }
+                : {}),
             },
           ],
     warnings,
@@ -262,7 +301,11 @@ export function withPlanStatus(
   plan: ExecutionPlan,
   status: ExecutionPlanStatus,
   updates: {
+    readonly route?: RouteDecision;
     readonly stages?: readonly ExecutionPlanStage[];
+    readonly context?: ContextPackPlan;
+    readonly contextProjection?: ContextProjectionPlan;
+    readonly providerPackaging?: ProviderPackagingPlan;
     readonly attempts?: readonly ProviderAttemptRecord[];
     readonly warnings?: readonly string[];
   } = {},
@@ -270,9 +313,67 @@ export function withPlanStatus(
   return {
     ...plan,
     status,
+    ...(updates.route !== undefined ? { route: updates.route } : {}),
     ...(updates.stages !== undefined ? { stages: updates.stages } : {}),
+    ...(updates.context !== undefined ? { context: updates.context } : {}),
+    ...(updates.contextProjection !== undefined
+      ? { contextProjection: updates.contextProjection }
+      : {}),
+    ...(updates.providerPackaging !== undefined
+      ? { providerPackaging: updates.providerPackaging }
+      : {}),
     ...(updates.attempts !== undefined ? { attempts: updates.attempts } : {}),
     ...(updates.warnings !== undefined ? { warnings: updates.warnings } : {}),
+  };
+}
+
+export function withPlanAttemptEvidence(
+  plan: ExecutionPlan,
+  status: ExecutionPlanStatus,
+  input: {
+    readonly route: SelectedRoute;
+    readonly attempts: readonly ProviderAttemptRecord[];
+    readonly context?: ContextPackPlan;
+    readonly contextProjection?: ContextProjectionPlan;
+    readonly providerPackaging?: ProviderPackagingPlan;
+    readonly stages?: readonly ExecutionPlanStage[];
+    readonly warnings?: readonly string[];
+    readonly metadata?: Record<string, unknown>;
+  },
+): ExecutionPlan {
+  const evidenceWarnings = stableUnique([
+    ...(input.warnings ?? []),
+    ...(input.context?.warnings ?? []),
+    ...(input.contextProjection?.warnings ?? []),
+    ...(input.providerPackaging?.warnings ?? []),
+  ]);
+
+  return {
+    id: plan.id,
+    kind: plan.kind,
+    version: plan.version,
+    createdAt: plan.createdAt,
+    status,
+    task: plan.task,
+    outputNames: plan.outputNames,
+    artifactRefs: plan.artifactRefs,
+    route: {
+      ...plan.route,
+      selected: input.route,
+    },
+    stages: input.stages ?? plan.stages,
+    ...(input.context !== undefined ? { context: input.context } : {}),
+    ...(input.contextProjection !== undefined
+      ? { contextProjection: input.contextProjection }
+      : {}),
+    ...(input.providerPackaging !== undefined
+      ? { providerPackaging: input.providerPackaging }
+      : {}),
+    attempts: input.attempts,
+    warnings: evidenceWarnings,
+    ...((input.metadata ?? plan.metadata) !== undefined
+      ? { metadata: input.metadata ?? plan.metadata }
+      : {}),
   };
 }
 
@@ -371,4 +472,8 @@ function createPlanId(): string {
   }
 
   return `plan:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+}
+
+function stableUnique(values: readonly string[]): readonly string[] {
+  return [...new Set(values)];
 }

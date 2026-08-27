@@ -13,6 +13,10 @@ export interface GatewayPolicy {
   readonly allowFallbacks?: boolean;
 }
 
+export type MissingArtifactRefPolicy = "error" | "omit";
+
+export type ArtifactRetentionPolicy = "none" | "session" | "durable";
+
 export interface PolicySpec {
   readonly maxCostUsd?: number;
   readonly latency?: "interactive" | "batch";
@@ -23,6 +27,9 @@ export interface PolicySpec {
   readonly noPublicUrl?: boolean;
   readonly noLogging?: boolean;
   readonly stream?: boolean;
+  readonly tenantId?: string;
+  readonly retention?: ArtifactRetentionPolicy;
+  readonly missingArtifactRef?: MissingArtifactRefPolicy;
   readonly gateway?: GatewayPolicy;
   readonly metadata?: Record<string, unknown>;
 }

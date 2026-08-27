@@ -14,10 +14,12 @@
     "test:types": "pnpm -r test:types",
     "lint:packages": "pnpm -r lint:packages",
     "check:package-version": "node scripts/check-package-version-surfaces.mjs",
+    "check:packed-consumer": "node scripts/check-protocol-package-consumer.mjs",
+    "check:protocol-package": "pnpm check:packed-consumer",
     "check:tarball": "node scripts/check-tarball-leak.mjs",
     "check:core-boundary": "node scripts/check-core-package-boundary.mjs",
     "check:module-boundaries": "node scripts/check-lattice-module-boundaries.mjs",
-    "check:node20-modules": "pnpm --filter @full-self-browsing/lattice build && node scripts/check-lattice-node20-modular.mjs",
+    "check:comment-hygiene": "node scripts/check-comment-hygiene.mjs",
     "example:work-inbox": "pnpm --filter @full-self-browsing/lattice build && node examples/work-inbox/index.mjs",
     "example:v14-validation": "pnpm --filter @full-self-browsing/lattice build && node examples/v14-validation/index.mjs",
     "example:external-consumer": "pnpm --filter @full-self-browsing/lattice build && node examples/external-consumer/index.mjs",
@@ -31,6 +33,7 @@
     "publint": "0.3.18",
     "tsd": "0.33.0",
     "tsdown": "0.21.9",
+    "tsx": "^4.22.4",
     "typescript": "6.0.3",
     "vitest": "4.1.5"
   }

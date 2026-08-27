@@ -15,11 +15,10 @@ import type { InvariantDeclaration as InvariantDeclarationUnion } from "./invari
 /**
  * Budget invariant declaration attached to a CapabilityContract.
  *
- * Phase 7 implements `maxCostUsd` enforcement at pre-flight. The
- * `p95LatencyMs` field is declared per CONTRACT-02 but is informational
- * only in Phase 7 — latency observations are wired in a later phase.
+ * `maxCostUsd` is enforced at preflight. `p95LatencyMs` is informational
+ * until the runtime has route-level latency observations.
  *
- * Phase 19 (v1.2) adds `maxIterations` and `maxWallTimeMs` for the agent
+ * `maxIterations` and `maxWallTimeMs` bound the agent
  * runtime. Both are additive and optional; non-agent callers ignore them.
  * `maxIterations` caps the number of `runAgent` iterations; `maxWallTimeMs`
  * caps wall-clock duration per `runAgent` invocation. Both are enforced
@@ -36,8 +35,8 @@ export interface BudgetInvariant {
  * Quality-floor invariant.
  *
  * `suite` is a fixture-directory path string; `minScore` is in 0..1.
- * Phase 7 forwards this into the pre-flight evaluator but only enforces
- * capability-side rejects. Full enforcement lives in Phase 12 (`lattice eval`).
+ * Preflight only enforces capability-side rejects; `lattice eval` enforces
+ * the score after execution.
  */
 export interface QualityFloorInvariant {
   readonly suite: string;
@@ -61,9 +60,8 @@ export interface CapabilityContract {
 }
 
 /**
- * Reject-reason taxonomy added to `RouteRejectReason.code` by Phase 7's
- * pre-flight evaluator. Closed four-value union per the locked decisions
- * in 07-CONTEXT.md.
+ * Closed reject-reason taxonomy used by the preflight evaluator and
+ * `RouteRejectReason.code`.
  */
 export type ContractRejectReasonCode =
   | "contract-budget-exceeded"
@@ -86,7 +84,7 @@ export interface CapabilityContractInput {
  * Mirrors the `output()` and adapter factory style — exact-optional safe
  * (does not emit `field: undefined` properties under `exactOptionalPropertyTypes`).
  * Returns a frozen value with frozen nested objects so downstream code can
- * rely on structural immutability when canonicalizing in Phase 9.
+ * rely on structural immutability during canonicalization.
  */
 export function contract(input: CapabilityContractInput = {}): CapabilityContract {
   return Object.freeze({

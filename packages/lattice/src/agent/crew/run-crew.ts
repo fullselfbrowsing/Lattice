@@ -1,5 +1,5 @@
 /**
- * runAgentCrew — Phase 39 (v1.3).
+ * runAgentCrew (v1.3).
  *
  * Opt-in multi-agent orchestration over the existing single-agent runtime.
  * The crew surface composes a literal `AgentSpec` tree, validates a
@@ -15,20 +15,28 @@
  * all wrapping for consumers who already coordinate quota externally.
  */
 
-import type { ArtifactRef } from "../../artifacts/artifact.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
   ProviderAdapter,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
-import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
-import { createReceipt } from "../../receipts/receipt.js";
+import {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+  type EffectiveReceiptPolicy,
+  type ReceiptIssuanceMode,
+  type ReceiptIssuanceOutcome,
+} from "../../receipts/policy.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
+import type { AuditError } from "../../results/errors.js";
 import type { LatticeConfig } from "../../runtime/config.js";
+import { accumulatedCostExceedsBudget } from "../../routing/cost.js";
 import type { TracerLike } from "../../tracing/tracing.js";
 import type { HookPipeline } from "../../contract/bands.js";
 
@@ -66,6 +74,8 @@ export interface RunAgentCrewOptions {
   readonly policy?: CrewPolicy;
   /** Crew-level signer threaded into member loops and completion receipts. */
   readonly signer?: ReceiptSigner;
+  /** Local receipt policy override. Takes precedence over runtime config. */
+  readonly receiptMode?: ReceiptIssuanceMode;
   /** Crew-level tracer threaded into member loops. */
   readonly tracer?: TracerLike;
   /** Crew-level hook pipeline threaded into member loops. */
@@ -118,15 +128,38 @@ export async function runAgentCrew(
   const policy = validateCrewPolicy(options.policy);
   const runId = `runAgentCrew-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const startedAt = Date.now();
+  const receiptPolicy = resolveCrewReceiptPolicy(options, config);
+  const receiptPreflight = preflightReceiptPolicy(receiptPolicy);
+  if (receiptPreflight?.status === "failed") {
+    emitCrewReceiptOutcome(options.tracer, "root", receiptPreflight);
+    return emptyAuditCrewResult(receiptPreflight.error);
+  }
+
   const accounting = new Map<string, AgentAccounting>();
+  const providerPricing = firstCrewProviderPricing(config);
   const receipts: ReceiptEnvelope[] = [];
   const receiptCidsByAgent = new Map<string, string[]>();
 
-  const crewRoot = await maybeMintCrewRoot({
+  const crewRootOutcome = await issueCrewRoot({
     runId,
     root: options.root,
-    ...(options.signer !== undefined ? { signer: options.signer } : {}),
+    policy: receiptPolicy,
   });
+  emitCrewReceiptOutcome(options.tracer, "root", crewRootOutcome);
+  if (
+    crewRootOutcome.status === "failed" &&
+    receiptPolicy.mode === "required"
+  ) {
+    return emptyAuditCrewResult(crewRootOutcome.error);
+  }
+
+  const crewRoot =
+    crewRootOutcome.status === "issued"
+      ? {
+          envelope: crewRootOutcome.envelope,
+          cid: await receiptCid(crewRootOutcome.envelope),
+        }
+      : undefined;
   if (crewRoot !== undefined) {
     receipts.push(crewRoot.envelope);
   }
@@ -138,11 +171,11 @@ export async function runAgentCrew(
   );
 
   function recordUsage(agentId: string, usage: Usage): void {
-    entryFor(accounting, agentId).tracker.recordIteration(usage);
+    entryFor(accounting, agentId, providerPricing).tracker.recordIteration(usage);
   }
 
   function recordAgentResult(agentId: string, result: AgentResult): void {
-    const entry = entryFor(accounting, agentId);
+    const entry = entryFor(accounting, agentId, providerPricing);
     entry.iterations += result.iterations.length;
   }
 
@@ -155,6 +188,17 @@ export async function runAgentCrew(
     });
   }
 
+  function collectReceipt(
+    agentId: string,
+    envelope: ReceiptEnvelope,
+    cid: string,
+  ): void {
+    receipts.push(envelope);
+    const cids = receiptCidsByAgent.get(agentId) ?? [];
+    cids.push(cid);
+    receiptCidsByAgent.set(agentId, cids);
+  }
+
   const dispatcher = createCrewDispatcher(options.root, {
     policy,
     childHost,
@@ -163,55 +207,79 @@ export async function runAgentCrew(
     recordAgentResult,
     remainingBudget,
     sharedPrefix: composeSharedPrefix(options.root),
-    mintedReceipts(envelope) {
-      receipts.push(envelope);
-    },
+    collectReceipt,
     config,
     ...(crewRoot !== undefined ? { crewRootCid: crewRoot.cid } : {}),
-    ...(options.signer !== undefined ? { signer: options.signer } : {}),
+    receiptMode: receiptPolicy.mode,
+    ...(receiptPolicy.signer !== undefined
+      ? { signer: receiptPolicy.signer }
+      : {}),
     ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
     ...(options.pipeline !== undefined ? { pipeline: options.pipeline } : {}),
   });
 
+  const parentBudget = deriveChildBudget(
+    options.root.contract?.budget,
+    remainingBudget(),
+    policy.maxIterationsPerAgent,
+  );
+  const parentContract =
+    parentBudget !== undefined
+      ? {
+          ...(options.root.contract ?? { kind: "capability-contract" as const }),
+          budget: parentBudget,
+        }
+      : options.root.contract;
   const parentIntent: AgentIntent = {
     task: options.root.intent,
     tools: [...options.root.tools, ...dispatcher.childToolDeclarations],
     host: wrapHostWithRateLimits(createNoopAgentHost(), groupForProvider),
-    ...(options.root.contract !== undefined ? { contract: options.root.contract } : {}),
-    ...(options.signer !== undefined ? { signer: options.signer } : {}),
+    ...(parentContract !== undefined ? { contract: parentContract } : {}),
+    receiptMode: receiptPolicy.mode,
+    ...(receiptPolicy.signer !== undefined
+      ? { signer: receiptPolicy.signer }
+      : {}),
     ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
     ...(options.pipeline !== undefined ? { pipeline: options.pipeline } : {}),
   };
 
   const parentResult = await runAgentInternal(parentIntent, config, {
     dispatchToolUse: dispatcher.dispatchToolUse,
+    remainingBudget,
+    ...(crewRoot !== undefined
+      ? {
+          terminalReceipt: {
+            stepName: `crew-agent-completion:${options.root.id}`,
+            parentReceiptCid: crewRoot.cid,
+          },
+        }
+      : {}),
   });
   recordUsage(options.root.id, parentResult.usage);
   recordAgentResult(options.root.id, parentResult);
 
-  if (options.signer !== undefined && crewRoot !== undefined) {
-    const parentEnvelope = await createAgentCompletionReceipt({
-      runId,
-      agentId: options.root.id,
-      usage: parentResult.usage,
-      signer: options.signer,
-      parentReceiptCid: crewRoot.cid,
-      success: parentResult.kind === "success",
-      artifacts: parentResult.kind === "success" ? parentResult.artifacts ?? [] : [],
-    });
-    receipts.push(parentEnvelope);
+  if (parentResult.receipt !== undefined) {
+    collectReceipt(
+      options.root.id,
+      parentResult.receipt,
+      await receiptCid(parentResult.receipt),
+    );
   }
 
-  await populateReceiptCidIndex(receipts, receiptCidsByAgent);
-
-  const result = dispatcher.crewBudgetExhausted() || crewBudgetViolated({
-    policy,
-    usage: totalUsage(accounting),
-    iterations: totalIterations(accounting),
-    startedAt,
-  })
-    ? buildCrewBudgetFailure(parentResult)
-    : parentResult;
+  const budgetExceeded =
+    dispatcher.crewBudgetExhausted() ||
+    crewBudgetViolated({
+      policy,
+      usage: totalUsage(accounting),
+      iterations: totalIterations(accounting),
+      startedAt,
+    });
+  const result =
+    parentResult.kind === "audit"
+      ? parentResult
+      : budgetExceeded
+        ? buildCrewBudgetFailure(parentResult)
+        : parentResult;
 
   return freezeCrewResult({
     result,
@@ -226,13 +294,36 @@ export async function runAgentCrew(
 function entryFor(
   accounting: Map<string, AgentAccounting>,
   agentId: string,
+  pricing?: ProviderPricingHint,
 ): AgentAccounting {
   let entry = accounting.get(agentId);
   if (entry === undefined) {
-    entry = { tracker: createCostTracker(), iterations: 0 };
+    entry = {
+      tracker: createCostTracker(
+        pricing !== undefined ? { pricing } : undefined,
+      ),
+      iterations: 0,
+    };
     accounting.set(agentId, entry);
   }
   return entry;
+}
+
+function firstCrewProviderPricing(
+  config: LatticeConfig,
+): ProviderPricingHint | undefined {
+  for (const provider of config.providers ?? []) {
+    if (
+      typeof provider !== "string" &&
+      provider.kind === "provider-adapter" &&
+      provider.execute !== undefined
+    ) {
+      return provider.capabilities?.find(
+        (capability) => capability.available !== false,
+      )?.pricing;
+    }
+  }
+  return undefined;
 }
 
 function totalUsage(accounting: Map<string, AgentAccounting>): Usage {
@@ -323,7 +414,7 @@ function crewBudgetViolated(input: {
   return (
     maxCostUsd !== undefined &&
     input.usage.costUsd !== null &&
-    input.usage.costUsd > maxCostUsd
+    accumulatedCostExceedsBudget(input.usage.costUsd, maxCostUsd)
   );
 }
 
@@ -406,13 +497,24 @@ function composeSharedPrefix(root: AgentSpec): string {
   return composeCrewCachePrefix(firstChild?.tools ?? root.tools);
 }
 
-async function maybeMintCrewRoot(input: {
+function resolveCrewReceiptPolicy(
+  options: RunAgentCrewOptions,
+  config: LatticeConfig,
+): EffectiveReceiptPolicy {
+  const mode = options.receiptMode ?? config.receiptMode;
+  const signer = options.signer ?? config.signer;
+  return resolveReceiptPolicy({
+    ...(mode !== undefined ? { mode } : {}),
+    ...(signer !== undefined ? { signer } : {}),
+  });
+}
+
+async function issueCrewRoot(input: {
   readonly runId: string;
   readonly root: AgentSpec;
-  readonly signer?: ReceiptSigner;
-}): Promise<{ readonly envelope: ReceiptEnvelope; readonly cid: string } | undefined> {
-  if (input.signer === undefined) return undefined;
-  const envelope = await createReceipt(
+  readonly policy: EffectiveReceiptPolicy;
+}): Promise<ReceiptIssuanceOutcome> {
+  return issueReceipt(
     {
       runId: input.runId,
       model: { requested: "lattice-crew/root", observed: null },
@@ -428,67 +530,24 @@ async function maybeMintCrewRoot(input: {
       outputHash: null,
       stepName: `crew-start:${input.root.id}`,
     },
-    input.signer,
-  );
-  return { envelope, cid: await receiptCid(envelope) };
-}
-
-async function createAgentCompletionReceipt(input: {
-  readonly runId: string;
-  readonly agentId: string;
-  readonly usage: Usage;
-  readonly signer: ReceiptSigner;
-  readonly parentReceiptCid: string;
-  readonly success: boolean;
-  readonly artifacts?: readonly ArtifactRef[];
-}): Promise<ReceiptEnvelope> {
-  const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
-    input.artifacts ?? [],
-  );
-  return createReceipt(
-    {
-      runId: input.runId,
-      model: { requested: "lattice-crew/agent-completion", observed: null },
-      route: {
-        providerId: "lattice-crew",
-        capabilityId: "lattice-crew/agent-completion",
-        attemptNumber: 1,
-      },
-      parentReceiptCid: input.parentReceiptCid,
-      ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
-      usage: input.usage,
-      contractVerdict: input.success ? "success" : "execution-failed",
-      contractHash: null,
-      inputHashes: [],
-      outputHash: null,
-      stepName: `crew-agent-completion:${input.agentId}`,
-    },
-    input.signer,
+    input.policy,
+    "pre-execution",
   );
 }
 
-async function populateReceiptCidIndex(
-  receipts: readonly ReceiptEnvelope[],
-  byAgent: Map<string, string[]>,
-): Promise<void> {
-  for (const envelope of receipts) {
-    const body = decodeReceiptBody(envelope);
-    const agentId = parseCompletionAgentId(body.stepName);
-    if (agentId === null) continue;
-    const cids = byAgent.get(agentId) ?? [];
-    cids.push(await receiptCid(envelope));
-    byAgent.set(agentId, cids);
-  }
-}
-
-function decodeReceiptBody(envelope: ReceiptEnvelope): { readonly stepName?: string } {
-  return JSON.parse(atob(envelope.payload)) as { readonly stepName?: string };
-}
-
-function parseCompletionAgentId(stepName: string | undefined): string | null {
-  const prefix = "crew-agent-completion:";
-  if (stepName?.startsWith(prefix) !== true) return null;
-  return stepName.slice(prefix.length);
+function emitCrewReceiptOutcome(
+  tracer: TracerLike | undefined,
+  scope: "root",
+  outcome: ReceiptIssuanceOutcome,
+): void {
+  tracer?.event?.("receipt.issuance", {
+    scope,
+    status: outcome.status,
+    ...(outcome.status === "skipped" ? { reason: outcome.reason } : {}),
+    ...(outcome.status === "failed"
+      ? { code: outcome.error.code, stage: outcome.error.stage }
+      : {}),
+  });
 }
 
 function buildPerAgent(
@@ -509,12 +568,34 @@ function buildPerAgent(
 
 function freezeCrewResult(result: CrewResult): CrewResult {
   return Object.freeze({
-    result: result.result,
+    result: Object.freeze(result.result),
     perAgent: Object.freeze([...result.perAgent]),
     usage: Object.freeze({ ...result.usage }),
     totalIterations: result.totalIterations,
     receipts: Object.freeze([...result.receipts]),
     ...(result.crewRootCid !== undefined ? { crewRootCid: result.crewRootCid } : {}),
+  });
+}
+
+function emptyAuditCrewResult(error: AuditError): CrewResult {
+  return freezeCrewResult({
+    result: buildCrewAuditFailure(error),
+    perAgent: [],
+    usage: ZERO_USAGE,
+    totalIterations: 0,
+    receipts: [],
+  });
+}
+
+function buildCrewAuditFailure(
+  error: AuditError,
+  source?: AgentResult,
+): AgentFailure {
+  return Object.freeze({
+    ...error,
+    reason: error.message,
+    usage: Object.freeze({ ...(source?.usage ?? ZERO_USAGE) }),
+    iterations: Object.freeze([...(source?.iterations ?? [])]),
   });
 }
 

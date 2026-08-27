@@ -1,28 +1,27 @@
 /**
- * `runEvalSession(config, deps)` — the Plan 12-02 orchestrator that composes
- * Wave 1 primitives (walker + materializer + verifier + replay + judge +
- * baseline comparators) into one async function returning a typed
+ * `runEvalSession(config, deps)` composes the walker, materializer, verifier,
+ * replay engine, judge, and baseline comparators into one async function returning a typed
  * `EvalRunReport`.
  *
- * Per-fixture pipeline (CONTEXT.md "Layered Determinism Classes"):
+ * Per-fixture pipeline:
  *
  *   Stage 1 — walker yields WalkedEntry; load-failed entries short-circuit
  *             to a `load-failed` FixtureReport.
  *   Stage 2 — materializeReplayEnvelope verifies the receipt FIRST and
  *             loads input artifacts; any failure -> `load-failed`.
  *   Stage 3 — second verifyReceipt to obtain the typed body for downstream
- *             usage/qualityFloor reads (cheap; mirrors Phase 11's repro.ts).
+ *             usage/qualityFloor reads; this mirrors repro.ts.
  *   Stage 4 — replayOffline reproduces the recorded outputs; failure -> `load-failed`.
  *   Stage 5 — Exact class: sha256(JSON.stringify(replay.outputs)) vs body.outputHash.
  *             Mismatch -> verdict=drift, regressionKind=output-hash-mismatch.
  *             SHORT-CIRCUITS Stage 6 + Stage 7.
- *   Stage 6 — Semantic-cheap class: no-op in v1.1 (CONTEXT.md "no-op in v1.1
- *             unless --outputs flag"). Reserved for future Standard Schema hook.
+ *   Stage 6 — Semantic-cheap class: no-op in v1.1 unless outputs are supplied.
+ *             Reserved for a future Standard Schema hook.
  *   Stage 7 — Semantic-expensive class: runs ONLY when Exact passed AND the
  *             receipt body declares a `qualityFloor`. runJudgeWithN with N=3
  *             + disk cache.
  *   Stage 8 — Baseline cost gate: even a Stage-5 match can become a
- *             cost-regression here (CONTEXT.md "match vs drift vs regression").
+ *             cost-regression here.
  *   Stage 9 — Baseline quality gate: only when both replay and baseline
  *             recorded a score.
  *   Stage 10 — Missing baseline entry: newFixtures++; verdict stays match,
@@ -51,6 +50,7 @@ import {
   type ArtifactInput,
   type CapabilityReceiptBody,
   type KeySet,
+  type MaterializationError,
   type ReceiptEnvelope,
 } from "@full-self-browsing/lattice";
 
@@ -95,9 +95,9 @@ export interface EvalRunnerDeps {
  * structural probe keeps the runner forward-compat without touching the
  * lattice package.
  */
-interface ReceiptBodyMaybeQualityFloor extends CapabilityReceiptBody {
+type ReceiptBodyMaybeQualityFloor = CapabilityReceiptBody & {
   readonly qualityFloor?: { readonly score: number } | null;
-}
+};
 
 function readQualityFloor(
   body: CapabilityReceiptBody,
@@ -117,7 +117,8 @@ async function sha256Hex(text: string): Promise<string> {
 
 function buildLoadFailedReport(
   fixtureId: string,
-  loadFailedReason: FixtureReport["loadFailedReason"] = null,
+  loadFailedStage: Exclude<FixtureReport["loadFailedStage"], null>,
+  loadFailedReason: Exclude<FixtureReport["loadFailedReason"], null>,
 ): FixtureReport {
   return {
     fixtureId,
@@ -127,8 +128,19 @@ function buildLoadFailedReport(
     qualityScore: null,
     deltaCostPct: null,
     deltaQuality: null,
+    loadFailedStage,
     loadFailedReason,
   };
+}
+
+function isMaterializationError(value: unknown): value is MaterializationError {
+  if (typeof value !== "object" || value === null) return false;
+  const kind = (value as { readonly kind?: unknown }).kind;
+  return (
+    kind === "verify-failed" ||
+    kind === "artifact-load-failed" ||
+    kind === "envelope-malformed"
+  );
 }
 
 function usageFromBody(body: CapabilityReceiptBody): FixtureReportUsage {
@@ -149,7 +161,7 @@ export async function runEvalSession(
   const buildArtifactLoader =
     deps.buildArtifactLoader ?? createFilesystemArtifactLoader;
 
-  // Load keyset once; failure propagates so the caller (Plan 03) maps to exit 2.
+  // Load the keyset once; failures propagate so the caller maps them to exit 2.
   // Keyset and Baseline load errors share an identical structural shape
   // (`{ kind, path, message }`), so we wrap KeysetLoadError with a `source`
   // discriminator to let the boundary (commands/eval.ts) distinguish them.
@@ -183,7 +195,7 @@ export async function runEvalSession(
   const fixtures: FixtureReport[] = [];
   let newFixtures = 0;
 
-  // Plan 13.1-02: pair each receipt with its sidecar via the Plan 01 walker.
+  // Pair each receipt with its sidecar through the receipt walker.
   // Sidecar-side load failures (malformed / version-mismatch / unsupported-
   // output-shape) surface here as a WalkedReceiptError whose resolvedPath is
   // INSIDE the sidecar directory — we disambiguate from receipt-side errors
@@ -201,7 +213,8 @@ export async function runEvalSession(
       fixtures.push(
         buildLoadFailedReport(
           entry.id,
-          isSidecarError ? "malformed-sidecar" : "verify-failed",
+          "load",
+          isSidecarError ? "malformed-sidecar" : "receipt-load-failed",
         ),
       );
       continue;
@@ -211,12 +224,12 @@ export async function runEvalSession(
     const envelope: ReceiptEnvelope = entry.envelope;
     const sidecar = entry.sidecar;
 
-    // Plan 13.1-02: when the sidecar is missing for this receipt, surface
+    // When the sidecar is missing for this receipt, surface
     // explicitly as `loadFailedReason: "no-sidecar"` instead of silently
-    // running an Exact-class compare that would always drift (the v1.1
-    // audit's EVAL-02/EVAL-06 forward-compat case).
+    // running an Exact-class compare that would always drift for an older
+    // forward-compatible envelope.
     if (sidecar === null) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "no-sidecar"));
+      fixtures.push(buildLoadFailedReport(fixtureId, "load", "no-sidecar"));
       continue;
     }
 
@@ -232,8 +245,17 @@ export async function runEvalSession(
         keySet,
         ...applied,
       });
-    } catch {
-      fixtures.push(buildLoadFailedReport(fixtureId, "verify-failed"));
+    } catch (error) {
+      const kind = isMaterializationError(error)
+        ? error.kind
+        : "envelope-malformed";
+      fixtures.push(
+        buildLoadFailedReport(
+          fixtureId,
+          kind === "verify-failed" ? "verification" : "materialization",
+          kind,
+        ),
+      );
       continue;
     }
 
@@ -242,15 +264,27 @@ export async function runEvalSession(
     // microsecond-level; same pattern as `repro.ts`.
     const verifyResult = await verifyReceipt(envelope, keySet);
     if (!verifyResult.ok) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "verify-failed"));
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "verification", "verify-failed"),
+      );
       continue;
     }
     const body = verifyResult.body;
 
     // Stage 4: replay.
-    const replay = await replayOffline(envelopeReplay);
+    let replay;
+    try {
+      replay = await replayOffline(envelopeReplay);
+    } catch {
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "replay", "replay-failed"),
+      );
+      continue;
+    }
     if (!replay.ok) {
-      fixtures.push(buildLoadFailedReport(fixtureId, "replay-failed"));
+      fixtures.push(
+        buildLoadFailedReport(fixtureId, "replay", "replay-failed"),
+      );
       continue;
     }
 
@@ -259,7 +293,13 @@ export async function runEvalSession(
       // Failure receipts have no diff target — treat as load-failed with the
       // outputhash-missing discriminator so the audit can distinguish them
       // from sidecar/verify failures.
-      fixtures.push(buildLoadFailedReport(fixtureId, "outputhash-missing"));
+      fixtures.push(
+        buildLoadFailedReport(
+          fixtureId,
+          "unevaluable-output",
+          "outputhash-missing",
+        ),
+      );
       continue;
     }
     const actualHash = await sha256Hex(JSON.stringify(replay.outputs));
@@ -279,6 +319,7 @@ export async function runEvalSession(
         qualityScore: null,
         deltaCostPct: null,
         deltaQuality: null,
+        loadFailedStage: null,
         loadFailedReason: null,
       });
       continue;
@@ -354,6 +395,7 @@ export async function runEvalSession(
       qualityScore,
       deltaCostPct,
       deltaQuality,
+      loadFailedStage: null,
       loadFailedReason: null,
     });
   }
@@ -361,6 +403,9 @@ export async function runEvalSession(
   const passed = fixtures.filter((f) => f.verdict === "match").length;
   const regressed = fixtures.filter(
     (f) => f.verdict === "drift" || f.verdict === "regression",
+  ).length;
+  const loadFailed = fixtures.filter(
+    (f) => f.verdict === "load-failed",
   ).length;
 
   return {
@@ -374,6 +419,7 @@ export async function runEvalSession(
       passed,
       regressed,
       newFixtures,
+      loadFailed,
     },
     exitCode: 0,
     tripwireOutcomes: [],

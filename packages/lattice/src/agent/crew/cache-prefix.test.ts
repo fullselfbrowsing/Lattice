@@ -111,7 +111,7 @@ function makeCtx(
     recordUsage: () => {},
     remainingBudget: () => undefined,
     sharedPrefix,
-    mintedReceipts: () => {},
+    collectReceipt: () => {},
     config: { providers: [adapter] },
     ...overrides,
   };

@@ -6,7 +6,7 @@
  * the two have no callsite coupling. evaluateTripwires stays pure; the
  * band pipeline owns side effects (tracer emit, timing, mutation isolation).
  *
- * Phase 2 (FSB v0.10.0-attempt-2) -- ships:
+ * This module provides:
  *   - Priority bands: SAFETY (0) > OBSERVABILITY (1) > EXTENSION (2)
  *   - Per-handler regex matcher (opt-in)
  *   - Per-handler race-with-log budget (default 100ms; HOOK_TIMEOUT via TracerLike)
@@ -17,12 +17,11 @@
  * Lifecycle event vocabulary is intentionally SEPARATE from tracing.ts's
  * RunEventKind. Run events ("run.start", "provider.attempt", ...) describe
  * Lattice runtime stages; lifecycle events describe pluggable hook
- * attach-points. Phase 3 may add observability event kinds; Phase 2 ships
- * only the four lifecycle events listed.
+ * attach points.
  *
  * Race-with-log uses no-abort Promise.race: the handler keeps running
- * in the background after a timeout (CPU-leak risk is acceptable; see
- * 02-CONTEXT.md D-09 and 02-RESEARCH.md CD-01 Resolution).
+ * in the background after a timeout. This avoids abort coupling at the cost
+ * of bounded background CPU work.
  */
 
 import type { TracerLike } from "../tracing/tracing.js";
@@ -30,7 +29,7 @@ import type { TracerLike } from "../tracing/tracing.js";
 /**
  * Hook lifecycle event vocabulary -- separate from RunEventKind by design.
  *
- * Phase 19 (v1.2) additively extends with BEFORE_AGENT_ITERATION and
+ * Agent loops add BEFORE_AGENT_ITERATION and
  * AFTER_AGENT_ITERATION — emitted by `runAgent` around each iteration's
  * provider call. Existing four events continue to fire inside each
  * iteration (BEFORE/AFTER_PROVIDER per native call; BEFORE/AFTER_TOOL
@@ -45,7 +44,7 @@ export type HookLifecycleEvent =
   | "AFTER_AGENT_ITERATION";
 
 /**
- * SAFETY-band veto mechanism — Phase 19.
+ * SAFETY-band veto mechanism.
  *
  * Handlers can deny an iteration by calling `controls.deny(reason)`. The
  * pipeline records the latest reason and exposes it via `lastDenialReason()`.
@@ -62,7 +61,7 @@ export interface HookDenyDirective {
 /**
  * Controls passed to each handler as an optional second argument.
  *
- * Backward compat: existing single-argument handlers (Phase 15 + Phase 16)
+ * Existing single-argument handlers
  * ignore this and continue to work unchanged.
  */
 export interface HookControls {
@@ -130,7 +129,7 @@ export interface HookPipeline {
     context: TContext,
   ): Promise<void>;
   /**
-   * Phase 19: returns the latest denial reason set by any handler during
+   * Returns the latest denial reason set by any handler during
    * the most recent `run()` call. Resets to `null` at the start of each run.
    * Read by the agent runtime to detect SAFETY-band veto.
    */

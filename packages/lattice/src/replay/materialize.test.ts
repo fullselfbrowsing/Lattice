@@ -10,12 +10,16 @@
  * could trigger artifact resolution side effects.
  */
 
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it, vi } from "vitest";
 
 import { artifact, toArtifactRef } from "../artifacts/artifact.js";
 import type { ArtifactInput } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
 import { createReceipt } from "../receipts/receipt.js";
+import { PAYLOAD_TYPE } from "../receipts/envelope.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
 import {
   createInMemorySigner,
@@ -34,6 +38,56 @@ interface MaterializationFixture {
   readonly inputs: readonly ArtifactInput[];
   readonly outputs: { readonly text: string };
   readonly outputHash: string;
+}
+
+interface ProtocolVector {
+  readonly payloadBase64: string;
+  readonly signatureHex: string;
+  readonly publicKeyJwk: JsonWebKey;
+  readonly kid: string;
+}
+
+const sourceDir = dirname(fileURLToPath(import.meta.url));
+const vectorsRoot = resolve(
+  sourceDir,
+  "..",
+  "..",
+  "..",
+  "..",
+  "conformance",
+  "vectors",
+);
+
+function loadProtocolVector(
+  profile: "legacy" | "standard",
+  filename: string,
+): ProtocolVector {
+  return JSON.parse(
+    readFileSync(join(vectorsRoot, profile, "positive", filename), "utf8"),
+  ) as ProtocolVector;
+}
+
+function receiptFromVector(vector: ProtocolVector): ReceiptEnvelope {
+  return {
+    payloadType: PAYLOAD_TYPE,
+    payload: vector.payloadBase64,
+    signatures: [
+      {
+        keyid: vector.kid,
+        sig: Buffer.from(vector.signatureHex, "hex").toString("base64"),
+      },
+    ],
+  };
+}
+
+function keySetFromVector(vector: ProtocolVector) {
+  return createMemoryKeySet([
+    {
+      kid: vector.kid,
+      publicKeyJwk: vector.publicKeyJwk,
+      state: "active",
+    },
+  ]);
 }
 
 async function buildSignedFixture(): Promise<MaterializationFixture> {
@@ -123,6 +177,56 @@ describe("MaterializationError", () => {
 });
 
 describe("materializeReplayEnvelope", () => {
+  it("preserves default compatibility for frozen legacy evidence", async () => {
+    const vector = loadProtocolVector("legacy", "vec-00-v1.3.json");
+    const loader = vi.fn(async () => artifact.text("unused"));
+    const envelope = await materializeReplayEnvelope(receiptFromVector(vector), {
+      artifactLoader: loader,
+      keySet: keySetFromVector(vector),
+    });
+
+    expect(envelope.receipt).toEqual(receiptFromVector(vector));
+    expect(envelope.plan.metadata?.["receiptId"]).toBe(
+      "00000000-0000-4000-a000-000000000001",
+    );
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it("rejects frozen legacy evidence strictly before artifact loading", async () => {
+    const vector = loadProtocolVector("legacy", "vec-00-v1.3.json");
+    const loader = vi.fn(async () => artifact.text("must-not-load"));
+
+    await expect(
+      materializeReplayEnvelope(receiptFromVector(vector), {
+        artifactLoader: loader,
+        keySet: keySetFromVector(vector),
+        legacyPolicy: "reject",
+      }),
+    ).rejects.toMatchObject({
+      kind: "verify-failed",
+      message: expect.stringContaining("legacy-profile-rejected"),
+    });
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it("accepts standard v1.4 evidence under strict policy", async () => {
+    const vector = loadProtocolVector(
+      "standard",
+      "vec-00-v1.4-unicode-redaction.json",
+    );
+    const loader = vi.fn(async () => artifact.text("unused"));
+    const envelope = await materializeReplayEnvelope(receiptFromVector(vector), {
+      artifactLoader: loader,
+      keySet: keySetFromVector(vector),
+      legacyPolicy: "reject",
+    });
+
+    expect(envelope.plan.metadata?.["runId"]).toBe(
+      "standard-unicode-redaction",
+    );
+    expect(loader).not.toHaveBeenCalled();
+  });
+
   it("verifies the receipt BEFORE invoking the artifact loader", async () => {
     const { receipt, keySet } = await buildSignedFixture();
 

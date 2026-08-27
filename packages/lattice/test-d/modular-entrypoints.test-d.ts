@@ -6,18 +6,32 @@ import {
   createExternalExecutionAudit,
   createMemoryKeySet,
   createNobleEd25519Signer,
+  resolveReceiptPolicy,
+  type AuditError,
   type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
+  type ReceiptIssuanceMode,
 } from "@full-self-browsing/lattice/audit";
 import {
   buildContextPack,
+  materializeContext,
+  type ArtifactLifecycleReport,
+  type ArtifactRetentionPolicy,
+  type ContextMaterializationError,
   type ContextPack,
+  type ContextProjectionPlan,
+  type MaterializeContextInput,
+  type MaterializedContext,
+  type MissingArtifactRefPolicy,
+  type SelectedRoute,
 } from "@full-self-browsing/lattice/context";
 import {
   contract,
+  materializeContext as materializeCoreContext,
   output,
   prepareCoreRun,
+  type PersistenceError,
   type PreparedCoreRun,
   type PrepareCoreRunInput,
   type ProviderAdapter as CoreProviderAdapter,
@@ -32,8 +46,11 @@ import {
   type ProviderAdapter,
 } from "@full-self-browsing/lattice/providers";
 import {
+  COST_ESTIMATOR_VERSION,
+  estimateCost,
   routeDeterministically,
   type CapabilityCatalog,
+  type CostEstimate,
 } from "@full-self-browsing/lattice/routing";
 import {
   createMemoryArtifactStore,
@@ -53,9 +70,38 @@ import {
   type ValidatedToolCall,
 } from "@full-self-browsing/lattice/tools";
 import {
+  createCostTracker,
   runAgent,
+  type AgentFailure,
   type AgentIntent,
+  type AgentResult,
+  type AgentSnapshot,
+  type CostTrackerOptions,
+  type IterationRecord,
 } from "@full-self-browsing/lattice/agents";
+
+const receiptMode: ReceiptIssuanceMode = "required";
+expectType<ReceiptIssuanceMode>(resolveReceiptPolicy({ mode: receiptMode }).mode);
+const auditError: AuditError = {
+  kind: "audit",
+  code: "receipt-signer-missing",
+  stage: "pre-execution",
+  message: "Receipt issuance requires a configured signer.",
+  terminal: true,
+};
+expectType<"audit">(auditError.kind);
+
+const modularEstimate: CostEstimate = estimateCost({
+  pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+  inputTokens: 1,
+  outputTokens: 1,
+});
+expectType<typeof COST_ESTIMATOR_VERSION>(modularEstimate.version);
+const trackerOptions: CostTrackerOptions = {
+  pricing: { inputPer1kTokens: 0, outputPer1kTokens: 0 },
+};
+expectType<number | null>(createCostTracker(trackerOptions).total().costUsd);
+expectType<number | null>(createCostTracker().total().costUsd);
 
 const provider = createFakeProvider();
 expectType<ProviderAdapter>(provider);
@@ -77,6 +123,71 @@ const pack = buildContextPack({
   artifacts: [input],
 });
 expectType<ContextPack>(pack);
+
+const selectedRoute: SelectedRoute = {
+  providerId: "custom",
+  modelId: "custom:model",
+  score: 1,
+  estimates: { inputTokens: 1, outputTokens: 1 },
+  contextWindow: 4_096,
+  inputModalities: ["text"],
+  outputModalities: ["text"],
+  fileTransport: ["inline"],
+};
+const materializeInput = {
+  contextPack: pack,
+  route: selectedRoute,
+  artifacts: [input],
+  policy: {
+    retention: "durable",
+    missingArtifactRef: "omit",
+  },
+} satisfies MaterializeContextInput;
+expectType<Promise<MaterializedContext>>(materializeContext(materializeInput));
+expectType<typeof materializeContext>(materializeCoreContext);
+
+const retention: ArtifactRetentionPolicy = "durable";
+const missingReference: MissingArtifactRefPolicy = "omit";
+expectType<"durable">(retention);
+expectType<"omit">(missingReference);
+
+const lifecycleReport: ArtifactLifecycleReport = {
+  lifecycle: "summary",
+  status: "skipped",
+  reason: "policy",
+  artifactId: input.id,
+  ref: input,
+};
+expectType<"skipped">(lifecycleReport.status);
+
+const projection: ContextProjectionPlan = {
+  id: "projection:modular",
+  providerId: selectedRoute.providerId,
+  modelId: selectedRoute.modelId,
+  artifactRefs: [input],
+  summaryArtifactRefs: [],
+  inputHashes: ["sha256:modular"],
+  omittedArtifactIds: [],
+  warnings: [],
+};
+expectType<readonly string[]>(projection.inputHashes);
+
+const contextError: ContextMaterializationError = {
+  kind: "context_materialization",
+  message: "missing",
+  reason: "missing-reference",
+  terminal: true,
+};
+const persistenceError: PersistenceError = {
+  kind: "persistence",
+  message: "write failed",
+  operation: "write",
+  lifecycle: "provider-output",
+  postProvider: true,
+  terminal: true,
+};
+expectType<"context_materialization">(contextError.kind);
+expectType<"persistence">(persistenceError.kind);
 
 const outputs = {
   answer: output.citations(),
@@ -171,3 +282,47 @@ const externalAuditInput = {
   outputs: { answer: "ok" },
 } satisfies ExternalExecutionAuditInput;
 void externalAuditInput;
+
+declare const modularAgentReceipt: ReceiptEnvelope;
+declare const modularAgentResult: AgentResult;
+
+const historicalAgentIteration: IterationRecord = {
+  index: 0,
+  provider: "legacy-provider",
+  promptTokens: 0,
+  completionTokens: 0,
+  costUsd: null,
+  durationMs: 0,
+  toolCalls: [],
+};
+const evidenceAgentIteration: IterationRecord = {
+  ...historicalAgentIteration,
+  iterationId: "agent-execution:modular:iteration:0",
+  receipt: modularAgentReceipt,
+};
+const historicalAgentSnapshot: AgentSnapshot = {
+  version: "agent-snapshot/v1",
+  iterationIndex: 0,
+  conversation: [],
+  cumulativeUsage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  providerName: "legacy-provider",
+  capturedAt: "2026-07-17T00:00:00.000Z",
+};
+const evidenceAgentSnapshot: AgentSnapshot = {
+  ...historicalAgentSnapshot,
+  executionId: "agent-execution:modular",
+  iterations: [evidenceAgentIteration],
+};
+const modularRecoveryFailure = {
+  kind: "agent-recovery-failed",
+  reason: "snapshot-invalid",
+  usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+  iterations: [],
+} satisfies AgentFailure;
+
+expectType<string | undefined>(historicalAgentIteration.iterationId);
+expectType<ReceiptEnvelope | undefined>(evidenceAgentIteration.receipt);
+expectType<string | undefined>(historicalAgentSnapshot.executionId);
+expectType<readonly IterationRecord[] | undefined>(evidenceAgentSnapshot.iterations);
+expectType<"agent-recovery-failed">(modularRecoveryFailure.kind);
+expectType<ReceiptEnvelope | undefined>(modularAgentResult.receipt);

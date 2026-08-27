@@ -9,7 +9,6 @@ import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
-import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import {
   createInMemorySigner,
@@ -23,7 +22,7 @@ import { defineTool } from "../../tools/tools.js";
 import { formatToolsForProvider } from "../format-tools.js";
 import { createNoopAgentHost, type AgentHost } from "../host.js";
 import { runAgentInternal, type DispatchToolUseContext } from "../runtime.js";
-import type { AgentFailure } from "../types.js";
+import type { AgentFailure, AgentResult } from "../types.js";
 
 import { defineAgent, type AgentSpec } from "./agent-spec.js";
 import { validateCrewPolicy } from "./crew-policy.js";
@@ -128,7 +127,7 @@ function makeCtx(overrides: Partial<CrewDispatchContext> = {}): CrewDispatchCont
     recordUsage: () => {},
     remainingBudget: () => undefined,
     sharedPrefix: "",
-    mintedReceipts: () => {},
+    collectReceipt: () => {},
     config: {},
     ...overrides,
   };
@@ -315,7 +314,7 @@ describe("createCrewDispatcher — child budget enforcement (D-07)", () => {
     expect(parsed.error.terminal).toBe(false);
   });
 
-  it("derives budgets without NaN when the fake provider reports costUsd: null", async () => {
+  it("derives budgets without NaN when known-free pricing fills null usage", async () => {
     const researcher = makeResearcherSpec({
       contract: { kind: "capability-contract", budget: { maxCostUsd: 2 } },
     });
@@ -343,10 +342,10 @@ describe("createCrewDispatcher — child budget enforcement (D-07)", () => {
 
     const parsed = JSON.parse(dispatched?.content ?? "{}") as { summary?: string };
     expect(parsed.summary).toBe("null-cost summary");
-    // Child usage recorded exactly once (Pitfall 3) and null cost preserved
-    // (never coerced to NaN/0-poisoned arithmetic).
+    // Child usage is recorded exactly once and the fake capability's explicit
+    // zero price resolves the otherwise unmeasured response as known free.
     expect(usages.length).toBe(1);
-    expect(usages[0]?.costUsd).toBeNull();
+    expect(usages[0]?.costUsd).toBe(0);
     expect(Number.isNaN(usages[0]?.promptTokens)).toBe(false);
   });
 });
@@ -403,7 +402,7 @@ describe("createCrewDispatcher — childToolDeclarations synthesis (D-01, Pitfal
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: null };
 
 function makeFailure(
-  kind: AgentFailure["kind"],
+  kind: Exclude<AgentFailure["kind"], "audit">,
   reason?: string,
 ): AgentFailure {
   return {
@@ -713,8 +712,16 @@ async function makeSigner(
 }
 
 describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-06)", () => {
-  it("mints a child completion receipt chained to the crew-root CID that round-trips verifyReceipt", async () => {
-    const { signer, publicKeyJwk, kid } = await makeSigner();
+  it("collects the exact child terminal receipt chained to the crew-root CID", async () => {
+    const { signer: baseSigner, publicKeyJwk, kid } = await makeSigner();
+    let signerCalls = 0;
+    const signer: ReceiptSigner = {
+      ...baseSigner,
+      async sign(bytes) {
+        signerCalls += 1;
+        return baseSigner.sign(bytes);
+      },
+    };
     const keySet = createMemoryKeySet([{ kid, state: "active", publicKeyJwk }]);
 
     // Crew-root receipt minted BEFORE children run (Pitfall 2 — the chain
@@ -737,15 +744,23 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     const researcher = makeResearcherSpec();
     const root = makeRootSpec([researcher]);
     const scripted = makeScriptedFake(["receipted summary"]);
-    const minted: ReceiptEnvelope[] = [];
+    const collected: Array<{
+      agentId: string;
+      envelope: ReceiptEnvelope;
+      cid: string;
+    }> = [];
+    let recordedResult: AgentResult | undefined;
     const dispatcher = createCrewDispatcher(
       root,
       makeCtx({
         config: { providers: [scripted.fake] },
         signer,
         crewRootCid,
-        mintedReceipts: (envelope) => {
-          minted.push(envelope);
+        collectReceipt: (agentId, envelope, cid) => {
+          collected.push({ agentId, envelope, cid });
+        },
+        recordAgentResult: (_agentId, result) => {
+          recordedResult = result;
         },
       }),
     );
@@ -755,18 +770,18 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
       makeLoopCtx(),
     );
 
-    // Exactly one child completion envelope collected at the chokepoint.
-    expect(minted.length).toBe(1);
-    const childEnvelope = minted[0];
+    expect(collected).toHaveLength(1);
+    const childEnvelope = collected[0]?.envelope;
     expect(childEnvelope).toBeDefined();
     if (childEnvelope === undefined) return;
+    expect(collected[0]?.agentId).toBe("researcher");
+    expect(recordedResult?.receipt).toBe(childEnvelope);
 
-    // Signed body carries parentReceiptCid === crew-root CID.
     const body = JSON.parse(atob(childEnvelope.payload)) as CapabilityReceiptBody;
     expect(body.parentReceiptCid).toBe(crewRootCid);
-    // Synthetic route identifiers (checkpoint.ts DEFAULT_ROUTE precedent).
-    expect(body.route.providerId).toBe("lattice-crew");
-    expect(body.route.capabilityId).toBe("lattice-crew/agent-completion");
+    expect(body.stepName).toBe("crew-agent-completion:researcher");
+    expect(body.route.providerId).toBe("crew-fake");
+    expect(body.route.capabilityId).toBe("lattice-agent/terminal");
 
     // The envelope verifies with the ephemeral test KeySet.
     const verified = await verifyReceipt(childEnvelope, keySet);
@@ -774,10 +789,12 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
 
     // The child's summary receipts array contains the completion CID.
     const summary = JSON.parse(dispatched?.content ?? "{}") as { receipts: string[] };
-    expect(summary.receipts).toEqual([await receiptCid(childEnvelope)]);
+    expect(collected[0]?.cid).toBe(await receiptCid(childEnvelope));
+    expect(summary.receipts).toEqual([collected[0]?.cid]);
+    expect(signerCalls).toBe(3);
   });
 
-  it("mints a child completion receipt with lineageMerkleRoot when child artifacts carry lineage", async () => {
+  it("returns child artifacts without minting a lineage-only replacement receipt", async () => {
     const { signer, publicKeyJwk, kid } = await makeSigner("kid:crew-lineage");
     const keySet = createMemoryKeySet([{ kid, state: "active", publicKeyJwk }]);
     const rootEnvelope = await createReceipt(
@@ -810,15 +827,15 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
       { promptTokens: 1, completionTokens: 1, costUsd: null },
       [derived],
     );
-    const minted: ReceiptEnvelope[] = [];
+    const collected: ReceiptEnvelope[] = [];
     const dispatcher = createCrewDispatcher(
       root,
       makeCtx({
         config: { providers: [scripted.fake] },
         signer,
         crewRootCid,
-        mintedReceipts: (envelope) => {
-          minted.push(envelope);
+        collectReceipt: (_agentId, envelope) => {
+          collected.push(envelope);
         },
       }),
     );
@@ -828,15 +845,13 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
       makeLoopCtx(),
     );
 
-    expect(minted.length).toBe(1);
-    const childEnvelope = minted[0];
+    expect(collected.length).toBe(1);
+    const childEnvelope = collected[0];
     expect(childEnvelope).toBeDefined();
     if (childEnvelope === undefined) return;
     const body = JSON.parse(atob(childEnvelope.payload)) as CapabilityReceiptBody;
     expect(body.parentReceiptCid).toBe(crewRootCid);
-    expect(body.lineageMerkleRoot).toBe(
-      await computeArtifactLineageMerkleRoot([derived]),
-    );
+    expect(body.lineageMerkleRoot).toBeUndefined();
     expect(await verifyReceipt(childEnvelope, keySet)).toMatchObject({ ok: true });
 
     const summary = JSON.parse(dispatched?.content ?? "{}") as {
@@ -849,13 +864,13 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     const researcher = makeResearcherSpec();
     const root = makeRootSpec([researcher]);
     const scripted = makeScriptedFake(["unsigned summary"]);
-    const minted: ReceiptEnvelope[] = [];
+    const collected: ReceiptEnvelope[] = [];
     const dispatcher = createCrewDispatcher(
       root,
       makeCtx({
         config: { providers: [scripted.fake] },
-        mintedReceipts: (envelope) => {
-          minted.push(envelope);
+        collectReceipt: (_agentId, envelope) => {
+          collected.push(envelope);
         },
       }),
     );
@@ -865,12 +880,181 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
       makeLoopCtx(),
     );
 
-    expect(minted.length).toBe(0);
+    expect(collected.length).toBe(0);
     const summary = JSON.parse(dispatched?.content ?? "{}") as {
       summary: string;
       receipts: string[];
     };
     expect(summary.summary).toBe("unsigned summary");
     expect(summary.receipts).toEqual([]);
+  });
+
+  it("collects distinct terminal envelopes for repeated successful dispatches", async () => {
+    const { signer: baseSigner } = await makeSigner("kid:crew-repeat");
+    let signerCalls = 0;
+    const signer: ReceiptSigner = {
+      ...baseSigner,
+      async sign(bytes) {
+        signerCalls += 1;
+        return baseSigner.sign(bytes);
+      },
+    };
+    const rootEnvelope = await createReceipt(
+      {
+        runId: "crew-repeat-root",
+        model: { requested: "lattice-crew/run", observed: null },
+        route: {
+          providerId: "lattice-crew",
+          capabilityId: "lattice-crew/run",
+          attemptNumber: 1,
+        },
+        usage: ZERO_USAGE,
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+      },
+      signer,
+    );
+    const crewRootCid = await receiptCid(rootEnvelope);
+    const scripted = makeScriptedFake(["first summary", "second summary"]);
+    const collected: Array<{ envelope: ReceiptEnvelope; cid: string }> = [];
+    const dispatcher = createCrewDispatcher(
+      makeRootSpec([makeResearcherSpec()]),
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid,
+        collectReceipt: (_agentId, envelope, cid) => {
+          collected.push({ envelope, cid });
+        },
+      }),
+    );
+
+    const first = await dispatcher.dispatchToolUse(
+      { id: "repeat-1", name: "researcher", args: { task: "first" } },
+      makeLoopCtx(),
+    );
+    const second = await dispatcher.dispatchToolUse(
+      { id: "repeat-2", name: "researcher", args: { task: "second" } },
+      makeLoopCtx(),
+    );
+
+    expect(scripted.calls()).toBe(2);
+    expect(collected).toHaveLength(2);
+    expect(collected[0]?.envelope).not.toBe(collected[1]?.envelope);
+    expect(collected[0]?.cid).not.toBe(collected[1]?.cid);
+    expect(JSON.parse(first?.content ?? "{}").receipts).toEqual([
+      collected[0]?.cid,
+    ]);
+    expect(JSON.parse(second?.content ?? "{}").receipts).toEqual([
+      collected[1]?.cid,
+    ]);
+    expect(signerCalls).toBe(5);
+  });
+
+  it("collects a terminal failure once and performs no work on cached redispatch", async () => {
+    const { signer: baseSigner } = await makeSigner("kid:crew-terminal-failure");
+    let signerCalls = 0;
+    const signer: ReceiptSigner = {
+      ...baseSigner,
+      async sign(bytes) {
+        signerCalls += 1;
+        return baseSigner.sign(bytes);
+      },
+    };
+    const crewRootCid = `sha256:${"cd".repeat(32)}`;
+    const loopEnvelope = '{"tool_calls":[{"id":"x","name":"noop","args":{}}]}';
+    const scripted = makeScriptedFake(
+      [loopEnvelope],
+      { promptTokens: 10, completionTokens: 5, costUsd: 0.01 },
+    );
+    const researcher = makeResearcherSpec({
+      tools: [makeTool("noop")],
+      contract: { kind: "capability-contract", budget: { maxCostUsd: 0.001 } },
+    });
+    const collected: Array<{ envelope: ReceiptEnvelope; cid: string }> = [];
+    const dispatcher = createCrewDispatcher(
+      makeRootSpec([researcher]),
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        receiptMode: "required",
+        crewRootCid,
+        collectReceipt: (_agentId, envelope, cid) => {
+          collected.push({ envelope, cid });
+        },
+      }),
+    );
+
+    const first = await dispatcher.dispatchToolUse(
+      { id: "failure-1", name: "researcher", args: { task: "fail" } },
+      makeLoopCtx(),
+    );
+    expect(parseError(first?.content).error.kind).toBe("no-contract-match");
+    expect(collected).toHaveLength(1);
+    expect(await receiptCid(collected[0]!.envelope)).toBe(collected[0]?.cid);
+    expect(JSON.parse(atob(collected[0]!.envelope.payload))).toMatchObject({
+      parentReceiptCid: crewRootCid,
+      stepName: "crew-agent-completion:researcher",
+    });
+    const countsAfterFirst = {
+      provider: scripted.calls(),
+      signer: signerCalls,
+      collector: collected.length,
+    };
+
+    const second = await dispatcher.dispatchToolUse(
+      { id: "failure-2", name: "researcher", args: { task: "again" } },
+      makeLoopCtx(),
+    );
+    expect(second?.content).toBe(first?.content);
+    expect({
+      provider: scripted.calls(),
+      signer: signerCalls,
+      collector: collected.length,
+    }).toEqual(countsAfterFirst);
+  });
+
+  it("does not fabricate child evidence when required checkpoint signing fails", async () => {
+    let signerCalls = 0;
+    const signer: ReceiptSigner = {
+      kid: "kid:crew-audit-failure",
+      publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "test" } as JsonWebKey,
+      async sign() {
+        signerCalls += 1;
+        throw new Error("SECRET-CHILD-SIGNER-FAILURE");
+      },
+    };
+    const scripted = makeScriptedFake(["completed but unsigned"]);
+    const collected: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      makeRootSpec([makeResearcherSpec()]),
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        receiptMode: "required",
+        crewRootCid: `sha256:${"ef".repeat(32)}`,
+        collectReceipt: (_agentId, envelope) => collected.push(envelope),
+      }),
+    );
+
+    const first = await dispatcher.dispatchToolUse(
+      { id: "audit-1", name: "researcher", args: { task: "sign" } },
+      makeLoopCtx(),
+    );
+    expect(parseError(first?.content).error.kind).toBe("audit");
+    expect(scripted.calls()).toBe(1);
+    expect(signerCalls).toBe(1);
+    expect(collected).toHaveLength(0);
+
+    const second = await dispatcher.dispatchToolUse(
+      { id: "audit-2", name: "researcher", args: { task: "again" } },
+      makeLoopCtx(),
+    );
+    expect(second?.content).toBe(first?.content);
+    expect(scripted.calls()).toBe(1);
+    expect(signerCalls).toBe(1);
+    expect(collected).toHaveLength(0);
   });
 });

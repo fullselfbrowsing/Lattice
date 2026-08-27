@@ -1,20 +1,20 @@
 /**
- * Agent runtime type definitions — Phase 19 (v1.2).
+ * Agent runtime type definitions (v1.2).
  *
  * The agent surface is intentionally distinct from the v1.0 single-shot
  * runtime (`RunIntent` / `RunResult`). The agent loop wraps multiple
  * provider iterations, dispatches tool calls between them, and threads
- * v1.1 capability receipts through Phase 16's `createCheckpointHook` when
+ * v1.1 capability receipts through `createCheckpointHook` when
  * a signer is configured.
  *
  * Composition surfaces (all optional on `AgentIntent`):
- *   - `pipeline?` — Phase 15 `HookPipeline`; if absent, runtime creates a default.
- *   - `signer?`   — Phase 9 `ReceiptSigner`; if present, auto-registers Phase 16
+ *   - `pipeline?` — `HookPipeline`; if absent, runtime creates a default.
+ *   - `signer?`   — `ReceiptSigner`; if present, auto-registers a
  *                   checkpoint hook on `BAND.OBSERVABILITY`.
- *   - `tracer?`   — Phase 5 `TracerLike`; flows through pipeline + provider calls.
- *   - `host?`     — Phase 20 `AgentHost` pluggable adapter (forward-declared here;
+ *   - `tracer?`   — `TracerLike`; flows through pipeline + provider calls.
+ *   - `host?`     — `AgentHost` pluggable adapter (forward-declared here;
  *                   default in-process implementation lives in `runtime.ts`).
- *   - `contract?` — Phase 7 `CapabilityContract`; budget.maxIterations + .maxWallTimeMs
+ *   - `contract?` — `CapabilityContract`; budget.maxIterations and .maxWallTimeMs
  *                   enforced by the loop.
  */
 
@@ -27,15 +27,16 @@ import type { OutputContractMap } from "../outputs/contracts.js";
 import type { InferOutputMap } from "../outputs/infer.js";
 import type { PolicySpec } from "../policy/policy.js";
 import type { Usage } from "../providers/provider.js";
-import type { LatticeRunError } from "../results/errors.js";
+import type { AuditError, LatticeRunError } from "../results/errors.js";
+import type { ReceiptIssuanceMode } from "../receipts/policy.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import type { SurvivabilityAdapter } from "../runtime/survivability.js";
 import type { ToolUseRequest } from "../tools/tool-use.js";
 import type { ToolDefinition } from "../tools/tools.js";
 import type { TracerLike } from "../tracing/tracing.js";
 
-// Phase 20 (v1.2): the AgentHost forward-decl that shipped in Phase 19 is
-// replaced by the full interface in host.ts. Existing imports of AgentHost
+// The AgentHost forward declaration is replaced by the full interface in
+// host.ts. Existing imports of AgentHost
 // from "./types.js" continue to resolve via this re-export.
 export type {
   AgentHost,
@@ -60,6 +61,7 @@ export type DefaultAgentOutputs = {
  * SAFETY-band handler set `controls.deny(...)`.
  */
 export interface IterationRecord {
+  readonly iterationId?: string;
   readonly index: number;
   readonly provider: string;
   readonly promptTokens: number;
@@ -91,7 +93,7 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
   readonly tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>;
   readonly host?: _AgentHost;
   /**
-   * Phase 20 (v1.2): when the agent loop resumes from a host.storage snapshot,
+   * When the agent loop resumes from a host.storage snapshot,
    * the configured SurvivabilityAdapter handles the serialize/deserialize
    * round-trip. When absent, runtime defaults to
    * `createNoopSurvivabilityAdapter<AgentSnapshot>()`.
@@ -104,6 +106,8 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
   readonly outputs?: TOutputs;
   readonly pipeline?: HookPipeline;
   readonly signer?: ReceiptSigner;
+  /** Local receipt policy override. Takes precedence over runtime config. */
+  readonly receiptMode?: ReceiptIssuanceMode;
   readonly tracer?: TracerLike;
   /**
    * When `false`, the runtime will NOT auto-register `createCheckpointHook`
@@ -135,16 +139,17 @@ export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContrac
 /**
  * Failure kinds specific to the agent loop. v1.1 `LatticeRunError.kind`
  * values remain valid (provider errors, no-contract-match, validation-failed,
- * tripwire-violated) and are reused verbatim. Phase 19 adds three
- * agent-specific kinds. Phase 39 (v1.3) adds `crew-budget-exceeded` —
+ * tripwire-violated) and are reused verbatim. The union also includes three
+ * agent-specific kinds plus `crew-budget-exceeded` for
  * crew-level shared-pool exhaustion, terminal across the parent/child
- * boundary (D-10).
+ * boundary.
  */
 export type AgentFailureKind =
   | LatticeRunError["kind"]
   | "agent-iteration-denied"
   | "agent-max-iterations"
   | "agent-wall-time-exceeded"
+  | "agent-recovery-failed"
   | "crew-budget-exceeded";
 
 /**
@@ -154,14 +159,25 @@ export type AgentFailureKind =
  * (empty if the failure occurred pre-iteration). For `agent-iteration-denied`,
  * the failing iteration is the LAST entry and carries `deniedReason`.
  */
-export interface AgentFailure {
-  readonly kind: AgentFailureKind;
+interface AgentFailureEvidence {
   readonly usage: Usage;
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly reason?: string;
   readonly cause?: unknown;
   readonly receipt?: ReceiptEnvelope;
 }
+
+export interface AgentExecutionFailure extends AgentFailureEvidence {
+  readonly kind: Exclude<AgentFailureKind, "audit">;
+}
+
+export interface AgentAuditFailure
+  extends AgentFailureEvidence, AuditError {
+  readonly reason: string;
+  readonly cause?: never;
+}
+
+export type AgentFailure = AgentExecutionFailure | AgentAuditFailure;
 
 /**
  * Discriminated union returned by `ai.runAgent`.

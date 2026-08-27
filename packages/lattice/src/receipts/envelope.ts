@@ -4,40 +4,48 @@
  * This module is the single source of truth for:
  *   - PAYLOAD_TYPE constant (the receipt media type)
  *   - base64 (standard, NOT base64url) encoding helpers
- *   - DSSE v1.0 PAE construction: signatures MUST be computed over the bytes
- *     returned by buildPae(...), never over raw canonical JSON bytes.
+ *   - DSSE v1.0 PAE construction over raw payload bytes
  *
  * Reference: https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md
  *
- * Reconciled in plan 09-03 to import canonical types from ./types.js (plan
- * 09-01 lands the spine). `_Local` aliases are retained as deprecated type
- * exports for backward compatibility with the Wave 1 sibling imports.
+ * Canonical receipt types live in ./types.js. `_Local` aliases are retained
+ * as deprecated exports for backward compatibility.
  */
 
 import type { ReceiptEnvelope, ReceiptSignature } from "./types.js";
 
 /**
  * @deprecated Use ReceiptSignature from "./types.js". Retained as an alias
- * during the Wave 1 -> Wave 2 reconciliation.
+ * for backward compatibility.
  */
 export type ReceiptSignature_Local = ReceiptSignature;
 
 /**
  * @deprecated Use ReceiptEnvelope from "./types.js". Retained as an alias
- * during the Wave 1 -> Wave 2 reconciliation.
+ * for backward compatibility.
  */
 export type ReceiptEnvelope_Local = ReceiptEnvelope;
 
 export const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json" as const;
 
 const textEncoder = new TextEncoder();
+const canonicalBase64Pattern =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 export function base64Encode(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
 
 export function base64Decode(value: string): Uint8Array {
-  return new Uint8Array(Buffer.from(value, "base64"));
+  if (!canonicalBase64Pattern.test(value)) {
+    throw new Error("value is not canonical standard base64");
+  }
+
+  const decoded = new Uint8Array(Buffer.from(value, "base64"));
+  if (base64Encode(decoded) !== value) {
+    throw new Error("value is not canonical standard base64");
+  }
+  return decoded;
 }
 
 /**
@@ -45,29 +53,32 @@ export function base64Decode(value: string): Uint8Array {
  *
  * Reference: https://github.com/secure-systems-lab/dsse/blob/v1.0.0/protocol.md
  *
- * PAE = UTF-8("DSSEv1 " + len(payloadType) + " " + payloadType
- *           + " " + len(payload) + " " + payload)
+ * PAE = "DSSEv1" SP LEN(payloadTypeBytes) SP payloadTypeBytes
+ *                  SP LEN(payloadBytes) SP payloadBytes
  *
- * `payload` here is the BASE64-encoded string per DSSE v1.0 spec (NOT raw
- * canonical bytes). Both signing and verification MUST construct PAE the
- * same way; this module is the single source of truth.
- *
- * ASCII length is decimal (no zero-padding). e.g. length 1000 → "1000".
+ * Lengths are decimal byte lengths with no zero-padding. Envelope base64 is
+ * transport only and is not part of the signed PAE payload.
  */
 export function buildPae(
   payloadType: string,
-  payloadBase64: string,
+  payloadBytes: Uint8Array,
 ): Uint8Array {
-  const ascii =
-    "DSSEv1 " +
-    payloadType.length.toString() +
-    " " +
-    payloadType +
-    " " +
-    payloadBase64.length.toString() +
-    " " +
-    payloadBase64;
-  return textEncoder.encode(ascii);
+  const payloadTypeBytes = textEncoder.encode(payloadType);
+  const prefix = textEncoder.encode(`DSSEv1 ${payloadTypeBytes.byteLength} `);
+  const separator = textEncoder.encode(` ${payloadBytes.byteLength} `);
+  const result = new Uint8Array(
+    prefix.byteLength +
+      payloadTypeBytes.byteLength +
+      separator.byteLength +
+      payloadBytes.byteLength,
+  );
+
+  let offset = 0;
+  for (const part of [prefix, payloadTypeBytes, separator, payloadBytes]) {
+    result.set(part, offset);
+    offset += part.byteLength;
+  }
+  return result;
 }
 
 export interface EncodeEnvelopeInput {

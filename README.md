@@ -16,7 +16,7 @@ Lattice lets developers describe a job, attach artifacts, declare outputs, and s
 ![Node](https://img.shields.io/badge/Node-%3E%3D24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![ESM](https://img.shields.io/badge/ESM-only-000000?style=for-the-badge)
 ![Standard Schema](https://img.shields.io/badge/Standard_Schema-compatible-8B5CF6?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.5.1-0078D4?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.6.0-0078D4?style=for-the-badge)
 
 [Install](#install) · [Quick Start](#quick-start) · [Runtime](#runtime) · [Modular Entrypoints](#modular-entrypoints) · [Providers](#providers) · [Audit](#audit) · [Agents](#agents) · [CLI](#cli) · [Development](#development)
 
@@ -26,14 +26,16 @@ Lattice lets developers describe a job, attach artifacts, declare outputs, and s
 
 Lattice is published under the `@full-self-browsing` npm scope.
 
-* `@full-self-browsing/lattice`: `1.5.1`
-* `@full-self-browsing/lattice-cli`: `1.5.1`
-* Runtime target: Node.js `>=24`
+* `@full-self-browsing/lattice`: `1.6.0`
+* `@full-self-browsing/lattice-cli`: `1.6.0`
+* Runtime target: Node.js `>=24`; validated on Node 24 LTS and Node 26 Current
 * Package format: ESM
 * License: MIT
 * Registry publishing: npm OIDC Trusted Publisher with provenance attestations
 
-The full runtime targets Node 24 and newer. Several modular facades are validated as Node 20 compatible for applications that want to adopt Lattice one slice at a time.
+Every published entrypoint shares the Node 24-or-newer package boundary. Modular facades
+still keep provider, audit, context, storage, evaluation, and agent concerns independently
+importable.
 
 ## Why Lattice
 
@@ -48,26 +50,26 @@ Lattice puts that machinery behind one TypeScript first runtime while keeping th
 * Artifacts: text, JSON, files, URLs, images, audio, video, documents, and tool results.
 * Outputs: plain text, Standard Schema and Zod compatible structured data, citations, and generated artifact refs.
 * Routing: deterministic provider and model selection from capability metadata, policy, cost, latency, privacy, and fallback rules.
-* Context: artifact refs, summaries, token estimates, and context pack plans.
+* Context: route-specific materialized projections, scoped session history, summaries, token estimates, and context pack plans.
 * Providers: OpenAI, OpenAI compatible gateways, Anthropic, Gemini, xAI, OpenRouter, LiteLLM, LM Studio, AI SDK style providers, and fake providers for tests.
-* Audit: JCS canonical receipts, DSSE envelopes, Ed25519 signatures, CIDs, replay envelopes, redaction, and verification.
+* Audit: standard DSSE receipts, Ed25519 signatures, explicit issuance modes, CIDs, replay envelopes, redaction, and observable compatibility verification.
 * Tools: tool definitions, tool execution, MCP shaped resources, MCP shaped prompts, tool results as artifacts, and returned tool call validation.
 * Agents: opt in single agent loops and structured crew runs built on the same provider, tool, policy, event, and receipt primitives.
 
 ## Install
 
 ```bash
-pnpm add @full-self-browsing/lattice zod
+pnpm add @full-self-browsing/lattice@^1.6.0 zod
 ```
 
 ```bash
-npm install @full-self-browsing/lattice zod
+npm install @full-self-browsing/lattice@^1.6.0 zod
 ```
 
 Install the CLI only when you need receipt verification, replay, eval, or diagnostics from a terminal.
 
 ```bash
-pnpm add -g @full-self-browsing/lattice-cli
+pnpm add -g @full-self-browsing/lattice-cli@^1.6.0
 lattice --version
 ```
 
@@ -174,7 +176,15 @@ void plan;
 void result;
 ```
 
-Every run produces a plan with routing, context packing, validation, attempts, fallback, usage, and event data. When a signer is configured, terminal results also include a verifiable receipt.
+Every run produces a plan with routing, context packing, validation, attempts, fallback,
+usage, and event data. The provider request and each attempt's input hashes, receipt inputs,
+packaging, and replay evidence come from the same route-specific materialized context
+projection. Fallback routes are packed again against their own limits.
+
+With storage or sessions configured, Lattice preserves store-returned references and
+enforces tenant, privacy, retention, and selected-session boundaries before provider work.
+Missing selected references fail by default; `missingArtifactRef: "omit"` is an explicit
+compatibility policy that records an omission without exposing content.
 
 ## Modular Entrypoints
 
@@ -183,15 +193,15 @@ Lattice can be adopted one module at a time. The package manifest exposes machin
 | Import path | Compatibility | Use it for |
 | --- | --- | --- |
 | `@full-self-browsing/lattice/providers` | `adapter-specific` | Provider factories, provider contracts, streaming helpers, capability negotiation, and prompt scaffolds |
-| `@full-self-browsing/lattice/audit` | `node20-compatible` | Receipts, signing, verification, CIDs, replay envelopes, redaction, and receipt attributes |
-| `@full-self-browsing/lattice/context` | `node20-compatible` | Context packing, token estimates, and artifact reference extraction |
-| `@full-self-browsing/lattice/artifacts` | `node20-compatible` | Artifact builders, refs, metadata, fingerprints, storage refs, and lineage |
-| `@full-self-browsing/lattice/routing` | `node20-compatible` | Deterministic routing, catalogs, policies, capability profiles, and negotiation |
-| `@full-self-browsing/lattice/tools` | `node20-compatible` | Tool definitions, execution, MCP shaped artifacts, and tool call validation |
+| `@full-self-browsing/lattice/audit` | `node24-plus` | Receipts, signing, verification, CIDs, replay envelopes, redaction, and receipt attributes |
+| `@full-self-browsing/lattice/context` | `node24-plus` | Context packing, token estimates, and artifact reference extraction |
+| `@full-self-browsing/lattice/artifacts` | `node24-plus` | Artifact builders, refs, metadata, fingerprints, storage refs, and lineage |
+| `@full-self-browsing/lattice/routing` | `node24-plus` | Deterministic routing, catalogs, policies, capability profiles, and negotiation |
+| `@full-self-browsing/lattice/tools` | `node24-plus` | Tool definitions, execution, MCP shaped artifacts, and tool call validation |
 | `@full-self-browsing/lattice/storage` | `adapter-specific` | Memory and local filesystem artifact stores plus storage contracts |
-| `@full-self-browsing/lattice/eval` | `node20-compatible` | Regression gates for agent and executor traces |
-| `@full-self-browsing/lattice/agents` | `node24-runtime` | Single agent loops, crew runs, hosts, rate limits, and agent infrastructure |
-| `@full-self-browsing/lattice/core` | `node20-compatible` | Non agent artifacts, context, outputs, contracts, routing, providers, storage contracts, and results |
+| `@full-self-browsing/lattice/eval` | `node24-plus` | Regression gates for agent and executor traces |
+| `@full-self-browsing/lattice/agents` | `node24-plus` | Single agent loops, crew runs, hosts, rate limits, and agent infrastructure |
+| `@full-self-browsing/lattice/core` | `node24-plus` | Non agent artifacts, context, outputs, contracts, routing, providers, storage contracts, and results |
 
 See [docs/modular-entrypoints.md](docs/modular-entrypoints.md) for focused examples.
 
@@ -280,13 +290,27 @@ const audited = await createExternalExecutionAudit(
   signer,
 );
 
-await verifyReceipt(
+const verification = await verifyReceipt(
   audited.receipt,
   createMemoryKeySet([
     { kid: "local", publicKeyJwk, state: "active" },
   ]),
+  { legacyPolicy: "reject" },
 );
+
+if (!verification.ok) throw new Error(verification.error.message);
 ```
+
+Lattice SDK 1.6.0 emits `lattice-receipt/v1.4` with signed
+`signatureProfile: "dsse-v1"`; SDK and receipt schema versions are independent, and there
+is no `lattice-receipt/v1.6` body. New issuance is standard-only. Direct verification uses
+the observable compatibility bridge by default, while `legacyPolicy: "reject"` disables
+only the deprecated historical signature fallback.
+
+Runtime receipt policy is explicit: `off`, `best-effort`, or `required`. Required mode
+fails without repeating provider work, evaluation keeps invalid and unevaluable rows, and
+the shared cost estimator distinguishes missing pricing from known free pricing. A hard
+`maxCostUsd` therefore fails closed when required pricing is unknown.
 
 ## Tools and MCP
 
@@ -368,7 +392,14 @@ if (result.kind === "success") {
 }
 ```
 
-Agent execution uses the same policy, provider, tool, event, receipt, and survivability primitives as normal runs. Non agent modular entrypoints are checked so they do not pull the agent surface into provider only, audit only, tools only, eval only, or core only adoption paths.
+Agent execution uses the same policy, provider, tool, event, receipt, and survivability
+primitives as normal runs. When receipts are enabled, each iteration and terminal result
+carries the exact envelope issued for it. Resume restores stable iteration identities and
+stored envelopes without reminting completed work. Crew results reuse those terminal
+envelopes in root, serial child, then parent order and expose CIDs for the same objects.
+
+Non agent modular entrypoints are checked so they do not pull the agent surface into
+provider only, audit only, tools only, eval only, or core only adoption paths.
 
 ## CLI
 
@@ -376,14 +407,17 @@ The CLI package installs the `lattice` command.
 
 ```bash
 lattice --help
-lattice verify --help
-lattice repro --help
+lattice verify receipt.json --key keyset.json
+lattice verify receipt.json --key keyset.json --standard-only
+lattice repro receipt.json --standard-only
 lattice eval --help
 lattice receipt --help
 lattice diagnostics lm-studio --help
 ```
 
-Use it for receipt verification, offline replay, eval gates, receipt inspection, and local diagnostics.
+Use it for receipt verification, offline replay, complete eval gates, receipt inspection,
+and local diagnostics. Compatibility reads report `profile=` and `deprecated=`; strict
+mode maps to the same legacy rejection policy as the SDK.
 
 ## Development
 
@@ -403,15 +437,28 @@ Useful targeted checks:
 pnpm check:package-version
 pnpm check:module-boundaries
 pnpm check:core-boundary
-pnpm check:node20-modules
+pnpm check:packed-consumer
+pnpm check:comment-hygiene
+node scripts/check-workflow-safety.mjs
 pnpm example:external-consumer
 ```
 
-`pnpm check:node20-modules` validates the built facades marked `node20-compatible`. The full runtime remains a Node 24 package by design.
+`pnpm check:packed-consumer` packs both published packages, installs their tarballs into an
+isolated ESM project, rejects unresolved workspace dependencies, and exercises current and
+historical receipt plus CLI behavior. CI runs that distribution check on Node 24 LTS and
+Node 26 Current.
+
+The live OpenAI-compatible, Anthropic, and Gemini provider canary is an optional
+scheduled/manual maintainer signal. It uses protected credentials, one bounded request per
+configured family, strict receipt verification, and sanitized tri-state evidence. It is
+not a pull-request gate or a substitute for the deterministic fake-server suite.
 
 ## Documentation
 
 * [Modular entrypoints](docs/modular-entrypoints.md)
+* [Migrating to SDK v1.6](docs/MIGRATION-v1.6.md)
+* [Provider canaries](docs/provider-canaries.md)
+* [Receipt v1.4 protocol migration](spec/MIGRATION-v1.4.md)
 * [OpenTelemetry observability](docs/observability-otel.md)
 * [External consumer example](examples/external-consumer/index.mjs)
 * [Agent loop example](examples/agent-loop/index.mjs)

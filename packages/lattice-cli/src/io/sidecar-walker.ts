@@ -26,7 +26,7 @@
  *
  * Order: lexicographic by receipt id (delegated from `walkReceiptsDirectory`).
  *
- * Imports ONLY public exports of `lattice` per CLI-06.
+ * Imports ONLY public exports of `lattice` to preserve the package boundary.
  */
 
 import { join, resolve } from "node:path";

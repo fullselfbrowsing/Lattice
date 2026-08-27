@@ -1,5 +1,21 @@
 export { createReceipt } from "./receipts/receipt.js";
 export type { CreateReceiptInput } from "./receipts/receipt.js";
+export {
+  issueReceipt,
+  preflightReceiptPolicy,
+  resolveReceiptPolicy,
+} from "./receipts/policy.js";
+export type {
+  EffectiveReceiptPolicy,
+  ReceiptIssuanceMode,
+  ReceiptIssuanceOutcome,
+  ReceiptPolicyInput,
+} from "./receipts/policy.js";
+export type {
+  AuditError,
+  AuditErrorCode,
+  AuditErrorStage,
+} from "./results/errors.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
   ExternalExecutionAuditInput,
@@ -48,17 +64,21 @@ export type {
   KeyEntry,
   KeySet,
   KeyState,
+  LegacyReceiptPolicy,
   ReceiptEnvelope,
   ReceiptModel,
   ReceiptRedaction,
   ReceiptRoute,
+  ReceiptSignatureProfile,
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  VerificationProfile,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyReceiptOptions,
   VerifyResult,
 } from "./receipts/types.js";
 export type {

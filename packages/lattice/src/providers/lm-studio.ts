@@ -9,30 +9,24 @@ import { createOpenAICompatibleProvider, type OpenAICompatibleProviderOptions } 
  *
  * Thin wrapper around {@link createOpenAICompatibleProvider} pinned to
  * LM Studio's default local server URL `http://localhost:1234/v1`. Wire
- * shape is OpenAI Chat Completions. LM Studio is no-auth by convention
- * (CD-03): `apiKey` is OPTIONAL; when omitted, the underlying factory
- * sends no `Authorization` header (see
- * `lattice/packages/lattice/src/providers/adapters.ts:53` for the
- * conditional auth-header wiring).
+ * shape is OpenAI Chat Completions. LM Studio is no-auth by convention,
+ * so `apiKey` is OPTIONAL; when omitted, the underlying factory
+ * sends no `Authorization` header.
  *
- * Phase 34 additions:
+ * Capability negotiation options:
  *   - `modelsCacheTtlMs` -- Reserved for future /models discovery; LM Studio
  *     currently has no remote /models endpoint. Accepted for option-bag
- *     uniformity but NOT USED (D-04 intentional no-endpoint pattern).
+ *     uniformity but NOT USED (intentional no-endpoint pattern).
  *   - `runEventSink` -- Accepted for option-bag uniformity but NEVER fired
- *     because source: "registry" is the documented happy path for LM Studio
- *     (no event for intentional no-endpoint per RESEARCH Open Question 5).
+ *     because source: "registry" is the documented happy path for LM Studio.
  *
- * STREAMING (Phase 44): supported through the OpenAI-compatible stream path.
+ * STREAMING: supported through the OpenAI-compatible stream path.
  *
- * DEFERRED (D-16 carryforward):
+ * Not supported by this adapter:
  *   - latency-tail diagnostics  -- observability concern; LM Studio is
- *                                  the canary for latency tails (INV-03);
- *                                  diagnostics module deferred to a
- *                                  follow-on observability phase.
- *   - resume-from-eviction      -- see Phase 5 (MV3-survivability adapter).
- *
- * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-03: thin wrapper; D-16: latency-tail deferred; CD-03 no-opt-out).
+ *                                  the canary for latency tails;
+ *                                  diagnostics belong in observability tooling.
+ *   - resume-from-eviction      -- handled by the survivability adapter.
  */
 export interface LmStudioProviderOptions
   extends Omit<OpenAICompatibleProviderOptions, "id" | "baseUrl" | "apiKey"> {
@@ -40,7 +34,7 @@ export interface LmStudioProviderOptions
   /** Defaults to `http://localhost:1234/v1`. Override for non-localhost deployments. */
   readonly baseUrl?: string;
   /**
-   * Optional. LM Studio is no-auth by convention (CD-03 default).
+   * Optional. LM Studio is no-auth by convention (default).
    * When provided, sent as `Authorization: Bearer <apiKey>` (matches the
    * underlying OpenAI-compat factory). Use only for proxied LM Studio
    * deployments that have a token gate in front.
@@ -51,23 +45,18 @@ export interface LmStudioProviderOptions
 const DEFAULT_LM_STUDIO_BASE_URL = "http://localhost:1234/v1";
 
 /**
- * Phase 34 — D-04 / QUIRK-02 — LM Studio provider factory.
+ * LM Studio provider factory.
  *
  * LM Studio is the prototypical "intentional no remote /models endpoint"
- * adapter per D-04 (alongside OpenAI-compat). The factory returns conservative
+ * adapter alongside OpenAI-compat. The factory returns conservative
  * defaults for the quirks block because LM Studio runs LOCAL quantized models
  * whose capabilities vary wildly by chat template + model file.
  *
  * The `negotiateCapabilities` method performs NO fetch; it returns
  * `synthesizeNegotiatedCapabilitiesFromRegistry` with source: "registry"
  * (the intentional-no-endpoint signal, distinct from "registry-fallback"
- * which signals a transient failure). Mirrors Plan 34-03 Task 2 (OpenAI-compat
- * registry-only pattern) verbatim.
- *
- * D-04 citation: "consumer adapters without a /models endpoint skip the
- * fetch layer entirely and delegate to synthesizeNegotiatedCapabilitiesFromRegistry."
- *
- * Open Question 5 (RESEARCH §): no event emitted for source: "registry" because
+ * which signals a transient failure). It mirrors the OpenAI-compatible
+ * registry-only path. No event is emitted for source: "registry" because
  * this is the intentional happy path for LM Studio -- emitting a "fallback" event
  * would produce false-positive noise for consumers monitoring the event stream.
  */
@@ -80,10 +69,10 @@ export function createLmStudioProvider(
   const resolvedId = options.id ?? "lm-studio";
   const resolvedBaseUrl = options.baseUrl ?? DEFAULT_LM_STUDIO_BASE_URL;
 
-  // Phase 34 — D-04 — LM Studio negotiate() is registry-only.
+  // LM Studio negotiate() is registry-only.
   // No fetch, no cache, no inflight coalescing, no event emission.
-  // Source: "registry" signals intentional no-endpoint (per D-04).
-  // Open Question 5: no event emitted for source: "registry" (intentional no-endpoint).
+  // Source "registry" signals an intentional no-endpoint path, so no
+  // fallback event is emitted.
   const negotiate = async (modelId: string): Promise<NegotiatedCapabilities> => {
     return synthesizeNegotiatedCapabilitiesFromRegistry("lm-studio", modelId, "registry");
   };
@@ -97,7 +86,7 @@ export function createLmStudioProvider(
 
   return {
     ...inner,
-    // Phase 34 — QUIRK-02 / LmStudioQuirks — conservative defaults.
+    // Conservative LmStudioQuirks defaults.
     // LM Studio runs LOCAL quantized models whose capabilities vary wildly
     // by chat template + model file. Conservative false values for all 5
     // universal booleans. streamingDiverges: true because some LM Studio
@@ -106,8 +95,7 @@ export function createLmStudioProvider(
     // CITED: lmstudio-bug-tracker issue 1342 -- Jinja template mismatches
     //   between model training and LM Studio server defaults cause output
     //   format corruption -> customChatTemplateRiskFlag: true
-    // VERIFIED: lm-studio.ts apiKey is optional (CD-03) ->
-    //   noAuthRequired: true (no auth needed for local localhost:1234 server)
+    // apiKey is optional, so noAuthRequired is true for the default local server.
     quirks: {
       supportsToolChoice: false,
       parallelToolCalls: false,

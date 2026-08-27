@@ -5,11 +5,10 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
  * builder. Each variant is a frozen value carrying a discriminant `kind`
  * and an `id` (auto-generated or caller-supplied).
  *
- * Phase 8 reshapes the Phase 7 placeholder `{ kind: "policy"|"semantic"|"schema" }`
- * into this discriminated union. Phase 7 never populated `invariants`
- * (see 07-04-SUMMARY decisions), so the change is additive in practice
- * but technically a breaking type change for any external caller that
- * authored a literal of the old shape.
+ * The discriminated union replaces an earlier
+ * `{ kind: "policy"|"semantic"|"schema" }` placeholder. Existing runtime
+ * values never populated `invariants`, but external callers that authored
+ * the old literal shape must migrate.
  */
 
 export interface MustCiteInvariant {
@@ -68,8 +67,7 @@ function nextId(kind: string, options?: InvariantOptions): string {
  *
  * Note on `inv.matches`: the caller supplies the StandardSchema validator,
  * and the tripwire evaluator trusts whatever `~standard.validate` returns.
- * This is by design — `matches` is the caller-driven escape hatch (see
- * T-08-05 in the 08-01-PLAN threat register).
+ * This is by design: `matches` is the caller-driven escape hatch.
  */
 export const inv = {
   mustCite(artifactName: string, options?: InvariantOptions): MustCiteInvariant {

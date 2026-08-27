@@ -1,7 +1,9 @@
 import type { UsageRecord } from "../plan/plan.js";
 import type {
+  ModelCapability,
   ProviderAdapter,
   ProviderFinishMetadata,
+  ProviderPricingHint,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
@@ -11,6 +13,7 @@ import type {
   Usage,
 } from "./provider.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { resolveUsageCostUsd } from "../routing/cost.js";
 import type { GeminiQuirks } from "./quirks.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import {
@@ -44,27 +47,23 @@ import { assertNoPublicUrlEgress } from "./no-public-url.js";
 /**
  * Options for {@link createGeminiProvider}.
  *
- * Mirrors `OpenAICompatibleProviderOptions` ergonomics (Phase 7 pattern) but
+ * Mirrors `OpenAICompatibleProviderOptions` ergonomics but
  * for Google's Generative Language API at
  * `/v1beta/models/{model}:generateContent` -- which uses `contents[].parts[].text`
  * (NOT OpenAI's `messages[]`), `role: "model"` for assistant turns (NOT
- * `"assistant"`), authenticates via `?key=` query string for execute(), and applies a
- * 4-category `safetySettings` block at `BLOCK_NONE` thresholds (FSB convention
- * mirrored from `extension/ai/universal-provider.js:255-272`).
+ * `"assistant"`), authenticates via `?key=` query string for execute(), and applies
+ * all four supported `safetySettings` categories at `BLOCK_NONE` thresholds.
  *
  * SECURITY: `apiKey` is a runtime parameter -- do NOT hardcode or log it.
  *
- * STREAMING (Phase 44): supported through native `streamGenerateContent` SSE events.
+ * STREAMING: supported through native `streamGenerateContent` SSE events.
  *
- * DEFERRED (Phase 4 carryforward notes):
- *   - multimodal (vision) -- deferred
- *   - resume-from-eviction -- see Phase 5 (MV3-survivability adapter contract)
+ * Not supported by this adapter:
+ *   - multimodal vision input
+ *   - resume-from-eviction, which belongs to the survivability adapter
  *
- * NOTE (Phase 34): negotiate() uses x-goog-api-key HEADER (preferred per RESEARCH §Q3).
- * The existing execute() path uses ?key= query string -- execute() migration is out-of-scope
- * for Phase 34 (additive only; T-34-04-01).
- *
- * Ref: FSB v0.10.0-attempt-2 Phase 4 (D-02 + D-07: full custom adapter; preserve role:"model").
+ * negotiate() uses the x-goog-api-key header to avoid URL-log exposure. The
+ * existing execute() path retains its query-string key for wire compatibility.
  */
 export interface GeminiProviderOptions {
   readonly id?: string;
@@ -73,23 +72,22 @@ export interface GeminiProviderOptions {
   /** Defaults to `https://generativelanguage.googleapis.com`. */
   readonly baseUrl?: string;
   readonly fetch?: typeof fetch;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly pricing?: ProviderPricingHint;
+  /** Positive integer output ceiling. Defaults to 2000. */
+  readonly maxOutputTokens?: number;
   /**
-   * D-08: TTL for per-instance /models response cache, in milliseconds.
-   * Default: 300_000ms (5 minutes). 0 = always refetch (tests). Infinity = process-lifetime.
+   * TTL for the per-instance /models response cache, in milliseconds.
+   * Default: 300_000ms (5 minutes). 0 = always refetch. Infinity = process lifetime.
    */
   readonly modelsCacheTtlMs?: number;
   /**
-   * D-11: Number of retries on transient /models fetch errors. Default: 2.
+   * Number of retries on transient /models fetch errors. Default: 2.
    * Retry schedule: immediate + 200ms + 1000ms (3 total attempts at retryCount=2).
    * 0 = no retries (1 attempt total).
    */
   readonly modelsRetryCount?: number;
   /**
-   * D-12: Optional event sink for observability. When provided, the adapter
+   * Optional event sink for observability. When provided, the adapter
    * emits a "capabilities.negotiation.fallback" RunEvent on transient /models failure.
    * If absent, no event is emitted (silent fallback).
    */
@@ -103,11 +101,19 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_TOP_P = 0.9;
 
+function resolveMaxOutputTokens(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("maxOutputTokens must be a positive integer.");
+  }
+  return value;
+}
+
 /**
- * 4 HARM_CATEGORY entries at BLOCK_NONE (FSB convention mirrored from
- * `extension/ai/universal-provider.js:255-272`). If Google restricts
- * BLOCK_NONE in the future, that is a re-spec concern, not a Phase 4
- * design defect (CONTEXT.md Specific Ideas note).
+ * All four HARM_CATEGORY entries use BLOCK_NONE. If Google restricts
+ * BLOCK_NONE in the future, callers will need a revised safety policy.
  */
 const SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -117,12 +123,12 @@ const SAFETY_SETTINGS = [
 ] as const;
 
 /**
- * Phase 34 — D-03 — Gemini quirks block. Values verified against
- * Gemini API documentation and gemini.ts:50-55 (safety settings) behavior.
+ * Gemini quirks block. Values follow the Gemini API contract and the
+ * `SAFETY_SETTINGS` request configuration above.
  *
- * CITED: https://ai.google.dev/api/generate-content#v1beta.GenerationConfig
+ * Reference: https://ai.google.dev/api/generate-content#v1beta.GenerationConfig
  *   - responseSchemaSupported: gemini-1.5-pro+ and gemini-2.x
- *   - safetySettingsConfigurable: verified in gemini.ts:50-55
+ *   - safetySettingsConfigurable: configured through request safety settings
  *   - systemInstructionSupported: gemini-1.5+ systemInstruction field
  */
 const GEMINI_QUIRKS: GeminiQuirks = {
@@ -131,13 +137,14 @@ const GEMINI_QUIRKS: GeminiQuirks = {
   structuredOutputs: true,
   responseFormatHonored: true,
   streamingDiverges: false,
-  responseSchemaSupported: true,       // CITED: Gemini API responseSchema/responseJsonSchema
-  safetySettingsConfigurable: true,    // VERIFIED: gemini.ts:50-55 4-category BLOCK_NONE
-  systemInstructionSupported: true,    // CITED: gemini-1.5+ supports system_instruction
+  responseSchemaSupported: true,       // Gemini supports responseSchema/responseJsonSchema.
+  safetySettingsConfigurable: true,    // Requests set all four categories to BLOCK_NONE.
+  systemInstructionSupported: true,    // Gemini 1.5+ supports system_instruction.
 };
 
 async function createGeminiGenerateContentBody(
   request: ProviderRunRequest,
+  maxOutputTokens: number,
 ): Promise<Record<string, unknown>> {
   const parts = await createGeminiUserParts(request);
   const functionDeclarations = geminiFunctionDeclarations(request.nativeTools);
@@ -154,7 +161,7 @@ async function createGeminiGenerateContentBody(
     generationConfig: {
       temperature: DEFAULT_TEMPERATURE,
       topP: DEFAULT_TOP_P,
-      maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+      maxOutputTokens,
       ...(structuredOutputConfig !== undefined ? structuredOutputConfig : {}),
     },
     safetySettings: SAFETY_SETTINGS,
@@ -302,19 +309,17 @@ function geminiGenerateContentUrl(input: {
 }
 
 /**
- * Phase 34 — D-03 / D-05..D-12 — Extended Gemini provider factory.
+ * Extended Gemini provider factory.
  *
  * Returns a `ProviderAdapter` narrowed to expose:
  *   - `quirks: GeminiQuirks` — static adapter capability flags
  *   - `negotiateCapabilities(modelId)` — live /v1beta/models fetch with medium-thick
  *     derivation (inputTokenLimit + thinking + supportedGenerationMethods from upstream)
- *     intersected with Phase 33 registry; TTL cache + inflight coalescing + retry +
+ *     intersected with the registry; TTL cache + inflight coalescing + retry +
  *     auth-throw + transient-fallback + event.
  *
- * NOTE on auth strategy (T-34-04-01): negotiate() uses x-goog-api-key HEADER
- * (preferred per RESEARCH §Q3 -- avoids leaking the key in server-side logs that
- * capture URL query strings). The existing execute() path uses ?key= query string
- * and is NOT changed by Phase 34 (out-of-scope migration).
+ * negotiate() uses the x-goog-api-key header so server-side URL logs cannot
+ * capture the key. The execute() path retains ?key= for wire compatibility.
  */
 export function createGeminiProvider(
   options: GeminiProviderOptions,
@@ -325,8 +330,9 @@ export function createGeminiProvider(
   const id = options.id ?? "gemini";
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/u, "");
+  const maxOutputTokens = resolveMaxOutputTokens(options.maxOutputTokens);
 
-  // D-05/D-06: per-instance cache and inflight Maps. Live inside the closure so
+  // Per-instance cache and inflight Maps live inside the closure so
   // each createGeminiProvider({}) call gets its own Map (no cross-contamination).
   const ttlMs = options.modelsCacheTtlMs ?? 300_000;
   const retryCount = options.modelsRetryCount ?? 2;
@@ -334,19 +340,19 @@ export function createGeminiProvider(
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   /**
-   * D-07 lazy expiry + Q7 inflight coalescing + Pitfall 4 .finally cleanup.
+   * Lazy expiry plus inflight coalescing with `.finally` cleanup.
    * Public surface: `adapter.negotiateCapabilities(modelId)`.
    */
   async function negotiate(modelId: string): Promise<NegotiatedCapabilities> {
-    // 1. Cache check (D-07 lazy expiry)
+    // 1. Cache check (lazy expiry)
     const cached = cache.get(modelId);
     if (cached !== undefined && cached.expiresAt > Date.now()) return cached.result;
 
-    // 2. Inflight coalesce (Q7)
+    // 2. Coalesce inflight requests.
     const existing = inflight.get(modelId);
     if (existing !== undefined) return existing;
 
-    // 3. New fetch promise; clear inflight in .finally (Pitfall 4)
+    // 3. New fetch promise; clear inflight in `.finally`.
     const fetchPromise = (async () => {
       try {
         const result = await fetchAndNegotiate(modelId);
@@ -364,21 +370,21 @@ export function createGeminiProvider(
   }
 
   /**
-   * Phase 34 — D-09..D-11 — Fetches /v1beta/models and merges with registry.
+   * Fetches /v1beta/models and merges with the registry.
    *
    * URL: ${baseUrl}/v1beta/models (NOT /v1/models -- Gemini uses /v1beta/ prefix)
-   * Auth: x-goog-api-key HEADER (preferred per RESEARCH §Q3 -- NOT ?key= query-string;
+   * Auth: x-goog-api-key HEADER, NOT a ?key= query string;
    *   avoids leaking the key in server-side log captures of request URLs).
-   * Retry: [0ms, 200ms, 1000ms] backoff on transient errors (D-11).
-   * Auth error (401/403): throws NegotiationAuthError (D-10, no fallback).
-   * Transient error (5xx/network): falls back to registry with "registry-fallback" (D-09).
+   * Retry: [0ms, 200ms, 1000ms] backoff on transient errors.
+   * Auth error (401/403): throws NegotiationAuthError with no fallback.
+   * Transient error (5xx/network): falls back to registry with "registry-fallback".
    */
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
     // NOTE: URL is /v1beta/models (not /v1/models -- Gemini API prefix differs from OpenAI)
     const url = `${baseUrl}/v1beta/models`;
     const headers: Record<string, string> = {
       // SECURITY: key sent as HEADER (x-goog-api-key), NOT as ?key= query-string.
-      // RESEARCH §Q3: header form is preferred to avoid leaking the key in upstream logs.
+      // Header form avoids leaking the key in upstream URL logs.
       "x-goog-api-key": options.apiKey,
       "accept": "application/json",
     };
@@ -415,12 +421,12 @@ export function createGeminiProvider(
         const body: unknown = await resp.json();
         return mergeGeminiModelsWithRegistry(modelId, body);
       } catch (err) {
-        if (err instanceof NegotiationAuthError) throw err; // D-10: auth never falls back
+        if (err instanceof NegotiationAuthError) throw err; // Auth never falls back.
         lastErr = err;
       }
     }
 
-    // All retries exhausted -- fallback + event (D-09/D-12)
+    // All retries exhausted -- fallback + event.
     emitFallbackEvent({
       adapter: "gemini",
       modelId,
@@ -436,7 +442,7 @@ export function createGeminiProvider(
    * supportedGenerationMethods -> streaming + nativeToolCalling) and falls back
    * to registry for the rest (knownFailureModes, recommendedSanitizers).
    *
-   * Lenient parsing per Pitfall 1: all field accesses use optional chaining.
+   * All field accesses use optional chaining for lenient parsing.
    * Missing `thinking` field does not crash -- defaults to false.
    */
   function mergeGeminiModelsWithRegistry(
@@ -514,8 +520,8 @@ export function createGeminiProvider(
   }
 
   /**
-   * D-12: Emit capabilities.negotiation.fallback RunEvent via the optional sink.
-   * SECURITY (T-34-04-02): stringifyErr extracts err.message only -- NOT err.stack
+   * Emit capabilities.negotiation.fallback RunEvent via the optional sink.
+   * SECURITY: stringifyErr extracts err.message only -- NOT err.stack
    * or JSON.stringify(headers), so the apiKey cannot leak into the event payload.
    * Synthetic runId pattern: negotiate happens outside a run; documented here.
    */
@@ -544,17 +550,20 @@ export function createGeminiProvider(
     id,
     kind: "provider-adapter",
     capabilities: [
-      {
+      capabilityWithConfiguredPricing({
         ...defaultCapabilityForProvider(id),
         modelId: options.model,
         fileTransport: ["inline", "json", "url", "base64", "file-id", "extracted-text", "transcript"],
         streaming: true,
-      },
+      }, options.pricing),
     ],
     quirks: GEMINI_QUIRKS,
     negotiateCapabilities: negotiate,
     async execute(request) {
-      const requestBody = await createGeminiGenerateContentBody(request);
+      const requestBody = await createGeminiGenerateContentBody(
+        request,
+        maxOutputTokens,
+      );
       const bodyStr = JSON.stringify(requestBody);
       assertNoPublicUrlEgress(request, id, bodyStr);
       const init: RequestInit = {
@@ -644,6 +653,7 @@ export function createGeminiProvider(
         apiKey: options.apiKey,
         fetchImpl,
         request,
+        maxOutputTokens,
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
         ...(options.sanitizeOutput !== undefined ? { sanitizeOutput: options.sanitizeOutput } : {}),
         ...(options.validateToolCalls !== undefined
@@ -661,14 +671,15 @@ async function* streamGeminiResponse(input: {
   readonly apiKey: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
-  readonly pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  };
+  readonly maxOutputTokens: number;
+  readonly pricing?: ProviderPricingHint;
   readonly sanitizeOutput?: SanitizeOutputOption;
   readonly validateToolCalls?: ValidateToolCallsOption;
 }): ProviderStream {
-  const requestBody = await createGeminiGenerateContentBody(input.request);
+  const requestBody = await createGeminiGenerateContentBody(
+    input.request,
+    input.maxOutputTokens,
+  );
   const streamBodyStr = JSON.stringify(requestBody);
   assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
   const response = await input.fetchImpl(
@@ -908,31 +919,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Gemini uses `usageMetadata.promptTokenCount` / `candidatesTokenCount` /
  * `totalTokenCount` (NOT OpenAI's `prompt_tokens` / `completion_tokens`).
- * This helper maps to Lattice's `Usage` shape and applies pricing when supplied.
+ * This helper maps to Lattice's `Usage` shape, retaining reported cost before
+ * consulting static pricing.
  */
 function normalizeGeminiUsageToRunUsage(
   rawUsage: unknown,
-  pricing?: {
-    readonly inputPer1kTokens?: number;
-    readonly outputPer1kTokens?: number;
-  },
+  pricing?: ProviderPricingHint,
 ): Usage {
   let promptTokens = 0;
   let completionTokens = 0;
+  let reportedCostUsd: number | undefined;
   if (typeof rawUsage === "object" && rawUsage !== null) {
     const record = rawUsage as Record<string, unknown>;
     promptTokens = numberField(record, "promptTokenCount") ?? 0;
     completionTokens = numberField(record, "candidatesTokenCount") ?? 0;
+    reportedCostUsd = reportedUsageCost(record);
   }
-  let costUsd: number | null = null;
-  if (
-    pricing !== undefined &&
-    (pricing.inputPer1kTokens !== undefined || pricing.outputPer1kTokens !== undefined)
-  ) {
-    const inputCost = ((pricing.inputPer1kTokens ?? 0) * promptTokens) / 1000;
-    const outputCost = ((pricing.outputPer1kTokens ?? 0) * completionTokens) / 1000;
-    costUsd = inputCost + outputCost;
-  }
+  const costUsd = resolveUsageCostUsd({
+    ...(pricing !== undefined ? { pricing } : {}),
+    ...(reportedCostUsd !== undefined ? { reportedCostUsd } : {}),
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+  });
   return { promptTokens, completionTokens, costUsd };
 }
 
@@ -944,11 +952,22 @@ function normalizeGeminiUsage(usage: unknown): UsageRecord | undefined {
   const inputTokens = numberField(record, "promptTokenCount");
   const outputTokens = numberField(record, "candidatesTokenCount");
   const totalTokens = numberField(record, "totalTokenCount");
+  const costUsd = reportedUsageCost(record);
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd } : {}),
   };
+}
+
+function reportedUsageCost(record: Record<string, unknown>): number | undefined {
+  return (
+    numberField(record, "costUsd") ??
+    numberField(record, "cost_usd") ??
+    numberField(record, "total_cost") ??
+    numberField(record, "cost")
+  );
 }
 
 function numberField(record: Record<string, unknown>, key: string): number | undefined {
@@ -956,8 +975,19 @@ function numberField(record: Record<string, unknown>, key: string): number | und
   return typeof value === "number" ? value : undefined;
 }
 
+function capabilityWithConfiguredPricing(
+  capability: ModelCapability,
+  pricing: ProviderPricingHint | undefined,
+): ModelCapability {
+  if (pricing !== undefined) {
+    return { ...capability, pricing };
+  }
+  const { pricing: inheritedPricing, ...unpriced } = capability;
+  return inheritedPricing === undefined ? capability : unpriced;
+}
+
 /**
- * T-34-04-02: Returns err.message only -- NOT err.stack (which could include
+ * Returns err.message only -- NOT err.stack, which could include
  * headers or the apiKey via a fetch rejection), NOT JSON.stringify(err).
  */
 function stringifyErr(err: unknown): string {
