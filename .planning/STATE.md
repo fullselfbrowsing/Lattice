@@ -46,6 +46,8 @@ Last activity: 2026-07-20 - Milestone v1.6 completed and archived
 |------------|------|---------|
 | 260706-scq Refresh paper for v1.5 protocol and conformance | 2026-07-07 | Updated `paper/main.tex`, `paper/refs.bib`, and `spec/SPEC.md` for v1.5 protocol/conformance facts; built with `tectonic`. |
 | 260706-tm8 Fix review findings: conformance vector sig encoding and package README docs | 2026-07-07 | Fixed NEG-01 DSSE signature encoding, regenerated vector manifest, and replaced shipped package READMEs with docs matching current package surfaces. |
+| 260707-efh Style journal draft like existing main PDF | 2026-07-07 | Restyled `paper/journal-main.tex` to IEEE two-column form, added lifecycle and auditability diagrams, and rebuilt `paper/journal-main.pdf`. |
+| 260707-00u Lattice journal paper reframe | 2026-07-07 | Created a separate professor-ready journal manuscript, PDF, literature matrix, ABDC shortlist, and professor cover note for the IS / AI governance track. |
 
 ## Accumulated Context
 

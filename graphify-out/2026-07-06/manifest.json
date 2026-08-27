@@ -1,0 +1,4497 @@
+{
+  ".changeset/config.json": {
+    "mtime": 1782333278.4434679,
+    "ast_hash": "3a82a4213904888ea2a98eeec3a297a6",
+    "semantic_hash": ""
+  },
+  ".planning/HANDOFF.json": {
+    "mtime": 1782333278.4442015,
+    "ast_hash": "b8fdba6749b878d30e6d7cf89338a110",
+    "semantic_hash": ""
+  },
+  ".planning/config.json": {
+    "mtime": 1783375872.3824973,
+    "ast_hash": "536bfe4e1890b139620670211551d7f5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/27-npm-org-trusted-publisher-setup/27-RECON.mjs": {
+    "mtime": 1782333278.4694242,
+    "ast_hash": "784397711de00dfa97bc956c73c1675c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-DISCUSS-CHECKPOINT.json": {
+    "mtime": 1782333278.510556,
+    "ast_hash": "41bb661e0413d627e2eeeeb20633ae5c",
+    "semantic_hash": ""
+  },
+  "conformance/generate/package.json": {
+    "mtime": 1782385802.19612,
+    "ast_hash": "5c543b4228427cd00af2cabe33736fe9",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/main.test.ts": {
+    "mtime": 1782391288.5326653,
+    "ast_hash": "829da56fdf3ecc8aa1f051b392c6c902",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/main.ts": {
+    "mtime": 1782391223.7422822,
+    "ast_hash": "4acd88554f4d1ad30e5a28e79347e1ec",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/manifest.ts": {
+    "mtime": 1782391183.3719423,
+    "ast_hash": "16c2f7ab3451a1b67c7ad257d7a0ee05",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/negative.ts": {
+    "mtime": 1782391104.000939,
+    "ast_hash": "6aad6f00b881706b9f969750833abd8c",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/positive.ts": {
+    "mtime": 1782387093.870962,
+    "ast_hash": "b9e38dcde5dd899b150da0f754faf71e",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/rfc8785-check.test.ts": {
+    "mtime": 1782386631.4730742,
+    "ast_hash": "a56b4acfddbedf768e5da6eafe8c0f2f",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/rfc8785-check.ts": {
+    "mtime": 1782386795.2979164,
+    "ast_hash": "880c4ba1d27c7f2059be302a6bab4fb8",
+    "semantic_hash": ""
+  },
+  "conformance/generate/src/types.ts": {
+    "mtime": 1782386227.2107465,
+    "ast_hash": "3b37263119a82edb5bb553f4cddb5e0c",
+    "semantic_hash": ""
+  },
+  "conformance/generate/tsconfig.json": {
+    "mtime": 1782386893.2238603,
+    "ast_hash": "8ae301221eba7f8e1f62b3b65e3b697a",
+    "semantic_hash": ""
+  },
+  "conformance/generate/vitest.config.ts": {
+    "mtime": 1782386143.100134,
+    "ast_hash": "87ccba62dfdfa1ff70c36f817875e8d2",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-01-envelope-malformed.json": {
+    "mtime": 1783059117.9207742,
+    "ast_hash": "fb4052db0a18d4ddecc723d734d0c49a",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-02-version-mismatch.json": {
+    "mtime": 1782391235.5255113,
+    "ast_hash": "03d5e3df3736e2ca9719f711459adf9f",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-03a-schema-version-too-low-v1.json": {
+    "mtime": 1782391235.5256052,
+    "ast_hash": "8b4e17330a59b9e88767fdc043626869",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-03b-schema-version-too-low-absent.json": {
+    "mtime": 1782391235.5256944,
+    "ast_hash": "eee97aa1e14118d2a34e55ad67f98291",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-04-key-not-found.json": {
+    "mtime": 1782391235.5257769,
+    "ast_hash": "830b10ecb7f9288e95886c322e3f52aa",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-05-key-revoked.json": {
+    "mtime": 1782391235.525979,
+    "ast_hash": "2359cf3903509efcd06ac64cf146c732",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-06-canonicalization-mismatch.json": {
+    "mtime": 1782391235.5261004,
+    "ast_hash": "289cf7ba23c028d086a8ffaeb6bac968",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-07-signature-invalid-bad-sig.json": {
+    "mtime": 1782391235.526204,
+    "ast_hash": "6e78651bea8642c8da039fbe63e8d35f",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/negative/neg-08-signature-invalid-kid-mismatch.json": {
+    "mtime": 1782391235.5263484,
+    "ast_hash": "a251e9d7f32a951c5a9d76e266a0b7a4",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/positive/vec-00-v1.3.json": {
+    "mtime": 1782391235.523644,
+    "ast_hash": "eeb37596e0549581292ae367046efa0e",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/positive/vec-01-v1.1.json": {
+    "mtime": 1782391235.5237882,
+    "ast_hash": "4a3dcd9c4e1d0e4de26a40e9bdca4429",
+    "semantic_hash": ""
+  },
+  "conformance/vectors/positive/vec-02-v1.2.json": {
+    "mtime": 1782391235.5238922,
+    "ast_hash": "40b82c9ff869fde9f42f7e92beb816da",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/package.json": {
+    "mtime": 1782940357.581167,
+    "ast_hash": "7c16a025761dcc79ca09de72cea50838",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/src/manifest.test.ts": {
+    "mtime": 1782940357.5814333,
+    "ast_hash": "03cfaa5e1e8c4cf9edaf279c2271d60d",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/src/negative.test.ts": {
+    "mtime": 1782940357.5816355,
+    "ast_hash": "f8587ec2d7f8952cae982262c1fb3d96",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/src/positive.test.ts": {
+    "mtime": 1782940357.5818458,
+    "ast_hash": "5efec267ac15fb483348d7debc505f08",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/tsconfig.json": {
+    "mtime": 1782940357.5820577,
+    "ast_hash": "6ab232ba90a925a1d2cc92ad63c3a1b6",
+    "semantic_hash": ""
+  },
+  "conformance/verify-ts/vitest.config.ts": {
+    "mtime": 1782940357.5822453,
+    "ast_hash": "87ccba62dfdfa1ff70c36f817875e8d2",
+    "semantic_hash": ""
+  },
+  "examples/agent-crew/index.mjs": {
+    "mtime": 1782333278.5481308,
+    "ast_hash": "6198384d9819a234489faa0be6e7bd2e",
+    "semantic_hash": ""
+  },
+  "examples/agent-crew/package.json": {
+    "mtime": 1782333278.5484273,
+    "ast_hash": "9fc567a89a87d4fa621c9a0597fbbae2",
+    "semantic_hash": ""
+  },
+  "examples/agent-crew/setup.mjs": {
+    "mtime": 1782333278.5487547,
+    "ast_hash": "1d196c81d35659c5ae0ac4be16833917",
+    "semantic_hash": ""
+  },
+  "examples/agent-loop/index.mjs": {
+    "mtime": 1782333278.548967,
+    "ast_hash": "2e4c215855e54926a20d78cf5727b3fe",
+    "semantic_hash": ""
+  },
+  "examples/agent-loop/package.json": {
+    "mtime": 1782333278.5490265,
+    "ast_hash": "aafa1c3fcb823edfa03727d581ae271b",
+    "semantic_hash": ""
+  },
+  "examples/agent-loop/setup.mjs": {
+    "mtime": 1782333278.549088,
+    "ast_hash": "42b9adf1068215ec3acf27b4ec898470",
+    "semantic_hash": ""
+  },
+  "examples/v14-validation/index.mjs": {
+    "mtime": 1782333278.5492084,
+    "ast_hash": "53404811975a48438fb7879e727b5d38",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/index.mjs": {
+    "mtime": 1782333278.549847,
+    "ast_hash": "ac4e616b1ddaf4568ddf3dcd6ff7c644",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/judges.mjs": {
+    "mtime": 1782333278.5499115,
+    "ast_hash": "a0bee58761372b2b0a1806bb14d64156",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/scenarios/no-contract-match.mjs": {
+    "mtime": 1782333278.550034,
+    "ast_hash": "d6f2292a069095f73bda5cad91fa6ba0",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/scenarios/quality-floor.mjs": {
+    "mtime": 1782333278.550108,
+    "ast_hash": "30666e1ee57e041753c7bda5a1c7bd3f",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/scenarios/success.mjs": {
+    "mtime": 1782333278.5501757,
+    "ast_hash": "c0107a2d6d3c8226e5dcb9ed10912734",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/scenarios/tripwire.mjs": {
+    "mtime": 1782333278.5502634,
+    "ast_hash": "9d98d65e3a20568927637625aea9afd2",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/setup.mjs": {
+    "mtime": 1782333278.550357,
+    "ast_hash": "dbfcab93a2552e93edaa83000f6330f6",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1782379438.7815092,
+    "ast_hash": "314a762fdd06955c41ad569bff178a14",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/package.json": {
+    "mtime": 1782391239.3998747,
+    "ast_hash": "2fd61f302d64edfd89b08d8cc1bdcb3b",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/cli.ts": {
+    "mtime": 1782333278.550783,
+    "ast_hash": "410e59f18402bdfcf328717dc62d6b92",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/commands/diagnostics.ts": {
+    "mtime": 1782333278.5508893,
+    "ast_hash": "a59ec508770142e7ace9d6a64e264bd6",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/commands/eval.ts": {
+    "mtime": 1782333278.5513165,
+    "ast_hash": "5c4410bfb8ef4c9ce80402ca11fb271f",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/commands/receipt.ts": {
+    "mtime": 1782333278.5513978,
+    "ast_hash": "878c78698f0925039ba3d1c754c5c8ba",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/commands/repro.ts": {
+    "mtime": 1782333278.5515106,
+    "ast_hash": "acc842f36dd2b43145d83304dc903f6b",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/commands/verify.ts": {
+    "mtime": 1782333278.5515907,
+    "ast_hash": "ef1c26dc1c343619a17539c4e5552cce",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/diagnostics/lm-studio.ts": {
+    "mtime": 1782333278.5517218,
+    "ast_hash": "76488fb3024c9c8ad42012d1683e07ff",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/agent-runner.ts": {
+    "mtime": 1782333278.55199,
+    "ast_hash": "f989d1f7f24e522c7b7fd47a16e149c6",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/agent-types.ts": {
+    "mtime": 1782333278.5522385,
+    "ast_hash": "ec08fb3d38e4d0066e15f0b33bb914e1",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/baseline.ts": {
+    "mtime": 1782333278.5523307,
+    "ast_hash": "eedd2584a384a55bfe2c02f3cee777c3",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/judge-cache.ts": {
+    "mtime": 1782333278.5523996,
+    "ast_hash": "228d1733efa80079c51eac53a5009e91",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/judge.ts": {
+    "mtime": 1782333278.552472,
+    "ast_hash": "375816eb29f2cd69b8fd76762c381196",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/runner.ts": {
+    "mtime": 1782333278.5525808,
+    "ast_hash": "21778eb28b1a8673dfec6ab032129608",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/eval/types.ts": {
+    "mtime": 1782333278.5526538,
+    "ast_hash": "272c960ef338880c985d2bdd7a5b2f35",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/artifact-loader.ts": {
+    "mtime": 1782333278.5527723,
+    "ast_hash": "e1138628a4a3e8a97aa79562b170c250",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/keyset-loader.ts": {
+    "mtime": 1782333278.5528588,
+    "ast_hash": "5c0d5b2dab7b3c3fe3f963318a394a2b",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/receipt-loader.ts": {
+    "mtime": 1782333278.552938,
+    "ast_hash": "4102b8b0acb62858feddfc08b3d7f66a",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/receipt-walker.ts": {
+    "mtime": 1782333278.5530295,
+    "ast_hash": "b1247fd9bb3f513ddae178cad07c7b92",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/sidecar-loader.ts": {
+    "mtime": 1782333278.5531213,
+    "ast_hash": "c6c0bb1e7df1b1ae369b085554178507",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/io/sidecar-walker.ts": {
+    "mtime": 1782333278.5532045,
+    "ast_hash": "a45c21299f25b5f46898ba976f5a0423",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/receipt/diff.ts": {
+    "mtime": 1782333278.553595,
+    "ast_hash": "0d5680ec57697f59651c256575aaa744",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/src/version.ts": {
+    "mtime": 1783059119.0515687,
+    "ast_hash": "b79b8d43e97ef8bea41ba38470766737",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/agent-eval.test.ts": {
+    "mtime": 1782333278.5539494,
+    "ast_hash": "9d34ebcb72c0f05114978eb2fabdbd54",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/artifact-loader.test.ts": {
+    "mtime": 1782333278.5540404,
+    "ast_hash": "635cabe47acf2de7537c7dc2dc2c2bbf",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/baseline.test.ts": {
+    "mtime": 1782333278.5541258,
+    "ast_hash": "383aca79512df7370a0bcff4682be243",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/cli.test.ts": {
+    "mtime": 1782333278.554254,
+    "ast_hash": "ff340403bc3d024f8762dac7432aad52",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/diagnostics.test.ts": {
+    "mtime": 1782333278.5543396,
+    "ast_hash": "69d63288124a6083db1e5bc4d55cc491",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/eval-runner.test.ts": {
+    "mtime": 1782333278.5544462,
+    "ast_hash": "6384cd8aa738c82bb9be1521974d6271",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/eval.test.ts": {
+    "mtime": 1782333278.5545688,
+    "ast_hash": "c92442b14069776bb7527fb54ef03d7c",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/judge-cache.test.ts": {
+    "mtime": 1782333278.5546448,
+    "ast_hash": "3516ef97c2d8bd53ff73c22e5a8648c7",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/keyset-loader.test.ts": {
+    "mtime": 1782333278.554728,
+    "ast_hash": "c40832297a83548e0ca5c6ea55699e32",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/receipt-diff.test.ts": {
+    "mtime": 1782333278.5550237,
+    "ast_hash": "1b8e896daf328245deeda90edc078b51",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/receipt-walker.test.ts": {
+    "mtime": 1782333278.5551631,
+    "ast_hash": "0efeecfa896dd284b946f2832ab27a1a",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/repro.test.ts": {
+    "mtime": 1782333278.5552607,
+    "ast_hash": "3c8c46183af22de3d938fce767f24bdb",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/showcase-e2e.test.ts": {
+    "mtime": 1782333278.5553653,
+    "ast_hash": "4f0897773c01f34efdd1ef640e5177c5",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/sidecar-loader.test.ts": {
+    "mtime": 1782333278.555507,
+    "ast_hash": "3b9840425fca627f662bea675cd42a5a",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/sidecar-walker.test.ts": {
+    "mtime": 1782333278.5555918,
+    "ast_hash": "cedea062ed63f098a91814842242ab5c",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/v14-validation.test.ts": {
+    "mtime": 1782333278.5556629,
+    "ast_hash": "9081990e40bd3d0aea01c069f96c2cb4",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/test/verify.test.ts": {
+    "mtime": 1782333278.5557432,
+    "ast_hash": "dade63f262c344816e84f14e8dda8402",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/tsconfig.json": {
+    "mtime": 1782333278.5558035,
+    "ast_hash": "e08295f22c7de838e08cfec2be046d82",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/tsdown.config.ts": {
+    "mtime": 1782333278.5558782,
+    "ast_hash": "f735257a6bb97194615bf43f4a1f1111",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/vitest.config.ts": {
+    "mtime": 1782333278.5559494,
+    "ast_hash": "62dd0493393d5ab63c08e30331279bd2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/package.json": {
+    "mtime": 1782391239.3994777,
+    "ast_hash": "e530b37a92f96bc1ccc7f495aec6917c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/scripts/check-cli-deps.mjs": {
+    "mtime": 1782333278.5565023,
+    "ast_hash": "2aee064a3cec0364511d6e742966277b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/agent-spec.test.ts": {
+    "mtime": 1782333278.557152,
+    "ast_hash": "86c5b512132ca4025d1754d0ab464b3a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/agent-spec.ts": {
+    "mtime": 1782333278.5575404,
+    "ast_hash": "245b9e9dc5658c8631ad84cc2e531af1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/cache-prefix.test.ts": {
+    "mtime": 1782333278.5579185,
+    "ast_hash": "19d0f61725943db016f0613924e70885",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/crew-eval.test.ts": {
+    "mtime": 1782333278.558387,
+    "ast_hash": "89534c3a387d42a4737bdf933dc56793",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/crew-integration.test.ts": {
+    "mtime": 1782333278.5587733,
+    "ast_hash": "4dd1ce542389e680e779d29ec1df1744",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/crew-policy.test.ts": {
+    "mtime": 1782333278.5591476,
+    "ast_hash": "116e19d7e7d5b6dca90bed21cac7618c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/crew-policy.ts": {
+    "mtime": 1782333278.5595362,
+    "ast_hash": "c0a7439478238c5df431c08ec960c164",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/dispatcher.test.ts": {
+    "mtime": 1782333278.559668,
+    "ast_hash": "c276ddcf9662b27fc1f39104fa5e05b5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/dispatcher.ts": {
+    "mtime": 1782333278.5598083,
+    "ast_hash": "50cd73ec807d296d8cb3607566478493",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/run-crew.test.ts": {
+    "mtime": 1782333278.5604794,
+    "ast_hash": "7eed49056bbf10180d31f5e55c191b6e",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/crew/run-crew.ts": {
+    "mtime": 1782333278.5605853,
+    "ast_hash": "5c2edb5699ffe801cecbef57d91b9fce",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/eval.test.ts": {
+    "mtime": 1782333278.5606713,
+    "ast_hash": "6ef98532c40a9575f562a94dcb8f9a5a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/eval.ts": {
+    "mtime": 1782333278.5607502,
+    "ast_hash": "26074477db14c982e7f273328a43341c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/format-tools.test.ts": {
+    "mtime": 1782333278.5611174,
+    "ast_hash": "3d9e47ac04d161f5ec1b8b07f23db17d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/format-tools.ts": {
+    "mtime": 1782333278.5613284,
+    "ast_hash": "3f86d57f69d6e1b31156009ddd526fcb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/host-integration.test.ts": {
+    "mtime": 1782333278.5614197,
+    "ast_hash": "6f757f013868521259f639d0b9432f07",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/host.test.ts": {
+    "mtime": 1782333278.561496,
+    "ast_hash": "a7bbf2f424f91fbd1e31727cd34779d8",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/host.ts": {
+    "mtime": 1782333278.5618415,
+    "ast_hash": "7602d69693e6679a68527c241117a0d5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/action-history.test.ts": {
+    "mtime": 1782333278.5619702,
+    "ast_hash": "d5b6a08b91bcac6e2d85e7a8a95e18fb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/action-history.ts": {
+    "mtime": 1782333278.5622373,
+    "ast_hash": "9438502d3d36967d3e113c4b69d0b4a1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/cost-tracker.test.ts": {
+    "mtime": 1782333278.562317,
+    "ast_hash": "ed99e1bdbe2eb1df4c0e9752bfbf7fc2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/cost-tracker.ts": {
+    "mtime": 1782333278.562389,
+    "ast_hash": "1f29d75b557f276313bea44f425ca80d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/goal-progress.test.ts": {
+    "mtime": 1782333278.5624638,
+    "ast_hash": "633c39740fefc7857f2fa62d78bf2d47",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/goal-progress.ts": {
+    "mtime": 1782333278.5625505,
+    "ast_hash": "b60e69c854702f5d3a4946d9ef28dd8d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/permission-context.test.ts": {
+    "mtime": 1782333278.5626395,
+    "ast_hash": "df15be47d72b37ebbb7c110078788549",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/permission-context.ts": {
+    "mtime": 1782333278.5627139,
+    "ast_hash": "68501efcb3f9433df0937dd5c2600d1f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/rate-limit-group.test.ts": {
+    "mtime": 1782333278.5631247,
+    "ast_hash": "ab183efcafed9b154e6e02cb84006d83",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/rate-limit-group.ts": {
+    "mtime": 1782333278.5635114,
+    "ast_hash": "9a1eb7ffe19d3e947ae2b305f0a7be3b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/transcript-store.test.ts": {
+    "mtime": 1782333278.5635843,
+    "ast_hash": "024d6dd7b8fd64a10016ae645d7ac361",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/infra/transcript-store.ts": {
+    "mtime": 1782333278.563659,
+    "ast_hash": "412635f9e151cce61a97756eb37af48c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/integration.test.ts": {
+    "mtime": 1782333278.563902,
+    "ast_hash": "b8e3e35421e83c43df8db94bb996b53d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/runtime.test.ts": {
+    "mtime": 1782333278.5639968,
+    "ast_hash": "4e3eb395a8154e1bb00cf9111310290d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/runtime.ts": {
+    "mtime": 1782333278.564107,
+    "ast_hash": "61923cc2860a0ef9b07181e6e2c2aa65",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/survivability-integration.test.ts": {
+    "mtime": 1782333278.5642035,
+    "ast_hash": "cb5c2bbbf7652e98dc535aa5aa48e16b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/agent/types.ts": {
+    "mtime": 1782333278.5642993,
+    "ast_hash": "c58e526019748f91100cc99e7191d06d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/artifacts/artifact.ts": {
+    "mtime": 1782333278.5644414,
+    "ast_hash": "d7d863bde94346baf241745533021b2a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/artifacts/lineage.ts": {
+    "mtime": 1782333278.5645142,
+    "ast_hash": "fb5e95837b47b9bd62e43093442ba2a1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/artifacts/metadata.ts": {
+    "mtime": 1782333278.5645835,
+    "ast_hash": "cf005ed15e53d1e68a24ae2100c01192",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/index.ts": {
+    "mtime": 1782333278.5647051,
+    "ast_hash": "3a5bd017e09c7337f0ce0011c9dece14",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/lookup.ts": {
+    "mtime": 1782333278.5647833,
+    "ast_hash": "08c88b8e5dc08f12e9cf23bb4b42e40e",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/negotiate.ts": {
+    "mtime": 1782333278.5648854,
+    "ast_hash": "3ac9ed114e86fa1f427054528d46d2d5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/profile.ts": {
+    "mtime": 1782333278.5649874,
+    "ast_hash": "9b274e421c60cc2e81f61eb1f56885dd",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/registry.generated.ts": {
+    "mtime": 1782333278.5652404,
+    "ast_hash": "377d42a523808bde929c6a2969519575",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/registry.static.ts": {
+    "mtime": 1782333278.5653374,
+    "ast_hash": "e8e212d8007b5ef60704c544c39f8d64",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/capabilities/sanitizer-recommendations.ts": {
+    "mtime": 1782333278.5654156,
+    "ast_hash": "1b2d76d11cfb9c3c88007ae7b0fba641",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/context/context-pack.ts": {
+    "mtime": 1782333278.5655355,
+    "ast_hash": "cc0b25e20630988291615693c1481784",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/bands.test.ts": {
+    "mtime": 1782333278.5656452,
+    "ast_hash": "90344f9dd96e27db6c45a5bb6bcd417c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/bands.ts": {
+    "mtime": 1782333278.565719,
+    "ast_hash": "ad46ee06435bcc9ae23ced960fdbb03a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/checkpoint.test.ts": {
+    "mtime": 1782333278.565803,
+    "ast_hash": "fc3e6a631695da40107366543a083126",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/checkpoint.ts": {
+    "mtime": 1782333278.5661063,
+    "ast_hash": "b7e46b8ac04d11b069e1fbf2e1fa0449",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/contract.test.ts": {
+    "mtime": 1782333278.5661888,
+    "ast_hash": "027a6a98ad21fefafd62a1cbecdd5c73",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/contract.ts": {
+    "mtime": 1782333278.5662956,
+    "ast_hash": "d74771869cf5dcd44ef137af11ff3c55",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/index.ts": {
+    "mtime": 1782333278.5663621,
+    "ast_hash": "a3824054b84fe7c03351450631677bd6",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/invariants.test.ts": {
+    "mtime": 1782333278.5664496,
+    "ast_hash": "a4a78a08fcdbf49d11bc15d06d11f6b1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/invariants.ts": {
+    "mtime": 1782333278.566518,
+    "ast_hash": "d41c400c8f49d2a9489063801a1dcbe2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/pii-detectors.test.ts": {
+    "mtime": 1782333278.5665922,
+    "ast_hash": "a34d7b0a64819e5f94c8a0bf757218a2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/pii-detectors.ts": {
+    "mtime": 1782333278.5666559,
+    "ast_hash": "261bd0a0f7020bdc3a17865bfa0a8b73",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/preflight.test.ts": {
+    "mtime": 1782333278.5667226,
+    "ast_hash": "8e9d29d429d59754d8baa7eee656fc0f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/preflight.ts": {
+    "mtime": 1782333278.5667872,
+    "ast_hash": "308171971715e1f58423e39b9aba843f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/tripwire.test.ts": {
+    "mtime": 1782333278.5668747,
+    "ast_hash": "21669d870c064f6ce238f76e2749d108",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/contract/tripwire.ts": {
+    "mtime": 1782333278.5669477,
+    "ast_hash": "48e8559324c520d20710b1cacd93e875",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/index.ts": {
+    "mtime": 1782333278.567046,
+    "ast_hash": "0176cbbae1380120308e22e0785286b1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/observability/otel.test.ts": {
+    "mtime": 1782333278.567348,
+    "ast_hash": "4dd3efea5a87c74071a2b0e4522aa551",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/observability/otel.ts": {
+    "mtime": 1782333278.5676892,
+    "ast_hash": "b976442f9cfb957c12c7f1944fa187d4",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/outputs/contracts.ts": {
+    "mtime": 1782333278.5678067,
+    "ast_hash": "1795b70f873dd0716fafa803ca6ff3ab",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/outputs/infer.ts": {
+    "mtime": 1782333278.5678713,
+    "ast_hash": "87a57a8d5fed73273b7e44cd0cbe5a8c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/outputs/validate.ts": {
+    "mtime": 1782333278.5679376,
+    "ast_hash": "bd9b1a186ebccd6ca1dc52c7cc121a17",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/plan/plan.test.ts": {
+    "mtime": 1782333278.568146,
+    "ast_hash": "97716c1d0bfd07bf4e72a56caca0b097",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/plan/plan.ts": {
+    "mtime": 1782333278.5682223,
+    "ast_hash": "4ab486b2fc358d3ad8eb4c1bd7fe784f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/policy/policy.ts": {
+    "mtime": 1782333278.5685432,
+    "ast_hash": "67bca008c55d61dd4d7a73e5a4958907",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/prompts/index.ts": {
+    "mtime": 1782333278.5687969,
+    "ast_hash": "1e7ed5fdb27f65911aeae1ee4de8553f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/prompts/scaffolds.ts": {
+    "mtime": 1782333278.5691185,
+    "ast_hash": "ec720d752e06ac85168ca77022da4d47",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/adapters.test.ts": {
+    "mtime": 1782333278.5693996,
+    "ast_hash": "464da49c5d944acac20353d20b4a3250",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/adapters.ts": {
+    "mtime": 1782333278.569893,
+    "ast_hash": "7dcb8c3933e21451fecf2a9de74ee3c5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/anthropic.test.ts": {
+    "mtime": 1782333278.5702143,
+    "ast_hash": "4d7a6a4e00c66227d825c16d29d0c40b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/anthropic.ts": {
+    "mtime": 1782333278.5705354,
+    "ast_hash": "7d07c5e71c18ef01f2d11578c001a418",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/fake.ts": {
+    "mtime": 1782333278.5707703,
+    "ast_hash": "c268c0588680861bb091f16fdeb6a4fa",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/gemini.test.ts": {
+    "mtime": 1782333278.5709717,
+    "ast_hash": "8faff924f38ad722e82c1ccbf1c77ffc",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/gemini.ts": {
+    "mtime": 1782333278.5712535,
+    "ast_hash": "7f9157abc19c219dce3556e75465b8b1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/litellm.test.ts": {
+    "mtime": 1782333278.5716264,
+    "ast_hash": "55439a424e912c0dbc1a8dc061814f77",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/litellm.ts": {
+    "mtime": 1782333278.5717041,
+    "ast_hash": "9dd6c76f8f31cc0341a9f6a5ff213d4d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/lm-studio.test.ts": {
+    "mtime": 1782333278.5717943,
+    "ast_hash": "573f3703554601f76ad8da51fe94ed6b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/lm-studio.ts": {
+    "mtime": 1782333278.571849,
+    "ast_hash": "d37a9f10e36f772ad0b520d1ddf6652d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/multimodal.ts": {
+    "mtime": 1782333278.5721667,
+    "ast_hash": "a85b1073138e14630fbfffbb50faea17",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/no-public-url.test.ts": {
+    "mtime": 1782333278.5725348,
+    "ast_hash": "887e767ad0e480d80326488783339c65",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/no-public-url.ts": {
+    "mtime": 1782333278.5728455,
+    "ast_hash": "48c748f3705f154364aa55ed1b8f2a24",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/openrouter.test.ts": {
+    "mtime": 1782333278.5729442,
+    "ast_hash": "e1787329ee6ff415abef07c9ef33b555",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/openrouter.ts": {
+    "mtime": 1782333278.5731559,
+    "ast_hash": "d8789f922529095279768a8f1a488feb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/packaging.test.ts": {
+    "mtime": 1782333278.5734208,
+    "ast_hash": "67df11781627cc9e3ca9d6a143a30f6e",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/packaging.ts": {
+    "mtime": 1782333278.5736885,
+    "ast_hash": "a43a69019e883d3342eaee3bb6c186f1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/parity.test.ts": {
+    "mtime": 1782333278.5740097,
+    "ast_hash": "e910a7f7ed2d1383308bd9f4b9a26604",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/provider.test.ts": {
+    "mtime": 1782333278.5740883,
+    "ast_hash": "12b89305626411c38608b96d2046fb37",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/provider.ts": {
+    "mtime": 1782333278.5741677,
+    "ast_hash": "9e7e328fe15510bc812336929006247a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/quirks.ts": {
+    "mtime": 1782333278.5742526,
+    "ast_hash": "98d04fae119fff4d82d0f410ffb9b9e9",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/sse.test.ts": {
+    "mtime": 1782333278.5743341,
+    "ast_hash": "0b5f9d90f9ed8b5ae4ed864182d40327",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/sse.ts": {
+    "mtime": 1782333278.5744007,
+    "ast_hash": "1363feec1f9da42f2788f7251a971a85",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/streaming.test.ts": {
+    "mtime": 1782333278.574471,
+    "ast_hash": "c46ef1d2f01a405365cc9581dfe6a18b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/streaming.ts": {
+    "mtime": 1782333278.574537,
+    "ast_hash": "66777d9956d7370ee6fa57aea3eca9cb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/xai.test.ts": {
+    "mtime": 1782333278.5746377,
+    "ast_hash": "5a071ddbaa99dcf183f9c0cf91b699fc",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/providers/xai.ts": {
+    "mtime": 1782333278.574754,
+    "ast_hash": "b8a4f7235e8a17535f7ee29a4449f718",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/realtime/realtime.test.ts": {
+    "mtime": 1782333278.5749245,
+    "ast_hash": "ddb49c55703b2b72d1fd596c77e529c3",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/realtime/realtime.ts": {
+    "mtime": 1782333278.5749927,
+    "ast_hash": "da56513adf9716970ab72e4075ebf027",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/canonical.test.ts": {
+    "mtime": 1782333278.5754566,
+    "ast_hash": "ebacabc3295a4ab70fd5576a2b0d72f0",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/canonical.ts": {
+    "mtime": 1782333278.5756028,
+    "ast_hash": "d4e52b01409588ac637b136bf359c793",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/cid.test.ts": {
+    "mtime": 1782333278.5759683,
+    "ast_hash": "58df4e9481ecad45477c3d90a5a133e0",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/cid.ts": {
+    "mtime": 1782333278.5763092,
+    "ast_hash": "2bd8dcab560dae42fb937ddeb069d4c7",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/envelope.test.ts": {
+    "mtime": 1782333278.5763726,
+    "ast_hash": "d31eb763ee70032e2a5e8a3b33b889bf",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/envelope.ts": {
+    "mtime": 1782333278.5764399,
+    "ast_hash": "d6a90ec0781a8df4cd9c71ad6c961afa",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/keyset.test.ts": {
+    "mtime": 1782333278.5764985,
+    "ast_hash": "034b62ac5ed441c1ab8ae3f32c31966c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/keyset.ts": {
+    "mtime": 1782333278.576552,
+    "ast_hash": "c44416548148f4e9f2e7a15cb6457272",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/lineage.test.ts": {
+    "mtime": 1782333278.5768483,
+    "ast_hash": "617c732605380e7da4ef0aaa8230aa74",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/lineage.ts": {
+    "mtime": 1782333278.576911,
+    "ast_hash": "a2d11226e51d4078c9ed7a1d2476e5c0",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/receipt.test.ts": {
+    "mtime": 1782333278.576992,
+    "ast_hash": "abcb0b4c311261ec9fa789605ccf9211",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/receipt.ts": {
+    "mtime": 1782333278.5770743,
+    "ast_hash": "0dccf2d920f78bd3f33d6788fd5d7efd",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/redact.test.ts": {
+    "mtime": 1782333278.5771344,
+    "ast_hash": "df4322fe52ea415d0ec1d73d78084c76",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/redact.ts": {
+    "mtime": 1782333278.577194,
+    "ast_hash": "05b1194e9780f1e771bdce79aba2010d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/remote-signer.test.ts": {
+    "mtime": 1782333278.577258,
+    "ast_hash": "5ba7e124c51629703ab21649364a47e2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/remote-signer.ts": {
+    "mtime": 1782333278.5773175,
+    "ast_hash": "08d781ac56c8b0dfc1f08280d514bf8f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/sign.test.ts": {
+    "mtime": 1782333278.5773814,
+    "ast_hash": "418e7779b028a017201d70e94e3d61ff",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/sign.ts": {
+    "mtime": 1782333278.5774565,
+    "ast_hash": "6df1709ecc4f417389f777dd804058b5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/types.ts": {
+    "mtime": 1782333278.577711,
+    "ast_hash": "afdd9e3767a1cdbc3d165c616a95ee25",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/verify.test.ts": {
+    "mtime": 1782333278.5778008,
+    "ast_hash": "d4baa624923cb7280b9b62bb2826b896",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/receipts/verify.ts": {
+    "mtime": 1782333278.5778809,
+    "ast_hash": "bcd266563dca6923599e576df1f97794",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/replay/materialize.test.ts": {
+    "mtime": 1782333278.5779839,
+    "ast_hash": "1f8cf65c5ec3adcd62e8bc957e510199",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/replay/materialize.ts": {
+    "mtime": 1782333278.5780551,
+    "ast_hash": "4858d303e864b724e305f71f187d8bbf",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/replay/replay.ts": {
+    "mtime": 1782333278.5781288,
+    "ast_hash": "30581accdd564eb79e8c4fa522da131b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/results/errors.test.ts": {
+    "mtime": 1782333278.578278,
+    "ast_hash": "4fa28a254e15530969cac979781f17b3",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/results/errors.ts": {
+    "mtime": 1782333278.5783646,
+    "ast_hash": "8c68a93294f2e00bae50f16ae87abe3c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/results/result.ts": {
+    "mtime": 1782333278.578429,
+    "ast_hash": "1f6d50fb3c8a65f754992654d17059bb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/routing/catalog.ts": {
+    "mtime": 1782333278.578545,
+    "ast_hash": "43576e1c72574efa3617c2105770daa2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/routing/router.test.ts": {
+    "mtime": 1782333278.5788436,
+    "ast_hash": "b5bce3de10034f7ad9e6fae198751eb5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/routing/router.ts": {
+    "mtime": 1782333278.5793,
+    "ast_hash": "f0931a96e021e558c0f53e6dcfedbcd8",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/config.ts": {
+    "mtime": 1782333278.579443,
+    "ast_hash": "a81f656f3144bd9ab836beffa28f744b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/create-ai.test.ts": {
+    "mtime": 1782333278.5797472,
+    "ast_hash": "48171b24eaefe99f8ff091cab130fbad",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/create-ai.ts": {
+    "mtime": 1782333278.5799954,
+    "ast_hash": "944c585b7509840df8dbc2d1732a28c6",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/public-types.test.ts": {
+    "mtime": 1782333278.580094,
+    "ast_hash": "be23b80017d89b239cbc3d217794be7f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/public-types.ts": {
+    "mtime": 1782333278.5801842,
+    "ast_hash": "724d02cc7fba0487acfb3e451f702805",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/survivability.test.ts": {
+    "mtime": 1782333278.5805726,
+    "ast_hash": "9ce07a93e5c1b9a448d96b913cfab5d2",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/runtime/survivability.ts": {
+    "mtime": 1782333278.58067,
+    "ast_hash": "9692747c0ef0bcc4b2f8f0e4019cc4f7",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/sanitizers/index.ts": {
+    "mtime": 1782333278.580923,
+    "ast_hash": "b9bad34138d530c25fca691d8225e790",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/sanitizers/sanitizers.ts": {
+    "mtime": 1782333278.5811949,
+    "ast_hash": "fe45a42962b328ecf87a3e9032ae3306",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/sessions/session.ts": {
+    "mtime": 1782333278.5813,
+    "ast_hash": "e79d25fa7ae9f07d1aa6e80da3cd4742",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/storage/fingerprint.ts": {
+    "mtime": 1782333278.581404,
+    "ast_hash": "2ea49cad7158a5d372e26770aaa2823d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/storage/local.ts": {
+    "mtime": 1782333278.5814648,
+    "ast_hash": "b84ae0821e4104857967d6defd5b74de",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/storage/memory.ts": {
+    "mtime": 1782333278.5815446,
+    "ast_hash": "87a81dd2901ea6ae9c158cce434080f5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/storage/storage.ts": {
+    "mtime": 1782333278.5816326,
+    "ast_hash": "48807f66255c7f748e5d8a72b445b2fa",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/test-support/fast-check.ts": {
+    "mtime": 1782333278.5817661,
+    "ast_hash": "a8590e39be193996a464764e315c339d",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/tools/tool-call-validation.test.ts": {
+    "mtime": 1782333278.5847015,
+    "ast_hash": "db12a541236c8770a0f0af595c30f779",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/tools/tool-call-validation.ts": {
+    "mtime": 1782333278.584795,
+    "ast_hash": "8fda7826dac8086b03d98ff17698bcf5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/tools/tools.ts": {
+    "mtime": 1782333278.5848758,
+    "ast_hash": "75dc98124d312eb438ba5e06f341230a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/tracing/tracing.ts": {
+    "mtime": 1782333278.5849922,
+    "ast_hash": "89ac2cb68fa16a8b9e6d1ede536c97d5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/src/version.ts": {
+    "mtime": 1783059116.6001937,
+    "ast_hash": "2c8d2fff7b47768a6264cbffc0d6933a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/agent-crew.test-d.ts": {
+    "mtime": 1782333278.58549,
+    "ast_hash": "073b69fc445e45c5f90a39199efe3064",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/capabilities.test-d.ts": {
+    "mtime": 1782333278.5855815,
+    "ast_hash": "a6c456d8d38d4798d47c645a25559366",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/index.test-d.ts": {
+    "mtime": 1782333278.5856533,
+    "ast_hash": "140a6fca3d7e0708c1758ffcf13ccad9",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/package-types.test-d.ts": {
+    "mtime": 1782333278.585735,
+    "ast_hash": "ddefa16a3aa27f38636115e8c8293856",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/prompt-scaffolds.test-d.ts": {
+    "mtime": 1782333278.585927,
+    "ast_hash": "042aa8ebaef6bcdada9ca1c4c62096f1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/quirks-negotiation.test-d.ts": {
+    "mtime": 1782333278.5860162,
+    "ast_hash": "a31baa4a385dbceb2375a3008179cad6",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/receipt-v12.test-d.ts": {
+    "mtime": 1782333278.5860941,
+    "ast_hash": "e98714d7d4c575457693fa1fc53e1b83",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/sanitizers.test-d.ts": {
+    "mtime": 1782333278.5863805,
+    "ast_hash": "20f5a087023a782fc143013c20e22bf7",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test-d/tool-call-validation.test-d.ts": {
+    "mtime": 1782333278.586599,
+    "ast_hash": "610f1addb50341b79ea65c47359fb693",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/anthropic-models-401.json": {
+    "mtime": 1782333278.586944,
+    "ast_hash": "cf81c7a6ca66e9dda01c9a59dce7dcb8",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/anthropic-models-503.json": {
+    "mtime": 1782333278.5870056,
+    "ast_hash": "b608d7ec2d0a1df120fea09e69931f97",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/anthropic-models-ok.json": {
+    "mtime": 1782333278.587062,
+    "ast_hash": "502042e79d3e874efbdfdb17a7dfc3dc",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/gemini-models-401.json": {
+    "mtime": 1782333278.5871122,
+    "ast_hash": "a7ab4af98642de1dc976bf93f9bfc348",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/gemini-models-503.json": {
+    "mtime": 1782333278.587164,
+    "ast_hash": "3955967b61cfb118b074839b2839f426",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/gemini-models-ok.json": {
+    "mtime": 1782333278.5872154,
+    "ast_hash": "d8a0902a8860b50f94b2a6c81ab34c00",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/openai-models-401.json": {
+    "mtime": 1782333278.5872712,
+    "ast_hash": "86aebf311b9022729559a75498966bbe",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/openai-models-503.json": {
+    "mtime": 1782333278.5873394,
+    "ast_hash": "25236263dd3b4c9a62cf014ff54a250b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/openai-models-ok.json": {
+    "mtime": 1782333278.5875092,
+    "ast_hash": "69f8e1da6ae785e75c867633b5b7255b",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/openrouter-models-503.json": {
+    "mtime": 1782333278.5875905,
+    "ast_hash": "4e99629deab54108b6cd46f6067fd313",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/openrouter-models-ok.json": {
+    "mtime": 1782333278.5876572,
+    "ast_hash": "80330b957be3949ad7decef01f08e1fb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/xai-models-401.json": {
+    "mtime": 1782333278.5877156,
+    "ast_hash": "d58f3f183b6fedf0d92a85697124076a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/__fixtures__/quirks/xai-models-ok.json": {
+    "mtime": 1782333278.5877762,
+    "ast_hash": "6e37df053cc47d88c2c117ffb8a05a95",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/artifact-local-store.test.ts": {
+    "mtime": 1782333278.5882568,
+    "ast_hash": "b0ec1217eb9ca1aa8e781fa807eab3be",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/artifact-storage.test.ts": {
+    "mtime": 1782333278.5883214,
+    "ast_hash": "f63ea5887bfee78ae95aad60e902c81f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/artifacts.test.ts": {
+    "mtime": 1782333278.5883834,
+    "ast_hash": "21fd7c0732399d01afb310fea1d7cd58",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-classifier.test.ts": {
+    "mtime": 1782333278.5884938,
+    "ast_hash": "bb815654c0e78805884e192603af0d0a",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-lookup.test.ts": {
+    "mtime": 1782333278.588596,
+    "ast_hash": "89ca1020a3ac181fa97580bac2b507b5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-negotiate-helper.test.ts": {
+    "mtime": 1782333278.5886703,
+    "ast_hash": "314a9663d651e81ced2beab381fc1ad4",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-negotiate-integration.test.ts": {
+    "mtime": 1782333278.588767,
+    "ast_hash": "0559c49fd889bc35a301c95f0eb70216",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-registry-integration.test.ts": {
+    "mtime": 1782333278.5888474,
+    "ast_hash": "34bad2786ce2dc2d13fc204683e2eb87",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/capabilities-sanitizer-recommendations.test.ts": {
+    "mtime": 1782333278.5889103,
+    "ast_hash": "d6f8da522cf9cee876d201ea2f7554cf",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/context-provider-replay-tools.test.ts": {
+    "mtime": 1782333278.588984,
+    "ast_hash": "e954aef08766ecf001b3d25ba782ee4f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/outputs.test.ts": {
+    "mtime": 1782333278.5890658,
+    "ast_hash": "7fcaff5ab2e08504912286daaf3d0ac3",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/planning-execution.test.ts": {
+    "mtime": 1782333278.5891507,
+    "ast_hash": "6bd89dec50da1844060260df7357bd80",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/prompt-scaffolds.test.ts": {
+    "mtime": 1782333278.5894954,
+    "ast_hash": "9e784abbe3985e468d6359eae7306496",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/public-api.test-d.ts": {
+    "mtime": 1782333278.589572,
+    "ast_hash": "ffae9dc2b4ac7c12607b104ba2771eeb",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/public-surface.test.ts": {
+    "mtime": 1782333278.5899038,
+    "ast_hash": "e84a86b92ff7ad58b678a53889e43d2f",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/runtime-config.test.ts": {
+    "mtime": 1782333278.590118,
+    "ast_hash": "955a6f2e2a0d864774ee415c79b72dfe",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/runtime.test.ts": {
+    "mtime": 1782333278.5901892,
+    "ast_hash": "dac90a31cab096e04e66e085b1b7f429",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/sanitizers.test.ts": {
+    "mtime": 1782333278.5903974,
+    "ast_hash": "5c75d7cf621ae739ffaf29bb952a74f1",
+    "semantic_hash": ""
+  },
+  "packages/lattice/test/scaffold.test.ts": {
+    "mtime": 1782333278.5904574,
+    "ast_hash": "f477c01c179a177b1bed5b2aa4cbb1f5",
+    "semantic_hash": ""
+  },
+  "packages/lattice/tsconfig.json": {
+    "mtime": 1782333278.5906591,
+    "ast_hash": "e08295f22c7de838e08cfec2be046d82",
+    "semantic_hash": ""
+  },
+  "packages/lattice/tsdown.config.ts": {
+    "mtime": 1782333278.590723,
+    "ast_hash": "1c24e46619879c7c0b68d7a3532316f0",
+    "semantic_hash": ""
+  },
+  "packages/lattice/vitest.config.ts": {
+    "mtime": 1782333278.5907867,
+    "ast_hash": "9ae8a276a0d5c2ebd128ff6e960c6dd6",
+    "semantic_hash": ""
+  },
+  "scripts/capabilities/__fixtures__/openrouter-models-snapshot.json": {
+    "mtime": 1782333278.5918937,
+    "ast_hash": "988f3c190d17af34d98e8574847d9315",
+    "semantic_hash": ""
+  },
+  "scripts/capabilities/classifier.mjs": {
+    "mtime": 1782333278.5920033,
+    "ast_hash": "87272ad961e1c87d00426c8a6a35890b",
+    "semantic_hash": ""
+  },
+  "scripts/check-core-package-boundary.mjs": {
+    "mtime": 1782333278.5920942,
+    "ast_hash": "6f011d94fd099521d0b30bd5a206ef39",
+    "semantic_hash": ""
+  },
+  "scripts/check-package-version-surfaces.mjs": {
+    "mtime": 1782333278.5921633,
+    "ast_hash": "c1f48462cee85c317d6cd8fc24a7ee79",
+    "semantic_hash": ""
+  },
+  "scripts/check-tarball-leak.mjs": {
+    "mtime": 1782391252.146111,
+    "ast_hash": "4c01e310f7ef6bff006c6d55c0006d46",
+    "semantic_hash": ""
+  },
+  "scripts/check-workflow-safety.mjs": {
+    "mtime": 1782333278.592297,
+    "ast_hash": "ad468b41f71cf45d562e7806e489ab2e",
+    "semantic_hash": ""
+  },
+  "scripts/dogfood-fsb-candidate.mjs": {
+    "mtime": 1782333278.592359,
+    "ast_hash": "a3cfc487552b3562db9c80ef8b5f31bb",
+    "semantic_hash": ""
+  },
+  "scripts/extract-release-notes.mjs": {
+    "mtime": 1782333278.5924134,
+    "ast_hash": "6ef3e5ee1e6521c42b437fc19348830a",
+    "semantic_hash": ""
+  },
+  "scripts/refresh-model-registry.mjs": {
+    "mtime": 1782333278.5924766,
+    "ast_hash": "fd7a0cb287e40077a47a4e8527137f34",
+    "semantic_hash": ""
+  },
+  "scripts/stamp-package-version.mjs": {
+    "mtime": 1782333278.5925288,
+    "ast_hash": "31ecfb469be2232d1a59a378ca0514bb",
+    "semantic_hash": ""
+  },
+  "scripts/verify-rename.mjs": {
+    "mtime": 1782333278.592898,
+    "ast_hash": "33c546454bae93e3356102562a7a74e8",
+    "semantic_hash": ""
+  },
+  "spec/generate-vector0.ts": {
+    "mtime": 1782379424.058443,
+    "ast_hash": "ce2231b6ed5b525539e894c3d49cd696",
+    "semantic_hash": ""
+  },
+  "spec/schema/v1.1.json": {
+    "mtime": 1782382049.4880419,
+    "ast_hash": "31afe630f99b2c26915c8183465f1872",
+    "semantic_hash": ""
+  },
+  "spec/schema/v1.2.json": {
+    "mtime": 1782382049.4953663,
+    "ast_hash": "a5ddb076283334dba12664b3a210d8a6",
+    "semantic_hash": ""
+  },
+  "spec/schema/v1.3.json": {
+    "mtime": 1782382049.4961138,
+    "ast_hash": "97d5df8c36d6b44134aec36d0ae9a501",
+    "semantic_hash": ""
+  },
+  "spec/vector0-fixture.json": {
+    "mtime": 1782379571.2834637,
+    "ast_hash": "b329c1d8dcd10698c864874c8953bbaf",
+    "semantic_hash": ""
+  },
+  "tools/gen-assets.mjs": {
+    "mtime": 1782333278.593329,
+    "ast_hash": "629787ccfe4c070d5be7336c5d0df4d5",
+    "semantic_hash": ""
+  },
+  "tsconfig.base.json": {
+    "mtime": 1782333278.593388,
+    "ast_hash": "bd298825b9cd6186e99d5e85e2017722",
+    "semantic_hash": ""
+  },
+  ".context/plans/publish-readme-data-to-npm-package-pages.md": {
+    "mtime": 1782390749.5892372,
+    "ast_hash": "83456e7ed5bcc08d6fd35dd0bc601981",
+    "semantic_hash": ""
+  },
+  ".context/todos.md": {
+    "mtime": 1782333278.7376907,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1782333278.443714,
+    "ast_hash": "c3a2bd4fa09d7609eeceaf54c208f0df",
+    "semantic_hash": ""
+  },
+  ".github/workflows/registry-drift.yml": {
+    "mtime": 1782333278.4438193,
+    "ast_hash": "c34ec707bf14b66118222d2b314eec90",
+    "semantic_hash": ""
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1782333278.4439268,
+    "ast_hash": "1c43c3993de77f9ff1777c5b6ba453bb",
+    "semantic_hash": ""
+  },
+  ".planning/.continue-here.md": {
+    "mtime": 1782333278.4441206,
+    "ast_hash": "f41b354ba14cb29403c5612299bb3b51",
+    "semantic_hash": ""
+  },
+  ".planning/MILESTONES.md": {
+    "mtime": 1782333278.4443398,
+    "ast_hash": "6c068d876a7740d9d8e0b588ebb91bad",
+    "semantic_hash": ""
+  },
+  ".planning/PROJECT.md": {
+    "mtime": 1782334865.9082925,
+    "ast_hash": "e9b802cac8a051043b5a7838a8c016a4",
+    "semantic_hash": ""
+  },
+  ".planning/REQUIREMENTS.md": {
+    "mtime": 1782938018.7800002,
+    "ast_hash": "caf9c5a2c0feff95ee25d4dd0a26d987",
+    "semantic_hash": ""
+  },
+  ".planning/RETROSPECTIVE.md": {
+    "mtime": 1782333278.4446857,
+    "ast_hash": "19e244aee4f2d0b4a11779d4dd987641",
+    "semantic_hash": ""
+  },
+  ".planning/ROADMAP.md": {
+    "mtime": 1782939486.1113842,
+    "ast_hash": "22a6078ea184cd98e6313c37b36922aa",
+    "semantic_hash": ""
+  },
+  ".planning/STATE.md": {
+    "mtime": 1782939780.134275,
+    "ast_hash": "5b2181ef593408b8b18652efcfbc8bf3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-MILESTONE-AUDIT.md": {
+    "mtime": 1782333278.445601,
+    "ast_hash": "22488d234994a0b52665e2c342656c68",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-REQUIREMENTS.md": {
+    "mtime": 1782333278.445699,
+    "ast_hash": "7764b11995b09fe34a6aed765517a11b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-ROADMAP.md": {
+    "mtime": 1782333278.4457834,
+    "ast_hash": "27a4d8ede3cc3f6f9cd7173c9dae9dec",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-01-PLAN.md": {
+    "mtime": 1782333278.4459655,
+    "ast_hash": "2890d0757790f429f3f7a40ce5ab8144",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-01-SUMMARY.md": {
+    "mtime": 1782333278.446127,
+    "ast_hash": "91d0e78d4b7ba4d595a91a0339365fe1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-02-PLAN.md": {
+    "mtime": 1782333278.4462461,
+    "ast_hash": "5d1c41dc8853d0c45cb3603a3d1d5c8c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-02-SUMMARY.md": {
+    "mtime": 1782333278.4463325,
+    "ast_hash": "d15fc32d6d50e100e034843a12acc749",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-03-PLAN.md": {
+    "mtime": 1782333278.4464169,
+    "ast_hash": "bf8fe3d8ed897de41cc80204e46daff9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-03-SUMMARY.md": {
+    "mtime": 1782333278.4465013,
+    "ast_hash": "2b60954025d401d90e04dd1235891335",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-04-PLAN.md": {
+    "mtime": 1782333278.446591,
+    "ast_hash": "25176b369d999646d7430f82fae0dc17",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-04-SUMMARY.md": {
+    "mtime": 1782333278.446694,
+    "ast_hash": "94afa9bf3c0cec7ce63c3558cc1f2ebe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-CONTEXT.md": {
+    "mtime": 1782333278.446773,
+    "ast_hash": "61cb5145901affbbf99a8322e527f802",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4468448,
+    "ast_hash": "27ae12a56f916efa76069845fde46070",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-RESEARCH.md": {
+    "mtime": 1782333278.4470809,
+    "ast_hash": "8a7e27b32e772e5bb570f397e64d732d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/01-runtime-api-output-contracts/01-VERIFICATION.md": {
+    "mtime": 1782333278.4472144,
+    "ast_hash": "e940dd041450ecaabeaa05b6eb43e6ba",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-01-PLAN.md": {
+    "mtime": 1782333278.4474351,
+    "ast_hash": "e88436182fdcecb41026aa2949487848",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-01-SUMMARY.md": {
+    "mtime": 1782333278.4475248,
+    "ast_hash": "0b6871622d35c4bfe294a728528d0488",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-02-PLAN.md": {
+    "mtime": 1782333278.4476378,
+    "ast_hash": "8fcb5f35cf05420e460ddae28c212fba",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-02-SUMMARY.md": {
+    "mtime": 1782333278.447725,
+    "ast_hash": "9fff20f4f0268209ae036a9aeaa00ad4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-03-PLAN.md": {
+    "mtime": 1782333278.4478157,
+    "ast_hash": "9a17160b221778af06cc34667691791b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-03-SUMMARY.md": {
+    "mtime": 1782333278.4478867,
+    "ast_hash": "c93e57256051fec658c6254df3e7a6aa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-CONTEXT.md": {
+    "mtime": 1782333278.4479687,
+    "ast_hash": "46369e359a0e446396e3c83da79acf60",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.44804,
+    "ast_hash": "5a29f2aedcabb28cff3e9e35f28a274a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-RESEARCH.md": {
+    "mtime": 1782333278.4481626,
+    "ast_hash": "193b80428122386f93ba120c3513ed3f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/02-artifact-lifecycle-storage/02-VERIFICATION.md": {
+    "mtime": 1782333278.448288,
+    "ast_hash": "7eef83a8501ae878f87baecac7e05fca",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/03-deterministic-planning-execution-spine/03-01-PLAN.md": {
+    "mtime": 1782333278.4484098,
+    "ast_hash": "31994cccc5c812b15445050e3e19a7f4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/03-deterministic-planning-execution-spine/03-01-SUMMARY.md": {
+    "mtime": 1782333278.4484835,
+    "ast_hash": "f9a390ec47e5cb6ad7c625941a95da4a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/03-deterministic-planning-execution-spine/03-CONTEXT.md": {
+    "mtime": 1782333278.4485614,
+    "ast_hash": "dbfeff63e37a9e2e867f48bdd8410c4e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/03-deterministic-planning-execution-spine/03-RESEARCH.md": {
+    "mtime": 1782333278.4486482,
+    "ast_hash": "a1e920898a6a0337d81be1a0cf899cec",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/03-deterministic-planning-execution-spine/03-VERIFICATION.md": {
+    "mtime": 1782333278.4487314,
+    "ast_hash": "615434d80bd658c43c6cbdea24f2744d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/04-context-sessions-provider-packaging/04-01-PLAN.md": {
+    "mtime": 1782333278.448848,
+    "ast_hash": "482de0df85127a8b4a6c44b9c8dfc001",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/04-context-sessions-provider-packaging/04-01-SUMMARY.md": {
+    "mtime": 1782333278.4489183,
+    "ast_hash": "1166c7a8425adf8b0f26619e6b374bc1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/04-context-sessions-provider-packaging/04-CONTEXT.md": {
+    "mtime": 1782333278.4489884,
+    "ast_hash": "6e99209b8490fb218704cb2ee7b4266a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/04-context-sessions-provider-packaging/04-RESEARCH.md": {
+    "mtime": 1782333278.4490635,
+    "ast_hash": "4419d157cb2590ea896e50aa14ded14a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/04-context-sessions-provider-packaging/04-VERIFICATION.md": {
+    "mtime": 1782333278.4491508,
+    "ast_hash": "560b3ebd125a61511ca5563292403f14",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/05-tools-replay-observability/05-01-PLAN.md": {
+    "mtime": 1782333278.4492853,
+    "ast_hash": "d1d2e96cef16938794d80aab299aab5c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/05-tools-replay-observability/05-01-SUMMARY.md": {
+    "mtime": 1782333278.4493692,
+    "ast_hash": "5d3d3351eed299a5cf4e7f8bc4e2f488",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/05-tools-replay-observability/05-CONTEXT.md": {
+    "mtime": 1782333278.4494374,
+    "ast_hash": "7a2a04060b22bb46d306b464d94d661f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/05-tools-replay-observability/05-RESEARCH.md": {
+    "mtime": 1782333278.4495096,
+    "ast_hash": "bd97862c1ff8fcf772eb52678dc487ac",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/05-tools-replay-observability/05-VERIFICATION.md": {
+    "mtime": 1782333278.4495895,
+    "ast_hash": "3bebcd8330fdf6b88123f96cdf5f74c5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/06-work-inbox-showcase/06-01-PLAN.md": {
+    "mtime": 1782333278.4497817,
+    "ast_hash": "6a0d57cc0cf7fa059334e5b3765c1912",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/06-work-inbox-showcase/06-01-SUMMARY.md": {
+    "mtime": 1782333278.4498954,
+    "ast_hash": "749ca3f06591b3f232399b79f379887a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/06-work-inbox-showcase/06-CONTEXT.md": {
+    "mtime": 1782333278.4499738,
+    "ast_hash": "6bd39993fece3b429e2c1983b29eb4d8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/06-work-inbox-showcase/06-RESEARCH.md": {
+    "mtime": 1782333278.4500923,
+    "ast_hash": "61ea08042efcb85d85768e93de796575",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.0-phases/06-work-inbox-showcase/06-VERIFICATION.md": {
+    "mtime": 1782333278.4502003,
+    "ast_hash": "21cf63011fce3d4b1ef9a87b74dffc72",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-MILESTONE-AUDIT.md": {
+    "mtime": 1782333278.4503396,
+    "ast_hash": "27e34bd3f23bab5eaf241ab4d66eb585",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-REQUIREMENTS.md": {
+    "mtime": 1782333278.4504516,
+    "ast_hash": "be241ee890dfbfecf7d87e46b61c5f06",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-ROADMAP.md": {
+    "mtime": 1782333278.450554,
+    "ast_hash": "244891f112b801e0b025d29e8ec881a0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-01-PLAN.md": {
+    "mtime": 1782333278.4507763,
+    "ast_hash": "5ed2d615c7b90c6f884011b815e4f9da",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-01-SUMMARY.md": {
+    "mtime": 1782333278.4509032,
+    "ast_hash": "08810839e916351575f6794269fe0a5a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-02-PLAN.md": {
+    "mtime": 1782333278.4510226,
+    "ast_hash": "673fae741bd6e76487428d966138f7e7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-02-SUMMARY.md": {
+    "mtime": 1782333278.4511359,
+    "ast_hash": "149dd14259a65dec467080cbbe9720c5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-03-PLAN.md": {
+    "mtime": 1782333278.4512687,
+    "ast_hash": "fc726a71a8b6e094ac8922d232d32183",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-03-SUMMARY.md": {
+    "mtime": 1782333278.4513972,
+    "ast_hash": "6987dad10524a921cf58433a2193c819",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-04-PLAN.md": {
+    "mtime": 1782333278.4515429,
+    "ast_hash": "51134beb30d7c080e9be6c8d808cd26a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-04-SUMMARY.md": {
+    "mtime": 1782333278.4516902,
+    "ast_hash": "09c50f78a28953ba2b67d156578b0f54",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-CONTEXT.md": {
+    "mtime": 1782333278.4518044,
+    "ast_hash": "26d6c1985b1338e8f50148bebbd77b6c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/07-capability-contracts-pre-flight-proof-and-cost-accounting/07-VERIFICATION.md": {
+    "mtime": 1782333278.451946,
+    "ast_hash": "0f33c99aacb88cd5b565f8b71d9913aa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-01-PLAN.md": {
+    "mtime": 1782333278.4521513,
+    "ast_hash": "abdd0e35b04f546d6e875e73e0945875",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-01-SUMMARY.md": {
+    "mtime": 1782333278.4522982,
+    "ast_hash": "065e5cc1b780989215e1c24ccd86dfb1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-02-PLAN.md": {
+    "mtime": 1782333278.452423,
+    "ast_hash": "00753d43af43ef2264961397eefcfa07",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-02-SUMMARY.md": {
+    "mtime": 1782333278.4525259,
+    "ast_hash": "721f2fb07532eb08947b4cda850aaec2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-CONTEXT.md": {
+    "mtime": 1782333278.4526181,
+    "ast_hash": "a9d0674e27281ea24e3441728fd4eb78",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/08-tripwire-invariants-with-terminal-semantics/08-VERIFICATION.md": {
+    "mtime": 1782333278.4526985,
+    "ast_hash": "d6dab3efb049817765aa49ab499774fc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-01-PLAN.md": {
+    "mtime": 1782333278.4528778,
+    "ast_hash": "8f23e580a323e624dadec502eb9469f4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-01-SUMMARY.md": {
+    "mtime": 1782333278.4529696,
+    "ast_hash": "19e46ef477902e3533cd24a229340876",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-02-PLAN.md": {
+    "mtime": 1782333278.4531171,
+    "ast_hash": "71c5ca0db0f7800581bc79fd9ac4f868",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-02-SUMMARY.md": {
+    "mtime": 1782333278.453267,
+    "ast_hash": "f5f93a96dee42baa0b4702e4df90ca45",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-03-PLAN.md": {
+    "mtime": 1782333278.4534037,
+    "ast_hash": "7bef24cf0877e7dfc7fea60d6e8e596d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-03-SUMMARY.md": {
+    "mtime": 1782333278.4535406,
+    "ast_hash": "35b041f0f42ec055373b654751bc515e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-04-PLAN.md": {
+    "mtime": 1782333278.4536798,
+    "ast_hash": "a6c78d935086a9eed15a20c64a9ebe97",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-04-SUMMARY.md": {
+    "mtime": 1782333278.4537892,
+    "ast_hash": "0b1c710af9a04d5fdf575b6b5d717deb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-CONTEXT.md": {
+    "mtime": 1782333278.453873,
+    "ast_hash": "425cc779275a24ad6765b9fcfe4ccb48",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/09-canonical-json-ed25519-signing-and-receipt-issuance/09-VERIFICATION.md": {
+    "mtime": 1782333278.4539568,
+    "ast_hash": "ca42a184836be2940619dbfd635d3d0d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/10-receipts-inside-the-replay-envelope/10-01-PLAN.md": {
+    "mtime": 1782333278.4541175,
+    "ast_hash": "4f231cf3e3696c7d2a7d58b96f9d94c6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/10-receipts-inside-the-replay-envelope/10-01-SUMMARY.md": {
+    "mtime": 1782333278.4542172,
+    "ast_hash": "984a1beb05d670a3e1fa7d5b247aa010",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/10-receipts-inside-the-replay-envelope/10-CONTEXT.md": {
+    "mtime": 1782333278.4543085,
+    "ast_hash": "f0b816bf845ad2573cbf7380c817026c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/10-receipts-inside-the-replay-envelope/10-VERIFICATION.md": {
+    "mtime": 1782333278.454389,
+    "ast_hash": "cf20561c20970ff491d1ef1b3910efdb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-01-PLAN.md": {
+    "mtime": 1782333278.4545224,
+    "ast_hash": "eab3d6a2b34dec373ed6d3081c3d9f8e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-01-SUMMARY.md": {
+    "mtime": 1782333278.454603,
+    "ast_hash": "4ce91863ff7648f989dbdc9b3c14e843",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-02-PLAN.md": {
+    "mtime": 1782333278.4546955,
+    "ast_hash": "2c31eb8cf59481b0ffbadb64a95eb963",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-02-SUMMARY.md": {
+    "mtime": 1782333278.4547992,
+    "ast_hash": "8c6924ba04afe56b26982421c48a07c4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-03-PLAN.md": {
+    "mtime": 1782333278.4549081,
+    "ast_hash": "1fa1524fb6cc15431d2254b315c60781",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-03-SUMMARY.md": {
+    "mtime": 1782333278.4550104,
+    "ast_hash": "fa39219771dffeff703196d7c6d4421e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-CONTEXT.md": {
+    "mtime": 1782333278.4551005,
+    "ast_hash": "6766e2d5e9d666152a11b82e87b4b9b7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/11-lattice-cli-repro-and-verify/11-VERIFICATION.md": {
+    "mtime": 1782333278.4552016,
+    "ast_hash": "19b463f914c1bd201cf7fc761fa18ba5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-01-PLAN.md": {
+    "mtime": 1782333278.455514,
+    "ast_hash": "48343b1efe43603bca54fb1d1287cfaa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-01-SUMMARY.md": {
+    "mtime": 1782333278.4556375,
+    "ast_hash": "8abc6221032211002d82a177d293c188",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-02-PLAN.md": {
+    "mtime": 1782333278.4557362,
+    "ast_hash": "2244ab051531d334e530d502b1043d44",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-02-SUMMARY.md": {
+    "mtime": 1782333278.4558434,
+    "ast_hash": "11086825d69d7bded943ae0252cee7a3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-03-PLAN.md": {
+    "mtime": 1782333278.4559457,
+    "ast_hash": "586c1a02b4ef0edb4b68508d09b6ebb9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-03-SUMMARY.md": {
+    "mtime": 1782333278.4560459,
+    "ast_hash": "0d8e01126259a3664e2151e715495c5a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-CONTEXT.md": {
+    "mtime": 1782333278.4561226,
+    "ast_hash": "3e28218c319e83301bda3a09ce3e30db",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/12-lattice-eval-ci-gate/12-VERIFICATION.md": {
+    "mtime": 1782333278.4561982,
+    "ast_hash": "60588700a67532ffb6cbad3b22f01848",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-01-PLAN.md": {
+    "mtime": 1782333278.4563346,
+    "ast_hash": "2537cd062ba4a62b34eee84d8da68586",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-01-SUMMARY.md": {
+    "mtime": 1782333278.4564266,
+    "ast_hash": "90b0a1d92a30486061201c22929e23de",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-02-PLAN.md": {
+    "mtime": 1782333278.45652,
+    "ast_hash": "acbc2b0e9efe338fc31e0b7e5dfd5986",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-02-SUMMARY.md": {
+    "mtime": 1782333278.4566176,
+    "ast_hash": "b5afda6160d58983b9b40520753d36f7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-CONTEXT.md": {
+    "mtime": 1782333278.4566967,
+    "ast_hash": "590e7cb060c49ab53aa4c474d1ba01e4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13-showcase-update-and-milestone-validation/13-VERIFICATION.md": {
+    "mtime": 1782333278.4567971,
+    "ast_hash": "c6c16108e32c4ecbba1acc749074677e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-01-PLAN.md": {
+    "mtime": 1782333278.4569683,
+    "ast_hash": "de8e0c539c4b4d0a2c7992a1bc8f81d0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-01-SUMMARY.md": {
+    "mtime": 1782333278.45705,
+    "ast_hash": "b6e0cf738b5dd9862a1e262210cceb44",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-02-PLAN.md": {
+    "mtime": 1782333278.4571419,
+    "ast_hash": "25130fb7e7ae47b61beb5b5c8a4177d3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-02-SUMMARY.md": {
+    "mtime": 1782333278.4572735,
+    "ast_hash": "a7f9ffa506ff371f01376c37bbe69875",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-03-PLAN.md": {
+    "mtime": 1782333278.457407,
+    "ast_hash": "54313390a9e30a67d8d8454263942bd7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-03-SUMMARY.md": {
+    "mtime": 1782333278.4575133,
+    "ast_hash": "5c96e26c86653601dffe88438d7f9fd1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.1-receipt-sidecar-support/13.1-CONTEXT.md": {
+    "mtime": 1782333278.4577048,
+    "ast_hash": "3b73d4790266385d8b94b65b60599659",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.2-showcase-enrichment-for-v1-1-type-surface-reqs/13.2-01-PLAN.md": {
+    "mtime": 1782333278.457982,
+    "ast_hash": "427d809c2c5d2e881582fed108fd9d40",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.2-showcase-enrichment-for-v1-1-type-surface-reqs/13.2-01-SUMMARY.md": {
+    "mtime": 1782333278.4581044,
+    "ast_hash": "c621a5743d8c35d616f0ddeddc36f21f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.2-showcase-enrichment-for-v1-1-type-surface-reqs/13.2-02-PLAN.md": {
+    "mtime": 1782333278.4582267,
+    "ast_hash": "c7fd72bf0bbde73754bb195a90c34223",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.2-showcase-enrichment-for-v1-1-type-surface-reqs/13.2-02-SUMMARY.md": {
+    "mtime": 1782333278.458361,
+    "ast_hash": "026487b77f1146ab5aa98b3f6460f074",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.1-phases/13.2-showcase-enrichment-for-v1-1-type-surface-reqs/13.2-CONTEXT.md": {
+    "mtime": 1782333278.45844,
+    "ast_hash": "6f4948d7736f64018894d421f2a2b912",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-MILESTONE-AUDIT.md": {
+    "mtime": 1782333278.4585493,
+    "ast_hash": "e7d6f7c8e6b34c712ab04df75aead5bc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-REQUIREMENTS.md": {
+    "mtime": 1782333278.4586515,
+    "ast_hash": "2ca78ffe4a2e6322f52df3f0425651d3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-ROADMAP.md": {
+    "mtime": 1782333278.4587522,
+    "ast_hash": "68a8f41f4a7be5af299db5beba0cbef9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-01-PLAN.md": {
+    "mtime": 1782333278.4589026,
+    "ast_hash": "0d7f02586a22957909a131fcc4ef1201",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-01-SUMMARY.md": {
+    "mtime": 1782333278.4589987,
+    "ast_hash": "65ee60f7268322f2d72a77b22f6a0548",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-02-PLAN.md": {
+    "mtime": 1782333278.4590657,
+    "ast_hash": "72adbab006931bcdf0b3ffb3511e4a1c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-02-SUMMARY.md": {
+    "mtime": 1782333278.4591236,
+    "ast_hash": "241582125cdb4c08e0e23bcb57e7e9e8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-CONTEXT.md": {
+    "mtime": 1782333278.45921,
+    "ast_hash": "f683c1d32155a5c8d17a9f48e97e72d8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/14-public-surface-index-packaging-readiness/14-VERIFICATION.md": {
+    "mtime": 1782333278.4593244,
+    "ast_hash": "c229f2d882914321e440d21b23203e97",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-01-PLAN.md": {
+    "mtime": 1782333278.4594617,
+    "ast_hash": "19391b0f24718e5b482da8ba8333be92",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-01-SUMMARY.md": {
+    "mtime": 1782333278.4595764,
+    "ast_hash": "9574b4da98f8df6705262ba9b503a535",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-02-PLAN.md": {
+    "mtime": 1782333278.4596415,
+    "ast_hash": "aff5102ffb3a301d29015927d486b877",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-02-SUMMARY.md": {
+    "mtime": 1782333278.459733,
+    "ast_hash": "24a8af9d7ab4edd4b31fbda0442b85fe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-03-PLAN.md": {
+    "mtime": 1782333278.4597971,
+    "ast_hash": "551c2b23d1a5883b9c08112fd022d5af",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-03-SUMMARY.md": {
+    "mtime": 1782333278.4598615,
+    "ast_hash": "79128a8d4e3930351f5b1bd958bfb3d5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-04-PLAN.md": {
+    "mtime": 1782333278.4599352,
+    "ast_hash": "3199a29170662c1148a311bc16bce539",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-04-SUMMARY.md": {
+    "mtime": 1782333278.4600067,
+    "ast_hash": "2276d326253d95cc99834b3ba4b25067",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-CONTEXT.md": {
+    "mtime": 1782333278.4600902,
+    "ast_hash": "696ac4ba0bf8785924b25f80d867f3c1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/15-receipt-schema-bands-lifecycle/15-VERIFICATION.md": {
+    "mtime": 1782333278.4601672,
+    "ast_hash": "26d90f8f3d836ac890b98a978efd3c53",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-01-PLAN.md": {
+    "mtime": 1782333278.4603255,
+    "ast_hash": "1d7431effe1453183e788c4f03103cd1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-01-SUMMARY.md": {
+    "mtime": 1782333278.4603932,
+    "ast_hash": "a34c50f77664a58c0a16183043dc6952",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-02-PLAN.md": {
+    "mtime": 1782333278.4604602,
+    "ast_hash": "34896d143c1fb84a5ab59ae74fac44dc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-02-SUMMARY.md": {
+    "mtime": 1782333278.4605436,
+    "ast_hash": "a080c479709079c9663dfae8ab552bb6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-03-PLAN.md": {
+    "mtime": 1782333278.4606836,
+    "ast_hash": "97010806c63187dd19f5f47638cda57c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-03-SUMMARY.md": {
+    "mtime": 1782333278.4607663,
+    "ast_hash": "6f70a3fdcd0528a3121a00caf3456171",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-CONTEXT.md": {
+    "mtime": 1782333278.4608507,
+    "ast_hash": "e4346061f7a232070e5d2203f5e21daf",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/16-step-transition-checkpoint-hook/16-VERIFICATION.md": {
+    "mtime": 1782333278.460991,
+    "ast_hash": "dd3c34e04d5c414d005ff4a6af0f6218",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-01-PLAN.md": {
+    "mtime": 1782333278.4611323,
+    "ast_hash": "eb9fc77091799592c623b12bc0f4abe6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-01-SUMMARY.md": {
+    "mtime": 1782333278.4612083,
+    "ast_hash": "71338330cb4aecaffb59d540acfe5704",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-02-PLAN.md": {
+    "mtime": 1782333278.4612942,
+    "ast_hash": "87a8faa9d79257f3d92ea6da9ae2323f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-02-SUMMARY.md": {
+    "mtime": 1782333278.4613512,
+    "ast_hash": "31599f9f444385cc4dba6b9226c0a2a4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-03-PLAN.md": {
+    "mtime": 1782333278.4614148,
+    "ast_hash": "f3860af8479ddd10c8eb7fe9ecb5b044",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-03-SUMMARY.md": {
+    "mtime": 1782333278.4614778,
+    "ast_hash": "9ccdbc89f0cf2ff6fc20f6a256a7cec5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-04-PLAN.md": {
+    "mtime": 1782333278.4615412,
+    "ast_hash": "c7e3bf696e834527af58091a6cb0358c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-04-SUMMARY.md": {
+    "mtime": 1782333278.4616153,
+    "ast_hash": "cd116305ffb1db9c6d47a47481a7d527",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-05-PLAN.md": {
+    "mtime": 1782333278.4616957,
+    "ast_hash": "3d5cfe7adf15dda5f4922c1e0b0869fb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-05-SUMMARY.md": {
+    "mtime": 1782333278.4617622,
+    "ast_hash": "26b65e4acaff3026a24332b1f6d73e54",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-06-PLAN.md": {
+    "mtime": 1782333278.4618502,
+    "ast_hash": "8cae1f9c0cf89c1cff2eab0a8d5a906f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-06-SUMMARY.md": {
+    "mtime": 1782333278.461924,
+    "ast_hash": "d91fb2a3b2007bf8d45ac6bf22dda002",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-CONTEXT.md": {
+    "mtime": 1782333278.4620142,
+    "ast_hash": "62da8c9039fe97a04ae40a2c1d7424bd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/17-provider-adapters-parity/17-VERIFICATION.md": {
+    "mtime": 1782333278.4620888,
+    "ast_hash": "af421d2a235f6f0a83893ad58e4692a2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-01-PLAN.md": {
+    "mtime": 1782333278.462209,
+    "ast_hash": "22c5bbf6eafa2433ff0aa89b08fb94fc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-01-SUMMARY.md": {
+    "mtime": 1782333278.4622812,
+    "ast_hash": "572808ece77a5ecac5db83c854bfe5a5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-02-PLAN.md": {
+    "mtime": 1782333278.462356,
+    "ast_hash": "c017284c1ac369f2ef13b57725bb6ac8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-02-SUMMARY.md": {
+    "mtime": 1782333278.4624317,
+    "ast_hash": "913bc98e8f402cdada2364ace638df78",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-CONTEXT.md": {
+    "mtime": 1782333278.4625077,
+    "ast_hash": "f4012d5872591b9cd4cb02b09f470f07",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/18-survivability-adapter/18-VERIFICATION.md": {
+    "mtime": 1782333278.4625964,
+    "ast_hash": "6dd6cc4964f33945aaf617fb7f975808",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-01-PLAN.md": {
+    "mtime": 1782333278.4627304,
+    "ast_hash": "4a881abc7cd25817ab96f1bf31fb457e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-02-PLAN.md": {
+    "mtime": 1782333278.4628353,
+    "ast_hash": "1707fad517426ded22b02e19957e9078",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-03-PLAN.md": {
+    "mtime": 1782333278.462914,
+    "ast_hash": "8f9132c0afcb609e3bc94baa996abcf8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-04-PLAN.md": {
+    "mtime": 1782333278.4630046,
+    "ast_hash": "5e84cd5b3959d5a0eb5946b316f926be",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-05-PLAN.md": {
+    "mtime": 1782333278.4630837,
+    "ast_hash": "5f6efe95cf873a849542e2886d140f6f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-CONTEXT.md": {
+    "mtime": 1782333278.4631689,
+    "ast_hash": "d0dc78a287a591a38cad448d8aca0c97",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/19-delegation-surface-agent-runtime-entrypoint/19-VERIFICATION.md": {
+    "mtime": 1782333278.4632714,
+    "ast_hash": "79a7acbc67102037d4adc714373e03ff",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/20-pluggable-agent-host-adapter/20-01-PLAN.md": {
+    "mtime": 1782333278.4634345,
+    "ast_hash": "b5e8bd9ba66b7a5d008c27c6632131cc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/20-pluggable-agent-host-adapter/20-02-PLAN.md": {
+    "mtime": 1782333278.4635186,
+    "ast_hash": "a5d4747fc4fc2a1073a7ac3672631ffb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/20-pluggable-agent-host-adapter/20-03-PLAN.md": {
+    "mtime": 1782333278.4636204,
+    "ast_hash": "f8cdcc68e7a51342ae9212f6788ff8c0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/20-pluggable-agent-host-adapter/20-CONTEXT.md": {
+    "mtime": 1782333278.4637187,
+    "ast_hash": "5a41f34991f1d54fcaa8a1431ff68e58",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/20-pluggable-agent-host-adapter/20-VERIFICATION.md": {
+    "mtime": 1782333278.4638019,
+    "ast_hash": "1998a3525f74ac3e436f8480d9615908",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/21-agent-infrastructure-primitives/21-CONTEXT.md": {
+    "mtime": 1782333278.4639366,
+    "ast_hash": "46616e039ddf1cff39bf4bc05c1c2545",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/21-agent-infrastructure-primitives/21-VERIFICATION.md": {
+    "mtime": 1782333278.464018,
+    "ast_hash": "8c436ece586b6e3ba31e48e8b2afbfd2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/22-agent-showcase-eval-mode/22-CONTEXT.md": {
+    "mtime": 1782333278.4641588,
+    "ast_hash": "b5406c3f2b9f19e0f2df44added6858a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.2-phases/22-agent-showcase-eval-mode/22-VERIFICATION.md": {
+    "mtime": 1782333278.4642344,
+    "ast_hash": "4576f6d7b4638d13b6e3bf0a6626c3ce",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-MILESTONE-AUDIT.md": {
+    "mtime": 1782333278.4646897,
+    "ast_hash": "412f2890f9b7132a8e2d00188d94ed90",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-REQUIREMENTS.md": {
+    "mtime": 1782333278.4652195,
+    "ast_hash": "21b4ead87360fdf32984b95bb1a7b35a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-ROADMAP.md": {
+    "mtime": 1782333278.4657545,
+    "ast_hash": "2db2e43132a52ef7bb9831da48449883",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-01-PLAN.md": {
+    "mtime": 1782333278.4660387,
+    "ast_hash": "e1570586db370e60f8daa6856a1dc7e5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-01-SUMMARY.md": {
+    "mtime": 1782333278.4661791,
+    "ast_hash": "0af74eddca3fe40b9a445b6a1b36acc2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-02-PLAN.md": {
+    "mtime": 1782333278.4662762,
+    "ast_hash": "401362585c3d3324d7f7c9e88dacb8e2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-02-SUMMARY.md": {
+    "mtime": 1782333278.4663773,
+    "ast_hash": "62f547c14985d7ad7fd06b2ed4d690aa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-03-PLAN.md": {
+    "mtime": 1782333278.4665003,
+    "ast_hash": "c5a6fea129bd5b7ef7f3f987341eb460",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-03-SUMMARY.md": {
+    "mtime": 1782333278.4666069,
+    "ast_hash": "507263e6c32be786fc7795bf0ee17ae6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-CONTEXT.md": {
+    "mtime": 1782333278.4667242,
+    "ast_hash": "a132b94a550ae15da40840eb16077018",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-REVIEW.md": {
+    "mtime": 1782333278.466838,
+    "ast_hash": "a34c34acc0ea434cdb7ab63b88a16f22",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/24-atomic-scope-rename-license-hygiene/24-VERIFICATION.md": {
+    "mtime": 1782333278.4669359,
+    "ast_hash": "77a5bc180f79f9a6c1d40b3d61d3e6d5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-01-PLAN.md": {
+    "mtime": 1782333278.4671006,
+    "ast_hash": "df20fd050faffffc517807a615afe608",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-01-SUMMARY.md": {
+    "mtime": 1782333278.4671957,
+    "ast_hash": "17fb81f884d037432863f107f7800fdd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-02-PLAN.md": {
+    "mtime": 1782333278.4672973,
+    "ast_hash": "90b4c4163df59897aefcf67b7323ff46",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-02-SUMMARY.md": {
+    "mtime": 1782333278.467416,
+    "ast_hash": "3e4bb68ba51e963789dd9dc1f6645997",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-CONTEXT.md": {
+    "mtime": 1782333278.4675283,
+    "ast_hash": "0ccf1b411621ab2f37744ff2cc768d23",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.467615,
+    "ast_hash": "5e508a5b4b86a63efdafc1e0ee4b2460",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-HUMAN-UAT.md": {
+    "mtime": 1782333278.467686,
+    "ast_hash": "72a5915f60610c87acf64a1b157c90b0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-REVIEW.md": {
+    "mtime": 1782333278.4677577,
+    "ast_hash": "958e96d23cb3e6645456508dc503bee3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/25-pr-time-ci-workflow/25-VERIFICATION.md": {
+    "mtime": 1782333278.4678516,
+    "ast_hash": "55e66738618f0c0f57323c9979a72904",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-01-PLAN.md": {
+    "mtime": 1782333278.4680398,
+    "ast_hash": "e5f233337739ef19ed8a4d0bfca3e200",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-01-SUMMARY.md": {
+    "mtime": 1782333278.4681265,
+    "ast_hash": "84d221de136440d1e376b22cb2d921d9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-02-PLAN.md": {
+    "mtime": 1782333278.4682274,
+    "ast_hash": "d3945f2a4046a9f81abcaa55b682d232",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-02-SUMMARY.md": {
+    "mtime": 1782333278.468317,
+    "ast_hash": "28f82b94cfbf5618278c0e61c45de58a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-03-PLAN.md": {
+    "mtime": 1782333278.468405,
+    "ast_hash": "d7a6f25a869a031a562b44151468e7e3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-03-SUMMARY.md": {
+    "mtime": 1782333278.4684947,
+    "ast_hash": "92121144b3c00a42db0ffd1752830e1e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-04-PLAN.md": {
+    "mtime": 1782333278.4686468,
+    "ast_hash": "c8c1053b11958c928dcad10db5de5b7a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-04-SUMMARY.md": {
+    "mtime": 1782333278.4687805,
+    "ast_hash": "ee5586cf07167f5199eda5b0dfce1580",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-CONTEXT.md": {
+    "mtime": 1782333278.4689043,
+    "ast_hash": "79843eb4d8e803951c7e37a0705a5f69",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-REVIEW.md": {
+    "mtime": 1782333278.4690497,
+    "ast_hash": "b80bff3e01a3b308e09e4a827f188043",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/26-release-hygiene-docs-receipt-downgrade-defense/26-VERIFICATION.md": {
+    "mtime": 1782333278.46917,
+    "ast_hash": "302d9de3a3b83c5f1cf341d5f483940a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/27-npm-org-trusted-publisher-setup/27-CONTEXT.md": {
+    "mtime": 1782333278.4693403,
+    "ast_hash": "ab5f845be4c941189f2ee121e9a0f282",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/27-npm-org-trusted-publisher-setup/27-SUMMARY.md": {
+    "mtime": 1782333278.4695098,
+    "ast_hash": "25651705c6165bb8dad91d47f579f045",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/27-npm-org-trusted-publisher-setup/27-WALKTHROUGH.md": {
+    "mtime": 1782333278.469594,
+    "ast_hash": "9733c42f22a8a073d1eeda6d5f67e4bb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/28-release-workflow-rc0-oidc-smoke/28-SUMMARY.md": {
+    "mtime": 1782333278.4697587,
+    "ast_hash": "5da3137fe00d27a2bbaa131557f53620",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-01-PLAN.md": {
+    "mtime": 1782333278.470281,
+    "ast_hash": "17687ae32d433f2294b7e3ee998d1101",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-01-SUMMARY.md": {
+    "mtime": 1782333278.4707022,
+    "ast_hash": "f1c2d00d727c6104326547d1f756c66a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-02-PLAN.md": {
+    "mtime": 1782333278.4709277,
+    "ast_hash": "f8a3cccd23aec53f36e0b2ec18d3f80c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-03-PLAN.md": {
+    "mtime": 1782333278.4711835,
+    "ast_hash": "c27bec139ffc77362c2178eea2773e9b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-03-SUMMARY.md": {
+    "mtime": 1782333278.4714243,
+    "ast_hash": "5b4b3a5e77759c0ea763e4c6cc051b9f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-04-PLAN.md": {
+    "mtime": 1782333278.4716983,
+    "ast_hash": "6e85a3692dfa31f910845e187093078e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-04-SUMMARY.md": {
+    "mtime": 1782333278.4719756,
+    "ast_hash": "b3131ac6de5ac440ce94e9223a6c99cc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-CONTEXT.md": {
+    "mtime": 1782333278.4723732,
+    "ast_hash": "a57a492485665805453c941679e790a4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4725573,
+    "ast_hash": "de8c8f0fd2a3bfa4115b131cb91cf875",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-PATTERNS.md": {
+    "mtime": 1782333278.4730089,
+    "ast_hash": "44b3d3e481744c89e17ac9ac7538bbf5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-RESEARCH.md": {
+    "mtime": 1782333278.4734385,
+    "ast_hash": "4a356f88c246ce214e7aa09bfdc4421c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/29-first-v1-3-0-stable-publish/29-VALIDATION.md": {
+    "mtime": 1782333278.473727,
+    "ast_hash": "b683472b1dc6838fb39851d42a97895c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-01-PLAN.md": {
+    "mtime": 1782333278.473924,
+    "ast_hash": "d6ff9d64b9e1da191555f025b30f34c5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-01-SUMMARY.md": {
+    "mtime": 1782333278.4740376,
+    "ast_hash": "e9312ad420a62ed4a20b87b4826c9195",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-02-PLAN.md": {
+    "mtime": 1782333278.4741626,
+    "ast_hash": "9c6d3caf02fe82c7c6f13608e31806f9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-02-SUMMARY.md": {
+    "mtime": 1782333278.474293,
+    "ast_hash": "18143f16c72500338d6d007a581b1332",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-03-PLAN.md": {
+    "mtime": 1782333278.4744668,
+    "ast_hash": "f09cf54df00d8ed57410415a51ac279b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-03-SUMMARY.md": {
+    "mtime": 1782333278.4746006,
+    "ast_hash": "c19b86078c9bc164ba1fff490cd3dbeb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-04-PLAN.md": {
+    "mtime": 1782333278.474749,
+    "ast_hash": "3cfe20e089b3de67b310c4f27d173b91",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-04-SUMMARY.md": {
+    "mtime": 1782333278.4749231,
+    "ast_hash": "9a40aa437b6e1515c1aae1e743e7e3ab",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-05-PLAN.md": {
+    "mtime": 1782333278.4750454,
+    "ast_hash": "01658d89d8e962745cb3fe8531d701eb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-05-SUMMARY.md": {
+    "mtime": 1782333278.475197,
+    "ast_hash": "37a476886a0894bbc14a7358c7c70d2a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-CONTEXT.md": {
+    "mtime": 1782333278.475339,
+    "ast_hash": "0b7f12b65884a4276c6fb0301ea2e14a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4754512,
+    "ast_hash": "b19fc9191e5cbb9526a8ee648ffda23f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-RESEARCH.md": {
+    "mtime": 1782333278.4757752,
+    "ast_hash": "e8db57fee436fd279bcfda255d09a816",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-SUMMARY.md": {
+    "mtime": 1782333278.4758644,
+    "ast_hash": "73138e1c257ab504812e9a8cb7b8e75b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/33-model-capability-registry-200-via-openrouter-feed/33-VERIFICATION.md": {
+    "mtime": 1782333278.475959,
+    "ast_hash": "ca63ce21fa77418e52db2a7e67b9b18d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-01-PLAN.md": {
+    "mtime": 1782333278.4761274,
+    "ast_hash": "91cf051a21256258dba44b4efeb75deb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-01-SUMMARY.md": {
+    "mtime": 1782333278.47624,
+    "ast_hash": "57c606526ae6d327a56472d30309341a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-02-PLAN.md": {
+    "mtime": 1782333278.4763534,
+    "ast_hash": "d4b2ea91b725044b66042803fcccf4c0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-02-SUMMARY.md": {
+    "mtime": 1782333278.4765413,
+    "ast_hash": "bc27ce0a052990230d07c41f720d919a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-03-PLAN.md": {
+    "mtime": 1782333278.4767044,
+    "ast_hash": "7540adc5d5d173112bd5e6e0de6d92e2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-03-SUMMARY.md": {
+    "mtime": 1782333278.4768393,
+    "ast_hash": "9f4a5d84ca77d38595b7b9ed7bfe3445",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-04-PLAN.md": {
+    "mtime": 1782333278.4769511,
+    "ast_hash": "7d480d0d2cfa60f53e676a1c7205c29e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-04-SUMMARY.md": {
+    "mtime": 1782333278.4770403,
+    "ast_hash": "85410dee05dc2635ee0abd05af8a53fa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-05-PLAN.md": {
+    "mtime": 1782333278.4771473,
+    "ast_hash": "267f1ae4ccbbb5e2a10704fe88e17676",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-05-SUMMARY.md": {
+    "mtime": 1782333278.4772599,
+    "ast_hash": "9d8977a89c82f6f16913a76a5ba59fa4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-CONTEXT.md": {
+    "mtime": 1782333278.4773493,
+    "ast_hash": "0a4da5b16141c23af5df00ec01b82dc2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4774253,
+    "ast_hash": "fde88fff2f69faacaa7a9063f4349fb1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-RESEARCH.md": {
+    "mtime": 1782333278.4777098,
+    "ast_hash": "13f9148ee791b961e0a0e1ec37e6ff70",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-REVIEW-FIX-INFO.md": {
+    "mtime": 1782333278.4778209,
+    "ast_hash": "c4a68c2e9b1994fec9df6f223de91ce3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-REVIEW-FIX.md": {
+    "mtime": 1782333278.477901,
+    "ast_hash": "25bb84dee49ca94adc81f10afc260ac2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-REVIEW.md": {
+    "mtime": 1782333278.477991,
+    "ast_hash": "c44df77870aa3382965339a4d54699d8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/34-adapter-quirk-flags-capability-negotiation-api/34-VERIFICATION.md": {
+    "mtime": 1782333278.478082,
+    "ast_hash": "3f9ad43e68a10e4f44279470a0120d90",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-01-PLAN.md": {
+    "mtime": 1782333278.479655,
+    "ast_hash": "a21fd9797ae8a83dfbc34d6c62aec65a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-01-SUMMARY.md": {
+    "mtime": 1782333278.479911,
+    "ast_hash": "5349cae411577c0ed09f85bd2c3ffe03",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-02-PLAN.md": {
+    "mtime": 1782333278.4801297,
+    "ast_hash": "742668e6566ff530e4ccfe431b06e9de",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-02-SUMMARY.md": {
+    "mtime": 1782333278.4804182,
+    "ast_hash": "876a47a5b8c70655545dfd735f3ef3ea",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-CONTEXT.md": {
+    "mtime": 1782333278.4806864,
+    "ast_hash": "76f661571745e0d8c9325a05cd47fd47",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-PATTERNS.md": {
+    "mtime": 1782333278.481041,
+    "ast_hash": "d52ea2f1aa8b779c8d1b58d804d8e537",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-RESEARCH.md": {
+    "mtime": 1782333278.4812965,
+    "ast_hash": "37dfefc81ab8e4f15478d6bf999a5be3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-REVIEW.md": {
+    "mtime": 1782333278.4815354,
+    "ast_hash": "5750a8d3e118875893fa5d82b296f539",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/35-prompt-scaffolding-helpers/35-VERIFICATION.md": {
+    "mtime": 1782333278.481765,
+    "ast_hash": "774dca8e8b35f5dcfefb3578b9cbf995",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-01-PLAN.md": {
+    "mtime": 1782333278.482118,
+    "ast_hash": "bd71b676c49972fa5f220e5a58b373c7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-01-SUMMARY.md": {
+    "mtime": 1782333278.4824848,
+    "ast_hash": "aacdb148d3303874bfd5bcf5fff9b277",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-02-PLAN.md": {
+    "mtime": 1782333278.482732,
+    "ast_hash": "6703398c82bef029896761305f87aed9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-02-SUMMARY.md": {
+    "mtime": 1782333278.4830127,
+    "ast_hash": "eda15e4da91a9130cb3717ce5ebb2151",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-03-PLAN.md": {
+    "mtime": 1782333278.4833112,
+    "ast_hash": "7f279dce8a1a4a78dfe63c79005c2358",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-03-SUMMARY.md": {
+    "mtime": 1782333278.4836147,
+    "ast_hash": "97aac33031683e07b67c50cd00e9bb77",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-CONTEXT.md": {
+    "mtime": 1782333278.4839382,
+    "ast_hash": "ebacd06efa8da66c6a1535ca74011797",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.484243,
+    "ast_hash": "15243f1435a81de90e9baa79ac3201c5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-PATTERNS.md": {
+    "mtime": 1782333278.484553,
+    "ast_hash": "520d0904b3f483a833f248315d3aadb1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/36-output-sanitizer-hook-opt-in/36-RESEARCH.md": {
+    "mtime": 1782333278.4848824,
+    "ast_hash": "70a37028f20d4f12b7619a68330c0eae",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-01-PLAN.md": {
+    "mtime": 1782333278.4855125,
+    "ast_hash": "8215f9373035bd5e5e761542a9800083",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-01-SUMMARY.md": {
+    "mtime": 1782333278.4859107,
+    "ast_hash": "32b81d4c1f5b5debccf645afd79a55bb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-02-PLAN.md": {
+    "mtime": 1782333278.486211,
+    "ast_hash": "2542458627167ae33bd65bc72de16401",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-02-SUMMARY.md": {
+    "mtime": 1782333278.4865818,
+    "ast_hash": "01f118c8482e28b17116ab2c9f9daec4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-03-PLAN.md": {
+    "mtime": 1782333278.4868715,
+    "ast_hash": "9e71cb06f10ee3f6c7cea5ba4b07df08",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-03-SUMMARY.md": {
+    "mtime": 1782333278.487153,
+    "ast_hash": "c0eeb4e5c503879a9a62c39152dd5a09",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-CONTEXT.md": {
+    "mtime": 1782333278.487576,
+    "ast_hash": "3a7bf14d852711475d2113b02ed239af",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4878633,
+    "ast_hash": "8e7fca05b8f756afd9b04138f4b29408",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-PATTERNS.md": {
+    "mtime": 1782333278.4881575,
+    "ast_hash": "6774484afa550662ef3248d7b64d528c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-RESEARCH.md": {
+    "mtime": 1782333278.488492,
+    "ast_hash": "fedc07f3c14b24dbfb1a7a319d509cc2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-REVIEW.md": {
+    "mtime": 1782333278.4906678,
+    "ast_hash": "b2ea0aa29e96d4cf625077605b450951",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-SECURITY.md": {
+    "mtime": 1782333278.4909391,
+    "ast_hash": "12ce8a84d3649f949577371e9ec3891c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-UAT.md": {
+    "mtime": 1782333278.4911957,
+    "ast_hash": "e0283bbe6976701ea22e1be44538684b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-VALIDATION.md": {
+    "mtime": 1782333278.4916472,
+    "ast_hash": "ef887790f14050a819b0f39daea59396",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/37-tool-call-validation-layer-opt-in/37-VERIFICATION.md": {
+    "mtime": 1782333278.4918895,
+    "ast_hash": "56a5b2f64308718bd5a1f66916afd4f5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-01-PLAN.md": {
+    "mtime": 1782333278.492307,
+    "ast_hash": "bceba69045e61af0d2fe9d7556cce904",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-01-SUMMARY.md": {
+    "mtime": 1782333278.4926834,
+    "ast_hash": "90d946e1b2c82252925ae346c794cff3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-02-PLAN.md": {
+    "mtime": 1782333278.4929154,
+    "ast_hash": "240aa4f46debf63fcf3a23fcc9994e84",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-02-SUMMARY.md": {
+    "mtime": 1782333278.493229,
+    "ast_hash": "528f041d5fdf1512185eaf16a16b7779",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-03-PLAN.md": {
+    "mtime": 1782333278.4934578,
+    "ast_hash": "8166c8fe1bb29e6324fd229e9278a74a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-03-SUMMARY.md": {
+    "mtime": 1782333278.4937737,
+    "ast_hash": "2506f5896c17547a64b99656e8e36311",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-CONTEXT.md": {
+    "mtime": 1782333278.4941542,
+    "ast_hash": "b8445ba12444756b3f4a0b8a821560ca",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.4944189,
+    "ast_hash": "fbfa110fe5e9111e971eb140dbf3aa56",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-PATTERNS.md": {
+    "mtime": 1782333278.4946723,
+    "ast_hash": "0871fffbdb3991d2614e13ccd8e566ab",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-RESEARCH.md": {
+    "mtime": 1782333278.4949687,
+    "ast_hash": "97df553abba6c1bb6da9317a25ceaaa8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-VALIDATION.md": {
+    "mtime": 1782333278.4952478,
+    "ast_hash": "3c7bf1dea768296da2d8990f67a11cf7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/38-receipt-v1-2-schema-modelclass-tag/38-VERIFICATION.md": {
+    "mtime": 1782333278.495499,
+    "ast_hash": "f26beb1f71b8a7a7bf91f16349577893",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-01-PLAN.md": {
+    "mtime": 1782333278.4959776,
+    "ast_hash": "d6553e9dfc1318ed99c13a31abd5b2ae",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-01-SUMMARY.md": {
+    "mtime": 1782333278.49637,
+    "ast_hash": "be81f6c40eead0417cf5a4045d0ec612",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-02-PLAN.md": {
+    "mtime": 1782333278.4968073,
+    "ast_hash": "a85b47529c705c8b92be96d957c610e8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-02-SUMMARY.md": {
+    "mtime": 1782333278.4972093,
+    "ast_hash": "164c17c5ca1d38e8397e1c1c0e578c5e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-03-PLAN.md": {
+    "mtime": 1782333278.4975166,
+    "ast_hash": "fbde69549b6deabbc1d609cf611dfb40",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-03-SUMMARY.md": {
+    "mtime": 1782333278.497937,
+    "ast_hash": "ba468e4671bfea954e9a3efcb8ec342d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-04-PLAN.md": {
+    "mtime": 1782333278.498224,
+    "ast_hash": "f772497bd9276f2682eaea51cfbe0f1b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-04-SUMMARY.md": {
+    "mtime": 1782333278.4984977,
+    "ast_hash": "d4460d2149e21e34484bd5010ebd1154",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-05-PLAN.md": {
+    "mtime": 1782333278.4988143,
+    "ast_hash": "566125f131ef64b0f42de7321cbb0760",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-05-SUMMARY.md": {
+    "mtime": 1782333278.4992437,
+    "ast_hash": "1d442d9a5f63459051da3fa9d338e4f3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-06-PLAN.md": {
+    "mtime": 1782333278.4995341,
+    "ast_hash": "7831e4d9c27595913a3d24827917af75",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-06-SUMMARY.md": {
+    "mtime": 1782333278.5000057,
+    "ast_hash": "8b3afb4096a8bbcd1705232342f5fbab",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-07-PLAN.md": {
+    "mtime": 1782333278.5006819,
+    "ast_hash": "c21b6144c93319da01badbb061234d2b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-07-SUMMARY.md": {
+    "mtime": 1782333278.5012188,
+    "ast_hash": "0ab7f321a0c83894ffec43db7a0ec1c4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-08-PLAN.md": {
+    "mtime": 1782333278.5018723,
+    "ast_hash": "03f9a5c29538296097e037206c53dff0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-08-SUMMARY.md": {
+    "mtime": 1782333278.5024033,
+    "ast_hash": "f1552f4bdd72046c6eaf9517ecb0d32f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-CONTEXT.md": {
+    "mtime": 1782333278.502747,
+    "ast_hash": "4723efc30e549abd33e7c5f8aa1be4da",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.5030124,
+    "ast_hash": "fb0048ba88747996d7fa2ca7aa7381fe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-PATTERNS.md": {
+    "mtime": 1782333278.5034506,
+    "ast_hash": "6d15a1299ba9885040d0a18aabf45c5b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-RESEARCH.md": {
+    "mtime": 1782333278.5039935,
+    "ast_hash": "217f2a137bebedf0f475f65e67df8ddf",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-REVIEW.md": {
+    "mtime": 1782333278.5043616,
+    "ast_hash": "dd96c1273d135ed4698b6af394c300bd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-VALIDATION.md": {
+    "mtime": 1782333278.5048647,
+    "ast_hash": "36801b8c604f1448d0132690e206da09",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.3-phases/39-multi-agent-delegation-surface-full-row-60-close-row-83-upda/39-VERIFICATION.md": {
+    "mtime": 1782333278.5051324,
+    "ast_hash": "215a71f39097e42ab3cce4955c363d69",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-MILESTONE-AUDIT.md": {
+    "mtime": 1782333278.5052245,
+    "ast_hash": "f117691e5e5a3fbc0ac250e74bfcd002",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-REQUIREMENTS.md": {
+    "mtime": 1782333278.5053144,
+    "ast_hash": "c048aa53b3ea10ec905c5968cb3a87f2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-ROADMAP.md": {
+    "mtime": 1782333278.5053961,
+    "ast_hash": "e6b1c0ef34e32e5d11abace95d0d230e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-01-PLAN.md": {
+    "mtime": 1782333278.5056283,
+    "ast_hash": "ad719e97e2c4bfe1f2967bc70b71251f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-01-SUMMARY.md": {
+    "mtime": 1782333278.5059838,
+    "ast_hash": "82ac339538b0772515a4f1f288420a52",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-02-PLAN.md": {
+    "mtime": 1782333278.5060961,
+    "ast_hash": "9f2c5a943431a6fb697b9c6c9f11070b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-02-SUMMARY.md": {
+    "mtime": 1782333278.5061755,
+    "ast_hash": "7f60f708da5df23c3b822b71fd79190b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-03-PLAN.md": {
+    "mtime": 1782333278.5062878,
+    "ast_hash": "dfd0820d8d207606610944c1a040e33a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-03-SUMMARY.md": {
+    "mtime": 1782333278.5063605,
+    "ast_hash": "707d881afa0d6bbb161ae69a82608862",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-CONTEXT.md": {
+    "mtime": 1782333278.5064359,
+    "ast_hash": "34b43b44167e347017d0f636b42becbe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.5065017,
+    "ast_hash": "67558b673d30a2573a66f40ca25eba2c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-PATTERNS.md": {
+    "mtime": 1782333278.5065782,
+    "ast_hash": "a4cbe9068ae63f19cf42e64eb2ed17c9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-RESEARCH.md": {
+    "mtime": 1782333278.5066562,
+    "ast_hash": "000e39ddc2b8462c313dd410dd80745b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-REVIEW.md": {
+    "mtime": 1782333278.5067396,
+    "ast_hash": "b3cfc989eb3537dfe995343685f4e1c6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-VALIDATION.md": {
+    "mtime": 1782333278.5068104,
+    "ast_hash": "0fa074d0462b88878ce1f1fca6e72363",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/40-package-version-stamping-public-surface-guardrails/40-VERIFICATION.md": {
+    "mtime": 1782333278.5068767,
+    "ast_hash": "dc3540045524e64a48ab1568871929b1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-01-PLAN.md": {
+    "mtime": 1782333278.5070772,
+    "ast_hash": "f3ecaaf0dc832e3c78b67dbee1100183",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-01-SUMMARY.md": {
+    "mtime": 1782333278.507159,
+    "ast_hash": "ccfb426fe1d5894d72c2785c2a642091",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-02-PLAN.md": {
+    "mtime": 1782333278.507247,
+    "ast_hash": "e9de41653c47c40655cd254bfc12165f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-02-SUMMARY.md": {
+    "mtime": 1782333278.5073183,
+    "ast_hash": "d374e099ad3d06248564aafd4599a4f4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-03-PLAN.md": {
+    "mtime": 1782333278.50742,
+    "ast_hash": "4d28393d559de82f0268d948906edcdc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-03-SUMMARY.md": {
+    "mtime": 1782333278.5074952,
+    "ast_hash": "066acf19308c87c98bc9a0645c9b0d8b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-CONTEXT.md": {
+    "mtime": 1782333278.507599,
+    "ast_hash": "3c1e5d4104f382d5ea599494ee58a4e4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.5076804,
+    "ast_hash": "1088096036a347db898c2818d36bb312",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-PATTERNS.md": {
+    "mtime": 1782333278.5077686,
+    "ast_hash": "61fbe2caa8979abd37d21481eebc3ce9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-RESEARCH.md": {
+    "mtime": 1782333278.5079374,
+    "ast_hash": "c714fda7f0ef893f432995717ee9b9ce",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-REVIEW.md": {
+    "mtime": 1782333278.508022,
+    "ast_hash": "32226e20ce703f2ca92c129ccc19001a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-SECURITY.md": {
+    "mtime": 1782333278.5081148,
+    "ast_hash": "2a16f15986b3ef3417452fad6f603c2e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-VALIDATION.md": {
+    "mtime": 1782333278.5082014,
+    "ast_hash": "3d3ae20721dea8afcb4c090c4c45ecfb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/41-gateway-delegation-litellm-gateway-policy/41-VERIFICATION.md": {
+    "mtime": 1782333278.5082881,
+    "ast_hash": "3ed57f091447c3320d8aa9fbe03ea845",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-01-PLAN.md": {
+    "mtime": 1782333278.508661,
+    "ast_hash": "4199796c43723ce000e9b7fdfaaaf3c9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-01-SUMMARY.md": {
+    "mtime": 1782333278.5087488,
+    "ast_hash": "6f938dcf5508424399058814aa23542e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-02-PLAN.md": {
+    "mtime": 1782333278.508821,
+    "ast_hash": "2c060f8fbe97849d55e5f0cd5709a1e4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-02-SUMMARY.md": {
+    "mtime": 1782333278.5088925,
+    "ast_hash": "010e7885690efacb7ecc7d631bc4f84b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-03-PLAN.md": {
+    "mtime": 1782333278.508978,
+    "ast_hash": "37ec2c00ef595db2258b7773fb44cd77",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-03-SUMMARY.md": {
+    "mtime": 1782333278.5090582,
+    "ast_hash": "d26cb3fb20c37448115d1d543475fe8c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-CONTEXT.md": {
+    "mtime": 1782333278.5091414,
+    "ast_hash": "4a7ff77e32107149f99429f6e385fac8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-DISCUSSION-LOG.md": {
+    "mtime": 1782333278.509215,
+    "ast_hash": "f57bb67d08456a1a41c9caf6af25d57a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-PATTERNS.md": {
+    "mtime": 1782333278.5092835,
+    "ast_hash": "f05448d375660dad47e93157da184864",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-RESEARCH.md": {
+    "mtime": 1782333278.509354,
+    "ast_hash": "7cffca98ae00a8ca39fdd138c33ecf8e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-SECURITY.md": {
+    "mtime": 1782333278.5094314,
+    "ast_hash": "41b9e44de0ae7b0940b237f9de9eddec",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-UAT.md": {
+    "mtime": 1782333278.5095673,
+    "ast_hash": "7e7648593b4bc23dbb2352c348fe90a5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-VALIDATION.md": {
+    "mtime": 1782333278.5096426,
+    "ast_hash": "758f1b73f7cf7985d1c45ecb3b1c79f4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/42-openrouter-fallback-capability-catalog-refresh/42-VERIFICATION.md": {
+    "mtime": 1782333278.5097666,
+    "ast_hash": "b710523e57e95398eb2c9fb79ce33ac3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-01-PLAN.md": {
+    "mtime": 1782333278.5099444,
+    "ast_hash": "7995d871347616fefaa68c2a3616f6c3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-01-SUMMARY.md": {
+    "mtime": 1782333278.5100346,
+    "ast_hash": "8a63c56102d2e0a9c2af3701cfed2eee",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-02-PLAN.md": {
+    "mtime": 1782333278.5101507,
+    "ast_hash": "bd0c41f851731c728f076215dc5d0f0a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-02-SUMMARY.md": {
+    "mtime": 1782333278.510249,
+    "ast_hash": "227224640a64f60f578dc26a8b099914",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-03-PLAN.md": {
+    "mtime": 1782333278.5103352,
+    "ast_hash": "0088000cf1e0ad301c65e1ce6b6edd2f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-03-SUMMARY.md": {
+    "mtime": 1782333278.5104136,
+    "ast_hash": "5b37518fb282ffd65d494b0fd1ba3293",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-CONTEXT.md": {
+    "mtime": 1782333278.5104847,
+    "ast_hash": "f0e453bb9cd91d55dcefc8735f9c8abe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-PATTERNS.md": {
+    "mtime": 1782333278.5106282,
+    "ast_hash": "28c815bb641a2fc93fbd0728d948dfca",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-RESEARCH.md": {
+    "mtime": 1782333278.5106986,
+    "ast_hash": "4e23dcc61ec1acf6a38fc34b94f2c92c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-REVIEW.md": {
+    "mtime": 1782333278.5107725,
+    "ast_hash": "61bb8914637a6a4d3171b23c6abd65fd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-VALIDATION.md": {
+    "mtime": 1782333278.5108485,
+    "ast_hash": "b385f16a7eaab693ee951cc954e4ead4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/43-streaming-contract-collectstream/43-VERIFICATION.md": {
+    "mtime": 1782333278.5109618,
+    "ast_hash": "09972c321f51ef5c76bcabb865d2f9c5",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-01-PLAN.md": {
+    "mtime": 1782333278.5112653,
+    "ast_hash": "9eb013aa9b3c0f68e280b39dc2a91504",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-01-SUMMARY.md": {
+    "mtime": 1782333278.5113657,
+    "ast_hash": "1cf982af0a560fe45f3a6d0d411b2efe",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-02-PLAN.md": {
+    "mtime": 1782333278.5114496,
+    "ast_hash": "6696e22b4de1f4e2e89c01a866deb5f0",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-02-SUMMARY.md": {
+    "mtime": 1782333278.5115361,
+    "ast_hash": "07f9c5392d7dd2f94a6268bc7073856f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-03-PLAN.md": {
+    "mtime": 1782333278.5116243,
+    "ast_hash": "123ff9b4996049ebd1ddf9bf993a397d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-03-SUMMARY.md": {
+    "mtime": 1782333278.5117033,
+    "ast_hash": "c70388c926469828b0423c6c10a91c84",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-04-PLAN.md": {
+    "mtime": 1782333278.5117903,
+    "ast_hash": "2a878281ace8d7c8e8a64323b4ae232a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-04-SUMMARY.md": {
+    "mtime": 1782333278.511863,
+    "ast_hash": "5a46f267f8a658234d8fc9bfabeecd3d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-CONTEXT.md": {
+    "mtime": 1782333278.5119448,
+    "ast_hash": "614bc9d8e58cce0a3ad8376e6611c355",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-PATTERNS.md": {
+    "mtime": 1782333278.5120423,
+    "ast_hash": "a9346320216a39dfee064bc5fe7afc3e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-RESEARCH.md": {
+    "mtime": 1782333278.512135,
+    "ast_hash": "ebee287b1d7a12a71c72fbc78c26f8cd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-VALIDATION.md": {
+    "mtime": 1782333278.5122187,
+    "ast_hash": "5b80ebfa1db5214ade23d6fb0c765fea",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/44-streaming-adapter-implementations/44-VERIFICATION.md": {
+    "mtime": 1782333278.5123556,
+    "ast_hash": "2140483bb4344d7aa04fd68047e6a5c8",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-01-PLAN.md": {
+    "mtime": 1782333278.5124881,
+    "ast_hash": "d30df6f814caf8d30ec8fe33f22e8f21",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-01-SUMMARY.md": {
+    "mtime": 1782333278.5125642,
+    "ast_hash": "82caf8884d57effa632b32250cc279f1",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-02-PLAN.md": {
+    "mtime": 1782333278.5126367,
+    "ast_hash": "c4e9477d330f08b7713ecd6f5596b754",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-02-SUMMARY.md": {
+    "mtime": 1782333278.5127275,
+    "ast_hash": "4137fcc0d2831090d2066952903e7002",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-03-PLAN.md": {
+    "mtime": 1782333278.512809,
+    "ast_hash": "605b2fd92d71f03e68215c0ef6debaf6",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-03-SUMMARY.md": {
+    "mtime": 1782333278.5128887,
+    "ast_hash": "33c5195be1ca62204b98151f2e95e80d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-04-PLAN.md": {
+    "mtime": 1782333278.513004,
+    "ast_hash": "c88b8a8c89c8df01f41c4dc81cf71c14",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-04-SUMMARY.md": {
+    "mtime": 1782333278.5130937,
+    "ast_hash": "781da2d4752016bf0d750017b5acb6ad",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-CONTEXT.md": {
+    "mtime": 1782333278.513188,
+    "ast_hash": "566653c4d0855f720a5a2fb493831608",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-PATTERNS.md": {
+    "mtime": 1782333278.5132632,
+    "ast_hash": "7a8f2226357c5b3ffacc72c3701fdd53",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-RESEARCH.md": {
+    "mtime": 1782333278.5133529,
+    "ast_hash": "c4a65ea206cba3bd95b501e6203c9d54",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-VALIDATION.md": {
+    "mtime": 1782333278.5134273,
+    "ast_hash": "85f413ae7695b622724663c12a1b944d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/45-multimodal-request-shaping-realtime-direction/45-VERIFICATION.md": {
+    "mtime": 1782333278.5134816,
+    "ast_hash": "3af69f89a42cc78476fe29fd8a7f0077",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-01-PLAN.md": {
+    "mtime": 1782333278.5135922,
+    "ast_hash": "12b792245af1b1fd676035d79eba537b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-01-SUMMARY.md": {
+    "mtime": 1782333278.513654,
+    "ast_hash": "410a9bcd246898b7fe1bfc873962ef0e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-02-PLAN.md": {
+    "mtime": 1782333278.5137165,
+    "ast_hash": "9fec8a6c70e76a0358b1ebf20f9e2f42",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-02-SUMMARY.md": {
+    "mtime": 1782333278.5137842,
+    "ast_hash": "5c5fb6451315a3523ff13c3bb4626c25",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-03-PLAN.md": {
+    "mtime": 1782333278.5138521,
+    "ast_hash": "3d7a7635c864136fdbb73aa323adae39",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-03-SUMMARY.md": {
+    "mtime": 1782333278.513966,
+    "ast_hash": "a63a5a4794ba00de93a1295cc74127df",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-04-PLAN.md": {
+    "mtime": 1782333278.514073,
+    "ast_hash": "601b887842195695eaa789ccddd75365",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-04-SUMMARY.md": {
+    "mtime": 1782333278.5141766,
+    "ast_hash": "c26741050e5f1253064f175f86170309",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-CONTEXT.md": {
+    "mtime": 1782333278.5142834,
+    "ast_hash": "3ddbf45863ffbfae77066235821e4ead",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-PATTERNS.md": {
+    "mtime": 1782333278.5143702,
+    "ast_hash": "173b62ce4bd826ea8a329873b918d1fc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-RESEARCH.md": {
+    "mtime": 1782333278.5144792,
+    "ast_hash": "5230dd8d9ec2a03a6340fdf1a8d7ee3c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-REVIEW.md": {
+    "mtime": 1782333278.5145636,
+    "ast_hash": "4206f083f099c590a70f74a46d7991f3",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-VALIDATION.md": {
+    "mtime": 1782333278.5146441,
+    "ast_hash": "2b63b709659e69ada334345c644c7a03",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/46-receipt-provenance-kms-signer-shapes/46-VERIFICATION.md": {
+    "mtime": 1782333278.514734,
+    "ast_hash": "b60045386bdbad222acdaa8687266c50",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-01-PLAN.md": {
+    "mtime": 1782333278.5148935,
+    "ast_hash": "297dbf268101aa219bf8aeb966ac5891",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-01-SUMMARY.md": {
+    "mtime": 1782333278.5149703,
+    "ast_hash": "41b740e76f3f129acb42b1c055e7064c",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-02-PLAN.md": {
+    "mtime": 1782333278.515039,
+    "ast_hash": "78ef960fdfc8a5f0ce7e31f274379af2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-02-SUMMARY.md": {
+    "mtime": 1782333278.5151162,
+    "ast_hash": "d2e6ef7d9dfb718054953139981cda43",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-03-PLAN.md": {
+    "mtime": 1782333278.5152128,
+    "ast_hash": "0e54ed8f89822e05a1b0bb51b79d1205",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-03-SUMMARY.md": {
+    "mtime": 1782333278.515315,
+    "ast_hash": "671bf3d64555ff4c7e7c786eece173dc",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-04-PLAN.md": {
+    "mtime": 1782333278.515415,
+    "ast_hash": "b3fe94f4ae91ec1c8d93ba857fedc407",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-04-SUMMARY.md": {
+    "mtime": 1782333278.5155194,
+    "ast_hash": "510e3de94dca32146bb1aaf5179c4ae9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-CONTEXT.md": {
+    "mtime": 1782333278.5156376,
+    "ast_hash": "5e85c34522cbecb3f1937f2f7e8298c2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-PATTERNS.md": {
+    "mtime": 1782333278.5157454,
+    "ast_hash": "6dbb41961435dd7f938b9bca697f6f27",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-RESEARCH.md": {
+    "mtime": 1782333278.5158367,
+    "ast_hash": "faaf7289ee0d456d01bf3c0371a90c4e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-REVIEW.md": {
+    "mtime": 1782333278.5159402,
+    "ast_hash": "dc31085014ea227a7f4c033abdc6ca3f",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-VALIDATION.md": {
+    "mtime": 1782333278.516056,
+    "ast_hash": "51bfca18f91baca2bddcfc2e7a40370a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/47-opentelemetry-exporter-langfuse-phoenix-paths/47-VERIFICATION.md": {
+    "mtime": 1782333278.5161521,
+    "ast_hash": "762883c7b659cafbf85c5209a3679688",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-01-PLAN.md": {
+    "mtime": 1782333278.516322,
+    "ast_hash": "a992a1bd182e6dc93bebd621f357c378",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-01-SUMMARY.md": {
+    "mtime": 1782333278.5164146,
+    "ast_hash": "f39d4067524be0315a46a6fa81e87853",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-02-PLAN.md": {
+    "mtime": 1782333278.5165217,
+    "ast_hash": "e52c3e9bf8072d20a4cf4a7dc44da7bf",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-02-SUMMARY.md": {
+    "mtime": 1782333278.5166156,
+    "ast_hash": "aefd255208c83c128c0e5d508eb67589",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-03-PLAN.md": {
+    "mtime": 1782333278.5166938,
+    "ast_hash": "2b4d2661c91d70fbbd72ab9ae65ce360",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-03-SUMMARY.md": {
+    "mtime": 1782333278.5167904,
+    "ast_hash": "876ddaf6bf79feda6c60852f42a3f366",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-04-PLAN.md": {
+    "mtime": 1782333278.5168917,
+    "ast_hash": "e6bca844757a403aef12c98f18166c9e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-04-SUMMARY.md": {
+    "mtime": 1782333278.5170271,
+    "ast_hash": "b1895adb511c5a0e3f1b66d36e871787",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-CONTEXT.md": {
+    "mtime": 1782333278.5171287,
+    "ast_hash": "e23dd540ec3186ca49bc3c527ce22cd4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-PATTERNS.md": {
+    "mtime": 1782333278.5172236,
+    "ast_hash": "92986a399b89b91a130c1580d063f249",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-RESEARCH.md": {
+    "mtime": 1782333278.5173237,
+    "ast_hash": "dccb4bc6f2c7799381010f587f31cf91",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-REVIEW.md": {
+    "mtime": 1782333278.5174186,
+    "ast_hash": "a9f194046dbdc1959f01b10a67a1e308",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-VALIDATION.md": {
+    "mtime": 1782333278.5175142,
+    "ast_hash": "487b0eb31e50bc63df8a31c95d788cdb",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/48-eval-diagnostics-cli-expansion/48-VERIFICATION.md": {
+    "mtime": 1782333278.5176086,
+    "ast_hash": "d23b5e0a5e578bc66743b570321c342a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-01-PLAN.md": {
+    "mtime": 1782333278.5177674,
+    "ast_hash": "11ced9d5c9f2068e64ab5f356518190e",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-01-SUMMARY.md": {
+    "mtime": 1782333278.5178897,
+    "ast_hash": "38afa3fb5924333cf17f1207f6703044",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-02-PLAN.md": {
+    "mtime": 1782333278.517978,
+    "ast_hash": "75fc9363e830054b3f9d4c0e5a0b1807",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-02-SUMMARY.md": {
+    "mtime": 1782333278.5180688,
+    "ast_hash": "e35931762cbc06132d3b8a16bf0b32d2",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-03-PLAN.md": {
+    "mtime": 1782333278.518151,
+    "ast_hash": "78e1241741973d3795b16b3a663d7908",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-03-SUMMARY.md": {
+    "mtime": 1782333278.5182366,
+    "ast_hash": "c6117cdb9330242a3ab697b75d9a6723",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-04-PLAN.md": {
+    "mtime": 1782333278.5183284,
+    "ast_hash": "020888924bb3f1b1a979828746168e25",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-04-SUMMARY.md": {
+    "mtime": 1782333278.518416,
+    "ast_hash": "5a7f187e01f039e36f16662d094ef50b",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-CONTEXT.md": {
+    "mtime": 1782333278.5185163,
+    "ast_hash": "8d5d1060a32b315ef700577390c437cd",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-MILESTONE-EVIDENCE.md": {
+    "mtime": 1782333278.5186102,
+    "ast_hash": "6e60151267367e3186275c7159ad27e7",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-PATTERNS.md": {
+    "mtime": 1782333278.5187056,
+    "ast_hash": "00868260598a4b24601bb5f36ee88e40",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-RESEARCH.md": {
+    "mtime": 1782333278.5187855,
+    "ast_hash": "c30036e28e45367f7c403917bb94e20d",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-REVIEW.md": {
+    "mtime": 1782333278.518865,
+    "ast_hash": "4bd08688e7f6d153b667cbfa91563813",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-VALIDATION.md": {
+    "mtime": 1782333278.5189385,
+    "ast_hash": "4d3f58b12958eb794f147b8a0a1973e9",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-phases/49-showcase-fsb-dogfood-validation/49-VERIFICATION.md": {
+    "mtime": 1782333278.519024,
+    "ast_hash": "b83712d8b886ae4cecf015a8539857ee",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-research/ARCHITECTURE.md": {
+    "mtime": 1782333278.5263772,
+    "ast_hash": "1cb2f8e2b2ae3136b59bcbd08981bdfa",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-research/FEATURES.md": {
+    "mtime": 1782333278.5267723,
+    "ast_hash": "e6eec5998b0bf653dc1db9d137c2cb37",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-research/PITFALLS.md": {
+    "mtime": 1782333278.52725,
+    "ast_hash": "089e040aab6e6a933819b613679f7e1a",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-research/STACK.md": {
+    "mtime": 1782333278.5276833,
+    "ast_hash": "dbc75402992f704f30dde0293606afc4",
+    "semantic_hash": ""
+  },
+  ".planning/milestones/v1.4-research/SUMMARY.md": {
+    "mtime": 1782333278.527803,
+    "ast_hash": "10817cbcf4508c759273a62d584472c3",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-01-PLAN.md": {
+    "mtime": 1782378988.4937532,
+    "ast_hash": "69b3bcbbd996841f7c6880fbd69e94cd",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-01-SUMMARY.md": {
+    "mtime": 1782379715.6714427,
+    "ast_hash": "78846ee8fd086bc9ca766d107c06c916",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-02-PLAN.md": {
+    "mtime": 1782378996.5379467,
+    "ast_hash": "e474f17f4fcf66f80d58264fbd8e3485",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-02-SUMMARY.md": {
+    "mtime": 1782380498.531354,
+    "ast_hash": "326290cf1672acaf6a67bca2ce67e80b",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-03-PLAN.md": {
+    "mtime": 1782379002.3028028,
+    "ast_hash": "54deafeb25a0d062a1813f87212dc01a",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-03-SUMMARY.md": {
+    "mtime": 1782380898.8568063,
+    "ast_hash": "2e9fd075268a5d2b3662000d4a275215",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-CONTEXT.md": {
+    "mtime": 1782376014.2915022,
+    "ast_hash": "6c2db89d2b630e4376d9f60a1ef022d6",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-DISCUSSION-LOG.md": {
+    "mtime": 1782376041.2363083,
+    "ast_hash": "056e8c9b18dd957c6562b33c88c20903",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-PATTERNS.md": {
+    "mtime": 1782377200.068176,
+    "ast_hash": "6c8e5b5872eb505b1e3351611183b024",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-RESEARCH.md": {
+    "mtime": 1782378666.4125905,
+    "ast_hash": "ac4069e101b6cd2261c63825882c9c45",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-REVIEW.md": {
+    "mtime": 1782381827.333805,
+    "ast_hash": "9e5584ea1e56b4318cc7b788f4ba2d07",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-VALIDATION.md": {
+    "mtime": 1782378708.1288197,
+    "ast_hash": "8a17ce7ebe22e1b3fd8e1fb8e2d0ec3d",
+    "semantic_hash": ""
+  },
+  ".planning/phases/50-protocol-specification/50-VERIFICATION.md": {
+    "mtime": 1782382536.5733156,
+    "ast_hash": "945d04e25b2ad9d5609ada5721639295",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-01-PLAN.md": {
+    "mtime": 1782384857.6492167,
+    "ast_hash": "0ef22abbffd467025be317a99553a279",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-01-SUMMARY.md": {
+    "mtime": 1782386375.8445446,
+    "ast_hash": "3b3851e1eeea1e6b4dd8ba4e851e245a",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-02-PLAN.md": {
+    "mtime": 1782385172.8908439,
+    "ast_hash": "4d4003592c76fe4c5d6f95b7162b78a9",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-02-SUMMARY.md": {
+    "mtime": 1782387518.0662806,
+    "ast_hash": "ecc7446bed49f34482ac4cfae7b71f54",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-03-PLAN.md": {
+    "mtime": 1782385372.4831212,
+    "ast_hash": "5a97b804733421435c417b885ce87f7a",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-03-SUMMARY.md": {
+    "mtime": 1782391438.3786042,
+    "ast_hash": "ca9c098bf39fa0dff74d64eaeb9a6af1",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-CONTEXT.md": {
+    "mtime": 1782383028.4740603,
+    "ast_hash": "b7b6e7391efd72c5b2ad92ca5efb2385",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-RESEARCH.md": {
+    "mtime": 1782383707.6455445,
+    "ast_hash": "a5018aa882d5c1dbc5fc70cb1e76c9b8",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-VALIDATION.md": {
+    "mtime": 1782385452.3444743,
+    "ast_hash": "3a58bcf38e8822af1b0957e7d7643c1a",
+    "semantic_hash": ""
+  },
+  ".planning/phases/51-conformance-vector-generator-+-committed-vectors/51-VERIFICATION.md": {
+    "mtime": 1782391825.6512392,
+    "ast_hash": "1eb61a720a0621d96862f3de46349c45",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-01-PLAN.md": {
+    "mtime": 1782939414.7312808,
+    "ast_hash": "00782d56f84b5eb0b025490dcfa5d749",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-01-SUMMARY.md": {
+    "mtime": 1782940357.5805714,
+    "ast_hash": "e0f2326f48d562c2e9a60e18693fbed0",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-CONTEXT.md": {
+    "mtime": 1782938281.4718046,
+    "ast_hash": "3cd6a615de1be0f3ccdb638b7ede6172",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-PATTERNS.md": {
+    "mtime": 1782939003.4561157,
+    "ast_hash": "e1b759659c6fcde0d79b4a0cb714b6b2",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-RESEARCH.md": {
+    "mtime": 1782939694.4260163,
+    "ast_hash": "3d7b70a76ce382e178dd9b5230bb7ea7",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/52-VALIDATION.md": {
+    "mtime": 1782939688.988939,
+    "ast_hash": "159dfbb770d69cd5965fc3fd6f372f7d",
+    "semantic_hash": ""
+  },
+  ".planning/phases/52-typescript-self-verification-harness/deferred-items.md": {
+    "mtime": 1782940357.5808506,
+    "ast_hash": "353ee2ec8ad5a2c49cbef7b59df8bc6e",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260422-gle-create-lattice-readme-matching-existing-/260422-gle-PLAN.md": {
+    "mtime": 1782333278.519231,
+    "ast_hash": "ca7884228355ec5218cda16d9e661040",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260422-gle-create-lattice-readme-matching-existing-/260422-gle-SUMMARY.md": {
+    "mtime": 1782333278.5193257,
+    "ast_hash": "f02f265d87643e45c09c86a8cb47365e",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260609-ewo-clean-planning-state-after-v1-3-code-reg/260609-ewo-PLAN.md": {
+    "mtime": 1782333278.5197198,
+    "ast_hash": "b11bb37826006d6465df6eb1157161a7",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260609-ewo-clean-planning-state-after-v1-3-code-reg/260609-ewo-SUMMARY.md": {
+    "mtime": 1782333278.5200744,
+    "ast_hash": "9cdd12e0762a55ae4e32e0e027733256",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-5m0-author-ieee-latex-paper-on-lattice-capab/260615-5m0-PLAN.md": {
+    "mtime": 1782333278.520248,
+    "ast_hash": "0727fcdb2d00867fa1e696e976c059b8",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-5m0-author-ieee-latex-paper-on-lattice-capab/260615-5m0-SUMMARY.md": {
+    "mtime": 1782333278.520348,
+    "ast_hash": "c1b61bd1dcaac725ad738faadf05457b",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-689-polish-lattice-paper-mention-lattice-in-/260615-689-PLAN.md": {
+    "mtime": 1782333278.5204809,
+    "ast_hash": "495f5779af4192a4324b21973eb32129",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-689-polish-lattice-paper-mention-lattice-in-/260615-689-SUMMARY.md": {
+    "mtime": 1782333278.5205796,
+    "ast_hash": "c1bfc1eea151830e7cb165e0f2e8f3dd",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-6t9-record-fsb-via-npm-dogfood-validation-an/260615-6t9-PLAN.md": {
+    "mtime": 1782333278.5206847,
+    "ast_hash": "dbf1ef2f1a5c6b6361030f58273cd1fa",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-6t9-record-fsb-via-npm-dogfood-validation-an/260615-6t9-SUMMARY.md": {
+    "mtime": 1782333278.5207534,
+    "ast_hash": "515ea0126ce032848741850ed6c4af7b",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-7qq-update-paper-author-name-to-lakshman-tur/260615-7qq-PLAN.md": {
+    "mtime": 1782333278.520889,
+    "ast_hash": "bed1a6c0cfabb1a2fbf51bcf7d407bea",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-7qq-update-paper-author-name-to-lakshman-tur/260615-7qq-SUMMARY.md": {
+    "mtime": 1782333278.5209656,
+    "ast_hash": "f4d1f1f5ecf0d88a395c7fa4bb0274c2",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-ei0-capitalize-t-in-paper-author-last-name-a/260615-ei0-PLAN.md": {
+    "mtime": 1782333278.5211322,
+    "ast_hash": "75711864e8445a7a51c3dcec12b6f444",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260615-ei0-capitalize-t-in-paper-author-last-name-a/260615-ei0-SUMMARY.md": {
+    "mtime": 1782333278.5212033,
+    "ast_hash": "2fc984aac99a6a338868efb5a4adef58",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-eu5-fix-codex-pr-12-review-findings-openai-s/260616-eu5-PLAN.md": {
+    "mtime": 1782333278.521681,
+    "ast_hash": "6b5a510c798565a427e6d4d914cd35ba",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-eu5-fix-codex-pr-12-review-findings-openai-s/260616-eu5-REVIEW.md": {
+    "mtime": 1782333278.521991,
+    "ast_hash": "6a5b87054303b2deda484860bc834c30",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-eu5-fix-codex-pr-12-review-findings-openai-s/260616-eu5-SUMMARY.md": {
+    "mtime": 1782333278.5222654,
+    "ast_hash": "38779cb90e4c706d1a55ca0150878617",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-g8h-fix-local-codex-review-findings-nopublic/260616-g8h-PLAN.md": {
+    "mtime": 1782333278.5226924,
+    "ast_hash": "f7d5b9e9ce1a6e52e6d3c1e0db8b70ce",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-g8h-fix-local-codex-review-findings-nopublic/260616-g8h-REVIEW2.md": {
+    "mtime": 1782333278.523032,
+    "ast_hash": "317d635a031abdcf69643413f0b966c0",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-g8h-fix-local-codex-review-findings-nopublic/260616-g8h-SUMMARY.md": {
+    "mtime": 1782333278.5232782,
+    "ast_hash": "22d4f7ea7e2c9fc8c83e2af0dc61df5f",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-h31-harden-nopublicurl-enforcement-openai-co/260616-h31-PLAN.md": {
+    "mtime": 1782333278.5237322,
+    "ast_hash": "2f320a850b5391d2de3e1fc30ba375d8",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-h31-harden-nopublicurl-enforcement-openai-co/260616-h31-REVIEW3.md": {
+    "mtime": 1782333278.5241084,
+    "ast_hash": "a85b5fee1df9effcdba14d1af4542b29",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-h31-harden-nopublicurl-enforcement-openai-co/260616-h31-SUMMARY.md": {
+    "mtime": 1782333278.5244129,
+    "ast_hash": "ccfbd37fd250f7876f250b486d40949a",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-inn-add-single-chokepoint-nopublicurl-egress/260616-inn-PLAN.md": {
+    "mtime": 1782333278.5247772,
+    "ast_hash": "370423356b3cfe3530abcb951114bd17",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-inn-add-single-chokepoint-nopublicurl-egress/260616-inn-SUMMARY.md": {
+    "mtime": 1782333278.52503,
+    "ast_hash": "54479fe210608bf84942c5e9e99d973d",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-ldk-fix-pr-12-review-threads-data-url-mime-g/260616-ldk-PLAN.md": {
+    "mtime": 1782333278.5253103,
+    "ast_hash": "0ca417c2ca7b4ad78b02c2dd84098665",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-ldk-fix-pr-12-review-threads-data-url-mime-g/260616-ldk-SUMMARY.md": {
+    "mtime": 1782333278.5256317,
+    "ast_hash": "0e60a36a4a28eeb93ad86e978eada374",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260616-ldk-fix-pr-12-review-threads-data-url-mime-g/260616-ldk-VERIFICATION.md": {
+    "mtime": 1782333278.525979,
+    "ast_hash": "d16f7fa4500074ec731fbfa9040fe216",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260625-an5-publish-readme-data-to-npm-package-pages/PLAN.md": {
+    "mtime": 1782391282.2156177,
+    "ast_hash": "97328f9634a2330c84dc5165c52f6a1b",
+    "semantic_hash": ""
+  },
+  ".planning/quick/260625-an5-publish-readme-data-to-npm-package-pages/SUMMARY.md": {
+    "mtime": 1782391339.1435144,
+    "ast_hash": "b1800f6e4825ace5c557681e6f6926fc",
+    "semantic_hash": ""
+  },
+  ".planning/research/ARCHITECTURE.md": {
+    "mtime": 1782335223.6078305,
+    "ast_hash": "91d47b31e29c400157614ca1b78166ba",
+    "semantic_hash": ""
+  },
+  ".planning/research/FEATURES.md": {
+    "mtime": 1782335393.9486718,
+    "ast_hash": "a6e8f595249be73bb349cae3354f9f43",
+    "semantic_hash": ""
+  },
+  ".planning/research/PITFALLS.md": {
+    "mtime": 1782335461.662437,
+    "ast_hash": "e1a9daf1cc709466d59a92209de15918",
+    "semantic_hash": ""
+  },
+  ".planning/research/STACK.md": {
+    "mtime": 1782335384.508872,
+    "ast_hash": "f782a6ca272858e80b8dbfb97bc53468",
+    "semantic_hash": ""
+  },
+  ".planning/research/SUMMARY.md": {
+    "mtime": 1782335927.1442616,
+    "ast_hash": "151c2f95e958a7674e67c7ba72c486b7",
+    "semantic_hash": ""
+  },
+  ".planning/v1.1-MILESTONE-INTEGRATION.md": {
+    "mtime": 1782333278.5279224,
+    "ast_hash": "3074f57e385d369d37f1aee367913d01",
+    "semantic_hash": ""
+  },
+  ".planning/v1.2-MILESTONE-INTEGRATION.md": {
+    "mtime": 1782333278.5280523,
+    "ast_hash": "f521c5e4a6c47982632ee431c54cae6a",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1782333278.5285249,
+    "ast_hash": "5b2d05f64449716e4fe8c6d57c8e3742",
+    "semantic_hash": ""
+  },
+  "CONTRIBUTING.md": {
+    "mtime": 1782333278.5286493,
+    "ast_hash": "591126dda8501aab277946e59b5deebe",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1782333278.529231,
+    "ast_hash": "375fad2d723aafea31cdf6ab85874b31",
+    "semantic_hash": ""
+  },
+  "SECURITY.md": {
+    "mtime": 1782333278.5293248,
+    "ast_hash": "64c7c4846d844d222bbda9fb598c9319",
+    "semantic_hash": ""
+  },
+  "docs/fsb-integration-gaps.md": {
+    "mtime": 1782333278.5474877,
+    "ast_hash": "f9bbdad36b98870a8f1cc1301f3793c0",
+    "semantic_hash": ""
+  },
+  "docs/observability-otel.md": {
+    "mtime": 1782333278.5476189,
+    "ast_hash": "e0749a7a2c4c2431fb229eb7906bb35c",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/adversarial-dense-policy.pdf.txt": {
+    "mtime": 1782333278.549376,
+    "ast_hash": "b3bd6f6a8e552e7a1e5b240ff9844138",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/adversarial-privacy-case.txt": {
+    "mtime": 1782333278.549433,
+    "ast_hash": "efcc4464e71ab223bddb8d8ceb471145",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/call-transcript.txt": {
+    "mtime": 1782333278.5494962,
+    "ast_hash": "df8d0010d36a8fceaddc6d8997f61412",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/message.txt": {
+    "mtime": 1782333278.5495644,
+    "ast_hash": "eaf73777abfde935f12c0f3ad4887878",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/package-photo.txt": {
+    "mtime": 1782333278.5496798,
+    "ast_hash": "72268a671be3e343d723c2a982842020",
+    "semantic_hash": ""
+  },
+  "examples/work-inbox/fixtures/return-policy.pdf.txt": {
+    "mtime": 1782333278.549769,
+    "ast_hash": "e7c408cba26e946f4f4feb465f1d3a44",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/CHANGELOG.md": {
+    "mtime": 1782333278.5506058,
+    "ast_hash": "ab4dd9f3c45afd5a645e127ee2eb8438",
+    "semantic_hash": ""
+  },
+  "packages/lattice-cli/README.md": {
+    "mtime": 1782391214.129349,
+    "ast_hash": "605b5005bd89cd1ec5a50826c5c9ee7c",
+    "semantic_hash": ""
+  },
+  "packages/lattice/CHANGELOG.md": {
+    "mtime": 1782333278.556103,
+    "ast_hash": "ff4c2eb1a35e5f198cabcdd8ac2ecec0",
+    "semantic_hash": ""
+  },
+  "packages/lattice/README.md": {
+    "mtime": 1782391214.1292214,
+    "ast_hash": "605b5005bd89cd1ec5a50826c5c9ee7c",
+    "semantic_hash": ""
+  },
+  "paper/README.md": {
+    "mtime": 1782333278.590992,
+    "ast_hash": "4a9e6518f69901a802d3914bf2e861dd",
+    "semantic_hash": ""
+  },
+  "pnpm-workspace.yaml": {
+    "mtime": 1782385781.6319315,
+    "ast_hash": "c49f20b56efa94c44f520504c291f28b",
+    "semantic_hash": ""
+  },
+  "spec/CHANGELOG.md": {
+    "mtime": 1782380822.127845,
+    "ast_hash": "2829a5e9d1528bd7d6341124d2a53f9f",
+    "semantic_hash": ""
+  },
+  "spec/SPEC.md": {
+    "mtime": 1782382353.5079954,
+    "ast_hash": "66c980ea73c064ed08940d136e36cd64",
+    "semantic_hash": ""
+  },
+  "assets/app-icon-1024.png": {
+    "mtime": 1782333278.5300117,
+    "ast_hash": "e46943997aaac0da99d216bc82dc9b0d",
+    "semantic_hash": ""
+  },
+  "assets/app-icon-256.png": {
+    "mtime": 1782333278.5301175,
+    "ast_hash": "163239ab780db03f926a6446533c1aae",
+    "semantic_hash": ""
+  },
+  "assets/app-icon-512.png": {
+    "mtime": 1782333278.5304196,
+    "ast_hash": "5f110d09f29a96d06922acdbeb2c6130",
+    "semantic_hash": ""
+  },
+  "assets/app-icon.svg": {
+    "mtime": 1782333278.5304987,
+    "ast_hash": "36a979de146ecd82733912aa18fa447a",
+    "semantic_hash": ""
+  },
+  "assets/favicon-16.png": {
+    "mtime": 1782333278.5305526,
+    "ast_hash": "e3a58c0829450b9f71c3b9b676d232e1",
+    "semantic_hash": ""
+  },
+  "assets/favicon-16.svg": {
+    "mtime": 1782333278.5306144,
+    "ast_hash": "b1a81d84063ff731b9d3b5fea9d3d422",
+    "semantic_hash": ""
+  },
+  "assets/favicon-32.png": {
+    "mtime": 1782333278.5306826,
+    "ast_hash": "bccd1e44dfdfca757d14d6d9b6858ceb",
+    "semantic_hash": ""
+  },
+  "assets/favicon-32.svg": {
+    "mtime": 1782333278.5307522,
+    "ast_hash": "803f77d67a245a973c5feae9a9d1c7cb",
+    "semantic_hash": ""
+  },
+  "assets/favicon-48.png": {
+    "mtime": 1782333278.5308104,
+    "ast_hash": "4c7f6747786e78a85a2f223eb14f0a15",
+    "semantic_hash": ""
+  },
+  "assets/favicon-48.svg": {
+    "mtime": 1782333278.5308688,
+    "ast_hash": "f7b1e484443ab874bc425af928f16707",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-dark.png": {
+    "mtime": 1782333278.531006,
+    "ast_hash": "a204d8ebc9e0e1bf878a834846c8a59c",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-dark.svg": {
+    "mtime": 1782333278.5310922,
+    "ast_hash": "1c008238012148190b132005e12ab766",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-spin-dark.gif": {
+    "mtime": 1782333278.537579,
+    "ast_hash": "dff6fbe3016c707dfbd993333620a8d3",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-spin-dark.svg": {
+    "mtime": 1782333278.5377145,
+    "ast_hash": "58a2d26c493da2763050c10eaf34bfc0",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-spin.gif": {
+    "mtime": 1782333278.5458047,
+    "ast_hash": "d5be01003c207f790b731c4c44316d4c",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark-spin.svg": {
+    "mtime": 1782333278.545926,
+    "ast_hash": "0617a5eabbc70898bd00d3736531f97d",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark.png": {
+    "mtime": 1782333278.5461466,
+    "ast_hash": "e0eccf7ff72475e0cfbd1846c10a58e4",
+    "semantic_hash": ""
+  },
+  "assets/logo-mark.svg": {
+    "mtime": 1782333278.5462394,
+    "ast_hash": "6a346a049811c9a7240e1cd6bddc121e",
+    "semantic_hash": ""
+  },
+  "assets/logo-wordmark-dark.png": {
+    "mtime": 1782333278.5464013,
+    "ast_hash": "806b3c5cdbc88fd488f710861b7c212f",
+    "semantic_hash": ""
+  },
+  "assets/logo-wordmark-dark.svg": {
+    "mtime": 1782333278.5465302,
+    "ast_hash": "527b2ba8170542c41c5c2fa00b8f6732",
+    "semantic_hash": ""
+  },
+  "assets/logo-wordmark.png": {
+    "mtime": 1782333278.5466821,
+    "ast_hash": "14646028ad8cc9f6ad316abefb4abe26",
+    "semantic_hash": ""
+  },
+  "assets/logo-wordmark.svg": {
+    "mtime": 1782333278.5467794,
+    "ast_hash": "1b2147924898cf7e5c9ae4f816017674",
+    "semantic_hash": ""
+  },
+  "assets/social-card.png": {
+    "mtime": 1782333278.5470037,
+    "ast_hash": "dda275cc73dee700d3b71c401fe6a3ae",
+    "semantic_hash": ""
+  },
+  "assets/social-card.svg": {
+    "mtime": 1782333278.547089,
+    "ast_hash": "6e007b639e077ca975c9e9f357c6cd4b",
+    "semantic_hash": ""
+  }
+}
