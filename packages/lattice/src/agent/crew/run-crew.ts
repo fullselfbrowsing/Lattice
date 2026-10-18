@@ -25,6 +25,7 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
@@ -198,6 +199,7 @@ export async function runAgentCrew(
       parentReceiptCid: crewRoot.cid,
       success: parentResult.kind === "success",
       artifacts: parentResult.kind === "success" ? parentResult.artifacts ?? [] : [],
+      ...(parentResult.kind === "success" ? { output: parentResult.output } : {}),
     });
     receipts.push(parentEnvelope);
   }
@@ -425,6 +427,10 @@ async function maybeMintCrewRoot(input: {
       contractVerdict: "success",
       contractHash: null,
       inputHashes: [],
+      // The root is minted BEFORE any agent runs so children have a chain
+      // anchor (dispatcher.ts Pitfall 2). There is no output to commit to
+      // yet; the per-agent completion receipts chained to this root carry
+      // the output hashes.
       outputHash: null,
       stepName: `crew-start:${input.root.id}`,
     },
@@ -441,10 +447,13 @@ async function createAgentCompletionReceipt(input: {
   readonly parentReceiptCid: string;
   readonly success: boolean;
   readonly artifacts?: readonly ArtifactRef[];
+  /** The agent's output on success; hashed into `outputHash` (issue #21 F6). */
+  readonly output?: unknown;
 }): Promise<ReceiptEnvelope> {
   const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
     input.artifacts ?? [],
   );
+  const outputHash = input.success ? await hashOutputForReceipt(input.output) : null;
   return createReceipt(
     {
       runId: input.runId,
@@ -459,8 +468,10 @@ async function createAgentCompletionReceipt(input: {
       usage: input.usage,
       contractVerdict: input.success ? "success" : "execution-failed",
       contractHash: null,
+      // Agent intents carry no input artifacts; see dispatcher.ts for why
+      // this must stay empty rather than hashing the task string.
       inputHashes: [],
-      outputHash: null,
+      outputHash,
       stepName: `crew-agent-completion:${input.agentId}`,
     },
     input.signer,

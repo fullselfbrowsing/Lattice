@@ -51,6 +51,7 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
@@ -345,6 +346,9 @@ function createDispatcherNode(
       try {
         const lineageMerkleRoot =
           await computeArtifactLineageMerkleRoot(childArtifacts);
+        // Issue #21 F6: commit to the child's output exactly as ai.run does
+        // so a verifier can recompute it from the child's result.
+        const outputHash = await hashOutputForReceipt(childResult.output);
         const envelope = await createReceipt(
           {
             runId: shared.runId,
@@ -361,8 +365,12 @@ function createDispatcherNode(
             ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
             contractVerdict: "success",
             contractHash: null,
+            // The child intent carries no input artifacts (only a task string
+            // and tools). inputHashes must stay empty: materializeReplayEnvelope
+            // resolves every non-empty entry through the artifact loader, so a
+            // hash of the task string would break replay.
             inputHashes: [],
-            outputHash: null,
+            outputHash,
             stepName: `crew-agent-completion:${childSpec.id}`,
           },
           ctx.signer,

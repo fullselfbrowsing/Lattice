@@ -32,6 +32,7 @@ import type {
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
+import { hashInputArtifacts, hashOutputForReceipt } from "../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
 import type {
@@ -44,7 +45,6 @@ import { createCapabilityCatalog } from "../routing/catalog.js";
 import { routeDeterministically } from "../routing/router.js";
 import type { RunResult } from "../results/result.js";
 import type { SessionRecord, SessionRef } from "../sessions/session.js";
-import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { runTool, type ToolCallResult, type ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
 import {
@@ -683,7 +683,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           attemptNumber: attempts.length,
         },
         usage: normalizeAdapterUsage(response),
-        outputs: JSON.stringify(successValidation.outputs),
+        outputs: successValidation.outputs,
       });
 
       return {
@@ -1159,24 +1159,6 @@ function observedModelForReceipt(response: ProviderRunResponse): string | null {
 }
 
 /**
- * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
- * hex digests in declaration order. Missing/undefined values produce an
- * empty string so the array length matches `artifacts.length` exactly.
- */
-async function hashInputArtifacts(
-  artifacts: readonly ArtifactInput[],
-): Promise<readonly string[]> {
-  const out: string[] = [];
-  for (const artifact of artifacts) {
-    const fp = await fingerprintArtifactValue(
-      (artifact as { readonly value?: unknown }).value,
-    );
-    out.push(fp?.value ?? "");
-  }
-  return out;
-}
-
-/**
  * Phase 9 — SHA-256 hex of `canonicalize(contract)` for the receipt's
  * contractHash field. Returns null when no contract is attached or when
  * canonicalize cannot serialize the input.
@@ -1235,10 +1217,7 @@ async function maybeIssueReceipt(
     const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
       input.lineageArtifacts ?? input.artifacts,
     );
-    const outputHash =
-      input.outputs === undefined
-        ? null
-        : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
+    const outputHash = await hashOutputForReceipt(input.outputs);
     const contractHash = await sha256HexOfCanonicalContract(input.contract);
     const modelClass = resolveReceiptModelClass(input.route, input.model);
     return await createReceipt(

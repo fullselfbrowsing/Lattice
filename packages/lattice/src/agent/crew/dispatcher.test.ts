@@ -9,6 +9,7 @@ import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import {
@@ -23,7 +24,7 @@ import { defineTool } from "../../tools/tools.js";
 import { formatToolsForProvider } from "../format-tools.js";
 import { createNoopAgentHost, type AgentHost } from "../host.js";
 import { runAgentInternal, type DispatchToolUseContext } from "../runtime.js";
-import type { AgentFailure } from "../types.js";
+import type { AgentFailure, AgentResult } from "../types.js";
 
 import { defineAgent, type AgentSpec } from "./agent-spec.js";
 import { validateCrewPolicy } from "./crew-policy.js";
@@ -775,6 +776,57 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     // The child's summary receipts array contains the completion CID.
     const summary = JSON.parse(dispatched?.content ?? "{}") as { receipts: string[] };
     expect(summary.receipts).toEqual([await receiptCid(childEnvelope)]);
+  });
+
+  it("child completion receipt commits to the child's output via outputHash and keeps inputHashes empty (issue #21 F6)", async () => {
+    const { signer } = await makeSigner("kid:crew-output-hash");
+    const rootEnvelope = await createReceipt(
+      {
+        runId: "crew-run-output-hash",
+        model: { requested: "lattice-crew/run", observed: null },
+        route: { providerId: "lattice-crew", capabilityId: "lattice-crew/run", attemptNumber: 1 },
+        usage: ZERO_USAGE,
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+      },
+      signer,
+    );
+    const crewRootCid = await receiptCid(rootEnvelope);
+
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["hashed child answer"]);
+    const minted: ReceiptEnvelope[] = [];
+    let captured: AgentResult | undefined;
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        recordAgentResult: (_id, result) => {
+          captured = result;
+        },
+      }),
+    );
+
+    await dispatcher.dispatchToolUse(
+      { id: "rc-hash", name: "researcher", args: { task: "hash me" } },
+      makeLoopCtx(),
+    );
+
+    expect(minted.length).toBe(1);
+    expect(captured?.kind).toBe("success");
+    if (captured === undefined || captured.kind !== "success") return;
+    const body = JSON.parse(atob(minted[0]!.payload)) as CapabilityReceiptBody;
+    expect(body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(body.outputHash).toBe(await hashOutputForReceipt(captured.output));
+    expect(body.inputHashes).toEqual([]);
   });
 
   it("mints a child completion receipt with lineageMerkleRoot when child artifacts carry lineage", async () => {

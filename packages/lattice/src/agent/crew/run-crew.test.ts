@@ -4,6 +4,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
   createInMemorySigner,
@@ -400,5 +401,19 @@ describe("runAgentCrew — signed receipt chain", () => {
     for (const envelope of result.receipts) {
       expect(await verifyReceipt(envelope, keySet)).toMatchObject({ ok: true });
     }
+
+    // Issue #21 F6: the crew-start root has no output yet, but every agent
+    // completion receipt commits to that agent's output.
+    expect(bodies[0]?.outputHash).toBeNull();
+    expect(bodies[0]?.inputHashes).toEqual([]);
+    const leadBody = bodies.find((body) => body.stepName === "crew-agent-completion:lead");
+    expect(leadBody).toBeDefined();
+    if (result.result.kind === "success") {
+      expect(leadBody?.outputHash).toBe(await hashOutputForReceipt(result.result.output));
+    }
+    const researcherBody = bodies.find(
+      (body) => body.stepName === "crew-agent-completion:researcher",
+    );
+    expect(researcherBody?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 });
