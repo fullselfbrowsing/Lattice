@@ -25,6 +25,8 @@ export {
 export type { GeneratedEd25519KeyPair } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
+export { verifyChain } from "./receipts/chain.js";
+export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { receiptCid } from "./receipts/cid.js";
 export {
   createReplayEnvelope,
@@ -55,10 +57,18 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  ReceiptVersion,
+  VerifyChainError,
+  VerifyChainErrorKind,
+  VerifyChainFail,
+  VerifyChainOk,
+  VerifyChainOptions,
+  VerifyChainResult,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyOptions,
   VerifyResult,
 } from "./receipts/types.js";
 export type {

@@ -153,10 +153,18 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  ReceiptVersion,
+  VerifyChainError,
+  VerifyChainErrorKind,
+  VerifyChainFail,
+  VerifyChainOk,
+  VerifyChainOptions,
+  VerifyChainResult,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyOptions,
   VerifyResult,
 } from "../receipts/types.js";
 export type {

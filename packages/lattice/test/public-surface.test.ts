@@ -23,6 +23,7 @@ import {
   PROMPT_SCAFFOLD_VERSION,
   PROMPT_STRATEGIES,
   REALTIME_DIRECTION_SUPPORT_LEVEL,
+  RECEIPT_VERSIONS,
   getStructuredOutputContract,
   getToolUseContract,
   realtimeStepName,
@@ -32,6 +33,7 @@ import {
   stripReasoningTags,
   ToolCallValidationError,
   unwrapInternalEnvelope,
+  verifyChain,
   verifyReceipt,
 } from "../src/index.js";
 import { createFakeProvider } from "../src/providers/fake.js";
@@ -77,6 +79,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "PROMPT_SCAFFOLD_VERSION",
   "PROMPT_STRATEGIES",
   "REALTIME_DIRECTION_SUPPORT_LEVEL",
+  "RECEIPT_VERSIONS",
   "SANITIZER_BY_FAILURE_MODE",
   "STEP_TRANSITION_EVENT_NAME",
   "STUCK_REASONS",
@@ -163,6 +166,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "toolArtifactRef",
   "toolSchemaToJsonSchema",
   "unwrapInternalEnvelope",
+  "verifyChain",
   "verifyReceipt",
   "withRateLimit",
 ] as const;
@@ -752,5 +756,14 @@ describe("Phase 37 public surface", () => {
       | _ValidateToolCallsOption
       | _ValidatedToolCall);
     expect(true).toBe(true);
+  });
+});
+
+describe("issue #21 public surface additions", () => {
+  it("exports verifyChain and the ordered RECEIPT_VERSIONS list", () => {
+    expect(typeof verifyChain).toBe("function");
+    expect(RECEIPT_VERSIONS.at(-1)).toBe("lattice-receipt/v1.4");
+    expect(RECEIPT_VERSIONS[0]).toBe("lattice-receipt/v1");
+    expect(Object.isFrozen(RECEIPT_VERSIONS)).toBe(true);
   });
 });

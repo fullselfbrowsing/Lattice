@@ -31,6 +31,8 @@ export {
 } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
+export { verifyChain } from "./receipts/chain.js";
+export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
@@ -305,10 +307,18 @@ export type {
   TripwireViolationError,
   Usage,
   ValidationIssue,
+  ReceiptVersion,
+  VerifyChainError,
+  VerifyChainErrorKind,
+  VerifyChainFail,
+  VerifyChainOk,
+  VerifyChainOptions,
+  VerifyChainResult,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyOptions,
   VerifyResult,
 } from "./runtime/public-types.js";
 
