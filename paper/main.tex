@@ -70,7 +70,7 @@ never silently retried, and a verifier can reconstruct the run offline and confi
 that the recomputed output hash matches the signed receipt. We describe the threat
 model, the design of the receipt and replay pipeline, and an implementation that
 ships as two published npm packages at version 1.6.0 with modular entrypoints,
-1,394 automated tests across 104 files, a seven provider parity contract, and a
+1,404 automated tests across 104 files, a seven provider parity contract, and a
 content addressed command line tool for reproduction and verification. Our
 evaluation is assurance by construction: the guarantees are expressed as code level
 invariants and property tests rather than as a latency benchmark. The result is a
@@ -361,7 +361,9 @@ returned to the caller carries the detector name and the matched substring so th
 violation can be debugged, and the receipt redaction policy replaces that substring
 with the detector name, the match length, and a shape mask before anything is signed;
 the other three invariant kinds have their observed value reduced to a type and
-length in the same step. A violation produces a \code{TripwireViolationError} that carries the
+length in the same step, and every kind's message is rebuilt from the invariant kind
+and the declared path so that neither model produced object keys nor schema issue
+text reach the signed bytes. A violation produces a \code{TripwireViolationError} that carries the
 flag \code{terminal: true}. The predicate \code{isTerminal} returns true for a
 tripwire violation and for a no contract match, and the fallback chain consults this
 predicate so that a terminal failure is never retried. This matters for safety: a
@@ -674,9 +676,9 @@ child receipt chains to a crew root through a parent receipt content identifier,
 multi agent run produces a verifiable tree of receipts rather than a single opaque
 trace. Each completion receipt commits to that agent's output hash, and
 \code{verifyChain}, exposed in the command line tool as \code{receipt verify-chain},
-checks every link, the single root, and the parent linkage of the whole tree, with
-optional expected count and expected root commitments for the truncation case noted
-in the non goals. A helper, \code{evalAgentRun}, gates iterations to goal and cost against a
+checks every link, the single root, and the parent linkage of the whole tree. An
+optional expected count covers the truncation case noted in the non goals, and an
+optional expected root identifier detects a replaced root. A helper, \code{evalAgentRun}, gates iterations to goal and cost against a
 baseline. Three runnable examples exercise these surfaces end to end: a multimodal work
 inbox that demonstrates a contract, a signed receipt, a tripwire violation, and a no
 contract match, a single agent loop that emits per iteration checkpoint receipts, and a
@@ -689,7 +691,7 @@ Our evaluation is assurance by construction. The claims in this paper are proper
 the system, and we evaluate them by encoding each as an invariant or a property test
 that fails the build when the property does not hold, rather than by measuring latency
 or model output quality, which depend on providers outside our trust boundary. The
-suite contains 1,394 automated test cases across 104 test files, with 1,217 in the
+suite contains 1,404 automated test cases across 104 test files, with 1,227 in the
 runtime package and 177 in the command line package, and it runs under a standard
 TypeScript test runner. Figure~\ref{fig:tests} shows the distribution by package.
 
@@ -712,11 +714,11 @@ TypeScript test runner. Figure~\ref{fig:tests} shows the distribution by package
   ylabel style={font=\scriptsize},
   enlarge x limits=0.5,
 ]
-\addplot[draw=blue!60!black, fill=blue!30] coordinates {(runtime package,1217) (CLI package,177)};
+\addplot[draw=blue!60!black, fill=blue!30] coordinates {(runtime package,1227) (CLI package,177)};
 \end{axis}
 \end{tikzpicture}
-\caption{Automated test cases by package. The suite totals 1,394 cases across 104
-files, 1,217 in the runtime package and 177 in the command line package, and it encodes the
+\caption{Automated test cases by package. The suite totals 1,404 cases across 104
+files, 1,227 in the runtime package and 177 in the command line package, and it encodes the
 paper's guarantees as executable obligations.}
 \label{fig:tests}
 \end{figure}
@@ -837,7 +839,7 @@ deterministic and inspectable router and by output invariants with terminal sema
 verifier can check a receipt with a public key and replay the run offline, confirming
 that the recomputed output hash matches the signed value. The implementation ships
 publicly with supply chain provenance, a seven provider parity contract, a registry of
-332 model profiles, modular adoption paths, and 1,394 tests that encode the guarantees
+332 model profiles, modular adoption paths, and 1,404 tests that encode the guarantees
 as invariants. By making a signed and replayable receipt a default byproduct of every run, Lattice turns
 auditability and reproducibility from after the fact instrumentation into properties of
 the runtime itself.

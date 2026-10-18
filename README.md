@@ -300,7 +300,7 @@ const chain = await verifyChain(receipts, keySet, {
 if (!chain.ok) throw new Error(`${chain.error.kind}: ${chain.error.message}`);
 ```
 
-Dropped leaf receipts are only detectable when `expectedCount` or `expectedRootCid` supplies an out-of-band commitment.
+Dropped leaf receipts are only detectable when `expectedCount` or an external anchor supplies an out-of-band commitment; `expectedRootCid` detects a replaced root, not a missing leaf.
 
 ## Tools and MCP
 

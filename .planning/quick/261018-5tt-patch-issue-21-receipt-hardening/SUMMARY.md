@@ -44,3 +44,15 @@ Part C, docs and release (finding 10):
 
 * Behavior changes called out in the changeset: tying route candidates order by provider and model id; `noPII` fires on nested values it previously skipped; `observed.substring` is gone from signed bodies.
 * The eval harness numbers in the issue (shuffle rate, precision and recall) could not be reproduced here because the `eval-harness` branch is not pushed; every mechanism they describe was confirmed from source and is now covered by tests.
+
+## Review follow-up (PR #22 inline findings)
+
+A code review of the PR posted five findings; all were confirmed and fixed on the same branch.
+
+* **Signed evidence leaked object keys (P1).** The `noPII` nested walk had put the concrete location, which can contain model-produced object keys, into the signed `path` and `message`. `path` is now always the declared path, the concrete location rides in `observed.foundAt` on the runtime error, and `redactReceiptBody` rebuilds `message` for every invariant kind from the kind, the declared path, and the detector name (manifest reason `tripwire-message-templated`). An end-to-end test plants a sentinel object key and proves it reaches `result.error.message` but not the signed bytes.
+* **Crew trees failed `verifyChain` (P1).** The dispatcher stamped child completion receipts with its own `lattice-crew-<uuid>` while the crew root used the crew run id. `CrewDispatchContext.runId` now carries the crew id, `CrewResult.runId` exposes it, and the crew tests call `verifyChain` on real crew output.
+* **`verifyChain` could throw (P2).** `verifyReceipt` now rejects payloads that do not round-trip through canonical base64 (`envelope-malformed`), so the lenient envelope decoder and the strict CID decoder agree; `verifyChain` also guards the CID step and returns `link-invalid`.
+* **`maxAgeMs: NaN` passed silently (P2).** `maxAgeMs` must be a finite non-negative number or `verifyReceipt` throws a TypeError, matching `now` and `minVersion`.
+* **Wrong truncation claim (P2).** README, SECURITY.md, the changeset, the `verifyChain` JSDoc, the CLI comment, and the paper now say dropped leaves are detectable only with `expectedCount` or an external anchor, and that `expectedRootCid` detects a replaced root.
+
+Runtime suite after the follow-up: 86 files, 1227 tests. Paper counts regenerated (1,404 tests across 104 files) and the PDF rebuilt.
