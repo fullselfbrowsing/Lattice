@@ -100,6 +100,13 @@ export interface CrewDispatchContext {
   /** Crew-level signer threaded into children + completion receipts. */
   readonly signer?: ReceiptSigner;
   /**
+   * Crew run id stamped on every child completion receipt. runAgentCrew
+   * passes the same id it used for the crew-root receipt so the whole tree
+   * shares one runId and passes `verifyChain`. Standalone dispatchers get a
+   * generated `lattice-crew-<uuid>`.
+   */
+  readonly runId?: string;
+  /**
    * Feeds the per-agent tracker + crew aggregator. Called exactly once per
    * child dispatch with the child run's cumulative usage (Pitfall 3).
    */
@@ -174,7 +181,7 @@ export function createCrewDispatcher(
 ): CrewDispatcher {
   return createDispatcherNode(spec, ctx, {
     exhausted: false,
-    runId: `lattice-crew-${crypto.randomUUID()}`,
+    runId: ctx.runId ?? `lattice-crew-${crypto.randomUUID()}`,
   });
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import canonicalize from "canonicalize";
+import { z } from "zod";
 
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
@@ -925,8 +926,10 @@ describe("Phase 9 receipts integration", () => {
         mask: "*****@*******.***",
       });
       expect(verifyResult.body.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: "tripwire-message-templated" },
         { path: "tripwireEvidence.observed", reason: "no-pii-detector-mask-only" },
       ]);
+      expect(verifyResult.body.tripwireEvidence?.path).toBe("text");
       const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
       expect(rawPayload).not.toContain("alice@example.com");
       const runtimeObserved = result.error.evidence.observed as { substring: string };
@@ -1631,5 +1634,59 @@ describe("issue #21 — per-run receipt binding (F2) and signer failure policy (
     const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
     expect(result.receipt).toBeUndefined();
     expect(result.receiptError).toBeUndefined();
+  });
+});
+
+describe("review follow-up — model-produced object keys never reach the signed evidence", () => {
+  it("signs the declared path and a templated message while the runtime error keeps the concrete location", async () => {
+    inv.__resetCounterForTests();
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid: "key-leak", publicKeyJwk });
+    const keySet = createMemoryKeySet([{ kid: "key-leak", publicKeyJwk, state: "active" }]);
+    const SENTINEL_KEY = "SENTINEL-KEY-7731";
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { data: { [SENTINEL_KEY]: "alice@example.com" } },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { data: z.record(z.string(), z.string()) },
+      contract: contract({ invariants: [inv.noPII("data")] }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error.kind !== "tripwire-violated") {
+      throw new Error(
+        `expected a tripwire violation, got ${result.ok ? "success" : result.error.kind}`,
+      );
+    }
+    // Runtime error: actionable, carries the concrete location.
+    expect(result.error.evidence.path).toBe("data");
+    expect(result.error.evidence.observed).toMatchObject({
+      detector: "email",
+      foundAt: `data.${SENTINEL_KEY}`,
+    });
+    expect(result.error.message).toContain(SENTINEL_KEY);
+
+    // Signed receipt: declared path, templated message, masked observed.
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet);
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) return;
+    expect(verified.body.tripwireEvidence?.path).toBe("data");
+    expect(verified.body.tripwireEvidence?.message).toBe(
+      'no-pii: detector "email" flagged content at "data".',
+    );
+    expect(verified.body.tripwireEvidence?.observed).toEqual({
+      detector: "email",
+      length: 17,
+      mask: "*****@*******.***",
+    });
+    const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+    expect(rawPayload).not.toContain(SENTINEL_KEY);
+    expect(rawPayload).not.toContain("alice@example.com");
   });
 });

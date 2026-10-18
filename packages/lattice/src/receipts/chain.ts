@@ -52,11 +52,12 @@ async function safeCid(envelope: ReceiptEnvelope): Promise<string | undefined> {
  * LIMITATION, tail truncation: dropping LEAF receipts (for example one
  * child's completion receipt) leaves a smaller tree that is still fully
  * valid. Nothing inside the receipts commits to the tree's size or to its
- * last member, so this function cannot detect that on its own. Callers
- * with an out-of-band commitment should pass `expectedCount` (and
- * `expectedRootCid`), or anchor the set externally, for example through
- * the receipt CID lists a `CrewResult` reports per agent. Dropping the
- * root or an interior node IS detected (`no-root`, `orphan-link`).
+ * last member, so this function cannot detect that on its own. Only an
+ * out-of-band commitment catches it: pass `expectedCount`, or anchor the
+ * set externally, for example through the receipt CID lists a `CrewResult`
+ * reports per agent. `expectedRootCid` does NOT detect dropped leaves (the
+ * root is unchanged); it detects a replaced root. Dropping the root or an
+ * interior node IS detected (`no-root`, `orphan-link`).
  *
  * No replay cache is kept; dedupe on `receiptCid()` if a receipt must only
  * be accepted once. Invalid caller options (unknown `minVersion`,
@@ -88,7 +89,20 @@ export async function verifyChain(
         cause: result.error,
       });
     }
-    const cid = await receiptCid(envelope);
+    // verifyReceipt now rejects non-canonical base64, so this cannot throw
+    // for a verified envelope; the guard keeps the never-throws contract if
+    // the two decoders ever drift again.
+    let cid: string;
+    try {
+      cid = await receiptCid(envelope);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return fail({
+        kind: "link-invalid",
+        message: `receipt[${index}] verified but its payload cannot be content-addressed: ${message}`,
+        cause: { kind: "envelope-malformed", message },
+      });
+    }
     if (byCid.has(cid)) {
       return fail({
         kind: "duplicate-cid",

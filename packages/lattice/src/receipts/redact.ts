@@ -15,8 +15,11 @@ export const DEFAULT_REDACTION_POLICY_ID = "lattice.default.v1";
 export const NO_PII_REDACTION_REASON = "no-pii-detector-mask-only";
 /** Manifest reason: a non-no-pii `observed` value was replaced by its shape. */
 export const TRIPWIRE_OBSERVED_REDACTION_REASON = "tripwire-observed-value-elided";
-/** Manifest reason: a `matches` schema-issue message was replaced by a template. */
-export const TRIPWIRE_MESSAGE_REDACTION_REASON = "tripwire-schema-issue-elided";
+/**
+ * Manifest reason: `message` was rebuilt from developer-owned fields only
+ * (invariant kind, declared path, detector name). Applies to every kind.
+ */
+export const TRIPWIRE_MESSAGE_REDACTION_REASON = "tripwire-message-templated";
 
 export interface RedactionResult {
   readonly body: CapabilityReceiptBody;
@@ -128,8 +131,32 @@ function redactObservedShape(observed: unknown): RedactedObservedShape {
   }
 }
 
-function redactedMatchesMessage(path: string): string {
-  return `matches: schema validation failed at "${path}".`;
+/**
+ * Rebuild the evidence message from developer-owned inputs only. The kernel's
+ * message is written for the runtime error and may embed the concrete
+ * location of a no-pii hit (model-produced object keys) or a schema
+ * library's issue text (the offending value), so the signed copy never
+ * reuses it.
+ */
+function templatedMessage(
+  kind: TripwireEvidence["kind"],
+  path: string,
+  detector: string | undefined,
+): string {
+  switch (kind) {
+    case "no-pii":
+      return `no-pii: detector "${detector ?? "unknown"}" flagged content at "${path}".`;
+    case "must-cite":
+      return `must-cite: no matching citation at "${path}".`;
+    case "field-from-table":
+      return `field-from-table: value at "${path}" not in allowedValues.`;
+    case "matches":
+      return `matches: schema validation failed at "${path}".`;
+    default: {
+      const exhaustive: never = kind;
+      return `${String(exhaustive)}: violation at "${path}".`;
+    }
+  }
 }
 
 /**
@@ -145,12 +172,14 @@ function redactedMatchesMessage(path: string): string {
  *     error. That copy is never signed.
  *   - THIS function is the only place the signed copy is sanitized. For
  *     every tripwire kind it rewrites `tripwireEvidence.observed`:
- *       no-pii           -> { detector, length, mask }
+ *       no-pii           -> { detector, length, mask }   (foundAt dropped)
  *       must-cite        -> { valueType, length? }
  *       field-from-table -> { valueType, length? }
- *       matches          -> { valueType, length? }, and `message` is replaced
- *                           because Standard Schema issue text can embed the
- *                           offending value.
+ *       matches          -> { valueType, length? }
+ *     and rebuilds `tripwireEvidence.message` from the kind, the declared
+ *     path, and the detector name, because the kernel's message may embed
+ *     model-produced object keys (no-pii) or schema issue text (matches).
+ *     `tripwireEvidence.path` is already the declared path and is kept.
  *     Each rewrite pushes its manifest entry at the same moment, so the
  *     manifest can never claim a redaction that did not happen.
  *   - No hash of the observed value is kept. `outputHash` already commits to
@@ -178,14 +207,15 @@ export function redactReceiptBody(
       reason: isNoPii ? NO_PII_REDACTION_REASON : TRIPWIRE_OBSERVED_REDACTION_REASON,
     });
 
-    let message = tripwireEvidence.message;
-    if (tripwireEvidence.kind === "matches") {
-      message = redactedMatchesMessage(tripwireEvidence.path);
-      redactions.push({
-        path: "tripwireEvidence.message",
-        reason: TRIPWIRE_MESSAGE_REDACTION_REASON,
-      });
-    }
+    const message = templatedMessage(
+      tripwireEvidence.kind,
+      tripwireEvidence.path,
+      isNoPii ? (observed as RedactedNoPiiObserved).detector : undefined,
+    );
+    redactions.push({
+      path: "tripwireEvidence.message",
+      reason: TRIPWIRE_MESSAGE_REDACTION_REASON,
+    });
 
     tripwireEvidence = { ...tripwireEvidence, observed, message };
   }

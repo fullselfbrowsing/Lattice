@@ -173,6 +173,7 @@ describe("receipt.ts — redactions manifest", () => {
     );
     const body = decodeBody(env.payload);
     expect(body.redactions).toEqual([
+      { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
       { path: "tripwireEvidence.observed", reason: NO_PII_REDACTION_REASON },
     ]);
     expect(body.tripwireEvidence?.observed).toEqual({
@@ -206,9 +207,12 @@ describe("receipt.ts — redactions manifest", () => {
       signer,
     );
     const signedBody = decodeBody(env.payload);
-    // The signed body MUST already contain the redactions[] manifest entry.
-    expect(signedBody.redactions.length).toBe(1);
-    expect(signedBody.redactions[0]?.path).toBe("tripwireEvidence.observed");
+    // The signed body MUST already contain the redactions[] manifest entries
+    // (message template + observed mask).
+    expect(signedBody.redactions.map((entry) => entry.path)).toEqual([
+      "tripwireEvidence.message",
+      "tripwireEvidence.observed",
+    ]);
 
     // Re-running redactReceiptBody on the signed body produces a structurally
     // identical body — proof that the signed bytes already underwent redaction.
@@ -229,23 +233,26 @@ describe("receipt.ts — signed bytes never contain the matched value (issue #21
     readonly message: string;
     readonly reasons: readonly string[];
   }> = [
+    // Every kind plants the sentinel in `observed` AND `message`; no-pii also
+    // plants it in `observed.foundAt`, the concrete location that can carry
+    // model-produced object keys (review follow-up).
     {
       kind: "no-pii",
-      observed: { detector: "us-ssn", substring: SENTINEL },
-      message: 'no-pii: detector "us-ssn" flagged content at "text".',
-      reasons: [NO_PII_REDACTION_REASON],
+      observed: { detector: "us-ssn", substring: SENTINEL, foundAt: `text.${SENTINEL}` },
+      message: `no-pii: detector "us-ssn" flagged content at "text.${SENTINEL}".`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, NO_PII_REDACTION_REASON],
     },
     {
       kind: "must-cite",
       observed: [SENTINEL, { source: SENTINEL }],
-      message: 'must-cite: no citation found for "doc".',
-      reasons: [TRIPWIRE_OBSERVED_REDACTION_REASON],
+      message: `must-cite: no citation found for "${SENTINEL}".`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, TRIPWIRE_OBSERVED_REDACTION_REASON],
     },
     {
       kind: "field-from-table",
       observed: SENTINEL,
-      message: 'field-from-table: value at "text" not in allowedValues.',
-      reasons: [TRIPWIRE_OBSERVED_REDACTION_REASON],
+      message: `field-from-table: value "${SENTINEL}" not in allowedValues.`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, TRIPWIRE_OBSERVED_REDACTION_REASON],
     },
     {
       kind: "matches",

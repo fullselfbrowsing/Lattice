@@ -56,6 +56,22 @@ function resolveNowMs(now: VerifyOptions["now"]): number {
 }
 
 /**
+ * Validate `options.maxAgeMs`. A NaN or negative value would make the age
+ * comparison silently false, which is the worst failure mode for a freshness
+ * check, so anything that is not a finite non-negative number is a
+ * programmer error.
+ */
+function resolveMaxAgeMs(maxAgeMs: number | undefined): number | undefined {
+  if (maxAgeMs === undefined) return undefined;
+  if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0) {
+    throw new TypeError(
+      `verifyReceipt: options.maxAgeMs must be a finite, non-negative number of milliseconds, got ${String(maxAgeMs)}`,
+    );
+  }
+  return maxAgeMs;
+}
+
+/**
  * Resolve the schema-version floor ordinal. The CRYPTO-01 baseline (v1.1)
  * always applies; `minVersion` can only raise it. An unknown literal is a
  * programmer error and throws, because silently accepting everything would
@@ -118,7 +134,8 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
  * throw a TypeError before any envelope work.
  *
  * Decision tree (first match wins):
- *   1. decodeEnvelope throws OR signatures[] empty              -> envelope-malformed
+ *   1. decodeEnvelope throws OR signatures[] empty
+ *      OR payload is not canonical base64                      -> envelope-malformed
  *   2. payload bytes are not valid JSON                         -> envelope-malformed
  *   3. body shape check fails OR version unknown literal        -> version-mismatch
  *   4. body.version undefined OR ordinal below floor            -> schema-version-too-low
@@ -151,6 +168,7 @@ export async function verifyReceipt(
   // Caller-option normalization. Throws on programmer error; see JSDoc.
   const nowMs = resolveNowMs(options.now);
   const floor = resolveVersionFloor(options.minVersion);
+  const maxAgeMs = resolveMaxAgeMs(options.maxAgeMs);
 
   // Step 1: decode envelope (catches wrong payloadType, base64 errors).
   let decoded;
@@ -162,6 +180,13 @@ export async function verifyReceipt(
   }
   if (decoded.signatures.length === 0) {
     return fail("envelope-malformed", "envelope has no signatures");
+  }
+  // The payload string must be canonical base64. Node's decoder is lenient
+  // (base64url alphabet, embedded whitespace), so without this check two
+  // different strings would verify as the same receipt while receiptCid,
+  // which uses strict atob, rejects one of them.
+  if (base64Encode(decoded.payloadBytes) !== envelope.payload) {
+    return fail("envelope-malformed", "payload is not canonical base64");
   }
 
   // Step 2: parse the canonical payload.
@@ -285,7 +310,7 @@ export async function verifyReceipt(
       return fail("receipt-expired", `receipt expired at ${body.expiresAt}`);
     }
   }
-  if (options.maxAgeMs !== undefined) {
+  if (maxAgeMs !== undefined) {
     const issuedMs = Date.parse(body.issuedAt);
     if (Number.isNaN(issuedMs)) {
       return fail(
@@ -293,10 +318,10 @@ export async function verifyReceipt(
         `issuedAt "${body.issuedAt}" is not a parseable ISO 8601 timestamp`,
       );
     }
-    if (issuedMs + options.maxAgeMs < nowMs) {
+    if (issuedMs + maxAgeMs < nowMs) {
       return fail(
         "receipt-expired",
-        `receipt issued at ${body.issuedAt} exceeds maxAgeMs=${options.maxAgeMs}`,
+        `receipt issued at ${body.issuedAt} exceeds maxAgeMs=${maxAgeMs}`,
       );
     }
   }

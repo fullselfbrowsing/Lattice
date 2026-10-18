@@ -117,7 +117,8 @@ const diffCommand = defineCommand({
  *
  * Redaction discipline: the success line carries only the root CID and a
  * count. Tail truncation (dropped leaf receipts) is only detectable when
- * `--expect-count` or `--root-cid` supplies an out-of-band commitment.
+ * `--expect-count` supplies an out-of-band commitment; `--root-cid` detects
+ * a replaced root, not a missing leaf.
  */
 export interface RunReceiptVerifyChainArgs extends VerifyOptionArgs {
   readonly dir: string;

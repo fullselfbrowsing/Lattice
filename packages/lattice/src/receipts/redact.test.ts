@@ -127,6 +127,7 @@ describe("redactReceiptBody", () => {
       });
       const result = redactReceiptBody(body);
       expect(result.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
         { path: "tripwireEvidence.observed", reason: NO_PII_REDACTION_REASON },
       ]);
       // Manifest is also written into the body for signing.
@@ -139,17 +140,26 @@ describe("redactReceiptBody", () => {
       expect(JSON.stringify(result.body)).not.toContain("4111");
     });
 
-    it("keeps the message and other evidence fields unchanged", () => {
-      const original = evidence("no-pii", { detector: "email", substring: "a@b.co" }, "no-pii: detector \"email\" flagged content at \"text\".");
+    it("drops foundAt and rebuilds the message from the detector and declared path (review follow-up)", () => {
+      // The kernel's message and observed.foundAt carry the concrete location,
+      // which can contain model-produced object keys. Neither may be signed.
+      const original = evidence(
+        "no-pii",
+        { detector: "email", substring: "a@b.co", foundAt: 'text.customer["bob@example.com"]' },
+        'no-pii: detector "email" flagged content at "text.customer["bob@example.com"]".',
+      );
       const result = redactReceiptBody(
         makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: original }),
       );
-      expect(result.body.tripwireEvidence).toMatchObject({
+      expect(result.body.tripwireEvidence).toEqual({
         invariantId: "x",
         kind: "no-pii",
         path: "text",
-        message: original.message,
+        observed: { detector: "email", length: 6, mask: "*@*.**" },
+        message: 'no-pii: detector "email" flagged content at "text".',
       });
+      expect(JSON.stringify(result.body)).not.toContain("customer");
+      expect(JSON.stringify(result.body)).not.toContain("bob@example.com");
     });
 
     it.each([
@@ -214,11 +224,15 @@ describe("redactReceiptBody", () => {
       );
       expect(result.body.tripwireEvidence?.observed).toEqual(expected);
       expect(result.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
         { path: "tripwireEvidence.observed", reason: TRIPWIRE_OBSERVED_REDACTION_REASON },
       ]);
+      expect(result.body.tripwireEvidence?.message).toBe(
+        'field-from-table: value at "text" not in allowedValues.',
+      );
     });
 
-    it("elides the must-cite citations array and keeps its message", () => {
+    it("elides the must-cite citations array and templates its message", () => {
       const result = redactReceiptBody(
         makeBody({
           contractVerdict: "tripwire-violated",
@@ -226,7 +240,7 @@ describe("redactReceiptBody", () => {
         }),
       );
       expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "array", length: 1 });
-      expect(result.body.tripwireEvidence?.message).toBe('must-cite: no citation found for "doc".');
+      expect(result.body.tripwireEvidence?.message).toBe('must-cite: no matching citation at "text".');
       expect(JSON.stringify(result.body)).not.toContain("private-memo");
     });
 

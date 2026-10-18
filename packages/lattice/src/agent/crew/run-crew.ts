@@ -92,6 +92,11 @@ export interface CrewResult {
   /** All crew completion receipts, including the crew-root envelope. */
   readonly receipts: ReadonlyArray<ReceiptEnvelope>;
   readonly crewRootCid?: string;
+  /**
+   * The runId shared by every receipt in `receipts`. Pass it as
+   * `expectedRunId` to `verifyChain` when verifying the tree.
+   */
+  readonly runId: string;
 }
 
 interface AgentAccounting {
@@ -160,6 +165,9 @@ export async function runAgentCrew(
     policy,
     childHost,
     ancestry: [],
+    // One runId for the crew root, the parent completion receipt, and every
+    // child completion receipt, so CrewResult.receipts verifies as one tree.
+    runId,
     recordUsage,
     recordAgentResult,
     remainingBudget,
@@ -221,6 +229,7 @@ export async function runAgentCrew(
     usage: totalUsage(accounting),
     totalIterations: totalIterations(accounting),
     receipts,
+    runId,
     ...(crewRoot !== undefined ? { crewRootCid: crewRoot.cid } : {}),
   });
 }
@@ -525,6 +534,7 @@ function freezeCrewResult(result: CrewResult): CrewResult {
     usage: Object.freeze({ ...result.usage }),
     totalIterations: result.totalIterations,
     receipts: Object.freeze([...result.receipts]),
+    runId: result.runId,
     ...(result.crewRootCid !== undefined ? { crewRootCid: result.crewRootCid } : {}),
   });
 }

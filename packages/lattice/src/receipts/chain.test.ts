@@ -308,3 +308,23 @@ describe("verifyChain — VerifyOptions pass-through", () => {
     if (!strict.ok) expect(strict.error.cause?.kind).toBe("schema-version-too-low");
   });
 });
+
+describe("verifyChain — non-canonical payloads (review follow-up)", () => {
+  it("returns link-invalid with an envelope-malformed cause instead of throwing", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children } = await mintTree(signer, 1);
+    const child = children[0]!;
+    const half = Math.floor(child.payload.length / 2);
+    const spaced: ReceiptEnvelope = {
+      ...child,
+      payload: `${child.payload.slice(0, half)} ${child.payload.slice(half)}`,
+    };
+    const result = await verifyChain([root, spaced], keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("link-invalid");
+      expect(result.error.cause?.kind).toBe("envelope-malformed");
+      expect(result.error.message).toContain("receipt[1]");
+    }
+  });
+});

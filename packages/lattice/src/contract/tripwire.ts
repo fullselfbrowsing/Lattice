@@ -12,13 +12,21 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
 /**
  * Evidence emitted when a tripwire invariant fires.
  *
+ * `path` is always the DECLARED path from the invariant (or the located
+ * citations key for `must-cite`), never a location derived from the output.
+ *
  * `observed` is the runtime (unsigned) view of what the kernel saw. It is
  * narrowed, not sanitized:
  *   - for `must-cite`: the citations array as found at the located path
  *   - for `field-from-table`: the actual value at `path`
- *   - for `no-pii`: ONLY `{ detector, substring }` — the matched fragment,
- *     never the full input (T-08-01 in the 08-01-PLAN threat register)
+ *   - for `no-pii`: ONLY `{ detector, substring, foundAt }` — the matched
+ *     fragment and its concrete location below `path`, never the full input
+ *     (T-08-01 in the 08-01-PLAN threat register)
  *   - for `matches`: the value at `path`
+ *
+ * `message` may embed the same runtime content (the concrete location, a
+ * schema library's issue text) because it exists to make the runtime error
+ * actionable.
  *
  * This evidence reaches callers through `result.error.evidence` so they can
  * debug the violation. Before any of it is SIGNED into a receipt,
@@ -311,18 +319,22 @@ function evaluateNoPii(
   const hit = scanForPii(value, detectors, [], new Set<object>(), 0);
   if (hit === undefined) return { ok: true };
 
-  const path = formatViolationPath(decl.path, hit.frames);
+  const foundAt = formatViolationPath(decl.path, hit.frames);
   return {
     ok: false,
     evidence: {
       invariantId: decl.id,
       kind: "no-pii",
-      path,
+      // `path` stays the DECLARED path, which is developer-owned. The
+      // concrete location can contain model-produced object keys, so it
+      // travels only in `observed.foundAt` and `message`, both of which
+      // receipts/redact.ts rewrites before anything is signed.
+      path: decl.path,
       // Narrowed to the detector name and the matched substring, never
       // the full input string (T-08-01). The substring itself is still
       // sensitive; receipts/redact.ts masks it before signing.
-      observed: { detector: hit.detector, substring: hit.substring },
-      message: `no-pii: detector "${hit.detector}" flagged content at "${path}".`,
+      observed: { detector: hit.detector, substring: hit.substring, foundAt },
+      message: `no-pii: detector "${hit.detector}" flagged content at "${foundAt}".`,
     },
   };
 }

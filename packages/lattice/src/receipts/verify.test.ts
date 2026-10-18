@@ -1003,3 +1003,69 @@ describe("verify.ts — VerifyOptions minVersion (F4)", () => {
     ).rejects.toThrow(TypeError);
   });
 });
+
+describe("verify.ts — canonical base64 payload (review follow-up)", () => {
+  // Node's base64 decoder ignores whitespace and accepts the base64url
+  // alphabet, so before this check a payload with stray characters decoded
+  // to the same bytes, re-encoded to the canonical string for the PAE, and
+  // verified; receiptCid (strict atob) then threw on the same envelope.
+  it("rejects a payload with embedded whitespace as envelope-malformed", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("b64");
+    const env = await createReceipt(minimalInput(), signer);
+    const keySet = createMemoryKeySet([entryWith("b64", publicKeyJwk, "active")]);
+    const half = Math.floor(env.payload.length / 2);
+    const spaced: ReceiptEnvelope = {
+      ...env,
+      payload: `${env.payload.slice(0, half)}\n${env.payload.slice(half)}`,
+    };
+    const result = await verifyReceipt(spaced, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("envelope-malformed");
+      expect(result.error.message).toContain("canonical base64");
+    }
+  });
+
+  it("rejects a base64url-alphabet payload as envelope-malformed", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("b64");
+    // Base64 of ASCII JSON only produces "+" or "/" from the low six bits of
+    // every third byte, and only for bytes such as "?" (0x3F) and "~" (0x7E).
+    // A runId made of those characters guarantees the canonical payload
+    // contains a character that base64url spells differently.
+    const env = await createReceipt(minimalInput({ runId: "run-??????~~~~~~" }), signer);
+    expect(/[+/]/.test(env.payload)).toBe(true);
+    const urlSafe: ReceiptEnvelope = {
+      ...env,
+      payload: env.payload.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+    };
+    const keySet = createMemoryKeySet([entryWith("b64", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(urlSafe, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("envelope-malformed");
+    // The untouched envelope still verifies.
+    expect((await verifyReceipt(env, keySet)).ok).toBe(true);
+  });
+});
+
+describe("verify.ts — maxAgeMs validation (review follow-up)", () => {
+  it.each([Number.NaN, -1, Number.POSITIVE_INFINITY])(
+    "throws a TypeError for maxAgeMs=%s instead of silently passing",
+    async (maxAgeMs) => {
+      const { signer, publicKeyJwk } = await makeSigner("age");
+      const env = await createReceipt(minimalInput({ issuedAt: "2020-01-01T00:00:00.000Z" }), signer);
+      const keySet = createMemoryKeySet([entryWith("age", publicKeyJwk, "active")]);
+      await expect(verifyReceipt(env, keySet, { maxAgeMs })).rejects.toThrow(TypeError);
+    },
+  );
+
+  it("accepts maxAgeMs=0 and treats it as 'issued exactly now'", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("age");
+    const issuedAt = "2026-01-01T00:00:00.000Z";
+    const env = await createReceipt(minimalInput({ issuedAt }), signer);
+    const keySet = createMemoryKeySet([entryWith("age", publicKeyJwk, "active")]);
+    expect((await verifyReceipt(env, keySet, { now: issuedAt, maxAgeMs: 0 })).ok).toBe(true);
+    const later = await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:00.001Z", maxAgeMs: 0 });
+    expect(later.ok).toBe(false);
+    if (!later.ok) expect(later.error.kind).toBe("receipt-expired");
+  });
+});

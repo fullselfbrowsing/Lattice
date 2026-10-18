@@ -128,6 +128,7 @@ describe("evaluateTripwires", () => {
       expect(result.evidence.observed).toEqual({
         detector: "email",
         substring: "alice@example.com",
+        foundAt: "text",
       });
       // CRITICAL: observed never carries the full input.
       expect(JSON.stringify(result.evidence.observed)).not.toContain("ping ");
@@ -141,6 +142,7 @@ describe("evaluateTripwires", () => {
       expect(result.evidence.observed).toEqual({
         detector: "us-ssn",
         substring: "123-45-6789",
+        foundAt: "text",
       });
     });
 
@@ -153,6 +155,7 @@ describe("evaluateTripwires", () => {
       expect(result.evidence.observed).toEqual({
         detector: "credit-card",
         substring: "4111 1111 1111 1111",
+        foundAt: "text",
       });
     });
 
@@ -164,6 +167,7 @@ describe("evaluateTripwires", () => {
       expect(result.evidence.observed).toEqual({
         detector: "us-phone",
         substring: "415-555-1234",
+        foundAt: "text",
       });
     });
 
@@ -189,7 +193,11 @@ describe("evaluateTripwires", () => {
       );
       expectViolation(result);
       // Default email detector was NOT used — custom list flagged FOO instead.
-      expect(result.evidence.observed).toEqual({ detector: "redact-foo", substring: "FOO" });
+      expect(result.evidence.observed).toEqual({
+        detector: "redact-foo",
+        substring: "FOO",
+        foundAt: "text",
+      });
     });
   });
 
@@ -274,8 +282,14 @@ describe("no-pii nested walk (issue #21 F8)", () => {
       [inv.noPII("result")],
     );
     expectViolation(result);
-    expect(result.evidence.path).toBe("result.customer.email");
-    expect(result.evidence.observed).toEqual({ detector: "email", substring: "alice@example.com" });
+    // `path` stays the declared path; the concrete location rides in
+    // observed.foundAt and the message (runtime error only).
+    expect(result.evidence.path).toBe("result");
+    expect(result.evidence.observed).toEqual({
+      detector: "email",
+      substring: "alice@example.com",
+      foundAt: "result.customer.email",
+    });
     expect(result.evidence.message).toContain('"result.customer.email"');
   });
 
@@ -285,8 +299,8 @@ describe("no-pii nested walk (issue #21 F8)", () => {
       [inv.noPII("items")],
     );
     expectViolation(result);
-    expect(result.evidence.path).toBe("items[2].note");
-    expect(result.evidence.observed).toMatchObject({ detector: "us-ssn" });
+    expect(result.evidence.path).toBe("items");
+    expect(result.evidence.observed).toMatchObject({ detector: "us-ssn", foundAt: "items[2].note" });
   });
 
   it("a wildcard path reports the concrete index of the offending element", async () => {
@@ -295,8 +309,12 @@ describe("no-pii nested walk (issue #21 F8)", () => {
       [inv.noPII("items[*].note")],
     );
     expectViolation(result);
-    expect(result.evidence.path).toBe("items[2].note");
-    expect(result.evidence.observed).toEqual({ detector: "us-phone", substring: "415-555-1234" });
+    expect(result.evidence.path).toBe("items[*].note");
+    expect(result.evidence.observed).toEqual({
+      detector: "us-phone",
+      substring: "415-555-1234",
+      foundAt: "items[2].note",
+    });
   });
 
   it("nested wildcards substitute each materialized index in order", async () => {
@@ -305,13 +323,15 @@ describe("no-pii nested walk (issue #21 F8)", () => {
       [inv.noPII("a[*].b")],
     );
     expectViolation(result);
-    expect(result.evidence.path).toBe("a[1].b[1]");
+    expect(result.evidence.path).toBe("a[*].b");
+    expect(result.evidence.observed).toMatchObject({ foundAt: "a[1].b[1]" });
   });
 
   it("an empty path scans the whole output", async () => {
     const result = await evaluateTripwires({ x: { y: "alice@example.com" } }, [inv.noPII("")]);
     expectViolation(result);
-    expect(result.evidence.path).toBe("x.y");
+    expect(result.evidence.path).toBe("");
+    expect(result.evidence.observed).toMatchObject({ foundAt: "x.y" });
   });
 
   it("non-string primitives pass: numbers are not stringified", async () => {
@@ -346,7 +366,8 @@ describe("no-pii nested walk (issue #21 F8)", () => {
     dirty.z = "alice@example.com";
     const result = await evaluateTripwires({ graph: dirty }, [inv.noPII("graph")]);
     expectViolation(result);
-    expect(result.evidence.path).toBe("graph.z");
+    expect(result.evidence.path).toBe("graph");
+    expect(result.evidence.observed).toMatchObject({ foundAt: "graph.z" });
   });
 
   it("is deterministic: key insertion order does not change the reported violation", async () => {
@@ -360,7 +381,8 @@ describe("no-pii nested walk (issue #21 F8)", () => {
     );
     expect(first).toEqual(second);
     expectViolation(first);
-    expect(first.evidence.path).toBe("data.a");
+    expect(first.evidence.path).toBe("data");
+    expect(first.evidence.observed).toMatchObject({ foundAt: "data.a" });
   });
 
   it("traversal order beats detector order: the first string reached wins", async () => {
@@ -369,8 +391,8 @@ describe("no-pii nested walk (issue #21 F8)", () => {
       [inv.noPII("")],
     );
     expectViolation(result);
-    expect(result.evidence.path).toBe("a");
-    expect(result.evidence.observed).toMatchObject({ detector: "us-phone" });
+    expect(result.evidence.path).toBe("");
+    expect(result.evidence.observed).toMatchObject({ detector: "us-phone", foundAt: "a" });
   });
 
   it("depth is capped at 32 levels (documented bound): 40 deep passes, 20 deep fires", async () => {
@@ -382,7 +404,8 @@ describe("no-pii nested walk (issue #21 F8)", () => {
     expect(await evaluateTripwires({ root: nest(40) }, [inv.noPII("root")])).toEqual({ ok: true });
     const shallow = await evaluateTripwires({ root: nest(20) }, [inv.noPII("root")]);
     expectViolation(shallow);
-    expect(shallow.evidence.path).toBe(`root${".a".repeat(20)}`);
+    expect(shallow.evidence.path).toBe("root");
+    expect(shallow.evidence.observed).toMatchObject({ foundAt: `root${".a".repeat(20)}` });
   });
 
   it("evidence still excludes the surrounding text", async () => {

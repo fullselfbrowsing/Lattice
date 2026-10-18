@@ -980,3 +980,41 @@ describe("createCrewDispatcher — signer failure is recorded on the tracer (iss
     expect(mintEvents[0]?.attributes?.mintError).toBe("crew signer down");
   });
 });
+
+describe("createCrewDispatcher — crew runId on child completion receipts (review follow-up)", () => {
+  async function dispatchOnce(ctxOverrides: Partial<CrewDispatchContext>): Promise<CapabilityReceiptBody> {
+    const { signer } = await makeSigner("kid:crew-run-id");
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["run id check"]);
+    const minted: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid: `sha256:${"cd".repeat(32)}`,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        ...ctxOverrides,
+      }),
+    );
+    await dispatcher.dispatchToolUse(
+      { id: "rc-run-id", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+    expect(minted).toHaveLength(1);
+    return JSON.parse(atob(minted[0]!.payload)) as CapabilityReceiptBody;
+  }
+
+  it("stamps ctx.runId so the child receipt shares the crew root's runId", async () => {
+    const body = await dispatchOnce({ runId: "runAgentCrew-fixed-run" });
+    expect(body.runId).toBe("runAgentCrew-fixed-run");
+  });
+
+  it("falls back to a generated lattice-crew id for standalone dispatchers", async () => {
+    const body = await dispatchOnce({});
+    expect(body.runId).toMatch(/^lattice-crew-[0-9a-f-]{36}$/u);
+  });
+});
