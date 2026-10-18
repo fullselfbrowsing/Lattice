@@ -258,3 +258,207 @@ describe("evaluateTripwires", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Issue #21 F8 — no-pii walks nested containers deterministically
+// ---------------------------------------------------------------------------
+
+describe("no-pii nested walk (issue #21 F8)", () => {
+  beforeEach(() => {
+    inv.__resetCounterForTests();
+  });
+
+  it("flags PII inside a nested object below the declared path and reports the sub-path", async () => {
+    const result = await evaluateTripwires(
+      { result: { customer: { email: "alice@example.com" }, note: "fine" } },
+      [inv.noPII("result")],
+    );
+    expectViolation(result);
+    expect(result.evidence.path).toBe("result.customer.email");
+    expect(result.evidence.observed).toEqual({ detector: "email", substring: "alice@example.com" });
+    expect(result.evidence.message).toContain('"result.customer.email"');
+  });
+
+  it("flags PII inside an array and carries the index in the path", async () => {
+    const result = await evaluateTripwires(
+      { items: ["ok", "ok", { note: "SSN 123-45-6789" }] },
+      [inv.noPII("items")],
+    );
+    expectViolation(result);
+    expect(result.evidence.path).toBe("items[2].note");
+    expect(result.evidence.observed).toMatchObject({ detector: "us-ssn" });
+  });
+
+  it("a wildcard path reports the concrete index of the offending element", async () => {
+    const result = await evaluateTripwires(
+      { items: [{ note: "fine" }, { note: "fine" }, { note: "call 415-555-1234" }] },
+      [inv.noPII("items[*].note")],
+    );
+    expectViolation(result);
+    expect(result.evidence.path).toBe("items[2].note");
+    expect(result.evidence.observed).toEqual({ detector: "us-phone", substring: "415-555-1234" });
+  });
+
+  it("nested wildcards substitute each materialized index in order", async () => {
+    const result = await evaluateTripwires(
+      { a: [{ b: ["x"] }, { b: ["y", "bob@example.com"] }] },
+      [inv.noPII("a[*].b")],
+    );
+    expectViolation(result);
+    expect(result.evidence.path).toBe("a[1].b[1]");
+  });
+
+  it("an empty path scans the whole output", async () => {
+    const result = await evaluateTripwires({ x: { y: "alice@example.com" } }, [inv.noPII("")]);
+    expectViolation(result);
+    expect(result.evidence.path).toBe("x.y");
+  });
+
+  it("non-string primitives pass: numbers are not stringified", async () => {
+    const result = await evaluateTripwires(
+      { data: { n: 4155551234, b: true, z: null, ssnLike: 123456789 } },
+      [inv.noPII("data")],
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("non-plain objects (Date, Map, typed arrays) are skipped", async () => {
+    const result = await evaluateTripwires(
+      {
+        data: {
+          when: new Date("2026-01-01T00:00:00Z"),
+          map: new Map([["k", "alice@example.com"]]),
+          bytes: new Uint8Array([1, 2, 3]),
+        },
+      },
+      [inv.noPII("data")],
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("is cycle-safe and still finds PII beside a self-reference", async () => {
+    const clean: Record<string, unknown> = { label: "clean" };
+    clean.self = clean;
+    expect(await evaluateTripwires({ graph: clean }, [inv.noPII("graph")])).toEqual({ ok: true });
+
+    const dirty: Record<string, unknown> = { label: "clean" };
+    dirty.self = dirty;
+    dirty.z = "alice@example.com";
+    const result = await evaluateTripwires({ graph: dirty }, [inv.noPII("graph")]);
+    expectViolation(result);
+    expect(result.evidence.path).toBe("graph.z");
+  });
+
+  it("is deterministic: key insertion order does not change the reported violation", async () => {
+    const first = await evaluateTripwires(
+      { data: { b: "SSN 123-45-6789", a: "alice@example.com" } },
+      [inv.noPII("data", { id: "fixed" })],
+    );
+    const second = await evaluateTripwires(
+      { data: { a: "alice@example.com", b: "SSN 123-45-6789" } },
+      [inv.noPII("data", { id: "fixed" })],
+    );
+    expect(first).toEqual(second);
+    expectViolation(first);
+    expect(first.evidence.path).toBe("data.a");
+  });
+
+  it("traversal order beats detector order: the first string reached wins", async () => {
+    const result = await evaluateTripwires(
+      { a: "415-555-1234", b: "alice@example.com" },
+      [inv.noPII("")],
+    );
+    expectViolation(result);
+    expect(result.evidence.path).toBe("a");
+    expect(result.evidence.observed).toMatchObject({ detector: "us-phone" });
+  });
+
+  it("depth is capped at 32 levels (documented bound): 40 deep passes, 20 deep fires", async () => {
+    const nest = (levels: number): unknown => {
+      let value: unknown = "alice@example.com";
+      for (let i = 0; i < levels; i += 1) value = { a: value };
+      return value;
+    };
+    expect(await evaluateTripwires({ root: nest(40) }, [inv.noPII("root")])).toEqual({ ok: true });
+    const shallow = await evaluateTripwires({ root: nest(20) }, [inv.noPII("root")]);
+    expectViolation(shallow);
+    expect(shallow.evidence.path).toBe(`root${".a".repeat(20)}`);
+  });
+
+  it("evidence still excludes the surrounding text", async () => {
+    const result = await evaluateTripwires(
+      { items: [{ note: "please contact alice@example.com today" }] },
+      [inv.noPII("items")],
+    );
+    expectViolation(result);
+    expect(JSON.stringify(result.evidence.observed)).not.toContain("please");
+    expect(JSON.stringify(result.evidence.observed)).not.toContain("today");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #21 F9 — must-cite options
+// ---------------------------------------------------------------------------
+
+describe("must-cite options (issue #21 F9)", () => {
+  beforeEach(() => {
+    inv.__resetCounterForTests();
+  });
+
+  it("path option locates a nested citations array", async () => {
+    const ok = await evaluateTripwires(
+      { result: { refs: [{ source: "doc-1" }] } },
+      [inv.mustCite("doc-1", { path: "result.refs" })],
+    );
+    expect(ok).toEqual({ ok: true });
+
+    const missing = await evaluateTripwires(
+      { result: { refs: [{ source: "doc-2" }] } },
+      [inv.mustCite("doc-1", { path: "result.refs" })],
+    );
+    expectViolation(missing);
+    expect(missing.evidence.path).toBe("result.refs");
+    expect(missing.evidence.observed).toEqual([{ source: "doc-2" }]);
+  });
+
+  it("path pointing at a non-array yields a violation with observed []", async () => {
+    const result = await evaluateTripwires(
+      { result: { refs: "doc-1" } },
+      [inv.mustCite("doc-1", { path: "result.refs" })],
+    );
+    expectViolation(result);
+    expect(result.evidence.observed).toEqual([]);
+    expect(result.evidence.path).toBe("result.refs");
+  });
+
+  it("keys option compares the given object keys", async () => {
+    const output = { citations: [{ id: "doc-1" }] };
+    const byDefault = await evaluateTripwires(output, [inv.mustCite("doc-1")]);
+    expectViolation(byDefault);
+    const byId = await evaluateTripwires(output, [inv.mustCite("doc-1", { keys: ["id"] })]);
+    expect(byId).toEqual({ ok: true });
+    const byEither = await evaluateTripwires(output, [
+      inv.mustCite("doc-1", { keys: ["source", "id"] }),
+    ]);
+    expect(byEither).toEqual({ ok: true });
+  });
+
+  it("caseInsensitive matches strings and object keys", async () => {
+    const strings = { citations: ["DOC-1"] };
+    expectViolation(await evaluateTripwires(strings, [inv.mustCite("doc-1")]));
+    expect(
+      await evaluateTripwires(strings, [inv.mustCite("doc-1", { caseInsensitive: true })]),
+    ).toEqual({ ok: true });
+
+    const objects = { citations: [{ source: "DOC-1" }] };
+    expectViolation(await evaluateTripwires(objects, [inv.mustCite("doc-1")]));
+    expect(
+      await evaluateTripwires(objects, [inv.mustCite("doc-1", { caseInsensitive: true })]),
+    ).toEqual({ ok: true });
+  });
+
+  it("defaults are unchanged: the evidence fallback key still works", async () => {
+    const result = await evaluateTripwires({ evidence: ["doc-1"] }, [inv.mustCite("doc-1")]);
+    expect(result).toEqual({ ok: true });
+  });
+});

@@ -223,6 +223,7 @@ export type {
   InferOutputMap,
   InvariantDeclaration,
   InvariantOptions,
+  MustCiteOptions,
   KeyEntry,
   KeySet,
   KeyState,

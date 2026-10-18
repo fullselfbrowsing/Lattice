@@ -26,6 +26,7 @@ export type {
 export type {
   FieldFromTableInvariant,
   InvariantOptions,
+  MustCiteOptions,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,

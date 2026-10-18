@@ -11,6 +11,7 @@ export { inv } from "./invariants.js";
 export type {
   FieldFromTableInvariant,
   InvariantOptions,
+  MustCiteOptions,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,

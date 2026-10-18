@@ -67,6 +67,7 @@ export type {
   FieldFromTableInvariant,
   InvariantDeclaration,
   InvariantOptions,
+  MustCiteOptions,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
