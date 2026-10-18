@@ -78,6 +78,11 @@ async function runProc(
     const child = spawn(cmd, [...args], {
       cwd: REPO_ROOT,
       env: process.env,
+      // stdin is ignored on purpose: a nested pnpm script run (pnpm -> sh ->
+      // tsdown) can block on an inherited stdin pipe that never closes, which
+      // left a half-finished build (dist already cleaned) and timed out this
+      // hook. The children never read stdin, so nothing is lost.
+      stdio: ["ignore", "pipe", "pipe"],
       ...opts,
     });
     let stdout = "";

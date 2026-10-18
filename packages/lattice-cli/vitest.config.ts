@@ -18,6 +18,14 @@ export default defineConfig({
   test: {
     exclude: ["**/node_modules/**", "**/dist/**", "test-d/**"],
     environment: "node",
+    // Run test files one at a time. showcase-e2e.test.ts and
+    // v14-validation.test.ts each rebuild packages/lattice/dist in beforeAll,
+    // and tsdown's `clean: true` deletes the directory before rewriting it.
+    // With parallel files, one file's clean step can remove dist/index.js
+    // while the other is spawning the showcase or the CLI binary, which
+    // fails with ERR_MODULE_NOT_FOUND even though both builds exit 0. The
+    // suite is small, so sequential execution costs little.
+    fileParallelism: false,
     // The showcase-e2e test spawns child processes (pnpm build + node showcase
     // + several separate CLI invocations) and the default 5s timeout is too
     // tight. Other tests in this package complete in <1s; this raised ceiling
