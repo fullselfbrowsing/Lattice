@@ -62,15 +62,35 @@ The in-process reference KeySet implementation is `createMemoryKeySet` in `packa
 
 ### Receipt Downgrade Defense (CRYPTO-01)
 
-Capability receipts carry an explicit `body.version` discriminator with two accepted literals: `"lattice-receipt/v1"` and `"lattice-receipt/v1.1"`.
+Capability receipts carry an explicit `body.version` discriminator. The ordered version list lives in `packages/lattice/src/receipts/schema-version.ts` (`RECEIPT_VERSIONS`). New receipts are minted at `lattice-receipt/v1.4`; verifiers accept `v1.1` through `v1.4` and reject `v1` and unversioned bodies.
 
-**Attack:** an attacker holding a valid signing key could mint a v1-shaped body and submit it to a v1.1 verifier. The v1 receipt schema predates the step-marker integrity surface added in v1.2, so a successful downgrade would let an attacker bypass the v1.1 step-chain commitments. The receipt would verify cryptographically (the signature is valid against a known `kid`) while suppressing downstream invariant checks that depend on v1.1 fields.
+**Attack:** an attacker holding a valid signing key could mint a v1-shaped body and submit it to a newer verifier. The v1 receipt schema predates the step-marker integrity surface added in v1.1, so a successful downgrade would let an attacker bypass the v1.1 step-chain commitments. The receipt would verify cryptographically (the signature is valid against a known `kid`) while suppressing downstream invariant checks that depend on newer fields.
 
 **Precedent:** Radicle disclosed the analogous attack in March 2026; their receipt protocol's `schemaVersion` field was optional, and an attacker could omit it to suppress downstream invariant checks. The Lattice defense pattern mirrors the Radicle mitigation: reject early, before any cryptographic work, when the version discriminator is absent or below the current floor.
 
-**Defense:** `verifyReceipt` in `packages/lattice/src/receipts/verify.ts` short-circuits with the `schema-version-too-low` error kind whenever `body.version` is absent or equals `"lattice-receipt/v1"`. The check runs before signature validation so an attacker cannot use signature-validity timing to probe the version state. The error kind literal is exported from `packages/lattice/src/receipts/types.ts` as part of the `VerifyErrorKind` union, so downstream consumers can pattern-match the downgrade rejection specifically.
+**Defense:** `verifyReceipt` in `packages/lattice/src/receipts/verify.ts` short-circuits with the `schema-version-too-low` error kind whenever `body.version` is absent or its ordinal is below the floor. The floor is `v1.1` by default; a verifier that needs the guarantees of a newer schema (for example the `v1.3` lineage root) raises it with `VerifyOptions.minVersion`, which produces the same error kind. The check runs before signature validation so an attacker cannot use signature-validity timing to probe the version state. The error kind literal is exported from `packages/lattice/src/receipts/types.ts` as part of the `VerifyErrorKind` union, so downstream consumers can pattern-match the downgrade rejection specifically.
 
-This writeup and the defense are auditably linked: searching for the literal string `schema-version-too-low` finds the documentation here, the union member in `types.ts`, the rejection branch in `verify.ts`, and the regression test that exercises both downgrade branches.
+This writeup and the defense are auditably linked: searching for the literal string `schema-version-too-low` finds the documentation here, the union member in `types.ts`, the rejection branch in `verify.ts`, and the regression tests that exercise the downgrade branches and the `minVersion` floor.
+
+### Receipt Freshness and Audience Binding (v1.4)
+
+A valid signature proves integrity and attribution. It does not prove that a receipt is recent, was issued for you, or has not been shown before. Receipts minted at `v1.4` may carry three optional fields for that purpose: `audience` (the intended relying party), `nonce` (a caller-supplied single-use value), and `expiresAt` (an ISO 8601 instant). `ai.run` sets them from `intent.receipt: { audience, nonce, ttlMs }`; `createReceipt` accepts them directly.
+
+`verifyReceipt(envelope, keySet, options)` enforces them through `expectedAudience`, `expectedNonce`, `now`, and `maxAgeMs`, failing with `audience-mismatch`, `nonce-mismatch`, or `receipt-expired`. A receipt that carries no audience or nonce cannot satisfy an expectation, so an absent field fails when the verifier asks for one. `expiresAt` is honored by every verifier whenever it is present, including replay and eval. These checks run after signature verification so an unauthenticated envelope cannot be used to probe which audience or nonce a verifier expects. No replay cache ships with the verifier; callers that must accept a receipt only once should record `receiptCid()` values they have already accepted.
+
+### Receipt Chain Integrity
+
+Crew receipts form a tree: a crew-root receipt with no parent and per-agent completion receipts whose `parentReceiptCid` is the root's CID. `verifyChain(envelopes, keySet, options)` in `packages/lattice/src/receipts/chain.ts` (also `lattice receipt verify-chain <dir>`) verifies every link, requires unique CIDs, one `runId`, exactly one root, and parent linkage reachable from the root, and compares against `expectedRunId`, `expectedCount`, and `expectedRootCid` when given.
+
+**Limitation:** dropping leaf receipts leaves a smaller tree that is still fully valid. Nothing inside the receipts commits to the tree's size or its last member, so tail truncation is only detectable with an out-of-band count or root commitment, or an external anchor such as the per-agent receipt CID lists a `CrewResult` reports. Dropping the root or an interior receipt is detected.
+
+### Tripwire Evidence Redaction
+
+The tripwire kernel returns the raw matched value in `result.error.evidence.observed` so callers can debug a violation. That copy is never signed. Before signing, `redactReceiptBody` in `packages/lattice/src/receipts/redact.ts` rewrites `tripwireEvidence.observed` for every invariant kind (a detector name, length, and shape mask for `no-pii`; a value type and length for the others) and replaces the `matches` message, pushing a `redactions[]` manifest entry at the moment of each rewrite. The signed bytes therefore never contain the matched value, and the manifest can only describe rewrites that happened. Receipts minted before `v1.4` still carry the raw matched substring and should be treated accordingly.
+
+### Receipt Issuance Failures
+
+When a configured signer fails, `ai.run` does not silently return an unsigned run. By default (`receipts.onSignerError: "flag"`) the result carries `receiptError: { kind: "signer-failed", message }` and a `step.transition` event with `receiptError` and `mintError` is emitted. With `"throw"`, `ai.run` emits `run.failed` and rejects with `ReceiptSigningError`.
 
 ## Supply Chain
 

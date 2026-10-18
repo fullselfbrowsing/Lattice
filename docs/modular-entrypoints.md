@@ -9,7 +9,7 @@ This does not lower the package-level engine. The package manifest still declare
 | Import Path | Compatibility | Intended Surface |
 |-------------|---------------|------------------|
 | `@full-self-browsing/lattice/providers` | `adapter-specific` | Provider factories, provider contracts, streaming helpers, capability negotiation, and prompt scaffold helpers. |
-| `@full-self-browsing/lattice/audit` | `node20-compatible` | Capability receipts, signing, verification, CID, replay envelopes, redaction, materialization, and receipt OTel attributes. |
+| `@full-self-browsing/lattice/audit` | `node20-compatible` | Capability receipts, signing, verification with verifier policy options, chain verification, CID, replay envelopes, redaction, materialization, and receipt OTel attributes. |
 | `@full-self-browsing/lattice/context` | `node20-compatible` | Context packing, token estimates, and artifact reference extraction. |
 | `@full-self-browsing/lattice/artifacts` | `node20-compatible` | Artifact builders, refs, metadata, storage references, and lineage types. |
 | `@full-self-browsing/lattice/routing` | `node20-compatible` | Deterministic routing, catalogs, policy, capability profiles, and negotiation helpers. |
@@ -65,6 +65,7 @@ import {
   createMemoryKeySet,
   createReceipt,
   generateEd25519KeyPairJwk,
+  verifyChain,
   verifyReceipt,
 } from "@full-self-browsing/lattice/audit";
 

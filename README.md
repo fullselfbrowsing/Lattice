@@ -174,7 +174,7 @@ void plan;
 void result;
 ```
 
-Every run produces a plan with routing, context packing, validation, attempts, fallback, usage, and event data. When a signer is configured, terminal results also include a verifiable receipt.
+Every run produces a plan with routing, context packing, validation, attempts, fallback, usage, and event data. When a signer is configured, terminal results also include a verifiable receipt. Pass `receipt: { audience, nonce, ttlMs }` on the intent to bind that receipt to a relying party, a single-use value, or a validity window. If the signer fails, the result carries `receiptError` instead of a receipt; set `receipts: { onSignerError: "throw" }` on the config to fail the run instead.
 
 ## Modular Entrypoints
 
@@ -288,6 +288,20 @@ await verifyReceipt(
 );
 ```
 
+`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Receipts that chain through `parentReceiptCid`, such as a crew root and its agent completion receipts, verify as one tree with `verifyChain`:
+
+```ts
+import { verifyChain } from "@full-self-browsing/lattice/audit";
+
+const chain = await verifyChain(receipts, keySet, {
+  expectedRunId: "run-1",
+  expectedCount: receipts.length,
+});
+if (!chain.ok) throw new Error(`${chain.error.kind}: ${chain.error.message}`);
+```
+
+Dropped leaf receipts are only detectable when `expectedCount` or `expectedRootCid` supplies an out-of-band commitment.
+
 ## Tools and MCP
 
 Tool helpers are available without importing the agent runtime.
@@ -380,10 +394,11 @@ lattice verify --help
 lattice repro --help
 lattice eval --help
 lattice receipt --help
+lattice receipt verify-chain --help
 lattice diagnostics lm-studio --help
 ```
 
-Use it for receipt verification, offline replay, eval gates, receipt inspection, and local diagnostics.
+Use it for receipt verification, offline replay, eval gates, receipt inspection, chain verification, and local diagnostics. `lattice verify` accepts `--min-version`, `--audience`, `--nonce`, and `--max-age-ms`; `lattice receipt verify-chain <dir>` verifies every receipt in a directory as one tree and accepts `--expect-count`, `--run-id`, and `--root-cid`.
 
 ## Development
 
