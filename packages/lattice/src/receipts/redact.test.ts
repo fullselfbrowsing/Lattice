@@ -67,6 +67,14 @@ describe("maskPiiSubstring", () => {
     ["+1 (415) 555-0100", "+* (***) ***-****"],
     ["4111 1111 1111 1111", "**** **** **** ****"],
     ["", ""],
+    // Non-ASCII scripts (review follow-up): letters, digits, and marks in any
+    // script are masked; punctuation and whitespace stay.
+    ["José Müller", "**** ******"],
+    ["４１１１ １１１１", "**** ****"],
+    ["٠١٢-٣٤-٥٦٧٨", "***-**-****"],
+    ["山田太郎", "****"],
+    ["é", "**"],
+    ["Пётр@почта.рф", "****@*****.**"],
   ])("masks %j as %j", (input, expected) => {
     expect(maskPiiSubstring(input)).toBe(expected);
   });
@@ -211,13 +219,21 @@ describe("redactReceiptBody", () => {
 
   describe("must-cite, field-from-table, matches", () => {
     it.each<[string, unknown, Record<string, unknown>]>([
-      ["string", "SENSITIVE VALUE", { valueType: "string", length: 15 }],
+      ["string", "SENSITIVE VALUE", { valueType: "string" }],
       ["number", 4155551234, { valueType: "number" }],
       ["boolean", true, { valueType: "boolean" }],
       ["null", null, { valueType: "null" }],
       ["undefined", undefined, { valueType: "undefined" }],
-      ["array", ["doc-1", { source: "doc-2" }], { valueType: "array", length: 2 }],
+      ["array", ["doc-1", { source: "doc-2" }], { valueType: "array" }],
       ["object", { nested: { email: "a@b.co" } }, { valueType: "object" }],
+      // Review follow-up: a raw value that mimics the redacted shape but
+      // carries an extra field is NOT passed through; nothing survives.
+      ["shape-mimicking object", { valueType: "number", length: 4111111111111111 }, { valueType: "object" }],
+      ["shape-mimicking object with extra key", { valueType: "string", ssn: "123-45-6789" }, { valueType: "object" }],
+      // A bare { valueType } passes through: it carries nothing but one of
+      // seven fixed strings, so it is harmless and keeps redaction idempotent.
+      ["bare valueType object", { valueType: "string" }, { valueType: "string" }],
+      ["unknown valueType literal", { valueType: "secret-value" }, { valueType: "object" }],
     ])("elides a %s observed value to its shape", (_label, observed, expected) => {
       const result = redactReceiptBody(
         makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: evidence("field-from-table", observed) }),
@@ -239,7 +255,7 @@ describe("redactReceiptBody", () => {
           tripwireEvidence: evidence("must-cite", [{ source: "private-memo.pdf" }], 'must-cite: no citation found for "doc".'),
         }),
       );
-      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "array", length: 1 });
+      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "array" });
       expect(result.body.tripwireEvidence?.message).toBe('must-cite: no matching citation at "text".');
       expect(JSON.stringify(result.body)).not.toContain("private-memo");
     });
@@ -258,7 +274,7 @@ describe("redactReceiptBody", () => {
         }),
       );
       expect(result.body.tripwireEvidence?.message).toBe('matches: schema validation failed at "data.ssn".');
-      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "string", length: 11 });
+      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "string" });
       expect(result.redactions).toEqual([
         { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
         { path: "tripwireEvidence.observed", reason: TRIPWIRE_OBSERVED_REDACTION_REASON },
@@ -303,6 +319,70 @@ describe("redactReceiptBody", () => {
     expect(firstBytes.byteLength).toBe(secondBytes.byteLength);
     for (let i = 0; i < firstBytes.byteLength; i += 1) {
       expect(firstBytes[i]).toBe(secondBytes[i]);
+    }
+  });
+});
+
+describe("redactReceiptBody — shape mimicry and non-ASCII matches (review follow-up round 2)", () => {
+  it("a raw field-from-table value shaped like redacted evidence does not smuggle its number into the signed body", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("field-from-table", { valueType: "number", length: 4111111111111111 }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "object" });
+    expect(JSON.stringify(result.body)).not.toContain("4111111111111111");
+  });
+
+  it("a forged already-redacted no-pii shape has its number replaced by the mask length and its mask re-masked", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", {
+          detector: "us-ssn",
+          length: 123456789,
+          mask: "123-45-6789",
+        }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({
+      detector: "us-ssn",
+      length: 11,
+      mask: "***-**-****",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("123456789");
+    expect(JSON.stringify(result.body)).not.toContain("123-45-6789");
+  });
+
+  it("a custom detector's non-ASCII match is fully masked", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring: "José-７７３１-Müller" }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({
+      detector: "name",
+      length: 16,
+      mask: "****-****-******",
+    });
+    const json = JSON.stringify(result.body);
+    expect(json).not.toContain("José");
+    expect(json).not.toContain("Müller");
+    expect(json).not.toContain("７７３１");
+  });
+
+  it("remains idempotent for the mimic and non-ASCII cases", () => {
+    for (const tripwireEvidence of [
+      evidence("field-from-table", { valueType: "number", length: 42 }),
+      evidence("no-pii", { detector: "name", substring: "山田太郎" }),
+    ]) {
+      const once = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence }),
+      ).body;
+      const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+      expect(twice).toEqual(once);
     }
   });
 });

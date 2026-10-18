@@ -666,3 +666,52 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     }
   });
 });
+
+describe("receipt.ts — shape mimicry and non-ASCII matches never reach the signed bytes (review follow-up round 2)", () => {
+  it("field-from-table: a raw value mimicking the redacted shape loses its number", async () => {
+    const { signer } = await makeSigner();
+    const NUMERIC_SENTINEL = 7731773177317731;
+    const env = await createReceipt(
+      minimalInput({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: {
+          invariantId: "inv-1",
+          kind: "field-from-table",
+          path: "card",
+          observed: { valueType: "number", length: NUMERIC_SENTINEL },
+          message: 'field-from-table: value at "card" not in allowedValues.',
+        },
+      }),
+      signer,
+    );
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain(String(NUMERIC_SENTINEL));
+    expect(decodeBody(env.payload).tripwireEvidence?.observed).toEqual({ valueType: "object" });
+  });
+
+  it("no-pii: a non-ASCII match from a custom detector is masked in the signed bytes", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(
+      minimalInput({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: {
+          invariantId: "inv-1",
+          kind: "no-pii",
+          path: "text",
+          observed: { detector: "name", substring: "José-7731-Müller", foundAt: "text" },
+          message: 'no-pii: detector "name" flagged content at "text".',
+        },
+      }),
+      signer,
+    );
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain("José");
+    expect(rawJson).not.toContain("Müller");
+    expect(rawJson).not.toContain("7731");
+    expect(decodeBody(env.payload).tripwireEvidence?.observed).toEqual({
+      detector: "name",
+      length: 16,
+      mask: "****-****-******",
+    });
+  });
+});

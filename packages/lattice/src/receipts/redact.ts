@@ -44,11 +44,17 @@ export interface RedactedNoPiiObserved {
   readonly mask: string;
 }
 
-/** Signed shape of `tripwireEvidence.observed` for the other invariant kinds. */
+/**
+ * Signed shape of `tripwireEvidence.observed` for the other invariant kinds.
+ *
+ * Deliberately a closed vocabulary with no free values. The raw observed
+ * value for `field-from-table` and `matches` is model output, and any field
+ * that carried a number or string from it could be mimicked by that output
+ * to smuggle content past redaction (review finding on PR #22). The full
+ * value is still committed to by `outputHash`.
+ */
 export interface RedactedObservedShape {
   readonly valueType: RedactedObservedValueType;
-  /** Present for strings (UTF-16 length) and arrays (element count). */
-  readonly length?: number;
 }
 
 const OBSERVED_VALUE_TYPES: ReadonlySet<string> = new Set<RedactedObservedValueType>([
@@ -62,12 +68,14 @@ const OBSERVED_VALUE_TYPES: ReadonlySet<string> = new Set<RedactedObservedValueT
 ]);
 
 /**
- * Replace every ASCII letter and digit with "*", keeping separators so the
- * shape of the match stays readable: "123-45-6789" -> "***-**-****",
- * "alice@example.com" -> "*****@*******.***". Idempotent.
+ * Replace every letter, digit, and combining mark in any script with "*",
+ * keeping punctuation, symbols, and whitespace so the shape of the match
+ * stays readable: "123-45-6789" -> "***-**-****",
+ * "alice@example.com" -> "*****@*******.***", "José Müller" -> "**** ******",
+ * fullwidth "４１１１" -> "****". Idempotent.
  */
 export function maskPiiSubstring(value: string): string {
-  return value.replace(/[A-Za-z0-9]/g, "*");
+  return value.replace(/[\p{L}\p{N}\p{M}]/gu, "*");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,20 +85,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function redactNoPiiObserved(observed: unknown): RedactedNoPiiObserved {
   const record = isRecord(observed) ? observed : {};
   const detector = typeof record.detector === "string" ? record.detector : "unknown";
-  // Already-redacted shape: re-mask the mask. For a genuine mask this is the
-  // identity, so redaction stays idempotent; for a forged mask it guarantees
-  // no cleartext survives a second pass.
-  if (
-    !("substring" in record) &&
-    typeof record.mask === "string" &&
-    Number.isInteger(record.length) &&
-    (record.length as number) >= 0
-  ) {
-    return {
-      detector,
-      length: record.length as number,
-      mask: maskPiiSubstring(record.mask),
-    };
+  // Already-redacted shape: re-mask the mask and derive the length from it.
+  // For a genuine mask this is the identity, so redaction stays idempotent;
+  // for a forged mask it guarantees no cleartext survives and no number from
+  // the input is trusted. `detector` is the one free string kept here: in
+  // every kernel path it is a detector name, which is developer-owned
+  // configuration, never model output.
+  if (!("substring" in record) && typeof record.mask === "string") {
+    const mask = maskPiiSubstring(record.mask);
+    return { detector, length: mask.length, mask };
   }
   // Normal path: the kernel emitted { detector, substring }. A malformed
   // observed (no string substring) collapses to an empty, safe shape.
@@ -98,30 +101,26 @@ function redactNoPiiObserved(observed: unknown): RedactedNoPiiObserved {
   return { detector, length: substring.length, mask: maskPiiSubstring(substring) };
 }
 
+/**
+ * True only for an object whose sole key is `valueType` with a value from the
+ * closed set. Passing such an object through is harmless even when it is raw
+ * model output, because it carries nothing but one of seven fixed strings.
+ */
 function isRedactedObservedShape(value: unknown): value is RedactedObservedShape {
   if (!isRecord(value)) return false;
-  for (const key of Object.keys(value)) {
-    if (key !== "valueType" && key !== "length") return false;
-  }
-  if (typeof value.valueType !== "string" || !OBSERVED_VALUE_TYPES.has(value.valueType)) {
-    return false;
-  }
-  return value.length === undefined || typeof value.length === "number";
+  const keys = Object.keys(value);
+  if (keys.length !== 1 || keys[0] !== "valueType") return false;
+  return typeof value.valueType === "string" && OBSERVED_VALUE_TYPES.has(value.valueType);
 }
 
 function redactObservedShape(observed: unknown): RedactedObservedShape {
-  if (isRedactedObservedShape(observed)) {
-    return {
-      valueType: observed.valueType,
-      ...(observed.length !== undefined ? { length: observed.length } : {}),
-    };
-  }
+  if (isRedactedObservedShape(observed)) return { valueType: observed.valueType };
   if (observed === null) return { valueType: "null" };
   if (observed === undefined) return { valueType: "undefined" };
-  if (Array.isArray(observed)) return { valueType: "array", length: observed.length };
+  if (Array.isArray(observed)) return { valueType: "array" };
   switch (typeof observed) {
     case "string":
-      return { valueType: "string", length: observed.length };
+      return { valueType: "string" };
     case "number":
       return { valueType: "number" };
     case "boolean":
@@ -173,9 +172,11 @@ function templatedMessage(
  *   - THIS function is the only place the signed copy is sanitized. For
  *     every tripwire kind it rewrites `tripwireEvidence.observed`:
  *       no-pii           -> { detector, length, mask }   (foundAt dropped)
- *       must-cite        -> { valueType, length? }
- *       field-from-table -> { valueType, length? }
- *       matches          -> { valueType, length? }
+ *       must-cite        -> { valueType }
+ *       field-from-table -> { valueType }
+ *       matches          -> { valueType }
+ *     The only free string in a signed shape is the no-pii `detector` name,
+ *     which is developer-owned configuration in every kernel path.
  *     and rebuilds `tripwireEvidence.message` from the kind, the declared
  *     path, and the detector name, because the kernel's message may embed
  *     model-produced object keys (no-pii) or schema issue text (matches).
