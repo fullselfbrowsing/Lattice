@@ -215,7 +215,7 @@ const keySet = lattice.createMemoryKeySet([
 ]);
 const verified = await lattice.verifyReceipt(envelope, keySet);
 assert.equal(verified.ok, true, "v1.4 candidate receipt verifies");
-assert.equal(verified.body.version, "lattice-receipt/v1.3", "candidate emits current receipt schema");
+assert.equal(verified.body.version, "lattice-receipt/v1.4", "candidate emits current receipt schema");
 assert.equal(
   verified.body.lineageMerkleRoot,
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

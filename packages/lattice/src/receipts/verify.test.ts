@@ -83,7 +83,7 @@ describe("verify.ts — happy path", () => {
     const result = await verifyReceipt(env, keySet);
       expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.modelClass).toBeUndefined();
       expect(result.keyState).toBe("active");
       expect(result.body.kid).toBe("k1");
@@ -366,7 +366,7 @@ describe("verify.ts — purity", () => {
   });
 });
 
-describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
+describe("verify.ts — v1.1 through v1.4 schema compatibility", () => {
   it("accepts a hand-crafted signed v1.1 receipt envelope", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-2-verify-key");
     const keySet = createMemoryKeySet([
@@ -431,7 +431,7 @@ describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
     }
   });
 
-  it("accepts a normally-minted v1.3 receipt with lineageMerkleRoot", async () => {
+  it("accepts a normally-minted v1.4 receipt with lineageMerkleRoot", async () => {
     const { signer, publicKeyJwk } = await makeSigner("phase-46-verify-key");
     const env = await createReceipt(
       minimalInput({
@@ -446,12 +446,12 @@ describe("verify.ts — v1.1/v1.2/v1.3 schema compatibility", () => {
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.lineageMerkleRoot).toBe(`sha256:${"cd".repeat(32)}`);
     }
   });
 
-  it("emits version-mismatch when body.version is not v1, v1.1, v1.2, or v1.3", async () => {
+  it("emits version-mismatch when body.version is not a known version literal", async () => {
     // Construct a synthetic envelope with a payload encoding version
     // "lattice-receipt/v9". The structural check at Step 3 of the decision
     // tree fires before keyset lookup and signature verification, so the
@@ -753,7 +753,7 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     }
   });
 
-  it("accepts a normally-minted v1.3 receipt (positive control regression guard)", async () => {
+  it("accepts a normally-minted v1.4 receipt (positive control regression guard)", async () => {
     const { signer, publicKeyJwk } = await makeSigner("crypto-01-positive");
     const env = await createReceipt(
       {
@@ -770,8 +770,236 @@ describe("verify.ts — schema-version-too-low downgrade defense (CRYPTO-01)", (
     const result = await verifyReceipt(env, keySet);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.stepName).toBe("crypto-01-positive");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #21 F2/F4 — VerifyOptions: audience/nonce binding, expiry, minVersion
+// ---------------------------------------------------------------------------
+
+function bodyForVersion(
+  version: CapabilityReceiptBody["version"],
+  kid: string,
+  extra: Partial<CapabilityReceiptBody> = {},
+): CapabilityReceiptBody {
+  return {
+    version,
+    receiptId: "00000000-0000-4000-8000-00000000abcd",
+    runId: "run-options",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    kid,
+    model: { requested: "m", observed: null },
+    route: { providerId: "p", capabilityId: "c", attemptNumber: 1 },
+    usage: { promptTokens: 0, completionTokens: 0, costUsd: null },
+    contractVerdict: "success",
+    contractHash: null,
+    inputHashes: [],
+    outputHash: null,
+    redactionPolicyId: "lattice.default.v1",
+    redactions: [],
+    ...extra,
+  };
+}
+
+function flipSignature(env: ReceiptEnvelope): ReceiptEnvelope {
+  const first = env.signatures[0]!;
+  const sig = (first.sig.startsWith("A") ? "B" : "A") + first.sig.slice(1);
+  return { ...env, signatures: [{ keyid: first.keyid, sig }] };
+}
+
+describe("verify.ts — VerifyOptions audience binding (F2)", () => {
+  it("accepts when expectedAudience matches body.audience", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const env = await createReceipt(minimalInput({ audience: "svc-a" }), signer);
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { expectedAudience: "svc-a" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.body.audience).toBe("svc-a");
+  });
+
+  it("rejects with audience-mismatch when the audiences differ", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const env = await createReceipt(minimalInput({ audience: "svc-a" }), signer);
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { expectedAudience: "svc-b" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("audience-mismatch");
+      expect(result.error.message).toContain("svc-b");
+    }
+  });
+
+  it("rejects when the verifier expects an audience but the receipt carries none", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const env = await createReceipt(minimalInput(), signer);
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { expectedAudience: "svc-a" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("audience-mismatch");
+      expect(result.error.message).toContain("no audience");
+    }
+  });
+
+  it("does not enforce audience when the verifier passes no expectation", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const env = await createReceipt(minimalInput({ audience: "svc-a" }), signer);
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    expect((await verifyReceipt(env, keySet)).ok).toBe(true);
+  });
+
+  it("treats a non-string audience as a structural shape failure (version-mismatch)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const forged = {
+      ...bodyForVersion("lattice-receipt/v1.4", "aud"),
+      audience: 42,
+    } as unknown as CapabilityReceiptBody;
+    const env = await signBody(forged, signer);
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("version-mismatch");
+  });
+
+  it("checks the signature before the audience so unauthenticated envelopes cannot probe expectations", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("aud");
+    const env = flipSignature(await createReceipt(minimalInput({ audience: "svc-a" }), signer));
+    const keySet = createMemoryKeySet([entryWith("aud", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { expectedAudience: "svc-b" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("signature-invalid");
+  });
+});
+
+describe("verify.ts — VerifyOptions nonce binding (F2)", () => {
+  it("accepts a matching nonce, rejects a mismatch, and rejects an absent nonce when one is expected", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("nonce");
+    const keySet = createMemoryKeySet([entryWith("nonce", publicKeyJwk, "active")]);
+    const withNonce = await createReceipt(minimalInput({ nonce: "n-1" }), signer);
+    const withoutNonce = await createReceipt(minimalInput(), signer);
+
+    expect((await verifyReceipt(withNonce, keySet, { expectedNonce: "n-1" })).ok).toBe(true);
+
+    const mismatch = await verifyReceipt(withNonce, keySet, { expectedNonce: "n-2" });
+    expect(mismatch.ok).toBe(false);
+    if (!mismatch.ok) {
+      expect(mismatch.error.kind).toBe("nonce-mismatch");
+      // Messages must never echo nonce values.
+      expect(mismatch.error.message).not.toContain("n-1");
+      expect(mismatch.error.message).not.toContain("n-2");
+    }
+
+    const absent = await verifyReceipt(withoutNonce, keySet, { expectedNonce: "n-1" });
+    expect(absent.ok).toBe(false);
+    if (!absent.ok) expect(absent.error.kind).toBe("nonce-mismatch");
+
+    // No expectation: nonce is informational only.
+    expect((await verifyReceipt(withNonce, keySet)).ok).toBe(true);
+  });
+});
+
+describe("verify.ts — VerifyOptions expiry (F2)", () => {
+  const issuedAt = "2026-01-01T00:00:00.000Z";
+  const expiresAt = "2026-01-01T01:00:00.000Z";
+
+  it("accepts before expiresAt and rejects after it, honoring options.now", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("exp");
+    const env = await createReceipt(minimalInput({ issuedAt, expiresAt }), signer);
+    const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
+
+    expect((await verifyReceipt(env, keySet, { now: "2026-01-01T00:30:00Z" })).ok).toBe(true);
+    expect((await verifyReceipt(env, keySet, { now: new Date("2026-01-01T00:59:59Z") })).ok).toBe(true);
+
+    const late = await verifyReceipt(env, keySet, { now: "2026-01-01T02:00:00Z" });
+    expect(late.ok).toBe(false);
+    if (!late.ok) expect(late.error.kind).toBe("receipt-expired");
+  });
+
+  it("enforces expiresAt even when the verifier passes no options", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("exp");
+    const env = await createReceipt(minimalInput({ issuedAt, expiresAt }), signer);
+    const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
+    // expiresAt is in the past relative to the real clock at test time.
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("receipt-expired");
+  });
+
+  it("applies maxAgeMs against issuedAt", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("exp");
+    const env = await createReceipt(minimalInput({ issuedAt }), signer);
+    const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
+    const now = "2026-01-01T02:00:00Z";
+
+    const tooOld = await verifyReceipt(env, keySet, { now, maxAgeMs: 3_600_000 });
+    expect(tooOld.ok).toBe(false);
+    if (!tooOld.ok) expect(tooOld.error.kind).toBe("receipt-expired");
+
+    expect((await verifyReceipt(env, keySet, { now, maxAgeMs: 10_800_000 })).ok).toBe(true);
+  });
+
+  it("fails closed on an unparseable expiresAt", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("exp");
+    const env = await signBody(
+      bodyForVersion("lattice-receipt/v1.4", "exp", { expiresAt: "not-a-date" }),
+      signer,
+    );
+    const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:00Z" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("receipt-expired");
+  });
+
+  it("throws a TypeError for an unparseable options.now (caller error, not a verdict)", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("exp");
+    const env = await createReceipt(minimalInput(), signer);
+    const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
+    await expect(verifyReceipt(env, keySet, { now: "garbage" })).rejects.toThrow(TypeError);
+  });
+});
+
+describe("verify.ts — VerifyOptions minVersion (F4)", () => {
+  it("rejects a hand-signed v1.3 receipt when the verifier demands v1.4", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("min");
+    const env = await signBody(bodyForVersion("lattice-receipt/v1.3", "min"), signer);
+    const keySet = createMemoryKeySet([entryWith("min", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { minVersion: "lattice-receipt/v1.4" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("schema-version-too-low");
+      expect(result.error.message).toContain("lattice-receipt/v1.4");
+    }
+  });
+
+  it("accepts receipts at or above the requested floor", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("min");
+    const keySet = createMemoryKeySet([entryWith("min", publicKeyJwk, "active")]);
+    const minted = await createReceipt(minimalInput(), signer);
+    expect((await verifyReceipt(minted, keySet, { minVersion: "lattice-receipt/v1.4" })).ok).toBe(true);
+    const v12 = await signBody(bodyForVersion("lattice-receipt/v1.2", "min"), signer);
+    expect((await verifyReceipt(v12, keySet, { minVersion: "lattice-receipt/v1.2" })).ok).toBe(true);
+  });
+
+  it("clamps minVersion to the CRYPTO-01 floor: v1 bodies are rejected even when minVersion is v1", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("min");
+    const env = await signBody(bodyForVersion("lattice-receipt/v1", "min"), signer);
+    const keySet = createMemoryKeySet([entryWith("min", publicKeyJwk, "active")]);
+    const result = await verifyReceipt(env, keySet, { minVersion: "lattice-receipt/v1" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("schema-version-too-low");
+  });
+
+  it("throws a TypeError for an unknown minVersion literal instead of accepting everything", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("min");
+    const env = await createReceipt(minimalInput(), signer);
+    const keySet = createMemoryKeySet([entryWith("min", publicKeyJwk, "active")]);
+    await expect(
+      verifyReceipt(env, keySet, {
+        minVersion: "lattice-receipt/v9" as CapabilityReceiptBody["version"],
+      }),
+    ).rejects.toThrow(TypeError);
   });
 });

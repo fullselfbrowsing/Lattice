@@ -846,7 +846,7 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      expect(verifyResult.body.version).toBe("lattice-receipt/v1.3");
+      expect(verifyResult.body.version).toBe("lattice-receipt/v1.4");
       expect(verifyResult.body.contractVerdict).toBe("success");
       expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
@@ -914,6 +914,22 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.tripwireEvidence?.kind).toBe(
         result.error.evidence.kind,
       );
+      // Issue #21 F1: the SIGNED copy of the evidence is masked, while the
+      // runtime error still carries the raw match for debugging.
+      const signedObserved = verifyResult.body.tripwireEvidence?.observed as Record<string, unknown>;
+      expect(signedObserved).not.toHaveProperty("substring");
+      expect(signedObserved).toEqual({
+        detector: "email",
+        length: 17,
+        mask: "*****@*******.***",
+      });
+      expect(verifyResult.body.redactions).toEqual([
+        { path: "tripwireEvidence.observed", reason: "no-pii-detector-mask-only" },
+      ]);
+      const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+      expect(rawPayload).not.toContain("alice@example.com");
+      const runtimeObserved = result.error.evidence.observed as { substring: string };
+      expect(runtimeObserved.substring).toBe("alice@example.com");
     }
   });
 

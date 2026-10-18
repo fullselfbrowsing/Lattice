@@ -12,15 +12,19 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
 /**
  * Evidence emitted when a tripwire invariant fires.
  *
- * `observed` is the SHAPE-MATCHED redacted payload, not the raw output:
+ * `observed` is the runtime (unsigned) view of what the kernel saw. It is
+ * narrowed, not sanitized:
  *   - for `must-cite`: the citations array as found at the located path
  *   - for `field-from-table`: the actual value at `path`
- *   - for `no-pii`: ONLY `{ detector, substring }` — never the full input
- *     (T-08-01 in the 08-01-PLAN threat register)
+ *   - for `no-pii`: ONLY `{ detector, substring }` — the matched fragment,
+ *     never the full input (T-08-01 in the 08-01-PLAN threat register)
  *   - for `matches`: the value at `path`
  *
- * Phase 9 receipts will sign this evidence, so leaking the full PII into
- * `observed` would defeat redact-before-sign.
+ * This evidence reaches callers through `result.error.evidence` so they can
+ * debug the violation. Before any of it is SIGNED into a receipt,
+ * receipts/redact.ts rewrites `observed` (and the `matches` message) to a
+ * non-reversible shape. Do not add fields here that must survive signing
+ * without also teaching redact.ts about them.
  */
 export interface TripwireEvidence {
   readonly invariantId: string;
@@ -169,8 +173,9 @@ function evaluateNoPii(
           invariantId: decl.id,
           kind: "no-pii",
           path: decl.path,
-          // CRITICAL: redacted — only the detector name and the matched
-          // substring, never the full input string (T-08-01).
+          // Narrowed to the detector name and the matched substring, never
+          // the full input string (T-08-01). The substring itself is still
+          // sensitive; receipts/redact.ts masks it before signing.
           observed: { detector: detector.name, substring: result.substring },
           message: `no-pii: detector "${detector.name}" flagged content at "${decl.path}".`,
         },

@@ -11,6 +11,7 @@ import {
   encodeEnvelope,
 } from "./envelope.js";
 import { DEFAULT_REDACTION_POLICY_ID, redactReceiptBody } from "./redact.js";
+import { CURRENT_RECEIPT_VERSION } from "./schema-version.js";
 import type {
   CapabilityReceiptBody,
   ContractVerdict,
@@ -22,7 +23,7 @@ import type {
 
 /**
  * Public input to createReceipt. Mirrors CapabilityReceiptBody minus:
- *   - `version` (forced to "lattice-receipt/v1.3" per Phase 46)
+ *   - `version` (forced to CURRENT_RECEIPT_VERSION, currently v1.4)
  *   - `kid` (forced from signer.kid — caller cannot mismatch)
  *   - `redactions[]` (populated by redactReceiptBody)
  *   - `usage.costUsd` (converted to canonical string by usageToCanonical)
@@ -42,6 +43,11 @@ export interface CreateReceiptInput {
   // derived via receipts/cid.ts receiptCid). Omit for root/non-crew receipts.
   readonly parentReceiptCid?: string;
   readonly lineageMerkleRoot?: string;
+  // v1.4 freshness and audience binding. Pass `issuedAt` explicitly when you
+  // derive `expiresAt` from it so the two agree exactly.
+  readonly audience?: string;
+  readonly nonce?: string;
+  readonly expiresAt?: string;
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -51,9 +57,9 @@ export interface CreateReceiptInput {
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
   // Phase 2 v1.1 step-marker fields. All optional; populated when a step
-  // transition emits a receipt. Phase 26 (CRYPTO-01) collapsed the v1/v1.1
-  // version-bump heuristic to ALWAYS emit "lattice-receipt/v1.1" since v1
-  // receipts can no longer pass verifyReceipt (receipt-downgrade defense).
+  // transition emits a receipt. Phase 26 (CRYPTO-01) removed the old
+  // version-bump heuristic: every new receipt carries the current version and
+  // v1 receipts can no longer pass verifyReceipt (receipt-downgrade defense).
   readonly stepName?: string;
   readonly stepIndex?: number;
   readonly parentStepName?: string;
@@ -77,7 +83,7 @@ export interface CreateReceiptInput {
  *     kid field). The signed body and the envelope keyid CANNOT disagree by
  *     construction.
  *   - signer.kid is also written to envelope.signatures[0].keyid, so the
- *     verifier can cross-check (Step 7 of verifyReceipt).
+ *     verifier can cross-check (Step 9 of verifyReceipt).
  *
  * I-JSON guarantees: usage.costUsd is converted to string (or null) via
  * usageToCanonical. Receipts NEVER carry raw floats in the canonical form.
@@ -90,9 +96,9 @@ export async function createReceipt(
   const receiptId = input.receiptId ?? crypto.randomUUID();
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
-  // Phase 46: always emit v1.3. v1.1/v1.2 remain verifier-compatible, but
-  // new receipts can carry the optional lineageMerkleRoot provenance field.
-  const version: CapabilityReceiptBody["version"] = "lattice-receipt/v1.3";
+  // Always emit the current schema. Older minted versions (v1.1 to v1.3)
+  // remain verifier-compatible; see receipts/schema-version.ts for the list.
+  const version: CapabilityReceiptBody["version"] = CURRENT_RECEIPT_VERSION;
 
   // Step 1: assemble the raw body. `kid` comes from the signer — caller
   // cannot mismatch it. `usage.costUsd` is converted to string (I-JSON).
@@ -107,6 +113,10 @@ export async function createReceipt(
     ...(input.modelClass !== undefined ? { modelClass: input.modelClass } : {}),
     ...(input.parentReceiptCid !== undefined ? { parentReceiptCid: input.parentReceiptCid } : {}),
     ...(input.lineageMerkleRoot !== undefined ? { lineageMerkleRoot: input.lineageMerkleRoot } : {}),
+    // v1.4 binding fields (conditional-spread so absent keys stay out of JCS)
+    ...(input.audience !== undefined ? { audience: input.audience } : {}),
+    ...(input.nonce !== undefined ? { nonce: input.nonce } : {}),
+    ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,
@@ -129,8 +139,9 @@ export async function createReceipt(
     ...(input.timestamp !== undefined ? { timestamp: input.timestamp } : {}),
   };
 
-  // Step 2: redact BEFORE canonicalize. body now carries the redactions[]
-  // manifest declaring what was elided.
+  // Step 2: redact BEFORE canonicalize. This is the only place the signed
+  // copy of tripwire evidence is sanitized; the body now carries the
+  // redactions[] manifest declaring exactly what was rewritten.
   const { body } = redactReceiptBody(body0, policyId);
 
   // Step 3: canonicalize the redacted body (RFC 8785 JCS).
