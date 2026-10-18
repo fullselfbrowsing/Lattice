@@ -18,6 +18,7 @@ import {
   createAI,
   createFakeProvider,
   createInMemorySigner,
+  createReceipt,
   generateEd25519KeyPairJwk,
   verifyReceipt,
   type KeyEntry,
@@ -284,5 +285,115 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     expect(line.includes(fixture.envelope.payload)).toBe(false);
     // The signature bytes must not leak.
     expect(line.includes(fixture.envelope.signatures[0]!.sig)).toBe(false);
+  });
+});
+
+describe("lattice verify handler — VerifyOptions flags (issue #21)", () => {
+  let sandbox: string;
+  let receiptPath: string;
+  let keysetPath: string;
+
+  beforeEach(async () => {
+    sandbox = await mkdtemp(join(tmpdir(), "lattice-verify-opts-"));
+    receiptPath = join(sandbox, "receipt.json");
+    keysetPath = join(sandbox, "keyset.json");
+  });
+
+  async function mintAndWrite(
+    overrides: Record<string, unknown>,
+    kid = "verify-opts-key",
+  ): Promise<void> {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const envelope = await createReceipt(
+      {
+        runId: "run-verify-opts",
+        model: { requested: "m", observed: null },
+        route: { providerId: "p", capabilityId: "p/m", attemptNumber: 1 },
+        usage: { promptTokens: 0, completionTokens: 0, costUsd: 0 },
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+        ...overrides,
+      },
+      signer,
+    );
+    await writeJson(receiptPath, envelope);
+    await writeJson(keysetPath, [entry(kid, publicKeyJwk, "active")]);
+  }
+
+  it("--audience: matching value exits 0, mismatch exits 1 with audience-mismatch", async () => {
+    await mintAndWrite({ audience: "cli-aud" });
+
+    const ok = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, audience: "cli-aud" }, ok.deps);
+    expect(ok.bag.exitCode).toBe(0);
+    expect(ok.bag.stdout[0]).toMatch(/^OK kid=verify-opts-key verdict=success$/);
+
+    const bad = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, audience: "other" }, bad.deps);
+    expect(bad.bag.exitCode).toBe(1);
+    expect(bad.bag.stderr[0]).toMatch(/^FAIL kind=audience-mismatch reason=/);
+  });
+
+  it("--nonce: matching value exits 0, mismatch exits 1 without echoing nonce values", async () => {
+    await mintAndWrite({ nonce: "cli-nonce" });
+
+    const ok = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, nonce: "cli-nonce" }, ok.deps);
+    expect(ok.bag.exitCode).toBe(0);
+
+    const bad = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, nonce: "wrong" }, bad.deps);
+    expect(bad.bag.exitCode).toBe(1);
+    expect(bad.bag.stderr[0]).toMatch(/^FAIL kind=nonce-mismatch reason=/);
+    expect(bad.bag.stderr[0]).not.toContain("cli-nonce");
+    expect(bad.bag.stderr[0]).not.toContain("wrong");
+  });
+
+  it("--min-version: current version accepted, unknown literal is a usage error (exit 2)", async () => {
+    await mintAndWrite({});
+
+    const ok = captureDeps();
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, minVersion: "lattice-receipt/v1.4" },
+      ok.deps,
+    );
+    expect(ok.bag.exitCode).toBe(0);
+
+    const bad = captureDeps();
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, minVersion: "lattice-receipt/v9" },
+      bad.deps,
+    );
+    expect(bad.bag.exitCode).toBe(2);
+    expect(bad.bag.stderr[0]).toMatch(/^FAIL kind=invalid-argument reason=--min-version/);
+  });
+
+  it("--max-age-ms: an old receipt is rejected with receipt-expired; a bad number is a usage error", async () => {
+    await mintAndWrite({ issuedAt: "2020-01-01T00:00:00.000Z" });
+
+    const expired = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, maxAgeMs: 1000 }, expired.deps);
+    expect(expired.bag.exitCode).toBe(1);
+    expect(expired.bag.stderr[0]).toMatch(/^FAIL kind=receipt-expired reason=/);
+
+    const invalid = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, maxAgeMs: Number.NaN }, invalid.deps);
+    expect(invalid.bag.exitCode).toBe(2);
+    expect(invalid.bag.stderr[0]).toMatch(/^FAIL kind=invalid-argument reason=--max-age-ms/);
+  });
+
+  it("a receipt carrying a past expiresAt fails even with no flags", async () => {
+    await mintAndWrite({
+      issuedAt: "2020-01-01T00:00:00.000Z",
+      expiresAt: "2020-01-01T01:00:00.000Z",
+    });
+
+    const { deps, bag } = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath }, deps);
+    expect(bag.exitCode).toBe(1);
+    expect(bag.stderr[0]).toMatch(/^FAIL kind=receipt-expired reason=/);
   });
 });

@@ -45,6 +45,9 @@ interface ReceiptProjection {
     readonly parentReceiptCid: unknown;
     readonly lineageMerkleRoot: unknown;
     readonly issuedAt: unknown;
+    readonly audience: unknown;
+    readonly nonce: unknown;
+    readonly expiresAt: unknown;
   };
   readonly model: {
     readonly requested: unknown;
@@ -291,6 +294,9 @@ function projectReceipt(
       parentReceiptCid: body.parentReceiptCid ?? null,
       lineageMerkleRoot: body.lineageMerkleRoot ?? null,
       issuedAt: b.issuedAt ?? null,
+      audience: b.audience ?? null,
+      nonce: b.nonce ?? null,
+      expiresAt: b.expiresAt ?? null,
     },
     model: {
       requested: body.model?.requested ?? null,
@@ -373,6 +379,9 @@ function compareProjection(
     left.receipt.lineageMerkleRoot,
     right.receipt.lineageMerkleRoot,
   );
+  pushDifference(differences, "receipt.audience", left.receipt.audience, right.receipt.audience);
+  pushDifference(differences, "receipt.nonce", left.receipt.nonce, right.receipt.nonce);
+  pushDifference(differences, "receipt.expiresAt", left.receipt.expiresAt, right.receipt.expiresAt);
   pushDifference(differences, "model.requested", left.model.requested, right.model.requested);
   pushDifference(differences, "model.observed", left.model.observed, right.model.observed);
   pushDifference(differences, "route.providerId", left.route.providerId, right.route.providerId);
