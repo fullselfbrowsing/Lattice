@@ -56,3 +56,9 @@ A code review of the PR posted five findings; all were confirmed and fixed on th
 * **Wrong truncation claim (P2).** README, SECURITY.md, the changeset, the `verifyChain` JSDoc, the CLI comment, and the paper now say dropped leaves are detectable only with `expectedCount` or an external anchor, and that `expectedRootCid` detects a replaced root.
 
 Runtime suite after the follow-up: 86 files, 1227 tests. Paper counts regenerated (1,404 tests across 104 files) and the PDF rebuilt.
+
+## Review follow-up round 2 (redaction module)
+
+* **Shape-mimicking bypass (P1).** `redactObservedShape` passed through any object that looked already redacted, including its numeric `length`, so a raw model value such as `{ valueType: "number", length: 4111111111111111 }` was signed intact. The generic signed shape is now `{ valueType }` only, a closed vocabulary with no free values, and the no-pii branch derives `length` from the re-masked string instead of trusting input.
+* **ASCII-only mask (P2).** `maskPiiSubstring` now masks letters, digits, and combining marks in any script (`\p{L}`, `\p{N}`, `\p{M}`), so custom detectors returning non-ASCII matches are masked; ASCII masks are unchanged.
+* Tests cover the exact reproductions at the redaction and signed-receipt levels. Runtime suite: 86 files, 1243 tests. Paper counts regenerated (1,420 across 104 files) and PDF rebuilt.
