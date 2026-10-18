@@ -37,7 +37,7 @@ export function routeDeterministically(
     estimateTokens(request.task) +
     request.artifacts.reduce((total, artifact) => total + estimateArtifactTokens(artifact), 0);
   const candidates = catalog.models
-    .map((capability, index) =>
+    .map((capability) =>
       evaluateCapability(capability, {
         requiredInputs,
         requiredOutputs,
@@ -47,7 +47,6 @@ export function routeDeterministically(
         ...(request.provider !== undefined ? { provider: request.provider } : {}),
         ...(request.model !== undefined ? { model: request.model } : {}),
         ...(request.contract !== undefined ? { contract: request.contract } : {}),
-        index,
       }),
     )
     .sort(compareCandidates);
@@ -95,7 +94,6 @@ function evaluateCapability(
     readonly provider?: string;
     readonly model?: string;
     readonly contract?: CapabilityContract;
-    readonly index: number;
   },
 ): RouteCandidate {
   const reasons: RouteRejectReason[] = [];
@@ -168,7 +166,7 @@ function evaluateCapability(
     reasons.push(reason);
   }
 
-  const score = scoreCapability(capability, estimates, input.index);
+  const score = scoreCapability(capability, estimates);
 
   return {
     providerId: capability.providerId,
@@ -286,19 +284,32 @@ function estimateRoute(
   };
 }
 
+/**
+ * Score a candidate from cost (micro-dollars), latency class, and context
+ * headroom only. The catalog position is deliberately NOT part of the score
+ * (issue #21 finding 7): adding it let registration order flip the choice
+ * between near-equal candidates, which made routing depend on something the
+ * receipt never records. Ties are broken in `compareCandidates`.
+ */
 function scoreCapability(
   capability: ModelCapability,
   estimates: RouteEstimates,
-  index: number,
 ): number {
   const costScore = Math.round((estimates.costUsd ?? 0) * 1_000_000);
   const latencyScore = capability.latency === "interactive" ? 0 : 100_000;
   const contextHeadroom = Math.max(0, capability.contextWindow - estimates.inputTokens);
   const contextScore = Math.max(0, 10_000 - Math.min(contextHeadroom, 10_000));
 
-  return costScore + latencyScore + contextScore + index;
+  return costScore + latencyScore + contextScore;
 }
 
+/**
+ * Total order over candidates: accepted first, then ascending score, then
+ * canonical provider and model identifiers. The identifier tiebreak is what
+ * makes the decision independent of the order providers were registered in,
+ * so the same catalog contents always yield the same route and fallback
+ * chain regardless of permutation.
+ */
 function compareCandidates(left: RouteCandidate, right: RouteCandidate): number {
   if (left.accepted !== right.accepted) {
     return left.accepted ? -1 : 1;

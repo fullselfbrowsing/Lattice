@@ -199,13 +199,13 @@ describe("deterministic planning and execution spine", () => {
     const ai = createAI({
       providers: [
         createFakeProvider({
-          id: "primary",
+          id: "a-primary",
           response: () => {
             throw new Error("primary failed");
           },
         }),
         createFakeProvider({
-          id: "fallback",
+          id: "b-fallback",
           response: {
             rawOutputs: { answer: "fallback ok" },
           },
@@ -226,8 +226,8 @@ describe("deterministic planning and execution spine", () => {
         return;
       }
       expect(result.plan.attempts.map((attempt) => attempt.providerId)).toEqual([
-        "primary",
-        "fallback",
+        "a-primary",
+        "b-fallback",
       ]);
       expect(result.events?.map((event) => event.kind)).toContain("fallback.activated");
     }
@@ -235,17 +235,17 @@ describe("deterministic planning and execution spine", () => {
 
   it("repackages artifacts using fallback provider transport capabilities", async () => {
     const primaryCapability = {
-      ...defaultCapabilityForProvider("primary"),
-      modelId: "primary:model",
+      ...defaultCapabilityForProvider("a-primary"),
+      modelId: "a-primary:model",
       fileTransport: ["base64"] as const,
     };
     const fallbackCapability = {
-      ...defaultCapabilityForProvider("fallback"),
-      modelId: "fallback:model",
+      ...defaultCapabilityForProvider("b-fallback"),
+      modelId: "b-fallback:model",
       fileTransport: ["url"] as const,
     };
     const primary = {
-      id: "primary",
+      id: "a-primary",
       kind: "provider-adapter",
       capabilities: [primaryCapability],
       execute: async () => {
@@ -253,11 +253,11 @@ describe("deterministic planning and execution spine", () => {
       },
     } satisfies ProviderAdapter;
     const fallback = {
-      id: "fallback",
+      id: "b-fallback",
       kind: "provider-adapter",
       capabilities: [fallbackCapability],
       execute: async (request) => {
-        expect(request.providerPackaging?.providerId).toBe("fallback");
+        expect(request.providerPackaging?.providerId).toBe("b-fallback");
         expect(request.providerPackaging?.artifacts[0]).toMatchObject({
           artifactId: "artifact:image:package",
           transport: "url",
@@ -282,6 +282,15 @@ describe("deterministic planning and execution spine", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.outputs.answer).toBe("fallback packaged");
+      // Lock the intent: the primary must be attempted first so the fallback
+      // repackaging path is actually exercised. Identical-score candidates
+      // order by providerId, hence the a-/b- prefixes on the fixture ids.
+      if (result.plan.kind === "execution-plan") {
+        expect(result.plan.attempts.map((attempt) => attempt.providerId)).toEqual([
+          "a-primary",
+          "b-fallback",
+        ]);
+      }
     }
   });
 });
