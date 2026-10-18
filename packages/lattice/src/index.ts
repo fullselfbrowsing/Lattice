@@ -43,7 +43,7 @@ export type {
   ExternalExecutionSidecarOutputSpec,
   ExternalExecutionUsage,
 } from "./audit/external-execution.js";
-export { isTerminal } from "./results/errors.js";
+export { ReceiptSigningError, isTerminal } from "./results/errors.js";
 export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
 export {
   createAISdkProvider,
@@ -193,7 +193,7 @@ export type {
 } from "./tools/tool-call-validation.js";
 export { latticeVersion } from "./version.js";
 
-export type { AI, RunIntent } from "./runtime/create-ai.js";
+export type { AI, RunIntent, RunReceiptOptions } from "./runtime/create-ai.js";
 export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
@@ -235,6 +235,7 @@ export type {
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
+  NormalizedReceiptsConfig,
   LangfuseOtlpConfigOptions,
   OtelAttributeValue,
   OtelAttributes,
@@ -308,7 +309,10 @@ export type {
   TripwireViolationError,
   Usage,
   ValidationIssue,
+  ReceiptError,
+  ReceiptSignerErrorMode,
   ReceiptVersion,
+  ReceiptsConfig,
   VerifyChainError,
   VerifyChainErrorKind,
   VerifyChainFail,

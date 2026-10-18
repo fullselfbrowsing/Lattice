@@ -27,6 +27,7 @@ import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
 import { fc } from "../test-support/fast-check.js";
+import { ReceiptSigningError } from "../results/errors.js";
 import { createAI } from "./create-ai.js";
 
 function pricedFakeProvider(): ReturnType<typeof createFakeProvider> {
@@ -1351,7 +1352,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T13: signer failure does not crash ai.run (receipt is undefined)", async () => {
+  it("T13: signer failure does not crash ai.run; receipt is undefined and receiptError is flagged (default)", async () => {
     const failingSigner: ReceiptSigner = {
       kid: "boom",
       publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
@@ -1372,6 +1373,20 @@ describe("Phase 9 receipts integration", () => {
       expect(result.outputs).toBeDefined();
     }
     expect(result.receipt).toBeUndefined();
+    // Issue #21 F5: the gap is visible on the result and in the event stream.
+    expect(result.receiptError).toEqual({
+      kind: "signer-failed",
+      message: "signer always throws",
+    });
+    const kinds = (result.events ?? []).map((event) => event.kind);
+    const flagIndex = (result.events ?? []).findIndex(
+      (event) =>
+        event.kind === "step.transition" &&
+        event.metadata?.receiptError === "signer-failed" &&
+        typeof event.metadata?.mintError === "string",
+    );
+    expect(flagIndex).toBeGreaterThanOrEqual(0);
+    expect(flagIndex).toBeLessThan(kinds.indexOf("run.complete"));
   });
 
   it("T14: 100 receipts issue in under 5 seconds total (property test)", async () => {
@@ -1442,5 +1457,179 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.route.capabilityId).toBe("openai/gpt-oss-120b");
       expect(verifyResult.body.modelClass).toBe("frontier_rlhf");
     }
+  });
+});
+
+describe("issue #21 — per-run receipt binding (F2) and signer failure policy (F5)", () => {
+  async function makeSignerAndKeySet(kid = "issue-21") {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([{ kid, publicKeyJwk, state: "active" }]);
+    return { signer, keySet };
+  }
+
+  const failingSigner: ReceiptSigner = {
+    kid: "boom",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+    async sign(): Promise<Uint8Array> {
+      throw new Error("signer always throws");
+    },
+  };
+
+  it("B1: audience, nonce, and ttlMs land on the signed body and verify with matching expectations", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      receipt: { audience: "billing-svc", nonce: "n-123", ttlMs: 60_000 },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet, {
+      expectedAudience: "billing-svc",
+      expectedNonce: "n-123",
+    });
+    expect(verified.ok).toBe(true);
+    if (verified.ok) {
+      expect(verified.body.audience).toBe("billing-svc");
+      expect(verified.body.nonce).toBe("n-123");
+      expect(Date.parse(verified.body.expiresAt!) - Date.parse(verified.body.issuedAt)).toBe(60_000);
+    }
+    const mismatch = await verifyReceipt(result.receipt!, keySet, { expectedAudience: "other" });
+    expect(mismatch.ok).toBe(false);
+    if (!mismatch.ok) expect(mismatch.error.kind).toBe("audience-mismatch");
+  });
+
+  it("B2: binding is applied on a failure-path receipt too", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+      receipt: { audience: "auditor" },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet, { expectedAudience: "auditor" });
+    expect(verified.ok).toBe(true);
+    if (verified.ok) expect(verified.body.contractVerdict).toBe("tripwire-violated");
+  });
+
+  it("B3: no binding leaves the three keys out of the canonical JSON", async () => {
+    const { signer } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
+    const raw = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+    expect(raw).not.toContain('"audience"');
+    expect(raw).not.toContain('"nonce"');
+    expect(raw).not.toContain('"expiresAt"');
+  });
+
+  it("B4: invalid binding options reject synchronously with TypeError before any provider call", async () => {
+    let calls = 0;
+    const provider = createFakeProvider({
+      response: () => {
+        calls += 1;
+        return { rawOutputs: { text: "never" } };
+      },
+    });
+    const { signer } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [provider], signer });
+    await expect(
+      ai.run({ task: "x", outputs: { text: "text" as const }, receipt: { ttlMs: 0 } }),
+    ).rejects.toThrow(TypeError);
+    await expect(
+      ai.run({ task: "x", outputs: { text: "text" as const }, receipt: { audience: "" } }),
+    ).rejects.toThrow(TypeError);
+    expect(calls).toBe(0);
+  });
+
+  it("S1: receipts.onSignerError 'throw' rejects ai.run with ReceiptSigningError after a run.failed event", async () => {
+    const events: string[] = [];
+    const ai = createAI({
+      providers: [createFakeProvider()],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      events: (event) => {
+        events.push(`${event.kind}:${String(event.metadata?.reason ?? "")}`);
+      },
+    });
+    await expect(ai.run({ task: "x", outputs: { text: "text" as const } })).rejects.toBeInstanceOf(
+      ReceiptSigningError,
+    );
+    try {
+      await ai.run({ task: "x", outputs: { text: "text" as const } });
+    } catch (error) {
+      expect(error).toBeInstanceOf(ReceiptSigningError);
+      if (error instanceof ReceiptSigningError) {
+        expect(error.kind).toBe("receipt-signing-failed");
+        expect(error.message).toContain("signer always throws");
+        expect(error.runId.length).toBeGreaterThan(0);
+      }
+    }
+    expect(events).toContain("run.failed:receipt-signing-failed");
+    expect(events.filter((kind) => kind.startsWith("run.complete"))).toHaveLength(0);
+  });
+
+  it("S2: throw mode is not swallowed by the fallback chain", async () => {
+    let secondCalls = 0;
+    const first = createFakeProvider({ id: "a-first" });
+    const second = createFakeProvider({
+      id: "b-second",
+      response: () => {
+        secondCalls += 1;
+        return { rawOutputs: { text: "second" } };
+      },
+    });
+    const kinds: string[] = [];
+    const ai = createAI({
+      providers: [first, second],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      events: (event) => {
+        kinds.push(event.kind);
+      },
+    });
+    await expect(ai.run({ task: "x", outputs: { text: "text" as const } })).rejects.toBeInstanceOf(
+      ReceiptSigningError,
+    );
+    expect(secondCalls).toBe(0);
+    expect(kinds).not.toContain("fallback.activated");
+  });
+
+  it("S3: flag mode on a failure path carries receiptError alongside the verdict", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer: failingSigner });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("tripwire-violated");
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError?.kind).toBe("signer-failed");
+  });
+
+  it("S4: without a signer neither receipt nor receiptError is present", async () => {
+    const ai = createAI({ providers: [createFakeProvider()] });
+    const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError).toBeUndefined();
   });
 });

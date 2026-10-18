@@ -125,7 +125,7 @@ export type {
   TripwireViolationError,
   ValidationIssue,
 } from "../results/errors.js";
-export type { RunFailure, RunResult, RunSuccess } from "../results/result.js";
+export type { ReceiptError, RunFailure, RunResult, RunSuccess } from "../results/result.js";
 export type {
   AppendSessionTurnInput,
   CreateSessionOptions,
@@ -191,5 +191,8 @@ export type {
 export type {
   LatticeConfig,
   NormalizedLatticeConfig,
+  NormalizedReceiptsConfig,
+  ReceiptSignerErrorMode,
+  ReceiptsConfig,
 } from "./config.js";
-export type { AI, RunIntent } from "./create-ai.js";
+export type { AI, RunIntent, RunReceiptOptions } from "./create-ai.js";

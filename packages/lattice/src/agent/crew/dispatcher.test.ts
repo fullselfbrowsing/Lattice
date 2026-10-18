@@ -926,3 +926,57 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     expect(summary.receipts).toEqual([]);
   });
 });
+
+describe("createCrewDispatcher — signer failure is recorded on the tracer (issue #21 F5)", () => {
+  it("records a step.transition with mintError, keeps the child summary, and mints nothing", async () => {
+    const failingSigner: ReceiptSigner = {
+      kid: "boom",
+      publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+      async sign(): Promise<Uint8Array> {
+        throw new Error("crew signer down");
+      },
+    };
+    const traced: Array<{ name: string; attributes: Record<string, unknown> | undefined }> = [];
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["summary despite signer failure"]);
+    const minted: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer: failingSigner,
+        crewRootCid: `sha256:${"ab".repeat(32)}`,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        tracer: {
+          kind: "tracer",
+          event: (name, attributes) => {
+            traced.push({ name, attributes });
+          },
+        },
+      }),
+    );
+
+    const dispatched = await dispatcher.dispatchToolUse(
+      { id: "rc-fail", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+
+    expect(minted).toHaveLength(0);
+    const summary = JSON.parse(dispatched?.content ?? "{}") as { summary: string; receipts: string[] };
+    expect(summary.receipts).toEqual([]);
+    expect(summary.summary).toContain("summary despite signer failure");
+
+    // The same tracer is threaded into the child loop, whose checkpoint hook
+    // also reports its own mint failure; filter to the dispatcher's event.
+    const mintEvents = traced.filter(
+      (entry) =>
+        entry.name === "step.transition" &&
+        entry.attributes?.stepName === "crew-agent-completion:researcher",
+    );
+    expect(mintEvents).toHaveLength(1);
+    expect(mintEvents[0]?.attributes?.mintError).toBe("crew signer down");
+  });
+});

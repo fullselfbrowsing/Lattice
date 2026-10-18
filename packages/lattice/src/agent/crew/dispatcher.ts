@@ -43,6 +43,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import type { ArtifactRef } from "../../artifacts/artifact.js";
 import { isArtifactRef, toArtifactRef } from "../../artifacts/artifact.js";
+import { STEP_TRANSITION_EVENT_NAME } from "../../contract/checkpoint.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { validateSchemaOutput } from "../../outputs/validate.js";
 import type {
@@ -377,8 +378,15 @@ function createDispatcherNode(
         );
         ctx.mintedReceipts(envelope);
         receipts.push(await receiptCid(envelope));
-      } catch {
-        // Best-effort: the summary simply carries no completion CID.
+      } catch (error) {
+        // Best-effort: the summary simply carries no completion CID, but the
+        // gap is no longer silent (issue #21 F5). Record it on the tracer the
+        // same way checkpoint.ts reports mint errors.
+        ctx.tracer?.event?.(STEP_TRANSITION_EVENT_NAME, {
+          runId: shared.runId,
+          stepName: `crew-agent-completion:${childSpec.id}`,
+          mintError: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

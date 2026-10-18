@@ -183,3 +183,16 @@ describe("phase 1 runtime contracts", () => {
     expect(enabled.tracing).toBe(tracing);
   });
 });
+
+describe("receipts config (issue #21 F5)", () => {
+  it("defaults receipts.onSignerError to flag", () => {
+    expect(normalizeConfig({}).receipts).toEqual({ onSignerError: "flag" });
+    expect(normalizeConfig({ receipts: {} }).receipts).toEqual({ onSignerError: "flag" });
+  });
+
+  it("preserves an explicit throw mode", () => {
+    expect(normalizeConfig({ receipts: { onSignerError: "throw" } }).receipts).toEqual({
+      onSignerError: "throw",
+    });
+  });
+});
