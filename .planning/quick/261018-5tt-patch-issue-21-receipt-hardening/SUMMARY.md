@@ -80,3 +80,10 @@ Changeset, paper routing sentence, and paper test counts updated; PDF rebuilt.
 * **Signer throw recorded a completed session turn.** On the success path the session turn was appended before the receipt was minted, so with `receipts.onSignerError: "throw"` and a session store configured, a signer failure rejected `ai.run` after the turn was already stored; a retry on the same session then continued a run the caller was told did not complete. The mint now runs before the session append (a pure reorder; neither step reads the other's output). Tests pin both modes: throw mode leaves the session with zero turns, flag mode appends one turn and returns `receiptError`.
 
 Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
+
+## Review follow-up round 5 (timezone-dependent freshness, shared references)
+
+* **Freshness depended on the verifier's timezone.** `Date.parse` reads an offset-less date-time as local time and accepts non-ISO text, so a hand-issued `expiresAt` or `issuedAt` could be valid on one machine and expired on another. New `receipts/timestamp.ts` accepts only RFC 3339 instants with an explicit `Z` or numeric offset; `verifyReceipt` uses it for `expiresAt`, `issuedAt` under `maxAgeMs`, and a string `now` (TypeError), and `createReceipt` refuses to issue an offset-less timestamp. `ai.run` already wrote `toISOString()` output and is unaffected.
+* **Shared references could hide PII.** The no-pii walk marked an object scanned before its children were visited, so an object first reached at depth 31 (children cut at 32) was skipped when a shallower path reached it later. The visited set is now a map from object to the shallowest depth scanned; an object met strictly shallower is rescanned, bounded to at most 32 rescans per object. Tests cover the exact reproduction, a clean variant, and a 25-level diamond graph that a path-stack guard would walk 2^25 times.
+
+Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
