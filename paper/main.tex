@@ -559,12 +559,12 @@ version 1.6.0. The packages are live on the public npm registry. They are publis
 with an OpenID Connect trusted publisher and with supply chain provenance attestations
 in the spirit of SLSA \cite{slsa}, and a tagged GitHub release accompanies the
 publish. The runtime targets Node version 24 or newer. The implementation is about
-29,400 lines of production TypeScript across 130 non-test source files. The core
-package has a deliberately small runtime dependency surface of three packages:
+31,100 lines of production TypeScript across 135 non-test source files. The core
+package has a deliberately small runtime dependency surface of four packages:
 \code{canonicalize} for RFC 8785 encoding, \code{@standard-schema/spec} for schema
-contracts, and \code{mime} for artifact typing. The Ed25519 reference oracle and the
-schema library used in tests are development dependencies only, so a consumer of the
-core package does not inherit them.
+contracts, \code{mime} for artifact typing, and \code{@noble/ed25519} for the Node 20
+audit signing path added in version 1.5.1. The schema library used in tests is a
+development dependency only, so a consumer of the core package does not inherit it.
 
 Version 1.5.0 adds modular public subpaths for \code{providers}, \code{audit},
 \code{context}, \code{artifacts}, \code{routing}, \code{tools}, \code{storage},
