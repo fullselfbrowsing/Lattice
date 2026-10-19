@@ -408,6 +408,37 @@ describe("no-pii nested walk (issue #21 F8)", () => {
     expect(shallow.evidence.observed).toMatchObject({ foundAt: `root${".a".repeat(20)}` });
   });
 
+  it("shared reference first met at the depth cap is still scanned through a shallower path (review follow-up round 5)", async () => {
+    // X sits at depth 31 under the "a" chain, so its children are cut at 32.
+    // Keys scan in sorted order, so the deep path is visited before the
+    // shallow "z" path. A set-based visited guard would mark X on the deep
+    // visit and skip it on the shallow one, hiding the email.
+    const shared = { inner: { email: "alice@example.com" } };
+    let deep: unknown = shared;
+    for (let i = 0; i < 30; i += 1) deep = { d: deep };
+    const result = await evaluateTripwires({ graph: { a: deep, z: shared } }, [inv.noPII("graph")]);
+    expectViolation(result);
+    expect(result.evidence.path).toBe("graph");
+    expect(result.evidence.observed).toMatchObject({ detector: "email", foundAt: "graph.z.inner.email" });
+  });
+
+  it("shared references do not multiply work: a 25-level diamond graph scans each node once", async () => {
+    // Every node points at the same child twice. A path-stack-only cycle
+    // guard would walk 2^25 paths; the depth-keyed visited map walks 26.
+    let node: Record<string, unknown> = { email: "alice@example.com" };
+    for (let i = 0; i < 25; i += 1) node = { l: node, r: node };
+    const result = await evaluateTripwires({ graph: node }, [inv.noPII("graph")]);
+    expectViolation(result);
+    expect(result.evidence.observed).toMatchObject({ foundAt: `graph${".l".repeat(25)}.email` });
+  });
+
+  it("a clean shared reference met again at a shallower depth is rescanned and still passes", async () => {
+    const shared = { inner: { note: "nothing here" } };
+    let deep: unknown = shared;
+    for (let i = 0; i < 30; i += 1) deep = { d: deep };
+    expect(await evaluateTripwires({ graph: { a: deep, z: shared } }, [inv.noPII("graph")])).toEqual({ ok: true });
+  });
+
   it("evidence still excludes the surrounding text", async () => {
     const result = await evaluateTripwires(
       { items: [{ note: "please contact alice@example.com today" }] },

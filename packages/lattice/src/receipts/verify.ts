@@ -12,6 +12,7 @@ import {
   receiptVersionOrdinal,
 } from "./schema-version.js";
 import { verifyEd25519Signature } from "./sign.js";
+import { RFC3339_INSTANT_REQUIREMENT, parseRfc3339Instant } from "./timestamp.js";
 import type {
   CapabilityReceiptBody,
   KeyEntry,
@@ -42,14 +43,17 @@ function acceptedVersions(floor: number): readonly ReceiptVersion[] {
 
 /**
  * Resolve `options.now` to epoch milliseconds. Invalid caller input is a
- * programmer error, so this throws rather than returning a typed failure.
+ * programmer error, so this throws rather than returning a typed failure. A
+ * string must be an RFC 3339 instant with an explicit offset so the verdict
+ * does not depend on the verifier's local timezone; a `Date` is already an
+ * instant.
  */
 function resolveNowMs(now: VerifyOptions["now"]): number {
   if (now === undefined) return Date.now();
-  const ms = now instanceof Date ? now.getTime() : Date.parse(now);
-  if (Number.isNaN(ms)) {
+  const ms = now instanceof Date ? now.getTime() : parseRfc3339Instant(now);
+  if (ms === undefined || Number.isNaN(ms)) {
     throw new TypeError(
-      `verifyReceipt: options.now is not a valid timestamp: ${String(now)}`,
+      `verifyReceipt: options.now must be a Date or ${RFC3339_INSTANT_REQUIREMENT}: ${String(now)}`,
     );
   }
   return ms;
@@ -149,16 +153,20 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
  *      (an absent body.audience is a mismatch)
  *  11. options.expectedNonce set AND body.nonce differs         -> nonce-mismatch
  *      (an absent body.nonce is a mismatch)
- *  12. body.expiresAt present AND (unparseable OR before now)
- *      OR options.maxAgeMs set AND (issuedAt unparseable OR issuedAt + maxAgeMs before now)
+ *  12. body.expiresAt present AND (not an RFC 3339 instant OR before now)
+ *      OR options.maxAgeMs set AND (issuedAt not an RFC 3339 instant
+ *                                   OR issuedAt + maxAgeMs before now)
  *                                                               -> receipt-expired
  *  13. otherwise                                                -> ok + keyState
  *
  * Steps 10 to 12 run AFTER signature verification so an unauthenticated
  * envelope cannot be used to probe which audience or nonce a verifier
  * expects. Step 12's expiresAt branch is enforced even with no options: an
- * issuer that set expiresAt asked every verifier to honor it. Pass
- * options.now to pin the clock in tests.
+ * issuer that set expiresAt asked every verifier to honor it. Timestamps in
+ * step 12 must carry an explicit UTC offset (see receipts/timestamp.ts);
+ * `Date.parse` would read an offset-less string as local time and make the
+ * verdict depend on the verifier's timezone. Pass options.now to pin the
+ * clock in tests.
  */
 export async function verifyReceipt(
   envelope: ReceiptEnvelope,
@@ -296,14 +304,15 @@ export async function verifyReceipt(
   }
 
   // Step 12: expiry. expiresAt is honored whenever the issuer set it; maxAgeMs
-  // is a verifier-side policy over issuedAt. Unparseable timestamps fail
-  // closed rather than being treated as "never expires".
+  // is a verifier-side policy over issuedAt. Timestamps that are not RFC 3339
+  // instants with an explicit offset fail closed rather than being read as
+  // local time or treated as "never expires".
   if (body.expiresAt !== undefined) {
-    const expiresMs = Date.parse(body.expiresAt);
-    if (Number.isNaN(expiresMs)) {
+    const expiresMs = parseRfc3339Instant(body.expiresAt);
+    if (expiresMs === undefined) {
       return fail(
         "receipt-expired",
-        `expiresAt "${body.expiresAt}" is not a parseable ISO 8601 timestamp`,
+        `expiresAt "${body.expiresAt}" is not ${RFC3339_INSTANT_REQUIREMENT}`,
       );
     }
     if (expiresMs < nowMs) {
@@ -311,11 +320,11 @@ export async function verifyReceipt(
     }
   }
   if (maxAgeMs !== undefined) {
-    const issuedMs = Date.parse(body.issuedAt);
-    if (Number.isNaN(issuedMs)) {
+    const issuedMs = parseRfc3339Instant(body.issuedAt);
+    if (issuedMs === undefined) {
       return fail(
         "receipt-expired",
-        `issuedAt "${body.issuedAt}" is not a parseable ISO 8601 timestamp`,
+        `issuedAt "${body.issuedAt}" is not ${RFC3339_INSTANT_REQUIREMENT}`,
       );
     }
     if (issuedMs + maxAgeMs < nowMs) {

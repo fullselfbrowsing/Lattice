@@ -715,3 +715,26 @@ describe("receipt.ts — shape mimicry and non-ASCII matches never reach the sig
     });
   });
 });
+
+describe("createReceipt — timestamps must carry an explicit UTC offset (review follow-up round 5)", () => {
+  it.each([
+    ["offset-less issuedAt", { issuedAt: "2026-01-01T00:00:00" }],
+    ["non-ISO issuedAt", { issuedAt: "Jan 1 2026" }],
+    ["offset-less expiresAt", { expiresAt: "2999-01-01T00:00:00" }],
+    ["date-only expiresAt", { expiresAt: "2999-01-01" }],
+  ])("refuses to issue a receipt with an %s (caller error, not a verdict)", async (_label, overrides) => {
+    const { signer } = await makeSigner();
+    await expect(createReceipt(minimalInput(overrides), signer)).rejects.toThrow(TypeError);
+    await expect(createReceipt(minimalInput(overrides), signer)).rejects.toThrow(/UTC offset/u);
+  });
+
+  it("accepts toISOString output and numeric offsets, embedding them verbatim", async () => {
+    const { signer } = await makeSigner();
+    const issuedAt = "2026-01-01T00:00:00.000Z";
+    const expiresAt = "2026-01-01T02:00:00+05:30";
+    const env = await createReceipt(minimalInput({ issuedAt, expiresAt }), signer);
+    const body = decodeBody(env.payload);
+    expect(body.issuedAt).toBe(issuedAt);
+    expect(body.expiresAt).toBe(expiresAt);
+  });
+});

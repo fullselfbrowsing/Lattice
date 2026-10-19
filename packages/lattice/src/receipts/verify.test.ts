@@ -959,6 +959,66 @@ describe("verify.ts — VerifyOptions expiry (F2)", () => {
     const keySet = createMemoryKeySet([entryWith("exp", publicKeyJwk, "active")]);
     await expect(verifyReceipt(env, keySet, { now: "garbage" })).rejects.toThrow(TypeError);
   });
+
+  describe("timestamps must carry an explicit UTC offset (review follow-up round 5)", () => {
+    // Date.parse reads "2999-01-01T00:00:00" as local time, so the same signed
+    // receipt would expire at different instants in different timezones. The
+    // verifier accepts only RFC 3339 instants with a Z or numeric offset.
+    it.each([
+      ["offset-less date-time", "2999-01-01T00:00:00"],
+      ["non-ISO text", "Jan 1 2999"],
+      ["date only", "2999-01-01"],
+      ["missing seconds", "2999-01-01T00:00Z"],
+      ["impossible month with an offset", "2999-13-01T00:00:00Z"],
+    ])("rejects a far-future expiresAt that is %s, instead of reading it as local time", async (_label, expiresAt) => {
+      const { signer, publicKeyJwk } = await makeSigner("tz");
+      const env = await signBody(bodyForVersion("lattice-receipt/v1.4", "tz", { expiresAt }), signer);
+      const keySet = createMemoryKeySet([entryWith("tz", publicKeyJwk, "active")]);
+      const result = await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:00Z" });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe("receipt-expired");
+        expect(result.error.message).toContain("UTC offset");
+      }
+    });
+
+    it("accepts a numeric offset and compares it as an instant", async () => {
+      const { signer, publicKeyJwk } = await makeSigner("tz");
+      // 2026-01-01T02:00:00+05:30 is 2025-12-31T20:30:00Z.
+      const env = await signBody(
+        bodyForVersion("lattice-receipt/v1.4", "tz", { expiresAt: "2026-01-01T02:00:00+05:30" }),
+        signer,
+      );
+      const keySet = createMemoryKeySet([entryWith("tz", publicKeyJwk, "active")]);
+      expect((await verifyReceipt(env, keySet, { now: "2025-12-31T20:29:59Z" })).ok).toBe(true);
+      const late = await verifyReceipt(env, keySet, { now: "2025-12-31T20:30:01Z" });
+      expect(late.ok).toBe(false);
+      if (!late.ok) expect(late.error.kind).toBe("receipt-expired");
+    });
+
+    it("rejects an offset-less issuedAt under maxAgeMs instead of reading it as local time", async () => {
+      const { signer, publicKeyJwk } = await makeSigner("tz");
+      const env = await signBody(
+        bodyForVersion("lattice-receipt/v1.4", "tz", { issuedAt: "2026-01-01T00:00:00" }),
+        signer,
+      );
+      const keySet = createMemoryKeySet([entryWith("tz", publicKeyJwk, "active")]);
+      // Without maxAgeMs the issuedAt shape is not consulted, so the signature still verifies.
+      expect((await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:01Z" })).ok).toBe(true);
+      const aged = await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:01Z", maxAgeMs: 86_400_000 });
+      expect(aged.ok).toBe(false);
+      if (!aged.ok) expect(aged.error.kind).toBe("receipt-expired");
+    });
+
+    it("throws a TypeError for an offset-less options.now string but accepts a Date", async () => {
+      const { signer, publicKeyJwk } = await makeSigner("tz");
+      const env = await createReceipt(minimalInput(), signer);
+      const keySet = createMemoryKeySet([entryWith("tz", publicKeyJwk, "active")]);
+      await expect(verifyReceipt(env, keySet, { now: "2026-01-01T00:00:00" })).rejects.toThrow(TypeError);
+      await expect(verifyReceipt(env, keySet, { now: new Date("2026-01-01T00:00:00Z") })).resolves.toMatchObject({ ok: true });
+      await expect(verifyReceipt(env, keySet, { now: new Date(Number.NaN) })).rejects.toThrow(TypeError);
+    });
+  });
 });
 
 describe("verify.ts — VerifyOptions minVersion (F4)", () => {

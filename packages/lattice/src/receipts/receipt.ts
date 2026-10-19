@@ -12,6 +12,7 @@ import {
 } from "./envelope.js";
 import { DEFAULT_REDACTION_POLICY_ID, redactReceiptBody } from "./redact.js";
 import { CURRENT_RECEIPT_VERSION } from "./schema-version.js";
+import { RFC3339_INSTANT_REQUIREMENT, isRfc3339Instant } from "./timestamp.js";
 import type {
   CapabilityReceiptBody,
   ContractVerdict,
@@ -88,12 +89,25 @@ export interface CreateReceiptInput {
  * I-JSON guarantees: usage.costUsd is converted to string (or null) via
  * usageToCanonical. Receipts NEVER carry raw floats in the canonical form.
  */
+function assertInstant(field: "issuedAt" | "expiresAt", value: string | undefined): void {
+  if (value !== undefined && !isRfc3339Instant(value)) {
+    throw new TypeError(
+      `createReceipt: ${field} must be ${RFC3339_INSTANT_REQUIREMENT}, got "${value}"`,
+    );
+  }
+}
+
 export async function createReceipt(
   input: CreateReceiptInput,
   signer: ReceiptSigner,
 ): Promise<ReceiptEnvelope> {
   const policyId = input.redactionPolicyId ?? DEFAULT_REDACTION_POLICY_ID;
   const receiptId = input.receiptId ?? crypto.randomUUID();
+  // Timestamps must name one instant. An offset-less string would be read as
+  // local time by verifiers and make the receipt's validity depend on the
+  // verifier's timezone, so refuse to issue one (caller error, not a verdict).
+  assertInstant("issuedAt", input.issuedAt);
+  assertInstant("expiresAt", input.expiresAt);
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
   // Always emit the current schema. Older minted versions (v1.1 to v1.3)

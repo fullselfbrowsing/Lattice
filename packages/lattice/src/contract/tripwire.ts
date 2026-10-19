@@ -231,8 +231,16 @@ function isPlainObject(value: object): boolean {
  *     same order JCS uses), so insertion order never changes the verdict
  *   - Date, Map, typed arrays, and other non-plain objects are skipped
  *   - numbers, booleans, null, undefined pass (numbers are not stringified)
- *   - a `visited` set guards cycles and shared references; an object that
- *     has already been scanned clean cannot contain PII
+ *   - a `visited` map records the shallowest depth at which each object has
+ *     been scanned. Meeting an object again at the same or a greater depth
+ *     is a cycle or a shared reference whose subtree was already covered at
+ *     least as deeply, so it is skipped. Meeting it strictly shallower
+ *     rescans it, because the earlier visit may have lost descendants to the
+ *     depth cap (review finding on PR #22: an object first reached at depth
+ *     31 was marked scanned while its children were cut at 32, and a later
+ *     shallow reference to it was skipped). Each object is rescanned at most
+ *     MAX_NO_PII_WALK_DEPTH times, so shared references cannot blow up the
+ *     walk the way a path-stack-only cycle guard would on a diamond graph.
  * Traversal order takes precedence over detector order: the first string
  * reached that any detector flags is the reported violation.
  */
@@ -240,7 +248,7 @@ function scanForPii(
   value: unknown,
   detectors: readonly PiiDetector[],
   frames: PathFrame[],
-  visited: Set<object>,
+  visited: Map<object, number>,
   depth: number,
 ): PiiHit | undefined {
   if (typeof value === "string") {
@@ -254,8 +262,9 @@ function scanForPii(
   }
   if (typeof value !== "object" || value === null) return undefined;
   if (depth >= MAX_NO_PII_WALK_DEPTH) return undefined;
-  if (visited.has(value)) return undefined;
-  visited.add(value);
+  const scannedAt = visited.get(value);
+  if (scannedAt !== undefined && scannedAt <= depth) return undefined;
+  visited.set(value, depth);
 
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
@@ -316,7 +325,7 @@ function evaluateNoPii(
   // Issue #21 F8: a non-string value at the path used to pass silently,
   // which let PII inside nested objects, arrays, and `[*]` wildcard results
   // through. Walk containers instead; see scanForPii for the order rules.
-  const hit = scanForPii(value, detectors, [], new Set<object>(), 0);
+  const hit = scanForPii(value, detectors, [], new Map<object, number>(), 0);
   if (hit === undefined) return { ok: true };
 
   const foundAt = formatViolationPath(decl.path, hit.frames);
