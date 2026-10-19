@@ -27,6 +27,7 @@ import {
 import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { createMemorySessionStore } from "../sessions/session.js";
 import { fc } from "../test-support/fast-check.js";
 import { ReceiptSigningError } from "../results/errors.js";
 import { createAI } from "./create-ai.js";
@@ -1634,6 +1635,43 @@ describe("issue #21 — per-run receipt binding (F2) and signer failure policy (
     const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
     expect(result.receipt).toBeUndefined();
     expect(result.receiptError).toBeUndefined();
+  });
+
+  it("S5: throw mode leaves no session turn behind for the rejected run (review follow-up round 4)", async () => {
+    // The receipt must be minted before the session turn is appended. If the
+    // order were reversed, a signer failure would reject ai.run after the
+    // store already held a turn, and a retry on the same session would
+    // continue a run the caller was told did not complete.
+    const sessions = createMemorySessionStore();
+    const ai = createAI({
+      providers: [createFakeProvider()],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      sessions,
+    });
+    await expect(
+      ai.run({ task: "never happened", session: ai.session("s-throw"), outputs: { text: "text" as const } }),
+    ).rejects.toBeInstanceOf(ReceiptSigningError);
+    // The runtime creates the session record at run start; it must be empty.
+    const record = await sessions.load("s-throw");
+    expect(record?.turns ?? []).toHaveLength(0);
+    expect(record?.planIds ?? []).toHaveLength(0);
+  });
+
+  it("S6: flag mode appends the turn and returns receiptError, so the session and the caller agree", async () => {
+    const sessions = createMemorySessionStore();
+    const ai = createAI({ providers: [createFakeProvider()], signer: failingSigner, sessions });
+    const result = await ai.run({
+      task: "flagged run",
+      session: ai.session("s-flag"),
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    const record = await sessions.load("s-flag");
+    expect(record?.turns).toHaveLength(1);
+    expect(record?.turns[0]?.task).toBe("flagged run");
   });
 });
 

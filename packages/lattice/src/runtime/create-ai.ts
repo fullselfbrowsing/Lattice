@@ -668,22 +668,16 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         attempts,
       });
 
-      if (built.sessionRecord !== undefined && normalized.sessions !== undefined) {
-        await normalized.sessions.appendTurn({
-          sessionId: built.sessionRecord.id,
-          task: intent.task,
-          artifactRefs: built.artifacts.map(toArtifactRef),
-          outputArtifactRefs: artifactRefs,
-          planId: completedPlan.id,
-        });
-      }
-
       const successValidation = validation as Extract<
         typeof validation,
         { ok: true }
       >;
-      // Mint BEFORE the terminal run event: OTel sinks end the run span on
-      // run.complete, and a signer failure may need to emit its own event.
+      // Mint BEFORE the session append and BEFORE the terminal run event.
+      // In "throw" mode a signer failure rejects the run, so nothing durable
+      // may be recorded first: a session turn written here would let a retry
+      // on the same session continue a run the caller was told did not
+      // complete. OTel sinks also end the run span on run.complete, and a
+      // signer failure may need to emit its own event inside the run.
       const issuance = await maybeIssueReceipt(normalized, events, {
         runId,
         planId: completedPlan.id,
@@ -701,6 +695,16 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         usage: normalizeAdapterUsage(response),
         outputs: successValidation.outputs,
       });
+
+      if (built.sessionRecord !== undefined && normalized.sessions !== undefined) {
+        await normalized.sessions.appendTurn({
+          sessionId: built.sessionRecord.id,
+          task: intent.task,
+          artifactRefs: built.artifacts.map(toArtifactRef),
+          outputArtifactRefs: artifactRefs,
+          planId: completedPlan.id,
+        });
+      }
 
       await emitEvent(normalized, events, createRunEvent("validation.complete", {
         runId,
@@ -1269,8 +1273,10 @@ function resolveReceiptModelClass(
 
 /**
  * Phase 9 — issue a signed receipt at a terminal branch when a signer is
- * configured. Must be called BEFORE the branch's terminal run event so the
- * events it emits land inside the run.
+ * configured. Must be called BEFORE the branch's terminal run event, so the
+ * events it emits land inside the run, and BEFORE any durable side effect
+ * such as the session append, so a "throw" rejection leaves no record of a
+ * run the caller was told did not complete.
  *
  * Failure policy (issue #21 F5, `LatticeConfig.receipts.onSignerError`):
  *   "flag"  — emit a `step.transition` event with `receiptError` and
