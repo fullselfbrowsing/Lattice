@@ -722,6 +722,8 @@ describe("createReceipt — timestamps must carry an explicit UTC offset (review
     ["non-ISO issuedAt", { issuedAt: "Jan 1 2026" }],
     ["offset-less expiresAt", { expiresAt: "2999-01-01T00:00:00" }],
     ["date-only expiresAt", { expiresAt: "2999-01-01" }],
+    ["impossible expiresAt that Date.parse would roll into March", { expiresAt: "2999-02-31T00:00:00Z" }],
+    ["issuedAt at hour 24", { issuedAt: "2026-10-18T24:00:00Z" }],
   ])("refuses to issue a receipt with an %s (caller error, not a verdict)", async (_label, overrides) => {
     const { signer } = await makeSigner();
     await expect(createReceipt(minimalInput(overrides), signer)).rejects.toThrow(TypeError);

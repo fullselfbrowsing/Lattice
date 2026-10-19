@@ -982,6 +982,24 @@ describe("verify.ts — VerifyOptions expiry (F2)", () => {
       }
     });
 
+    it("rejects an impossible calendar date instead of rolling it forward (review follow-up round 6)", async () => {
+      // Date.parse turns 2026-02-31 into 2026-03-03, so a lenient verifier
+      // would still accept this receipt on March 1. Ours fails closed.
+      const { signer, publicKeyJwk } = await makeSigner("tz");
+      const env = await signBody(
+        bodyForVersion("lattice-receipt/v1.4", "tz", { expiresAt: "2026-02-31T00:00:00Z" }),
+        signer,
+      );
+      const keySet = createMemoryKeySet([entryWith("tz", publicKeyJwk, "active")]);
+      const result = await verifyReceipt(env, keySet, { now: "2026-03-01T00:00:00Z" });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe("receipt-expired");
+        expect(result.error.message).toContain("calendar-valid");
+      }
+      await expect(verifyReceipt(env, keySet, { now: "2026-10-18T24:00:00Z" })).rejects.toThrow(TypeError);
+    });
+
     it("accepts a numeric offset and compares it as an instant", async () => {
       const { signer, publicKeyJwk } = await makeSigner("tz");
       // 2026-01-01T02:00:00+05:30 is 2025-12-31T20:30:00Z.
