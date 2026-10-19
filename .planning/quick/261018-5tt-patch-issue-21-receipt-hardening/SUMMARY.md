@@ -62,3 +62,15 @@ Runtime suite after the follow-up: 86 files, 1227 tests. Paper counts regenerate
 * **Shape-mimicking bypass (P1).** `redactObservedShape` passed through any object that looked already redacted, including its numeric `length`, so a raw model value such as `{ valueType: "number", length: 4111111111111111 }` was signed intact. The generic signed shape is now `{ valueType }` only, a closed vocabulary with no free values, and the no-pii branch derives `length` from the re-masked string instead of trusting input.
 * **ASCII-only mask (P2).** `maskPiiSubstring` now masks letters, digits, and combining marks in any script (`\p{L}`, `\p{N}`, `\p{M}`), so custom detectors returning non-ASCII matches are masked; ASCII masks are unchanged.
 * Tests cover the exact reproductions at the redaction and signed-receipt levels. Runtime suite: 86 files, 1243 tests. Paper counts regenerated (1,420 across 104 files) and PDF rebuilt.
+
+## Review follow-up round 3 (edge cases)
+
+A third review pass posted five low-severity findings; all were confirmed and fixed on the same branch.
+
+* **Locale-sensitive route tiebreak.** `compareCandidates` used `localeCompare`, so `gpt-4I` and `gpt-4i` swapped order between English and Turkish locales and canonically equivalent ids compared equal (falling back to registration order). Identifiers are now compared by UTF-16 code unit. Tests cover a precomposed/decomposed pair and a case-only pair in both registration orders.
+* **Non-JSON output reported as a signer failure.** `hashOutputForReceipt` let `JSON.stringify` throw on BigInt or circular values, which `ai.run` reported as `signer-failed` and `runAgentCrew` turned into a rejected crew. The helper now returns `null` for anything without a JSON form, as its JSDoc already promised.
+* **Second redaction changed `length` for non-BMP text.** The first pass counted UTF-16 units of the match while the re-redaction pass counted units of the mask, and a supplementary-plane letter masks from two units to one. `length` is now the code-point count of the mask in both branches, so redaction is idempotent for every input.
+* **Glued `+1` phone numbers.** `+1415-555-1234` did not match because the area code still required a word boundary after a consumed prefix. The regex now has three explicit entry paths; a bare `1` prefix still needs a separator and E.164 stays out of scope.
+* **`noPII` JSDoc.** Now says `path` is the declared path and the concrete location is `observed.foundAt` on the runtime error.
+
+Changeset, paper routing sentence, and paper test counts updated; PDF rebuilt.
