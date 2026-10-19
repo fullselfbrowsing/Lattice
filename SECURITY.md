@@ -90,7 +90,7 @@ The tripwire kernel returns the raw matched value in `result.error.evidence.obse
 
 ### Receipt Issuance Failures
 
-When a configured signer fails, `ai.run` does not silently return an unsigned run. By default (`receipts.onSignerError: "flag"`) the result carries `receiptError: { kind: "signer-failed", message }` and a `step.transition` event with `receiptError` and `mintError` is emitted. With `"throw"`, `ai.run` emits `run.failed` and rejects with `ReceiptSigningError`.
+When a configured signer fails, `ai.run` does not silently return an unsigned run. By default (`receipts.onSignerError: "flag"`) the result carries `receiptError: { kind: "signer-failed", message }` and a `step.transition` event with `receiptError` and `mintError` is emitted. With `"throw"`, `ai.run` emits `run.failed` and rejects with `ReceiptSigningError`. The receipt is minted before the session turn is appended, so a rejected run records nothing in a configured session store and a retry on the same session does not see it as prior context.
 
 ## Supply Chain
 

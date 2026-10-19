@@ -74,3 +74,9 @@ A third review pass posted five low-severity findings; all were confirmed and fi
 * **`noPII` JSDoc.** Now says `path` is the declared path and the concrete location is `observed.foundAt` on the runtime error.
 
 Changeset, paper routing sentence, and paper test counts updated; PDF rebuilt.
+
+## Review follow-up round 4 (throw mode and session turns)
+
+* **Signer throw recorded a completed session turn.** On the success path the session turn was appended before the receipt was minted, so with `receipts.onSignerError: "throw"` and a session store configured, a signer failure rejected `ai.run` after the turn was already stored; a retry on the same session then continued a run the caller was told did not complete. The mint now runs before the session append (a pure reorder; neither step reads the other's output). Tests pin both modes: throw mode leaves the session with zero turns, flag mode appends one turn and returns `receiptError`.
+
+Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
