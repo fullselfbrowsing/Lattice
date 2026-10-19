@@ -87,3 +87,9 @@ Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
 * **Shared references could hide PII.** The no-pii walk marked an object scanned before its children were visited, so an object first reached at depth 31 (children cut at 32) was skipped when a shallower path reached it later. The visited set is now a map from object to the shallowest depth scanned; an object met strictly shallower is rescanned, bounded to at most 32 rescans per object. Tests cover the exact reproduction, a clean variant, and a 25-level diamond graph that a path-stack guard would walk 2^25 times.
 
 Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
+
+## Review follow-up round 6 (impossible dates)
+
+* **`Date.parse` rolled impossible dates forward.** The round-5 parser checked the RFC 3339 shape and then delegated to `Date.parse`, which turns `2026-02-31T00:00:00Z` into March 3, rolls a 31st in a 30-day month and a non-leap February 29 into the next month, and reads hour 24 as the next midnight, so an expiry written as February 31 stayed valid into March. `receipts/timestamp.ts` no longer calls `Date.parse`: it validates every field against the calendar (leap years included), bounds hours, minutes, seconds, and the offset, and computes the instant from the fields via `setUTCFullYear` so four-digit years below 100 are not shifted either. Tests cover each rollover case, leap-year edges, a hand-signed February 31 receipt that a lenient verifier would accept on March 1, and `createReceipt` refusing such timestamps.
+
+Changeset and SECURITY.md updated; paper counts refreshed and PDF rebuilt.
