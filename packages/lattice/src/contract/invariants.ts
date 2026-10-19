@@ -131,8 +131,10 @@ export const inv = {
    * caller-supplied) detectors; arrays and plain objects are walked
    * recursively in deterministic order (issue #21 F8), so a wildcard path
    * such as `items[*].note` or a path to a whole object is covered. Numbers,
-   * booleans, and null pass. The reported evidence `path` is the concrete
-   * sub-path of the offending string.
+   * booleans, and null pass. The evidence `path` is always this declared
+   * path; the concrete sub-path of the offending string is reported as
+   * `observed.foundAt` on the runtime error only, because it can contain
+   * model-produced object keys and must not enter the signed receipt.
    */
   noPII(path: string, options?: InvariantOptions): NoPiiInvariant {
     return Object.freeze({

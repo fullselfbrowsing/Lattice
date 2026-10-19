@@ -38,9 +38,17 @@ export type RedactedObservedValueType =
 /** Signed shape of `tripwireEvidence.observed` when kind is "no-pii". */
 export interface RedactedNoPiiObserved {
   readonly detector: string;
-  /** UTF-16 length of the matched substring. */
+  /**
+   * Number of Unicode code points in the matched substring, which is also
+   * the number of code points in `mask`. Counted on the mask rather than the
+   * raw match so first-pass and re-redaction agree for supplementary-plane
+   * characters (one code point, two UTF-16 units).
+   */
   readonly length: number;
-  /** Matched substring with every ASCII letter and digit replaced by "*". */
+  /**
+   * Matched substring with every letter, digit, and combining mark in any
+   * script replaced by "*"; separators, symbols, and whitespace are kept.
+   */
   readonly mask: string;
 }
 
@@ -78,6 +86,19 @@ export function maskPiiSubstring(value: string): string {
   return value.replace(/[\p{L}\p{N}\p{M}]/gu, "*");
 }
 
+/**
+ * Code-point count of a string. `String#length` counts UTF-16 units, so a
+ * supplementary-plane letter would count as two before masking and one after
+ * (it masks to a single "*"), making redaction non-idempotent. Masking maps
+ * each code point to exactly one code point, so this count is the same for a
+ * match and for its mask.
+ */
+function codePointLength(value: string): number {
+  let count = 0;
+  for (const _ of value) count += 1;
+  return count;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -93,12 +114,15 @@ function redactNoPiiObserved(observed: unknown): RedactedNoPiiObserved {
   // configuration, never model output.
   if (!("substring" in record) && typeof record.mask === "string") {
     const mask = maskPiiSubstring(record.mask);
-    return { detector, length: mask.length, mask };
+    return { detector, length: codePointLength(mask), mask };
   }
   // Normal path: the kernel emitted { detector, substring }. A malformed
-  // observed (no string substring) collapses to an empty, safe shape.
+  // observed (no string substring) collapses to an empty, safe shape. The
+  // length is counted on the mask, in code points, so it equals what the
+  // already-redacted branch computes on a second pass.
   const substring = typeof record.substring === "string" ? record.substring : "";
-  return { detector, length: substring.length, mask: maskPiiSubstring(substring) };
+  const mask = maskPiiSubstring(substring);
+  return { detector, length: codePointLength(mask), mask };
 }
 
 /**

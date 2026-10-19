@@ -305,10 +305,16 @@ function scoreCapability(
 
 /**
  * Total order over candidates: accepted first, then ascending score, then
- * canonical provider and model identifiers. The identifier tiebreak is what
- * makes the decision independent of the order providers were registered in,
- * so the same catalog contents always yield the same route and fallback
- * chain regardless of permutation.
+ * provider and model identifiers compared by UTF-16 code unit. The identifier
+ * tiebreak is what makes the decision independent of the order providers were
+ * registered in, so the same catalog contents always yield the same route and
+ * fallback chain regardless of permutation.
+ *
+ * The comparison is deliberately not `localeCompare`: that orders by the
+ * process locale (so `gpt-4I` and `gpt-4i` swap between English and Turkish)
+ * and treats canonically equivalent strings as equal, which would hand the
+ * decision back to registration order. Code-unit order is the same on every
+ * machine and is a strict total order over distinct identifiers.
  */
 function compareCandidates(left: RouteCandidate, right: RouteCandidate): number {
   if (left.accepted !== right.accepted) {
@@ -319,9 +325,14 @@ function compareCandidates(left: RouteCandidate, right: RouteCandidate): number 
     return left.score - right.score;
   }
 
-  const provider = left.providerId.localeCompare(right.providerId);
+  const provider = compareIdentifiers(left.providerId, right.providerId);
 
-  return provider === 0 ? left.modelId.localeCompare(right.modelId) : provider;
+  return provider === 0 ? compareIdentifiers(left.modelId, right.modelId) : provider;
+}
+
+function compareIdentifiers(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
 }
 
 function requiredInputModalities(

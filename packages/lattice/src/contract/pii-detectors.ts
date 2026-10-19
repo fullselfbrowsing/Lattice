@@ -16,7 +16,11 @@
  *                  separators, Luhn-validated
  *   - us-phone     `ddd-ddd-dddd`, `ddd.ddd.dddd`, `ddd ddd dddd`,
  *                  `(ddd) ddd-dddd`, each with an optional `+1` or `1`
- *                  trunk prefix. Unseparated 10-digit runs are out of scope.
+ *                  trunk prefix. `+1` may be glued to the area code
+ *                  (`+1415-555-1234`); a bare `1` prefix needs a separator so
+ *                  it is not confused with a longer number. Unseparated
+ *                  10-digit and 11-digit runs (E.164 `+14155551234`) are out
+ *                  of scope.
  * Known false positive: any `ddd-ddd-dddd` SKU or part number is flagged by
  * us-phone, and Luhn-valid reference numbers are flagged by credit-card.
  * Names, postal addresses, IP addresses, dates of birth, and non-US formats
@@ -117,12 +121,17 @@ const creditCardDetector: PiiDetector = {
 const phoneDetector: PiiDetector = {
   name: "us-phone",
   detect(input: string): PiiDetectorResult {
-    // Optional `+1` / `1` trunk prefix, then either a parenthesized area
-    // code or a bare one followed by a separator, then the 3-4 tail with
-    // the same separator class. Separators may be dash, dot, or space
-    // (issue #21 F8); an unseparated 10-digit run still does not match.
+    // Three ways into the area code, then the 3-4 tail with a separator.
+    //   1. A `+1` or `1` trunk prefix followed by the area code. After a
+    //      consumed prefix the area code needs no word boundary, so
+    //      `+1415-555-1234` matches (review finding on PR #22); `1` without
+    //      `+` still requires its own separator (`\b1[ .-]`).
+    //   2. A parenthesized area code with no prefix.
+    //   3. A bare area code at a word boundary followed by a separator.
+    // Separators may be dash, dot, or space (issue #21 F8); unseparated
+    // 10- and 11-digit runs still do not match.
     const substring = execFirst(
-      /(?:\+1[ .-]?|\b1[ .-])?(?:\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/,
+      /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/,
       input,
     );
     return substring !== undefined ? { matched: true, substring } : { matched: false };

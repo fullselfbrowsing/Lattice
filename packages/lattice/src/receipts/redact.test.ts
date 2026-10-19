@@ -373,10 +373,44 @@ describe("redactReceiptBody — shape mimicry and non-ASCII matches (review foll
     expect(json).not.toContain("７７３１");
   });
 
+  it("counts length in code points so supplementary-plane matches redact to the same bytes twice (review follow-up round 3)", () => {
+    // U+1D504 (mathematical fraktur A) is one letter but two UTF-16 units.
+    // Masking it to one "*" would make String#length disagree between the
+    // first pass (over the match) and a second pass (over the mask).
+    const substring = "\u{1D504}bc";
+    expect(substring.length).toBe(4);
+    const once = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring }),
+      }),
+    ).body;
+    expect(once.tripwireEvidence?.observed).toEqual({ detector: "name", length: 3, mask: "***" });
+    const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+    expect(twice).toEqual(once);
+    expect(JSON.stringify(once)).not.toContain(substring);
+  });
+
+  it("keeps a non-letter supplementary-plane character in the mask without changing length across passes", () => {
+    // An emoji is not \\p{L}, \\p{N}, or \\p{M}, so it survives masking as one
+    // code point (two UTF-16 units) in both passes.
+    const substring = "ok\u{1F600}";
+    const once = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring }),
+      }),
+    ).body;
+    expect(once.tripwireEvidence?.observed).toEqual({ detector: "name", length: 3, mask: "**\u{1F600}" });
+    const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+    expect(twice).toEqual(once);
+  });
+
   it("remains idempotent for the mimic and non-ASCII cases", () => {
     for (const tripwireEvidence of [
       evidence("field-from-table", { valueType: "number", length: 42 }),
       evidence("no-pii", { detector: "name", substring: "山田太郎" }),
+      evidence("no-pii", { detector: "name", substring: "\u{1D504}\u{1D505} e\u0301" }),
     ]) {
       const once = redactReceiptBody(
         makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence }),

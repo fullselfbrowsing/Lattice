@@ -172,6 +172,9 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
     ["+1 with dashes", "Call +1-415-555-1234 now", "+1-415-555-1234"],
     ["1- trunk prefix", "Call 1-415-555-1234 now", "1-415-555-1234"],
     ["+1 parenthesized", "Call +1 (415) 555-1234 now", "+1 (415) 555-1234"],
+    ["+1 glued to the area code", "Call +1415-555-1234 now", "+1415-555-1234"],
+    ["+1 glued, dotted", "Call +1415.555.1234 now", "+1415.555.1234"],
+    ["+1 glued to parentheses", "Call +1(415)555-1234 now", "+1(415)555-1234"],
   ])("matches the %s form", (_label, input, expected) => {
     const result = detector.detect(input);
     expect(result.matched).toBe(true);
@@ -181,6 +184,11 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
   it("still does not match an unseparated 10-digit run or an 11-digit run", () => {
     expect(detector.detect("4155551234").matched).toBe(false);
     expect(detector.detect("14155551234").matched).toBe(false);
+    // E.164 is unseparated and stays out of scope; a bare `1` glued to the
+    // area code needs its own separator so it is not confused with a longer
+    // number.
+    expect(detector.detect("+14155551234").matched).toBe(false);
+    expect(detector.detect("1415-555-1234").matched).toBe(false);
   });
 
   it("documented false positive: a ddd-ddd-dddd SKU is flagged", () => {

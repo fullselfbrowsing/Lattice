@@ -248,6 +248,41 @@ describe("catalog order independence (issue #21 F7)", () => {
     expect(reversed.fallbackChain.map((f) => f.modelId)).toEqual(["solo:zulu"]);
   });
 
+  it("canonically equivalent provider ids still order deterministically (review follow-up round 3)", () => {
+    // U+00E9 (precomposed) and U+0065 U+0301 (decomposed) are canonically
+    // equivalent: localeCompare returns 0 for them, which would hand the
+    // decision back to registration order. Code-unit order ranks "cafe\u0301"
+    // first because 0x65 < 0xE9.
+    const precomposed = "caf\u00e9";
+    const decomposed = "cafe\u0301";
+    const caps = [precomposed, decomposed].map((id) => ({
+      ...defaultCapabilityForProvider(id),
+      modelId: `${id}:m`,
+    }));
+    const forward = decide(caps);
+    const reversed = decide([...caps].reverse());
+    expect(forward.selected?.providerId).toBe(decomposed);
+    expect(reversed.selected?.providerId).toBe(decomposed);
+    expect(forward.fallbackChain.map((f) => f.providerId)).toEqual([precomposed]);
+    expect(reversed.fallbackChain.map((f) => f.providerId)).toEqual([precomposed]);
+  });
+
+  it("ids differing only in letter case order by code unit, not by the process locale (review follow-up round 3)", () => {
+    // "gpt-4I" sorts after "gpt-4i" under English collation and before it under
+    // Turkish. Code-unit order always puts "I" (0x49) before "i" (0x69).
+    const base = defaultCapabilityForProvider("solo");
+    const upper: ModelCapability = { ...base, modelId: "gpt-4I" };
+    const lower: ModelCapability = { ...base, modelId: "gpt-4i" };
+    for (const order of [[upper, lower], [lower, upper]]) {
+      const decision = routeDeterministically(
+        createCapabilityCatalog([{ id: "solo", kind: "provider-adapter", capabilities: order }]),
+        { task: "t", artifacts: [], outputs: { text: "text" } },
+      );
+      expect(decision.selected?.modelId).toBe("gpt-4I");
+      expect(decision.fallbackChain.map((f) => f.modelId)).toEqual(["gpt-4i"]);
+    }
+  });
+
   it("a cheaper candidate still wins regardless of where it is registered", () => {
     const cheap: ModelCapability = {
       ...defaultCapabilityForProvider("zz-cheap"),

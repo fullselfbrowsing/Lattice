@@ -30,6 +30,16 @@ describe("hashOutputForReceipt", () => {
     expect(await hashOutputForReceipt(Symbol("s"))).toBeNull();
   });
 
+  it("returns null instead of throwing for values JSON.stringify rejects (review follow-up round 3)", async () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const throwingToJson = { toJSON: () => { throw new Error("no json for you"); } };
+    await expect(hashOutputForReceipt({ n: 10n })).resolves.toBeNull();
+    await expect(hashOutputForReceipt(circular)).resolves.toBeNull();
+    await expect(hashOutputForReceipt(throwingToJson)).resolves.toBeNull();
+    await expect(hashOutputForReceipt(10n)).resolves.toBeNull();
+  });
+
   it("is deterministic", async () => {
     const a = await hashOutputForReceipt({ answer: "x" });
     const b = await hashOutputForReceipt({ answer: "x" });
