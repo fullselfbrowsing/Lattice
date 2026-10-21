@@ -4,7 +4,9 @@
 import { L, stats, writeCSV, writeJSON, makeKeys } from "./lib.mjs";
 const k = await makeKeys();
 const now = () => Number(process.hrtime.bigint()) / 1e6;
-const base = (i) => ({ runId: `crew:child-${i}`, model: { requested: "gpt-4o", observed: null }, route: { providerId: "openai", capabilityId: "gpt-4o", attemptNumber: 1 },
+// One run id for the whole chain. verifyChain rejects a mixed run id
+// (run-id-mismatch); a real crew shares the parent's run id.
+const base = (i) => ({ runId: "crew:chain", model: { requested: "gpt-4o", observed: null }, route: { providerId: "openai", capabilityId: "gpt-4o", attemptNumber: 1 },
   usage: { promptTokens: 10, completionTokens: 5, costUsd: 0.001 }, contractVerdict: "success", contractHash: null, inputHashes: [String(i).padStart(64, "0")], outputHash: "b".repeat(64) });
 export async function buildChain(D, signer = k.signer) {
   const chain = []; let parent;
