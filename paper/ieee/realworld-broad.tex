@@ -6,7 +6,7 @@
 The record-system matrix in Table~\ref{tab:rw-matrix} is unchanged. This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine.
 
 Lattice's OpenAI-compatible adapter called \path{https://openrouter.ai/api/v1}. The catalog check found 8 of the requested \texttt{:free} ids, and the listed prompt and completion prices were 0. Completed model rows: 8. Upstream HTTP 429 responses were retried with backoff, and that wait was subtracted from wall time. A probe with \texttt{max\_tokens} 8 returned empty content because reasoning tokens filled the cap. The measured arms use the caps recorded in \texttt{openrouter.json}. Temperature is injected by the fetch wrapper. Table~\ref{tab:rw-models} uses the provider string returned on the chat response. A drift cell is distinct successful answers, successful calls, and attempts. Replay uses only calls that returned. The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned. Pacing sleeps and HTTP 429 backoff are subtracted before the outside-HTTP share is computed.
- Across hosted models that returned a signed short prompt, the median time outside the provider HTTP call was 113--1675~ms. The same absolute gap is a small share of a slow local generation and a large share of a fast hosted response.
+ Across hosted models that returned a signed short prompt, the median time outside the provider HTTP call was 113--1675~ms. The local Ollama median on the same subtraction is 2.4~ms. The hosted share is larger in absolute time as well as in percent.
 
 \begin{table*}[t]
 \centering

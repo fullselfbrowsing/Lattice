@@ -487,9 +487,15 @@ def write_fragment() -> None:
                 continue
             gaps.append(median([max(0.0, item["signedMs"] - item["signedHttpMs"]) for item in signed]))
         if gaps:
+            local_gaps = sorted(
+                max(0.0, item["signedMs"] - item["signedHttpMs"])
+                for item in LIVE["overhead"]
+                if item.get("signedOk", True)
+            )
+            local_med = local_gaps[len(local_gaps) // 2]
             lines.append(
                 f" Across hosted models that returned a signed short prompt, the median time outside the provider HTTP call was {min(gaps):.0f}--{max(gaps):.0f}~ms. "
-                "The same absolute gap is a small share of a slow local generation and a large share of a fast hosted response."
+                f"The local Ollama median on the same subtraction is {local_med:.1f}~ms. The hosted share is larger in absolute time as well as in percent."
             )
         lines.append("")
         lines += table(
