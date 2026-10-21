@@ -242,7 +242,7 @@ DP4 Redact, then sign; verify, then load & Canonicalization is called only on th
 
 \subsection{Evaluation design}
 
-We conducted an artificial, summative evaluation \citep{venable2016} of the instantiation against DR1--DR5. The harness is published with the artifact (\code{eval/run-all.sh}). All provider calls were served by in-process fakes that return provider-shaped responses, so no network, credentials, or paid services were involved. Synthetic data were generated with fixed random seeds. Hardware, the Node version, and the git commit are in Appendix~\ref{app:repro} and in \code{eval/results/env.json}, not in this narrative, because they are properties of the measurement machine. Table~\ref{tab:eval-map} maps requirements to experiments. Tables in the appendix are generated from the JSON the harness writes. The prose below quotes those generated values through macros, so a number in the text is the number in the file.
+We conducted an artificial, summative evaluation \citep{venable2016} of the instantiation against DR1--DR5. The harness is published with the artifact (\code{eval/run-all.sh}). In that artificial evaluation, provider calls were served by in-process fakes that return provider-shaped responses, so no network, credentials, or paid services were involved. Section~\ref{sec:realworld} is separate: it records a local open-weight model and the other record systems that could be executed on the same machine. Synthetic data were generated with fixed random seeds. Hardware, the Node version, and the git commit are in Appendix~\ref{app:repro} and in \code{eval/results/env.json}, not in this narrative, because they are properties of the measurement machine. Table~\ref{tab:eval-map} maps requirements to experiments. Tables in the appendix are generated from the JSON the harness writes. The prose below quotes those generated values through macros, so a number in the text is the number in the file.
 
 \begin{table}[t]
 \centering
@@ -308,6 +308,8 @@ Table~\ref{tab:overhead} and Figure~\ref{fig:overhead} report latency over \Over
 \caption{Build and verification time of linked receipt chains by depth}
 \label{fig:chain}
 \end{figure}
+
+\input{realworld.tex}
 
 \subsection{Planned naturalistic evaluation with developers and auditors}\label{sec:eval-study}
 

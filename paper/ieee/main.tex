@@ -746,6 +746,7 @@ reproduces every replay, all against a mocked provider so that no model behavior
 the measurement. The second is assurance by construction: the guarantees are encoded as
 invariants and property tests that fail the build when a guarantee weakens. We do not
 measure model output quality, which depends on providers outside our trust boundary.
+A later subsection records a local open-weight model; those runs are not part of the mocked table.
 
 \subsection{Measured cost and tamper resistance}
 
@@ -848,6 +849,8 @@ A change that weakens one of these checks fails the suite. The checks keep the
 guarantees from drifting. They do not replace the measured results.
 
 % --- Discussion -----------------------------------------------------------
+\input{realworld.tex}
+
 \section{Discussion}
 
 Signed capability receipts change what is possible after a run. An operator can hand a

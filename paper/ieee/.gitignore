@@ -4,6 +4,7 @@
 *.out
 *.pdf
 !main.pdf
+!rw-*.pdf
 *.bbl
 *.blg
 *.fls
