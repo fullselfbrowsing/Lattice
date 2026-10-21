@@ -1,42 +1,59 @@
 # Changelog
 
+## 1.6.0
+
+### Minor Changes
+
+- a636350: Harden capability receipts and fix the findings from issue #21.
+
+  - Signed `tripwireEvidence.observed` is now redacted for every invariant kind before signing. `no-pii` carries `{ detector, length, mask }` (letters, digits, and combining marks in any script masked, separators kept); `must-cite`, `field-from-table`, and `matches` carry `{ valueType }` and nothing else, so no value from the output can mimic redacted evidence; the message is rebuilt for every kind from the invariant kind, the declared path, and the detector name, because the kernel's message can embed model-produced object keys or schema issue text. The signed `path` is always the declared path; for `no-pii` the concrete location lives in `observed.foundAt` on the runtime error only. The manifest reasons are `no-pii-detector-mask-only`, `tripwire-observed-value-elided`, and `tripwire-message-templated`, and each entry is written at the moment of the rewrite. `result.error.evidence` from `ai.run` is unchanged apart from the added `foundAt`. Breaking for consumers that read `observed.substring` from a signed body: switch to `mask`.
+  - New receipt schema `lattice-receipt/v1.4` with optional `audience`, `nonce`, and `expiresAt`. `createReceipt` accepts them, `ai.run` accepts `intent.receipt: { audience?, nonce?, ttlMs? }`, and `RECEIPT_VERSIONS` exports the ordered version list.
+  - `verifyReceipt(envelope, keySet, options?)` adds `minVersion`, `expectedAudience`, `expectedNonce`, `now`, and `maxAgeMs`, with the new error kinds `audience-mismatch`, `nonce-mismatch`, and `receipt-expired`. Binding checks run after signature verification. `expiresAt`, `issuedAt` (under `maxAgeMs`), and a string `now` must be calendar-valid RFC 3339 instants with an explicit `Z` or numeric offset, parsed field by field rather than by `Date.parse`, so a verdict never depends on the verifier's local timezone and an impossible date such as February 31 is rejected instead of rolled into March; `createReceipt` throws on an `issuedAt` or `expiresAt` that fails the same check. A receipt carrying `expiresAt` is rejected after that instant by every verifier, including replay and eval, so do not set `ttlMs` on receipts you intend to replay later.
+  - New `verifyChain(envelopes, keySet, options?)` on the root and `audit` entrypoints verifies a `parentReceiptCid` tree: every link, unique CIDs, one `runId`, exactly one root, parent linkage, and optional `expectedRunId`, `expectedCount`, and `expectedRootCid`. Dropped leaf receipts are only detectable with `expectedCount` or an external anchor; `expectedRootCid` detects a replaced root.
+  - `LatticeConfig.receipts.onSignerError` selects what `ai.run` does when a configured signer fails. `"flag"` (default) returns the run with `receiptError: { kind: "signer-failed", message }` and emits a `step.transition` event; `"throw"` emits `run.failed` and rejects with `ReceiptSigningError`. Receipts are minted before the session turn is appended and before each terminal run event, so a `"throw"` rejection leaves no session state behind. The crew dispatcher records child receipt mint failures on the tracer instead of swallowing them.
+  - Crew agent completion receipts now carry `outputHash` over the agent's output, computed by the shared `hashOutputForReceipt` helper that `ai.run`, replay, and eval all agree on. An output with no JSON form (a BigInt, a circular structure) hashes to `null` instead of surfacing as a signer failure.
+  - Routing no longer adds the catalog position to a candidate's score. Ties resolve on provider and model identifier compared by UTF-16 code unit (not `localeCompare`, whose order depends on the process locale), so the same catalog contents produce the same route and fallback chain in any registration order on any machine. Behavior change for candidates that previously tied and were ordered by registration.
+  - `noPII` scans nested objects, arrays, and `[*]` wildcard results deterministically (array order, sorted keys, 32-level cap, and a depth-keyed visited map so a shared reference first met near the cap is rescanned when reached through a shallower path) and reports the concrete sub-path of the offending string as `observed.foundAt` on the runtime error. `us-phone` accepts dotted, spaced, and `+1` or `1` trunk-prefixed forms, including `+1` glued to the area code (`+1415-555-1234`). `us-ssn` stays dashed-only; the detector module documents in-scope formats and the known SKU false positive.
+  - `inv.mustCite(name, { path?, keys?, caseInsensitive? })` locates nested citation arrays, compares other object keys, and matches case-insensitively. Defaults reproduce the previous behavior and keep `contractHash` stable.
+  - CLI: `lattice verify` gains `--min-version`, `--audience`, `--nonce`, and `--max-age-ms`; new `lattice receipt verify-chain <dir> [--key] [--expect-count] [--run-id] [--root-cid]` prints `OK root=<cid> links=<n>` or `FAIL kind=<kind> reason=<msg>`. Bad flag values exit 2 with `FAIL kind=invalid-argument`. `receipt diff` projects the new `audience`, `nonce`, and `expiresAt` fields.
+
 ## 1.5.1
 
 ### Patch Changes
 
-* Add `createNobleEd25519Signer` for Node 20 audit signing paths that need stable receipt signing without WebCrypto Ed25519 signing warnings.
-* Export the noble signer from the package root and audit subpath for modular audit consumers.
-* Move `@noble/ed25519` into runtime dependencies because the noble signer is a public package surface.
-* Document the Node 20 signing path for downstream consumers that adopt Lattice audit receipts without the full runtime.
+- Add `createNobleEd25519Signer` for Node 20 audit signing paths that need stable receipt signing without WebCrypto Ed25519 signing warnings.
+- Export the noble signer from the package root and audit subpath for modular audit consumers.
+- Move `@noble/ed25519` into runtime dependencies because the noble signer is a public package surface.
+- Document the Node 20 signing path for downstream consumers that adopt Lattice audit receipts without the full runtime.
 
 ### Validation
 
-* Runtime focused gate passed with 84 test files and 1095 tests.
-* CLI showcase gate passed with 17 test files and 162 tests.
-* Recursive workspace test gate passed across runtime and CLI packages.
+- Runtime focused gate passed with 84 test files and 1095 tests.
+- CLI showcase gate passed with 17 test files and 162 tests.
+- Recursive workspace test gate passed across runtime and CLI packages.
 
 ## 1.5.0
 
 ### Minor Changes
 
-* Add modular package entrypoints for provider, audit, context, artifact, routing, tools, storage, eval, agents, and core adoption paths.
-* Add provider native tool and structured output execution parity for provider only consumers.
-* Add external execution audit helpers that mint signed receipts, sidecars, replay envelopes, raw request hashes, raw response hashes, input hashes, and output hashes for external executors.
-* Add standalone core preparation helpers for external runtimes that need artifact refs, storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider execution.
-* Add tools and MCP artifact helpers that convert tool results into replayable artifacts without importing the agent runtime.
-* Add compatibility dogfood evidence for built package subpaths, Node 20 modular consumers, and GitFly style external consumer flows.
+- Add modular package entrypoints for provider, audit, context, artifact, routing, tools, storage, eval, agents, and core adoption paths.
+- Add provider native tool and structured output execution parity for provider only consumers.
+- Add external execution audit helpers that mint signed receipts, sidecars, replay envelopes, raw request hashes, raw response hashes, input hashes, and output hashes for external executors.
+- Add standalone core preparation helpers for external runtimes that need artifact refs, storage refs, context packs, advisory routes, input hashes, warnings, and execution plans without provider execution.
+- Add tools and MCP artifact helpers that convert tool results into replayable artifacts without importing the agent runtime.
+- Add compatibility dogfood evidence for built package subpaths, Node 20 modular consumers, and GitFly style external consumer flows.
 
 ### Fixes
 
-* Preserve external audit failure replay semantics. Failed verdicts keep sidecar and receipt evidence, while replay envelopes omit outputs and inspect as failed plans and failed attempts.
-* Preserve custom storage reference hashes when standalone core runs prepare externally stored artifacts.
-* Keep eval facade imports behind the public eval subpath boundary.
+- Preserve external audit failure replay semantics. Failed verdicts keep sidecar and receipt evidence, while replay envelopes omit outputs and inspect as failed plans and failed attempts.
+- Preserve custom storage reference hashes when standalone core runs prepare externally stored artifacts.
+- Keep eval facade imports behind the public eval subpath boundary.
 
 ### Validation
 
-* Runtime focused gate passed with 83 test files and 1086 tests.
-* CLI showcase gate passed with 17 test files and 162 tests.
-* Recursive workspace test gate passed across runtime and CLI packages.
+- Runtime focused gate passed with 83 test files and 1086 tests.
+- CLI showcase gate passed with 17 test files and 162 tests.
+- Recursive workspace test gate passed across runtime and CLI packages.
 
 ## 1.4.0
 
