@@ -119,6 +119,7 @@ expectType<Usage>(crewResult.usage);
 expectType<number>(crewResult.totalIterations);
 expectType<ReadonlyArray<ReceiptEnvelope>>(crewResult.receipts);
 expectType<string | undefined>(crewResult.crewRootCid);
+expectType<string>(crewResult.runId);
 expectType<string>(crewResult.perAgent[0]!.id);
 expectType<Usage>(crewResult.perAgent[0]!.usage);
 expectType<number>(crewResult.perAgent[0]!.iterations);

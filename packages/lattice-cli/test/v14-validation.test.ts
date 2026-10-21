@@ -20,6 +20,9 @@ async function runProc(
     const child = spawn(cmd, [...args], {
       cwd: REPO_ROOT,
       env: { ...process.env, NO_COLOR: "1" },
+      // stdin ignored for the same reason as showcase-e2e.test.ts: a nested
+      // pnpm build must never block on an inherited stdin pipe.
+      stdio: ["ignore", "pipe", "pipe"],
       ...opts,
     });
     let stdout = "";

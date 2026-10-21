@@ -31,6 +31,8 @@ export {
 } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
 export { verifyReceipt } from "./receipts/verify.js";
+export { verifyChain } from "./receipts/chain.js";
+export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
 export type {
@@ -41,7 +43,7 @@ export type {
   ExternalExecutionSidecarOutputSpec,
   ExternalExecutionUsage,
 } from "./audit/external-execution.js";
-export { isTerminal } from "./results/errors.js";
+export { ReceiptSigningError, isTerminal } from "./results/errors.js";
 export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
 export {
   createAISdkProvider,
@@ -191,7 +193,7 @@ export type {
 } from "./tools/tool-call-validation.js";
 export { latticeVersion } from "./version.js";
 
-export type { AI, RunIntent } from "./runtime/create-ai.js";
+export type { AI, RunIntent, RunReceiptOptions } from "./runtime/create-ai.js";
 export type { GatewayMetadataValue, GatewayPolicy } from "./policy/policy.js";
 export type {
   ArtifactFingerprint,
@@ -221,6 +223,7 @@ export type {
   InferOutputMap,
   InvariantDeclaration,
   InvariantOptions,
+  MustCiteOptions,
   KeyEntry,
   KeySet,
   KeyState,
@@ -232,6 +235,7 @@ export type {
   MustCiteInvariant,
   NoPiiInvariant,
   NormalizedLatticeConfig,
+  NormalizedReceiptsConfig,
   LangfuseOtlpConfigOptions,
   OtelAttributeValue,
   OtelAttributes,
@@ -305,10 +309,21 @@ export type {
   TripwireViolationError,
   Usage,
   ValidationIssue,
+  ReceiptError,
+  ReceiptSignerErrorMode,
+  ReceiptVersion,
+  ReceiptsConfig,
+  VerifyChainError,
+  VerifyChainErrorKind,
+  VerifyChainFail,
+  VerifyChainOk,
+  VerifyChainOptions,
+  VerifyChainResult,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyOptions,
   VerifyResult,
 } from "./runtime/public-types.js";
 

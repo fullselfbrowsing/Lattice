@@ -499,3 +499,18 @@ function minimalReceiptInput(
   };
   return { ...base, ...overrides };
 }
+
+describe("receipt issuance failure attributes (issue #21 F5)", () => {
+  it("maps receiptError and mintError metadata from the flag-mode step.transition event", () => {
+    expect(sanitizeRunEventAttributes(event("step.transition", {
+      metadata: {
+        stepName: "receipt-issuance",
+        receiptError: "signer-failed",
+        mintError: "signer always throws",
+      },
+    }))).toMatchObject({
+      "lattice.receipt.error": "signer-failed",
+      "lattice.receipt.mint_error.present": true,
+    });
+  });
+});

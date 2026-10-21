@@ -13,6 +13,7 @@ import {
   defineAgent,
   defineTool,
   generateEd25519KeyPairJwk,
+  verifyChain,
   verifyReceipt,
   type CapabilityReceiptBody,
   type ProviderRunRequest,
@@ -152,6 +153,13 @@ describe("runAgentCrew public integration", () => {
     for (const body of result.receipts.map(decodeReceipt).slice(1)) {
       expect(body.parentReceiptCid).toBe(result.crewRootCid);
     }
+    // A real crew's receipt set verifies as one tree with no options.
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({
+      ok: true,
+      rootCid: result.crewRootCid,
+      count: 4,
+      depth: 1,
+    });
   });
 
   it("accepts adapter-validated child tool calls without falling into unknown_tool", async () => {

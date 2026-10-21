@@ -146,6 +146,7 @@ export function sanitizeRunEventAttributes(
   assignString(attributes, "lattice.artifact.source", asString(metadata.source));
   assignString(attributes, "lattice.receipt.id", asString(metadata.receiptId));
   assignBoolean(attributes, "lattice.receipt.mint_error.present", asString(metadata.mintError) !== undefined ? true : undefined);
+  assignString(attributes, "lattice.receipt.error", asString(metadata.receiptError));
   assignString(attributes, "lattice.route.selected_model", asString(metadata.selected));
   assignNumber(attributes, "lattice.route.rejected.count", asNumber(metadata.rejected));
   assignNumber(attributes, "lattice.route.fallback.count", asNumber(metadata.fallbacks));
@@ -434,6 +435,7 @@ function captureSafeMetadata(
     "included",
     "invariantId",
     "mintError",
+    "receiptError",
     "normalizedUsage",
     "omitted",
     "outputNames",

@@ -5,10 +5,31 @@
  * US phone). They are intentionally regex-only — zero new dependencies —
  * per the v1.1 scope locked in 08-CONTEXT.md.
  *
+ * In-scope formats (anything else is NOT detected by default; supply your
+ * own `PiiDetector` list to `evaluateTripwires` for more):
+ *   - email        `local@domain.tld` (one `@`, a dot in the domain part)
+ *   - us-ssn       `ddd-dd-dddd`, dashed only. Undashed 9-digit runs are
+ *                  deliberately out of scope: they collide with order,
+ *                  invoice, and account ids, and unlike card numbers an SSN
+ *                  has no checksum to filter with.
+ *   - credit-card  13 to 19 digits with optional single space or dash
+ *                  separators, Luhn-validated
+ *   - us-phone     `ddd-ddd-dddd`, `ddd.ddd.dddd`, `ddd ddd dddd`,
+ *                  `(ddd) ddd-dddd`, each with an optional `+1` or `1`
+ *                  trunk prefix. `+1` may be glued to the area code
+ *                  (`+1415-555-1234`); a bare `1` prefix needs a separator so
+ *                  it is not confused with a longer number. Unseparated
+ *                  10-digit and 11-digit runs (E.164 `+14155551234`) are out
+ *                  of scope.
+ * Known false positive: any `ddd-ddd-dddd` SKU or part number is flagged by
+ * us-phone, and Luhn-valid reference numbers are flagged by credit-card.
+ * Names, postal addresses, IP addresses, dates of birth, and non-US formats
+ * are not detected.
+ *
  * Each detector returns either `{ matched: true, substring }` carrying
  * ONLY the matched fragment, or `{ matched: false }`. The substring shape
- * is required so the tripwire evaluator can emit redacted evidence
- * (Phase 9 receipts must not leak the full input).
+ * is required so the tripwire evaluator can emit narrowed evidence; the
+ * receipt redaction policy (receipts/redact.ts) masks it before signing.
  *
  * Detector order in `defaultPiiDetectors` is deterministic so the
  * evaluator's first-violation semantics produce stable receipts.
@@ -74,6 +95,8 @@ const ssnDetector: PiiDetector = {
   detect(input: string): PiiDetectorResult {
     // 3-2-4 grouped SSN with word boundaries on both sides to avoid
     // collapsing into longer adjacent digit runs (e.g., phone numbers).
+    // Dashed only, on purpose: see the module header for why undashed
+    // 9-digit runs are not treated as SSNs.
     const substring = execFirst(/\b\d{3}-\d{2}-\d{4}\b/, input);
     return substring !== undefined ? { matched: true, substring } : { matched: false };
   },
@@ -98,9 +121,19 @@ const creditCardDetector: PiiDetector = {
 const phoneDetector: PiiDetector = {
   name: "us-phone",
   detect(input: string): PiiDetectorResult {
-    // Dashed form first, then parenthesized form. Combined alternation so
-    // the regex engine picks whichever fires first in input order.
-    const substring = execFirst(/\b\d{3}-\d{3}-\d{4}\b|\(\d{3}\)\s?\d{3}-\d{4}/, input);
+    // Three ways into the area code, then the 3-4 tail with a separator.
+    //   1. A `+1` or `1` trunk prefix followed by the area code. After a
+    //      consumed prefix the area code needs no word boundary, so
+    //      `+1415-555-1234` matches (review finding on PR #22); `1` without
+    //      `+` still requires its own separator (`\b1[ .-]`).
+    //   2. A parenthesized area code with no prefix.
+    //   3. A bare area code at a word boundary followed by a separator.
+    // Separators may be dash, dot, or space (issue #21 F8); unseparated
+    // 10- and 11-digit runs still do not match.
+    const substring = execFirst(
+      /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/,
+      input,
+    );
     return substring !== undefined ? { matched: true, substring } : { matched: false };
   },
 };

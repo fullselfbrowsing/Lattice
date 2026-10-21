@@ -32,6 +32,7 @@ import type {
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
+import { hashInputArtifacts, hashOutputForReceipt } from "../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
 import type {
@@ -42,9 +43,9 @@ import type {
 } from "../receipts/types.js";
 import { createCapabilityCatalog } from "../routing/catalog.js";
 import { routeDeterministically } from "../routing/router.js";
-import type { RunResult } from "../results/result.js";
+import { ReceiptSigningError } from "../results/errors.js";
+import type { ReceiptError, RunResult } from "../results/result.js";
 import type { SessionRecord, SessionRef } from "../sessions/session.js";
-import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { runTool, type ToolCallResult, type ToolDefinition } from "../tools/tools.js";
 import { createRunEvent, type RunEvent } from "../tracing/tracing.js";
 import {
@@ -82,6 +83,18 @@ export interface RuntimeHooks {
   }) => void | Promise<void>;
 }
 
+/**
+ * Per-run receipt binding (receipt schema v1.4, issue #21 F2). Ignored when
+ * no signer is configured. `ttlMs` sets `expiresAt = issuedAt + ttlMs` on
+ * the signed body; verifiers reject the receipt after that instant, so do
+ * not set it on receipts you intend to replay or audit later.
+ */
+export interface RunReceiptOptions {
+  readonly audience?: string;
+  readonly nonce?: string;
+  readonly ttlMs?: number;
+}
+
 export interface RunIntent<TOutputs extends OutputContractMap> {
   readonly task: string;
   readonly artifacts?: readonly ArtifactInput[];
@@ -93,6 +106,7 @@ export interface RunIntent<TOutputs extends OutputContractMap> {
   readonly tools?: readonly ToolDefinition<any>[];
   readonly toolInputs?: Record<string, unknown>;
   readonly contract?: CapabilityContract;
+  readonly receipt?: RunReceiptOptions;
 }
 
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: 0 };
@@ -267,6 +281,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   if (intent.signal?.aborted === true) {
     throw new DOMException("Run aborted before execution.", "AbortError");
   }
+  assertRunReceiptOptions(intent.receipt);
 
   const runId = createRunId();
   const events: RunEvent[] = [];
@@ -285,8 +300,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         r.code === "contract-privacy-mismatch",
     );
     const isContractFailure = contractReasons.length > 0;
-    const receipt = await maybeIssueReceipt(normalized, {
+    const issuance = await maybeIssueReceipt(normalized, events, {
       runId,
+      planId: plan.id,
+      ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: intent.artifacts ?? [],
       contractVerdict: isContractFailure
@@ -313,7 +330,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
+          ...issuance,
         }
       : {
           ok: false as const,
@@ -325,7 +342,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           usage: { ...ZERO_USAGE },
           plan,
           events,
-          ...(receipt !== undefined ? { receipt } : {}),
+          ...issuance,
         };
     await emitEvent(normalized, events, createRunEvent("run.failed", {
       runId,
@@ -504,8 +521,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           metadata: { error: validation.error.message },
         }));
         if (index === routes.length - 1) {
-          const receipt = await maybeIssueReceipt(normalized, {
+          const issuance = await maybeIssueReceipt(normalized, events, {
             runId,
+            planId: failedPlan.id,
+            ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
@@ -526,7 +545,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
+            ...issuance,
           };
         }
         lastError = new Error(validation.error.message);
@@ -568,22 +587,12 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             ),
             attempts,
           });
-          await emitEvent(
-            normalized,
-            events,
-            createRunEvent("run.failed", {
-              runId,
-              planId: failedPlan.id,
-              providerId: route.providerId,
-              modelId: route.modelId,
-              metadata: {
-                reason: "tripwire-violated",
-                invariantId: tripwireResult.evidence.invariantId,
-              },
-            }),
-          );
-          const receipt = await maybeIssueReceipt(normalized, {
+          // Mint BEFORE the terminal run event: OTel sinks end the run span on
+          // run.failed, and a signer failure may need to emit its own event.
+          const issuance = await maybeIssueReceipt(normalized, events, {
             runId,
+            planId: failedPlan.id,
+            ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
               : {}),
@@ -599,6 +608,20 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             usage: normalizeAdapterUsage(response),
             tripwireEvidence: tripwireResult.evidence,
           });
+          await emitEvent(
+            normalized,
+            events,
+            createRunEvent("run.failed", {
+              runId,
+              planId: failedPlan.id,
+              providerId: route.providerId,
+              modelId: route.modelId,
+              metadata: {
+                reason: "tripwire-violated",
+                invariantId: tripwireResult.evidence.invariantId,
+              },
+            }),
+          );
           // TERMINAL by design — isTerminal(error) === true; fallback chain
           // bypassed via early return before the `for` loop advances.
           return {
@@ -614,7 +637,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             plan: failedPlan,
             events,
             ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-            ...(receipt !== undefined ? { receipt } : {}),
+            ...issuance,
           };
         }
       }
@@ -645,6 +668,34 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         attempts,
       });
 
+      const successValidation = validation as Extract<
+        typeof validation,
+        { ok: true }
+      >;
+      // Mint BEFORE the session append and BEFORE the terminal run event.
+      // In "throw" mode a signer failure rejects the run, so nothing durable
+      // may be recorded first: a session turn written here would let a retry
+      // on the same session continue a run the caller was told did not
+      // complete. OTel sinks also end the run span on run.complete, and a
+      // signer failure may need to emit its own event inside the run.
+      const issuance = await maybeIssueReceipt(normalized, events, {
+        runId,
+        planId: completedPlan.id,
+        ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
+        ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
+        artifacts: built.artifacts,
+        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
+        contractVerdict: "success",
+        model: { requested: route.modelId, observed: observedModelForReceipt(response) },
+        route: {
+          providerId: route.providerId,
+          capabilityId: route.modelId,
+          attemptNumber: attempts.length,
+        },
+        usage: normalizeAdapterUsage(response),
+        outputs: successValidation.outputs,
+      });
+
       if (built.sessionRecord !== undefined && normalized.sessions !== undefined) {
         await normalized.sessions.appendTurn({
           sessionId: built.sessionRecord.id,
@@ -666,26 +717,6 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         planId: completedPlan.id,
       }));
 
-      const successValidation = validation as Extract<
-        typeof validation,
-        { ok: true }
-      >;
-      const receipt = await maybeIssueReceipt(normalized, {
-        runId,
-        ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
-        artifacts: built.artifacts,
-        lineageArtifacts: [...built.artifacts, ...attemptPackaging.packagedArtifacts, ...artifactRefs],
-        contractVerdict: "success",
-        model: { requested: route.modelId, observed: observedModelForReceipt(response) },
-        route: {
-          providerId: route.providerId,
-          capabilityId: route.modelId,
-          attemptNumber: attempts.length,
-        },
-        usage: normalizeAdapterUsage(response),
-        outputs: JSON.stringify(successValidation.outputs),
-      });
-
       return {
         ...validation,
         artifacts: artifactRefs,
@@ -693,9 +724,12 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         plan: completedPlan,
         events,
         ...(response.gateway !== undefined ? { gateway: response.gateway } : {}),
-        ...(receipt !== undefined ? { receipt } : {}),
+        ...issuance,
       };
     } catch (error) {
+      // A signer failure in "throw" mode is a hard stop, never a provider
+      // attempt failure to be retried on the fallback chain (issue #21 F5).
+      if (error instanceof ReceiptSigningError) throw error;
       const completedAt = new Date().toISOString();
       const message =
         error instanceof Error ? error.message : "Provider adapter execution failed.";
@@ -712,8 +746,10 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   }
 
   if (!anyExecutableAdapter) {
-    const receipt = await maybeIssueReceipt(normalized, {
+    const issuance = await maybeIssueReceipt(normalized, events, {
       runId,
+      planId: plan.id,
+      ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: built.artifacts,
       contractVerdict: "execution-failed",
@@ -734,7 +770,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       usage: { ...ZERO_USAGE },
       plan,
       events,
-      ...(receipt !== undefined ? { receipt } : {}),
+      ...issuance,
     };
   }
 
@@ -742,16 +778,11 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     stages: markStage(plan.stages, "execution", "failed"),
     attempts,
   });
-  await emitEvent(normalized, events, createRunEvent("run.failed", {
+  // Mint BEFORE the terminal run event (see the success path for why).
+  const issuance = await maybeIssueReceipt(normalized, events, {
     runId,
     planId: failedPlan.id,
-    metadata: {
-      error: lastError?.message ?? "Provider adapter execution failed.",
-    },
-  }));
-
-  const receipt = await maybeIssueReceipt(normalized, {
-    runId,
+    ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
     artifacts: built.artifacts,
     contractVerdict: "execution-failed",
@@ -763,6 +794,13 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     },
     usage: UNMEASURED_USAGE,
   });
+  await emitEvent(normalized, events, createRunEvent("run.failed", {
+    runId,
+    planId: failedPlan.id,
+    metadata: {
+      error: lastError?.message ?? "Provider adapter execution failed.",
+    },
+  }));
 
   return {
     ok: false,
@@ -775,8 +813,29 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     usage: { ...UNMEASURED_USAGE },
     plan: failedPlan,
     events,
-    ...(receipt !== undefined ? { receipt } : {}),
+    ...issuance,
   };
+}
+
+/**
+ * Validate per-run receipt binding options up front so a bad `ttlMs` or an
+ * empty audience fails synchronously before any provider call, in the same
+ * style as the AbortError check.
+ */
+function assertRunReceiptOptions(options: RunReceiptOptions | undefined): void {
+  if (options === undefined) return;
+  if (
+    options.ttlMs !== undefined &&
+    (!Number.isFinite(options.ttlMs) || options.ttlMs <= 0)
+  ) {
+    throw new TypeError("intent.receipt.ttlMs must be a positive, finite number of milliseconds.");
+  }
+  if (options.audience !== undefined && options.audience.length === 0) {
+    throw new TypeError("intent.receipt.audience must not be empty.");
+  }
+  if (options.nonce !== undefined && options.nonce.length === 0) {
+    throw new TypeError("intent.receipt.nonce must not be empty.");
+  }
 }
 
 async function buildPlan<const TOutputs extends OutputContractMap>(
@@ -1159,24 +1218,6 @@ function observedModelForReceipt(response: ProviderRunResponse): string | null {
 }
 
 /**
- * Phase 9 — hash each artifact's canonical value via SHA-256 and return the
- * hex digests in declaration order. Missing/undefined values produce an
- * empty string so the array length matches `artifacts.length` exactly.
- */
-async function hashInputArtifacts(
-  artifacts: readonly ArtifactInput[],
-): Promise<readonly string[]> {
-  const out: string[] = [];
-  for (const artifact of artifacts) {
-    const fp = await fingerprintArtifactValue(
-      (artifact as { readonly value?: unknown }).value,
-    );
-    out.push(fp?.value ?? "");
-  }
-  return out;
-}
-
-/**
  * Phase 9 — SHA-256 hex of `canonicalize(contract)` for the receipt's
  * contractHash field. Returns null when no contract is attached or when
  * canonicalize cannot serialize the input.
@@ -1198,6 +1239,10 @@ async function sha256HexOfCanonicalContract(
 
 interface MaybeIssueReceiptInput {
   readonly runId: string;
+  /** Plan id attached to any event the issuance path emits. */
+  readonly planId?: string;
+  /** Per-run audience/nonce/ttl binding from `intent.receipt`. */
+  readonly binding?: RunReceiptOptions;
   readonly contract?: CapabilityContract;
   readonly artifacts: readonly ArtifactInput[];
   readonly lineageArtifacts?: readonly (ArtifactInput | ArtifactRef)[];
@@ -1208,6 +1253,12 @@ interface MaybeIssueReceiptInput {
   readonly outputs?: unknown;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
+}
+
+/** Fields `maybeIssueReceipt` contributes to a run result; spread as-is. */
+interface ReceiptIssuanceFields {
+  readonly receipt?: ReceiptEnvelope;
+  readonly receiptError?: ReceiptError;
 }
 
 function resolveReceiptModelClass(
@@ -1222,28 +1273,46 @@ function resolveReceiptModelClass(
 
 /**
  * Phase 9 — issue a signed receipt at a terminal branch when a signer is
- * configured. Signer failures degrade gracefully to `undefined` so a faulty
- * signer never crashes `ai.run`.
+ * configured. Must be called BEFORE the branch's terminal run event, so the
+ * events it emits land inside the run, and BEFORE any durable side effect
+ * such as the session append, so a "throw" rejection leaves no record of a
+ * run the caller was told did not complete.
+ *
+ * Failure policy (issue #21 F5, `LatticeConfig.receipts.onSignerError`):
+ *   "flag"  — emit a `step.transition` event with `receiptError` and
+ *             `mintError`, return `{ receiptError }` so the result shows the
+ *             gap, and let the run complete with its verdict.
+ *   "throw" — emit `run.failed` with `reason: "receipt-signing-failed"` and
+ *             throw `ReceiptSigningError`.
  */
 async function maybeIssueReceipt(
   normalized: NormalizedLatticeConfig,
+  events: RunEvent[],
   input: MaybeIssueReceiptInput,
-): Promise<ReceiptEnvelope | undefined> {
-  if (normalized.signer === undefined) return undefined;
+): Promise<ReceiptIssuanceFields> {
+  if (normalized.signer === undefined) return {};
   try {
     const inputHashes = await hashInputArtifacts(input.artifacts);
     const lineageMerkleRoot = await computeArtifactLineageMerkleRoot(
       input.lineageArtifacts ?? input.artifacts,
     );
-    const outputHash =
-      input.outputs === undefined
-        ? null
-        : ((await fingerprintArtifactValue(input.outputs))?.value ?? null);
+    const outputHash = await hashOutputForReceipt(input.outputs);
     const contractHash = await sha256HexOfCanonicalContract(input.contract);
     const modelClass = resolveReceiptModelClass(input.route, input.model);
-    return await createReceipt(
+    // issuedAt is fixed here so expiresAt = issuedAt + ttlMs exactly.
+    const issuedAt = new Date().toISOString();
+    const binding = input.binding;
+    const expiresAt =
+      binding?.ttlMs !== undefined
+        ? new Date(Date.parse(issuedAt) + binding.ttlMs).toISOString()
+        : undefined;
+    const receipt = await createReceipt(
       {
         runId: input.runId,
+        issuedAt,
+        ...(binding?.audience !== undefined ? { audience: binding.audience } : {}),
+        ...(binding?.nonce !== undefined ? { nonce: binding.nonce } : {}),
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
         model: input.model,
         route: input.route,
         ...(modelClass !== undefined ? { modelClass } : {}),
@@ -1262,9 +1331,27 @@ async function maybeIssueReceipt(
       },
       normalized.signer,
     );
-  } catch {
-    // Receipt emission is best-effort. A signer failure must NOT crash
-    // ai.run — the run result already encodes the verdict.
-    return undefined;
+    return { receipt };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const planId = input.planId !== undefined ? { planId: input.planId } : {};
+    if (normalized.receipts.onSignerError === "throw") {
+      await emitEvent(normalized, events, createRunEvent("run.failed", {
+        runId: input.runId,
+        ...planId,
+        metadata: { reason: "receipt-signing-failed", mintError: message },
+      }));
+      throw new ReceiptSigningError(input.runId, message, { cause: error });
+    }
+    await emitEvent(normalized, events, createRunEvent("step.transition", {
+      runId: input.runId,
+      ...planId,
+      metadata: {
+        stepName: "receipt-issuance",
+        receiptError: "signer-failed",
+        mintError: message,
+      },
+    }));
+    return { receiptError: { kind: "signer-failed", message } };
   }
 }

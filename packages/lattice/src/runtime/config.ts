@@ -9,6 +9,29 @@ import type { SessionStore } from "../sessions/session.js";
 import type { StorageLike } from "../storage/storage.js";
 import type { RunEventSink, TracerLike } from "../tracing/tracing.js";
 
+/**
+ * What `ai.run` does when a configured signer fails to issue a receipt
+ * (hashing, canonicalization, or `signer.sign()` throwing).
+ *
+ *   "flag"  (default) — the run result is returned with `receipt` absent and
+ *           `receiptError: { kind: "signer-failed", message }` set, and a
+ *           `step.transition` run event carrying `receiptError` and
+ *           `mintError` is emitted so sinks and OTel see the gap.
+ *   "throw" — `ai.run` rejects with `ReceiptSigningError` after emitting a
+ *           `run.failed` event. Use when an unsigned run must never be
+ *           treated as a completed run.
+ */
+export type ReceiptSignerErrorMode = "flag" | "throw";
+
+export interface ReceiptsConfig {
+  /**
+   * Applies to `ai.run` only. `runAgent` and `runAgentCrew` do not go
+   * through `normalizeConfig` for their signer and keep their own behavior
+   * (the crew orchestrator throws; the dispatcher records a tracer event).
+   */
+  readonly onSignerError?: ReceiptSignerErrorMode;
+}
+
 export interface LatticeConfig {
   readonly providers?: ProviderRegistryInput;
   readonly storage?: StorageLike | false;
@@ -22,9 +45,15 @@ export interface LatticeConfig {
    * no receipts are issued and `RunResult.receipt` is undefined.
    */
   readonly signer?: ReceiptSigner;
+  /** Receipt issuance policy (issue #21 F5). */
+  readonly receipts?: ReceiptsConfig;
 }
 
 export type NormalizedProviderEntry = ProviderRef | ProviderAdapter;
+
+export interface NormalizedReceiptsConfig {
+  readonly onSignerError: ReceiptSignerErrorMode;
+}
 
 export interface NormalizedLatticeConfig {
   readonly providers: readonly NormalizedProviderEntry[];
@@ -34,6 +63,7 @@ export interface NormalizedLatticeConfig {
   readonly tracing?: TracerLike;
   readonly events: readonly RunEventSink[];
   readonly signer?: ReceiptSigner;
+  readonly receipts: NormalizedReceiptsConfig;
 }
 
 export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeConfig {
@@ -45,10 +75,12 @@ export function normalizeConfig(config: LatticeConfig = {}): NormalizedLatticeCo
     tracing?: TracerLike;
     events: readonly RunEventSink[];
     signer?: ReceiptSigner;
+    receipts: NormalizedReceiptsConfig;
   } = {
     providers: normalizeProviders(config.providers),
     defaults: config.defaults ?? {},
     events: normalizeEventSinks(config.events),
+    receipts: { onSignerError: config.receipts?.onSignerError ?? "flag" },
   };
 
   if (config.storage !== undefined && config.storage !== false) {

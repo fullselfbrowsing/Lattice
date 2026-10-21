@@ -26,6 +26,7 @@ export type {
 export type {
   FieldFromTableInvariant,
   InvariantOptions,
+  MustCiteOptions,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
@@ -124,7 +125,7 @@ export type {
   TripwireViolationError,
   ValidationIssue,
 } from "../results/errors.js";
-export type { RunFailure, RunResult, RunSuccess } from "../results/result.js";
+export type { ReceiptError, RunFailure, RunResult, RunSuccess } from "../results/result.js";
 export type {
   AppendSessionTurnInput,
   CreateSessionOptions,
@@ -153,10 +154,18 @@ export type {
   ReceiptSignature,
   ReceiptSigner,
   ReceiptUsageCanonical,
+  ReceiptVersion,
+  VerifyChainError,
+  VerifyChainErrorKind,
+  VerifyChainFail,
+  VerifyChainOk,
+  VerifyChainOptions,
+  VerifyChainResult,
   VerifyError,
   VerifyErrorKind,
   VerifyFail,
   VerifyOk,
+  VerifyOptions,
   VerifyResult,
 } from "../receipts/types.js";
 export type {
@@ -182,5 +191,8 @@ export type {
 export type {
   LatticeConfig,
   NormalizedLatticeConfig,
+  NormalizedReceiptsConfig,
+  ReceiptSignerErrorMode,
+  ReceiptsConfig,
 } from "./config.js";
-export type { AI, RunIntent } from "./create-ai.js";
+export type { AI, RunIntent, RunReceiptOptions } from "./create-ai.js";

@@ -40,12 +40,20 @@ export interface ReceiptRedaction {
   readonly reason: string;
 }
 
+/**
+ * Receipt schema version literals. Ordinal order lives in
+ * receipts/schema-version.ts (RECEIPT_VERSIONS); verifiers compare by
+ * position there, never by string comparison.
+ */
+export type ReceiptVersion =
+  | "lattice-receipt/v1"
+  | "lattice-receipt/v1.1"
+  | "lattice-receipt/v1.2"
+  | "lattice-receipt/v1.3"
+  | "lattice-receipt/v1.4";
+
 export interface CapabilityReceiptBody {
-  readonly version:
-    | "lattice-receipt/v1"
-    | "lattice-receipt/v1.1"
-    | "lattice-receipt/v1.2"
-    | "lattice-receipt/v1.3";
+  readonly version: ReceiptVersion;
   readonly receiptId: string;
   readonly runId: string;
   readonly issuedAt: string;
@@ -66,6 +74,18 @@ export interface CapabilityReceiptBody {
   // Phase 46 v1.3 provenance root. Commits to descriptor-only artifact
   // lineage graphs as `sha256:<hex>` without embedding artifact payloads.
   readonly lineageMerkleRoot?: string;
+  // v1.4 freshness and audience binding. All optional and additive; absent
+  // keys are omitted from the canonical JSON entirely, so receipts without
+  // them canonicalize exactly as before.
+  /** Intended relying party. Verifiers pass VerifyOptions.expectedAudience. */
+  readonly audience?: string;
+  /**
+   * Caller-supplied single-use value. Verifiers pass VerifyOptions.expectedNonce.
+   * No replay cache ships with the verifier; dedupe on receiptCid() if needed.
+   */
+  readonly nonce?: string;
+  /** ISO 8601 UTC instant after which every verifier rejects the receipt. */
+  readonly expiresAt?: string;
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -74,6 +94,10 @@ export interface CapabilityReceiptBody {
   readonly redactionPolicyId: string;
   readonly redactions: readonly ReceiptRedaction[];
   readonly noRouteReasons?: readonly RouteRejectReason[];
+  // Signed copy of the tripwire evidence. `observed` (and, for `matches`,
+  // `message`) is rewritten by receipts/redact.ts before signing; see that
+  // module for the redacted shapes. The runtime error returned by ai.run
+  // keeps the unredacted evidence.
   readonly tripwireEvidence?: TripwireEvidence;
   // Phase 2 v1.1 step-marker fields. All optional; populated by callers when
   // a step-transition emits a receipt. v1 receipts omit these entirely.
@@ -123,7 +147,10 @@ export type VerifyErrorKind =
   | "signature-invalid"
   | "envelope-malformed"
   | "version-mismatch"
-  | "schema-version-too-low";
+  | "schema-version-too-low"
+  | "audience-mismatch"
+  | "nonce-mismatch"
+  | "receipt-expired";
 
 export interface VerifyError {
   readonly kind: VerifyErrorKind;
@@ -142,3 +169,72 @@ export interface VerifyFail {
 }
 
 export type VerifyResult = VerifyOk | VerifyFail;
+
+/**
+ * Optional verifier policy. Every field is opt-in; `verifyReceipt(env, keySet)`
+ * with no options behaves as before except that a receipt carrying
+ * `expiresAt` is always checked against the clock.
+ *
+ * Invalid option values (unknown `minVersion`, unparseable `now`) are
+ * programmer errors and throw a TypeError. Crafted envelopes never throw.
+ */
+export interface VerifyOptions {
+  /**
+   * Lowest accepted schema version. Compared by ordinal; the CRYPTO-01 floor
+   * (v1.1) still applies even if a lower value is passed.
+   */
+  readonly minVersion?: ReceiptVersion;
+  /** When set, `body.audience` must equal this. An absent audience fails. */
+  readonly expectedAudience?: string;
+  /** When set, `body.nonce` must equal this. An absent nonce fails. */
+  readonly expectedNonce?: string;
+  /** Clock for expiry checks. Defaults to the current time. Pin it in tests. */
+  readonly now?: Date | string;
+  /** Reject when `issuedAt + maxAgeMs` is before `now`. */
+  readonly maxAgeMs?: number;
+}
+
+export type VerifyChainErrorKind =
+  | "link-invalid"
+  | "no-root"
+  | "multiple-roots"
+  | "orphan-link"
+  | "run-id-mismatch"
+  | "duplicate-cid"
+  | "count-mismatch"
+  | "root-mismatch";
+
+export interface VerifyChainError {
+  readonly kind: VerifyChainErrorKind;
+  readonly message: string;
+  /** CID of the offending receipt, when one can be identified. */
+  readonly cid?: string;
+  /** Underlying verifyReceipt failure when kind is "link-invalid". */
+  readonly cause?: VerifyError;
+}
+
+export interface VerifyChainOptions extends VerifyOptions {
+  /** Every receipt in the chain must carry this runId. */
+  readonly expectedRunId?: string;
+  /** Out-of-band commitment to the number of receipts. Detects leaf truncation. */
+  readonly expectedCount?: number;
+  /** Out-of-band commitment to the root receipt's CID. */
+  readonly expectedRootCid?: string;
+}
+
+export interface VerifyChainOk {
+  readonly ok: true;
+  readonly rootCid: string;
+  readonly count: number;
+  /** Edges on the longest root-to-leaf path. A lone root has depth 0. */
+  readonly depth: number;
+  /** CIDs in input order. */
+  readonly cids: readonly string[];
+}
+
+export interface VerifyChainFail {
+  readonly ok: false;
+  readonly error: VerifyChainError;
+}
+
+export type VerifyChainResult = VerifyChainOk | VerifyChainFail;

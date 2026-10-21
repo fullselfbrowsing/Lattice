@@ -50,6 +50,7 @@ describe("lattice CLI bin smoke test", () => {
     );
 
     expect(receiptHelp).toMatch(/diff/);
+    expect(receiptHelp).toMatch(/verify-chain/);
     expect(diagnosticsHelp).toMatch(/lm-studio/);
     expect(lmStudioHelp).toMatch(/--events/);
   });

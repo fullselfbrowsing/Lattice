@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import canonicalize from "canonicalize";
+import { z } from "zod";
 
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
@@ -26,7 +27,9 @@ import {
 import type { ReceiptSigner } from "../receipts/types.js";
 import { verifyReceipt } from "../receipts/verify.js";
 import { defaultCapabilityForProvider } from "../routing/catalog.js";
+import { createMemorySessionStore } from "../sessions/session.js";
 import { fc } from "../test-support/fast-check.js";
+import { ReceiptSigningError } from "../results/errors.js";
 import { createAI } from "./create-ai.js";
 
 function pricedFakeProvider(): ReturnType<typeof createFakeProvider> {
@@ -846,7 +849,7 @@ describe("Phase 9 receipts integration", () => {
     const verifyResult = await verifyReceipt(result.receipt!, keySet);
     expect(verifyResult.ok).toBe(true);
     if (verifyResult.ok) {
-      expect(verifyResult.body.version).toBe("lattice-receipt/v1.3");
+      expect(verifyResult.body.version).toBe("lattice-receipt/v1.4");
       expect(verifyResult.body.contractVerdict).toBe("success");
       expect(verifyResult.body.modelClass).toBe("local_quantized");
     }
@@ -914,6 +917,24 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.tripwireEvidence?.kind).toBe(
         result.error.evidence.kind,
       );
+      // Issue #21 F1: the SIGNED copy of the evidence is masked, while the
+      // runtime error still carries the raw match for debugging.
+      const signedObserved = verifyResult.body.tripwireEvidence?.observed as Record<string, unknown>;
+      expect(signedObserved).not.toHaveProperty("substring");
+      expect(signedObserved).toEqual({
+        detector: "email",
+        length: 17,
+        mask: "*****@*******.***",
+      });
+      expect(verifyResult.body.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: "tripwire-message-templated" },
+        { path: "tripwireEvidence.observed", reason: "no-pii-detector-mask-only" },
+      ]);
+      expect(verifyResult.body.tripwireEvidence?.path).toBe("text");
+      const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+      expect(rawPayload).not.toContain("alice@example.com");
+      const runtimeObserved = result.error.evidence.observed as { substring: string };
+      expect(runtimeObserved.substring).toBe("alice@example.com");
     }
   });
 
@@ -1335,7 +1356,7 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
-  it("T13: signer failure does not crash ai.run (receipt is undefined)", async () => {
+  it("T13: signer failure does not crash ai.run; receipt is undefined and receiptError is flagged (default)", async () => {
     const failingSigner: ReceiptSigner = {
       kid: "boom",
       publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
@@ -1356,6 +1377,20 @@ describe("Phase 9 receipts integration", () => {
       expect(result.outputs).toBeDefined();
     }
     expect(result.receipt).toBeUndefined();
+    // Issue #21 F5: the gap is visible on the result and in the event stream.
+    expect(result.receiptError).toEqual({
+      kind: "signer-failed",
+      message: "signer always throws",
+    });
+    const kinds = (result.events ?? []).map((event) => event.kind);
+    const flagIndex = (result.events ?? []).findIndex(
+      (event) =>
+        event.kind === "step.transition" &&
+        event.metadata?.receiptError === "signer-failed" &&
+        typeof event.metadata?.mintError === "string",
+    );
+    expect(flagIndex).toBeGreaterThanOrEqual(0);
+    expect(flagIndex).toBeLessThan(kinds.indexOf("run.complete"));
   });
 
   it("T14: 100 receipts issue in under 5 seconds total (property test)", async () => {
@@ -1426,5 +1461,270 @@ describe("Phase 9 receipts integration", () => {
       expect(verifyResult.body.route.capabilityId).toBe("openai/gpt-oss-120b");
       expect(verifyResult.body.modelClass).toBe("frontier_rlhf");
     }
+  });
+});
+
+describe("issue #21 — per-run receipt binding (F2) and signer failure policy (F5)", () => {
+  async function makeSignerAndKeySet(kid = "issue-21") {
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+    const keySet = createMemoryKeySet([{ kid, publicKeyJwk, state: "active" }]);
+    return { signer, keySet };
+  }
+
+  const failingSigner: ReceiptSigner = {
+    kid: "boom",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+    async sign(): Promise<Uint8Array> {
+      throw new Error("signer always throws");
+    },
+  };
+
+  it("B1: audience, nonce, and ttlMs land on the signed body and verify with matching expectations", async () => {
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      receipt: { audience: "billing-svc", nonce: "n-123", ttlMs: 60_000 },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet, {
+      expectedAudience: "billing-svc",
+      expectedNonce: "n-123",
+    });
+    expect(verified.ok).toBe(true);
+    if (verified.ok) {
+      expect(verified.body.audience).toBe("billing-svc");
+      expect(verified.body.nonce).toBe("n-123");
+      expect(Date.parse(verified.body.expiresAt!) - Date.parse(verified.body.issuedAt)).toBe(60_000);
+    }
+    const mismatch = await verifyReceipt(result.receipt!, keySet, { expectedAudience: "other" });
+    expect(mismatch.ok).toBe(false);
+    if (!mismatch.ok) expect(mismatch.error.kind).toBe("audience-mismatch");
+  });
+
+  it("B2: binding is applied on a failure-path receipt too", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+      receipt: { audience: "auditor" },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet, { expectedAudience: "auditor" });
+    expect(verified.ok).toBe(true);
+    if (verified.ok) expect(verified.body.contractVerdict).toBe("tripwire-violated");
+  });
+
+  it("B3: no binding leaves the three keys out of the canonical JSON", async () => {
+    const { signer } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [createFakeProvider()], signer });
+    const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
+    const raw = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+    expect(raw).not.toContain('"audience"');
+    expect(raw).not.toContain('"nonce"');
+    expect(raw).not.toContain('"expiresAt"');
+  });
+
+  it("B4: invalid binding options reject synchronously with TypeError before any provider call", async () => {
+    let calls = 0;
+    const provider = createFakeProvider({
+      response: () => {
+        calls += 1;
+        return { rawOutputs: { text: "never" } };
+      },
+    });
+    const { signer } = await makeSignerAndKeySet();
+    const ai = createAI({ providers: [provider], signer });
+    await expect(
+      ai.run({ task: "x", outputs: { text: "text" as const }, receipt: { ttlMs: 0 } }),
+    ).rejects.toThrow(TypeError);
+    await expect(
+      ai.run({ task: "x", outputs: { text: "text" as const }, receipt: { audience: "" } }),
+    ).rejects.toThrow(TypeError);
+    expect(calls).toBe(0);
+  });
+
+  it("S1: receipts.onSignerError 'throw' rejects ai.run with ReceiptSigningError after a run.failed event", async () => {
+    const events: string[] = [];
+    const ai = createAI({
+      providers: [createFakeProvider()],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      events: (event) => {
+        events.push(`${event.kind}:${String(event.metadata?.reason ?? "")}`);
+      },
+    });
+    await expect(ai.run({ task: "x", outputs: { text: "text" as const } })).rejects.toBeInstanceOf(
+      ReceiptSigningError,
+    );
+    try {
+      await ai.run({ task: "x", outputs: { text: "text" as const } });
+    } catch (error) {
+      expect(error).toBeInstanceOf(ReceiptSigningError);
+      if (error instanceof ReceiptSigningError) {
+        expect(error.kind).toBe("receipt-signing-failed");
+        expect(error.message).toContain("signer always throws");
+        expect(error.runId.length).toBeGreaterThan(0);
+      }
+    }
+    expect(events).toContain("run.failed:receipt-signing-failed");
+    expect(events.filter((kind) => kind.startsWith("run.complete"))).toHaveLength(0);
+  });
+
+  it("S2: throw mode is not swallowed by the fallback chain", async () => {
+    let secondCalls = 0;
+    const first = createFakeProvider({ id: "a-first" });
+    const second = createFakeProvider({
+      id: "b-second",
+      response: () => {
+        secondCalls += 1;
+        return { rawOutputs: { text: "second" } };
+      },
+    });
+    const kinds: string[] = [];
+    const ai = createAI({
+      providers: [first, second],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      events: (event) => {
+        kinds.push(event.kind);
+      },
+    });
+    await expect(ai.run({ task: "x", outputs: { text: "text" as const } })).rejects.toBeInstanceOf(
+      ReceiptSigningError,
+    );
+    expect(secondCalls).toBe(0);
+    expect(kinds).not.toContain("fallback.activated");
+  });
+
+  it("S3: flag mode on a failure path carries receiptError alongside the verdict", async () => {
+    inv.__resetCounterForTests();
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { text: "Contact alice@example.com please" },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer: failingSigner });
+    const result = await ai.run({
+      task: "x",
+      outputs: { text: "text" as const },
+      contract: contract({ invariants: [inv.noPII("text")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("tripwire-violated");
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError?.kind).toBe("signer-failed");
+  });
+
+  it("S4: without a signer neither receipt nor receiptError is present", async () => {
+    const ai = createAI({ providers: [createFakeProvider()] });
+    const result = await ai.run({ task: "x", outputs: { text: "text" as const } });
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError).toBeUndefined();
+  });
+
+  it("S5: throw mode leaves no session turn behind for the rejected run (review follow-up round 4)", async () => {
+    // The receipt must be minted before the session turn is appended. If the
+    // order were reversed, a signer failure would reject ai.run after the
+    // store already held a turn, and a retry on the same session would
+    // continue a run the caller was told did not complete.
+    const sessions = createMemorySessionStore();
+    const ai = createAI({
+      providers: [createFakeProvider()],
+      signer: failingSigner,
+      receipts: { onSignerError: "throw" },
+      sessions,
+    });
+    await expect(
+      ai.run({ task: "never happened", session: ai.session("s-throw"), outputs: { text: "text" as const } }),
+    ).rejects.toBeInstanceOf(ReceiptSigningError);
+    // The runtime creates the session record at run start; it must be empty.
+    const record = await sessions.load("s-throw");
+    expect(record?.turns ?? []).toHaveLength(0);
+    expect(record?.planIds ?? []).toHaveLength(0);
+  });
+
+  it("S6: flag mode appends the turn and returns receiptError, so the session and the caller agree", async () => {
+    const sessions = createMemorySessionStore();
+    const ai = createAI({ providers: [createFakeProvider()], signer: failingSigner, sessions });
+    const result = await ai.run({
+      task: "flagged run",
+      session: ai.session("s-flag"),
+      outputs: { text: "text" as const },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.receipt).toBeUndefined();
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    const record = await sessions.load("s-flag");
+    expect(record?.turns).toHaveLength(1);
+    expect(record?.turns[0]?.task).toBe("flagged run");
+  });
+});
+
+describe("review follow-up — model-produced object keys never reach the signed evidence", () => {
+  it("signs the declared path and a templated message while the runtime error keeps the concrete location", async () => {
+    inv.__resetCounterForTests();
+    const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+    const signer = createInMemorySigner(privateKeyJwk, { kid: "key-leak", publicKeyJwk });
+    const keySet = createMemoryKeySet([{ kid: "key-leak", publicKeyJwk, state: "active" }]);
+    const SENTINEL_KEY = "SENTINEL-KEY-7731";
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { data: { [SENTINEL_KEY]: "alice@example.com" } },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "x",
+      outputs: { data: z.record(z.string(), z.string()) },
+      contract: contract({ invariants: [inv.noPII("data")] }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error.kind !== "tripwire-violated") {
+      throw new Error(
+        `expected a tripwire violation, got ${result.ok ? "success" : result.error.kind}`,
+      );
+    }
+    // Runtime error: actionable, carries the concrete location.
+    expect(result.error.evidence.path).toBe("data");
+    expect(result.error.evidence.observed).toMatchObject({
+      detector: "email",
+      foundAt: `data.${SENTINEL_KEY}`,
+    });
+    expect(result.error.message).toContain(SENTINEL_KEY);
+
+    // Signed receipt: declared path, templated message, masked observed.
+    expect(result.receipt).toBeDefined();
+    const verified = await verifyReceipt(result.receipt!, keySet);
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) return;
+    expect(verified.body.tripwireEvidence?.path).toBe("data");
+    expect(verified.body.tripwireEvidence?.message).toBe(
+      'no-pii: detector "email" flagged content at "data".',
+    );
+    expect(verified.body.tripwireEvidence?.observed).toEqual({
+      detector: "email",
+      length: 17,
+      mask: "*****@*******.***",
+    });
+    const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+    expect(rawPayload).not.toContain(SENTINEL_KEY);
+    expect(rawPayload).not.toContain("alice@example.com");
   });
 });

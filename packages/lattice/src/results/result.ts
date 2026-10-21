@@ -7,6 +7,16 @@ import type { ReceiptEnvelope } from "../receipts/types.js";
 import type { RunEvent } from "../tracing/tracing.js";
 import type { LatticeRunError } from "./errors.js";
 
+/**
+ * Why a configured signer produced no receipt for this run (issue #21 F5).
+ * Present only when `LatticeConfig.signer` is set, `receipts.onSignerError`
+ * is `"flag"` (the default), and issuance failed; `receipt` is then absent.
+ */
+export interface ReceiptError {
+  readonly kind: "signer-failed";
+  readonly message: string;
+}
+
 export interface RunSuccess<TOutputs extends OutputContractMap> {
   readonly ok: true;
   readonly outputs: InferOutputMap<TOutputs>;
@@ -17,9 +27,11 @@ export interface RunSuccess<TOutputs extends OutputContractMap> {
   readonly gateway?: ProviderGatewayMetadata;
   /**
    * Phase 9 — signed capability receipt issued when `LatticeConfig.signer`
-   * is configured. Undefined when no signer is set.
+   * is configured. Undefined when no signer is set, or when issuance failed
+   * (see `receiptError`).
    */
   readonly receipt?: ReceiptEnvelope;
+  readonly receiptError?: ReceiptError;
 }
 
 export interface RunFailure {
@@ -33,9 +45,11 @@ export interface RunFailure {
   readonly gateway?: ProviderGatewayMetadata;
   /**
    * Phase 9 — signed capability receipt issued when `LatticeConfig.signer`
-   * is configured. Undefined when no signer is set.
+   * is configured. Undefined when no signer is set, or when issuance failed
+   * (see `receiptError`).
    */
   readonly receipt?: ReceiptEnvelope;
+  readonly receiptError?: ReceiptError;
 }
 
 export type RunResult<TOutputs extends OutputContractMap> =

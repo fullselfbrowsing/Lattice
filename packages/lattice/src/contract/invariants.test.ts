@@ -146,3 +146,38 @@ describe("inv builder", () => {
     });
   });
 });
+
+describe("inv.mustCite options (issue #21 F9)", () => {
+  beforeEach(() => {
+    inv.__resetCounterForTests();
+  });
+
+  it("captures path, keys, and caseInsensitive and freezes keys", () => {
+    const result = inv.mustCite("a", { path: "refs", keys: ["id"], caseInsensitive: true });
+    expect(result).toEqual({
+      id: "must-cite-1",
+      kind: "must-cite",
+      artifactName: "a",
+      path: "refs",
+      keys: ["id"],
+      caseInsensitive: true,
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.keys)).toBe(true);
+  });
+
+  it("an empty options object produces a declaration JSON-identical to the no-options form (contractHash stability)", () => {
+    const withoutOptions = JSON.stringify(inv.mustCite("a"));
+    inv.__resetCounterForTests();
+    const withEmptyOptions = JSON.stringify(inv.mustCite("a", {}));
+    expect(withEmptyOptions).toBe(withoutOptions);
+    expect(withoutOptions).toBe(JSON.stringify({ id: "must-cite-1", kind: "must-cite", artifactName: "a" }));
+  });
+
+  it("still honors a caller-supplied id alongside the new options", () => {
+    const result = inv.mustCite("a", { id: "custom", keys: ["doc"] });
+    expect(result.id).toBe("custom");
+    expect(result.keys).toEqual(["doc"]);
+    expect(result.path).toBeUndefined();
+  });
+});

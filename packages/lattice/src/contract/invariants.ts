@@ -12,10 +12,31 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
  * authored a literal of the old shape.
  */
 
+/**
+ * `must-cite` checks that a citation entry naming `artifactName` is PRESENT
+ * in the located citations array. It does NOT verify that the cited
+ * artifact supports the claim.
+ *
+ * With every optional field absent the check reproduces the original
+ * behavior: search top-level `citations` then `evidence`, compare string
+ * entries directly and object entries by their `source` key,
+ * case-sensitively. Because the optional fields are only present when set,
+ * existing contracts hash identically.
+ */
 export interface MustCiteInvariant {
   readonly id: string;
   readonly kind: "must-cite";
   readonly artifactName: string;
+  /**
+   * resolvePath expression locating the citations array (for example
+   * `result.refs`). Must resolve to the array holding the entries; `[*]`
+   * results are not flattened.
+   */
+  readonly path?: string;
+  /** Object keys compared against `artifactName`. Default `["source"]`. */
+  readonly keys?: readonly string[];
+  /** Compare with `toLowerCase()` on both sides. Default false. */
+  readonly caseInsensitive?: boolean;
 }
 
 export interface FieldFromTableInvariant {
@@ -48,6 +69,13 @@ export interface InvariantOptions {
   readonly id?: string;
 }
 
+/** Options for `inv.mustCite` (issue #21 F9). See MustCiteInvariant. */
+export interface MustCiteOptions extends InvariantOptions {
+  readonly path?: string;
+  readonly keys?: readonly string[];
+  readonly caseInsensitive?: boolean;
+}
+
 let counter = 0;
 
 function nextId(kind: string, options?: InvariantOptions): string {
@@ -72,11 +100,18 @@ function nextId(kind: string, options?: InvariantOptions): string {
  * T-08-05 in the 08-01-PLAN threat register).
  */
 export const inv = {
-  mustCite(artifactName: string, options?: InvariantOptions): MustCiteInvariant {
+  mustCite(artifactName: string, options?: MustCiteOptions): MustCiteInvariant {
     return Object.freeze({
       id: nextId("must-cite", options),
       kind: "must-cite" as const,
       artifactName,
+      // Conditional spreads keep the declaration (and the signed contractHash)
+      // byte-identical to the pre-options shape when no option is set.
+      ...(options?.path !== undefined ? { path: options.path } : {}),
+      ...(options?.keys !== undefined ? { keys: Object.freeze([...options.keys]) } : {}),
+      ...(options?.caseInsensitive !== undefined
+        ? { caseInsensitive: options.caseInsensitive }
+        : {}),
     });
   },
   fieldFromTable(
@@ -91,6 +126,16 @@ export const inv = {
       allowedValues: Object.freeze([...allowedValues]),
     });
   },
+  /**
+   * `no-pii` scans the value at `path`. Strings run the default (or
+   * caller-supplied) detectors; arrays and plain objects are walked
+   * recursively in deterministic order (issue #21 F8), so a wildcard path
+   * such as `items[*].note` or a path to a whole object is covered. Numbers,
+   * booleans, and null pass. The evidence `path` is always this declared
+   * path; the concrete sub-path of the offending string is reported as
+   * `observed.foundAt` on the runtime error only, because it can contain
+   * model-produced object keys and must not enter the signed receipt.
+   */
   noPII(path: string, options?: InvariantOptions): NoPiiInvariant {
     return Object.freeze({
       id: nextId("no-pii", options),

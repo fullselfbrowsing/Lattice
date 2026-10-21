@@ -67,6 +67,7 @@ export type {
   FieldFromTableInvariant,
   InvariantDeclaration,
   InvariantOptions,
+  MustCiteOptions,
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
@@ -146,7 +147,7 @@ export type {
   StoredArtifactEnvelope,
   StoredArtifactPayloadDescriptor,
 } from "./storage/storage.js";
-export { isTerminal } from "./results/errors.js";
+export { ReceiptSigningError, isTerminal } from "./results/errors.js";
 export type {
   LatticeRunError,
   NoContractMatchError,
@@ -158,6 +159,7 @@ export type {
   ValidationIssue,
 } from "./results/errors.js";
 export type {
+  ReceiptError,
   RunFailure,
   RunResult,
   RunSuccess,

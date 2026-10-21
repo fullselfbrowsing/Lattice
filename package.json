@@ -22,7 +22,8 @@
     "example:v14-validation": "pnpm --filter @full-self-browsing/lattice build && node examples/v14-validation/index.mjs",
     "example:external-consumer": "pnpm --filter @full-self-browsing/lattice build && node examples/external-consumer/index.mjs",
     "dogfood:fsb": "node scripts/dogfood-fsb-candidate.mjs",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "bench:receipts": "node scripts/bench-receipts.mjs && node scripts/render-bench-table.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.2",

@@ -6,9 +6,11 @@ import {
   createExternalExecutionAudit,
   createMemoryKeySet,
   createNobleEd25519Signer,
+  verifyChain,
   type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
+  type VerifyChainResult,
 } from "@full-self-browsing/lattice/audit";
 import {
   buildContextPack,
@@ -171,3 +173,8 @@ const externalAuditInput = {
   outputs: { answer: "ok" },
 } satisfies ExternalExecutionAuditInput;
 void externalAuditInput;
+
+// Issue #21 F3: verifyChain is exposed on the audit facade.
+expectType<Promise<VerifyChainResult>>(
+  verifyChain([] as readonly ReceiptEnvelope[], createMemoryKeySet([])),
+);

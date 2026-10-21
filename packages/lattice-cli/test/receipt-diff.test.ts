@@ -29,7 +29,7 @@ function captureDeps(): { readonly deps: ReceiptDeps; readonly bag: CaptureBag }
 
 function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    version: "lattice-receipt/v1.3",
+    version: "lattice-receipt/v1.4",
     receiptId: "receipt-a",
     runId: "run-a",
     issuedAt: "2026-06-16T00:00:00.000Z",

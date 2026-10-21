@@ -95,3 +95,25 @@ export type LatticeRunError =
 export function isTerminal(error: LatticeRunError): boolean {
   return error.kind === "tripwire-violated" || error.kind === "no-contract-match";
 }
+
+/**
+ * Thrown by `ai.run` when `LatticeConfig.receipts.onSignerError === "throw"`
+ * and receipt issuance fails (issue #21 F5).
+ *
+ * Deliberately NOT a `LatticeRunError` kind: the run itself reached a
+ * verdict, and callers who opt into "throw" want a hard stop they cannot
+ * mistake for an ordinary `RunFailure`. Adding a kind to the union would
+ * also break exhaustive consumer switches. A `run.failed` event with
+ * `reason: "receipt-signing-failed"` is emitted before this is thrown so
+ * event sinks still see a terminal event for the run.
+ */
+export class ReceiptSigningError extends Error {
+  readonly kind = "receipt-signing-failed" as const;
+  readonly runId: string;
+
+  constructor(runId: string, message: string, options?: { readonly cause?: unknown }) {
+    super(`Receipt signing failed for run ${runId}: ${message}`, options);
+    this.name = "ReceiptSigningError";
+    this.runId = runId;
+  }
+}

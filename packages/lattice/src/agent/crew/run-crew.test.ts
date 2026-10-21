@@ -4,12 +4,14 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../../receipts/sign.js";
 import type { CapabilityReceiptBody } from "../../receipts/types.js";
+import { verifyChain } from "../../receipts/chain.js";
 import { verifyReceipt } from "../../receipts/verify.js";
 import { createAI } from "../../runtime/create-ai.js";
 import { createNoopAgentHost } from "../host.js";
@@ -400,5 +402,32 @@ describe("runAgentCrew — signed receipt chain", () => {
     for (const envelope of result.receipts) {
       expect(await verifyReceipt(envelope, keySet)).toMatchObject({ ok: true });
     }
+
+    // Review follow-up: every receipt in the tree shares the crew runId, so
+    // the whole CrewResult.receipts set verifies as one chain.
+    expect(result.runId).toBe(bodies[0]?.runId);
+    for (const body of bodies) {
+      expect(body.runId).toBe(result.runId);
+    }
+    const chain = await verifyChain(result.receipts, keySet, {
+      expectedRunId: result.runId,
+      ...(result.crewRootCid !== undefined ? { expectedRootCid: result.crewRootCid } : {}),
+      expectedCount: result.receipts.length,
+    });
+    expect(chain).toMatchObject({ ok: true, rootCid: result.crewRootCid, count: result.receipts.length });
+
+    // Issue #21 F6: the crew-start root has no output yet, but every agent
+    // completion receipt commits to that agent's output.
+    expect(bodies[0]?.outputHash).toBeNull();
+    expect(bodies[0]?.inputHashes).toEqual([]);
+    const leadBody = bodies.find((body) => body.stepName === "crew-agent-completion:lead");
+    expect(leadBody).toBeDefined();
+    if (result.result.kind === "success") {
+      expect(leadBody?.outputHash).toBe(await hashOutputForReceipt(result.result.output));
+    }
+    const researcherBody = bodies.find(
+      (body) => body.stepName === "crew-agent-completion:researcher",
+    );
+    expect(researcherBody?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 });

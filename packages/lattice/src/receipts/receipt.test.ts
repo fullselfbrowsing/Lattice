@@ -5,7 +5,15 @@ import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { receiptCid } from "./cid.js";
 import { PAYLOAD_TYPE, base64Decode } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
-import { DEFAULT_REDACTION_POLICY_ID, redactReceiptBody } from "./redact.js";
+import type { TripwireEvidence } from "../contract/tripwire.js";
+
+import {
+  DEFAULT_REDACTION_POLICY_ID,
+  NO_PII_REDACTION_REASON,
+  TRIPWIRE_MESSAGE_REDACTION_REASON,
+  TRIPWIRE_OBSERVED_REDACTION_REASON,
+  redactReceiptBody,
+} from "./redact.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
@@ -66,11 +74,11 @@ describe("receipt.ts — createReceipt envelope shape", () => {
 });
 
 describe("receipt.ts — defaults", () => {
-  it("mints v1.3 by default and omits modelClass when none is supplied", async () => {
+  it("mints v1.4 by default and omits modelClass when none is supplied", async () => {
     const { signer } = await makeSigner();
     const env = await createReceipt(minimalInput(), signer);
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
     expect(body.modelClass).toBeUndefined();
   });
 
@@ -148,7 +156,7 @@ describe("receipt.ts — usage.costUsd canonicalization", () => {
 });
 
 describe("receipt.ts — redactions manifest", () => {
-  it("populates redactions[] when tripwireEvidence.kind === 'no-pii'", async () => {
+  it("rewrites no-pii observed to a mask and records the manifest entry", async () => {
     const { signer } = await makeSigner();
     const env = await createReceipt(
       minimalInput({
@@ -157,15 +165,23 @@ describe("receipt.ts — redactions manifest", () => {
           invariantId: "inv-pii-1",
           kind: "no-pii",
           path: "data.text",
-          observed: { detector: "email", substring: "***@***" },
+          observed: { detector: "email", substring: "alice@example.com" },
           message: "PII detected",
         },
       }),
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.redactions.length).toBe(1);
-    expect(body.redactions[0]?.path).toBe("tripwireEvidence.observed");
+    expect(body.redactions).toEqual([
+      { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
+      { path: "tripwireEvidence.observed", reason: NO_PII_REDACTION_REASON },
+    ]);
+    expect(body.tripwireEvidence?.observed).toEqual({
+      detector: "email",
+      length: 17,
+      mask: "*****@*******.***",
+    });
+    expect(body.tripwireEvidence?.observed).not.toHaveProperty("substring");
   });
 
   it("redactions[] is empty when tripwireEvidence is absent", async () => {
@@ -191,9 +207,12 @@ describe("receipt.ts — redactions manifest", () => {
       signer,
     );
     const signedBody = decodeBody(env.payload);
-    // The signed body MUST already contain the redactions[] manifest entry.
-    expect(signedBody.redactions.length).toBe(1);
-    expect(signedBody.redactions[0]?.path).toBe("tripwireEvidence.observed");
+    // The signed body MUST already contain the redactions[] manifest entries
+    // (message template + observed mask).
+    expect(signedBody.redactions.map((entry) => entry.path)).toEqual([
+      "tripwireEvidence.message",
+      "tripwireEvidence.observed",
+    ]);
 
     // Re-running redactReceiptBody on the signed body produces a structurally
     // identical body — proof that the signed bytes already underwent redaction.
@@ -201,11 +220,117 @@ describe("receipt.ts — redactions manifest", () => {
       signedBody,
       signedBody.redactionPolicyId,
     );
-    expect(reRedacted.redactions.length).toBe(signedBody.redactions.length);
-    expect(reRedacted.redactions[0]?.path).toBe(
-      signedBody.redactions[0]?.path,
+    expect(reRedacted).toEqual(signedBody);
+  });
+});
+
+describe("receipt.ts — signed bytes never contain the matched value (issue #21 F1)", () => {
+  const SENTINEL = "SENTINEL-7731-PII";
+
+  const cases: ReadonlyArray<{
+    readonly kind: TripwireEvidence["kind"];
+    readonly observed: unknown;
+    readonly message: string;
+    readonly reasons: readonly string[];
+  }> = [
+    // Every kind plants the sentinel in `observed` AND `message`; no-pii also
+    // plants it in `observed.foundAt`, the concrete location that can carry
+    // model-produced object keys (review follow-up).
+    {
+      kind: "no-pii",
+      observed: { detector: "us-ssn", substring: SENTINEL, foundAt: `text.${SENTINEL}` },
+      message: `no-pii: detector "us-ssn" flagged content at "text.${SENTINEL}".`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, NO_PII_REDACTION_REASON],
+    },
+    {
+      kind: "must-cite",
+      observed: [SENTINEL, { source: SENTINEL }],
+      message: `must-cite: no citation found for "${SENTINEL}".`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, TRIPWIRE_OBSERVED_REDACTION_REASON],
+    },
+    {
+      kind: "field-from-table",
+      observed: SENTINEL,
+      message: `field-from-table: value "${SENTINEL}" not in allowedValues.`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, TRIPWIRE_OBSERVED_REDACTION_REASON],
+    },
+    {
+      kind: "matches",
+      observed: { nested: [SENTINEL] },
+      message: `Invalid input ${SENTINEL}: expected pattern`,
+      reasons: [TRIPWIRE_MESSAGE_REDACTION_REASON, TRIPWIRE_OBSERVED_REDACTION_REASON],
+    },
+  ];
+
+  for (const testCase of cases) {
+    it(`${testCase.kind}: the canonical payload bytes do not contain the sentinel`, async () => {
+      const { signer } = await makeSigner();
+      const env = await createReceipt(
+        minimalInput({
+          contractVerdict: "tripwire-violated",
+          tripwireEvidence: {
+            invariantId: "inv-1",
+            kind: testCase.kind,
+            path: "text",
+            observed: testCase.observed,
+            message: testCase.message,
+          },
+        }),
+        signer,
+      );
+      const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+      expect(rawJson).not.toContain(SENTINEL);
+      const body = decodeBody(env.payload);
+      expect(body.redactions.map((entry) => entry.reason)).toEqual(testCase.reasons);
+      expect(body.redactions.every((entry) => entry.path.startsWith("tripwireEvidence."))).toBe(true);
+    });
+  }
+});
+
+describe("receipt.ts — v1.4 binding fields (issue #21 F2)", () => {
+  it("embeds audience, nonce, and expiresAt when supplied", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(
+      minimalInput({
+        audience: "billing-svc",
+        nonce: "n-123",
+        expiresAt: "2026-12-31T00:00:00.000Z",
+      }),
+      signer,
     );
-    expect(reRedacted.redactionPolicyId).toBe(signedBody.redactionPolicyId);
+    const body = decodeBody(env.payload);
+    expect(body.version).toBe("lattice-receipt/v1.4");
+    expect(body.audience).toBe("billing-svc");
+    expect(body.nonce).toBe("n-123");
+    expect(body.expiresAt).toBe("2026-12-31T00:00:00.000Z");
+  });
+
+  it("omits the binding keys entirely from the canonical JSON when not supplied", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(minimalInput(), signer);
+    const body = decodeBody(env.payload);
+    expect("audience" in body).toBe(false);
+    expect("nonce" in body).toBe(false);
+    expect("expiresAt" in body).toBe(false);
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain("audience");
+    expect(rawJson).not.toContain("nonce");
+    expect(rawJson).not.toContain("expiresAt");
+  });
+
+  it("is deterministic with the binding fields set", async () => {
+    const { signer } = await makeSigner("det-kid");
+    const input = minimalInput({
+      receiptId: "11111111-1111-4111-8111-111111111111",
+      issuedAt: "2026-05-11T00:00:00Z",
+      audience: "a",
+      nonce: "n",
+      expiresAt: "2026-05-11T01:00:00Z",
+    });
+    const env1 = await createReceipt(input, signer);
+    const env2 = await createReceipt(input, signer);
+    expect(env1.payload).toBe(env2.payload);
+    expect(env1.signatures[0]?.sig).toBe(env2.signatures[0]?.sig);
   });
 });
 
@@ -285,13 +410,13 @@ describe("receipt.ts — modelClass", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
     expect(body.modelClass).toBe("local_quantized");
   });
 });
 
 describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
-  it("mints a v1.3 body containing parentReceiptCid when supplied", async () => {
+  it("mints a v1.4 body containing parentReceiptCid when supplied", async () => {
     const { signer } = await makeSigner();
     const parentCid = `sha256:${"ab".repeat(32)}`;
     const env = await createReceipt(
@@ -299,7 +424,7 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
     expect(body.parentReceiptCid).toBe(parentCid);
   });
 
@@ -346,7 +471,7 @@ describe("receipt.ts — parentReceiptCid (Phase 39 / DELEG-06)", () => {
     const result = await verifyReceipt(revived, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.parentReceiptCid).toBe(rootCid);
     }
 
@@ -364,7 +489,7 @@ describe("receipt.ts — lineageMerkleRoot (Phase 46 / REC-01)", () => {
       signer,
     );
     const body = decodeBody(env.payload);
-    expect(body.version).toBe("lattice-receipt/v1.3");
+    expect(body.version).toBe("lattice-receipt/v1.4");
     expect(body.lineageMerkleRoot).toBe(lineageMerkleRoot);
   });
 
@@ -426,7 +551,7 @@ describe("receipt.ts — determinism", () => {
 });
 
 describe("receipt.ts — v1.2 step-marker fields", () => {
-  it("mints v1.3 receipt when step-marker fields are set", async () => {
+  it("mints v1.4 receipt when step-marker fields are set", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -460,7 +585,7 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.stepName).toBe("click-link");
       expect(result.body.stepIndex).toBe(3);
       expect(result.body.sessionId).toBe("session-1");
@@ -468,7 +593,7 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     }
   });
 
-  it("mints v1.3 receipt by default even when no step-marker fields are set", async () => {
+  it("mints v1.4 receipt by default even when no step-marker fields are set", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -498,14 +623,14 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.stepName).toBeUndefined();
       expect(result.body.stepIndex).toBeUndefined();
       expect(result.body.sessionId).toBeUndefined();
     }
   });
 
-  it("mints v1.3 receipt with a single stepName field", async () => {
+  it("mints v1.4 receipt with a single stepName field", async () => {
     const { privateKeyJwk: pk, publicKeyJwk: vk } =
       await generateEd25519KeyPairJwk();
     const signer = createInMemorySigner(pk, {
@@ -536,8 +661,82 @@ describe("receipt.ts — v1.2 step-marker fields", () => {
     const result = await verifyReceipt(envelope, keySet);
     expect(result.ok).toBe(true);
     if (result.ok === true) {
-      expect(result.body.version).toBe("lattice-receipt/v1.3");
+      expect(result.body.version).toBe("lattice-receipt/v1.4");
       expect(result.body.stepName).toBe("single-field-bump");
     }
+  });
+});
+
+describe("receipt.ts — shape mimicry and non-ASCII matches never reach the signed bytes (review follow-up round 2)", () => {
+  it("field-from-table: a raw value mimicking the redacted shape loses its number", async () => {
+    const { signer } = await makeSigner();
+    const NUMERIC_SENTINEL = 7731773177317731;
+    const env = await createReceipt(
+      minimalInput({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: {
+          invariantId: "inv-1",
+          kind: "field-from-table",
+          path: "card",
+          observed: { valueType: "number", length: NUMERIC_SENTINEL },
+          message: 'field-from-table: value at "card" not in allowedValues.',
+        },
+      }),
+      signer,
+    );
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain(String(NUMERIC_SENTINEL));
+    expect(decodeBody(env.payload).tripwireEvidence?.observed).toEqual({ valueType: "object" });
+  });
+
+  it("no-pii: a non-ASCII match from a custom detector is masked in the signed bytes", async () => {
+    const { signer } = await makeSigner();
+    const env = await createReceipt(
+      minimalInput({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: {
+          invariantId: "inv-1",
+          kind: "no-pii",
+          path: "text",
+          observed: { detector: "name", substring: "José-7731-Müller", foundAt: "text" },
+          message: 'no-pii: detector "name" flagged content at "text".',
+        },
+      }),
+      signer,
+    );
+    const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+    expect(rawJson).not.toContain("José");
+    expect(rawJson).not.toContain("Müller");
+    expect(rawJson).not.toContain("7731");
+    expect(decodeBody(env.payload).tripwireEvidence?.observed).toEqual({
+      detector: "name",
+      length: 16,
+      mask: "****-****-******",
+    });
+  });
+});
+
+describe("createReceipt — timestamps must carry an explicit UTC offset (review follow-up round 5)", () => {
+  it.each([
+    ["offset-less issuedAt", { issuedAt: "2026-01-01T00:00:00" }],
+    ["non-ISO issuedAt", { issuedAt: "Jan 1 2026" }],
+    ["offset-less expiresAt", { expiresAt: "2999-01-01T00:00:00" }],
+    ["date-only expiresAt", { expiresAt: "2999-01-01" }],
+    ["impossible expiresAt that Date.parse would roll into March", { expiresAt: "2999-02-31T00:00:00Z" }],
+    ["issuedAt at hour 24", { issuedAt: "2026-10-18T24:00:00Z" }],
+  ])("refuses to issue a receipt with an %s (caller error, not a verdict)", async (_label, overrides) => {
+    const { signer } = await makeSigner();
+    await expect(createReceipt(minimalInput(overrides), signer)).rejects.toThrow(TypeError);
+    await expect(createReceipt(minimalInput(overrides), signer)).rejects.toThrow(/UTC offset/u);
+  });
+
+  it("accepts toISOString output and numeric offsets, embedding them verbatim", async () => {
+    const { signer } = await makeSigner();
+    const issuedAt = "2026-01-01T00:00:00.000Z";
+    const expiresAt = "2026-01-01T02:00:00+05:30";
+    const env = await createReceipt(minimalInput({ issuedAt, expiresAt }), signer);
+    const body = decodeBody(env.payload);
+    expect(body.issuedAt).toBe(issuedAt);
+    expect(body.expiresAt).toBe(expiresAt);
   });
 });

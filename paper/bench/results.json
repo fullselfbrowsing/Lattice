@@ -1,0 +1,138 @@
+{
+  "generatedAt": "2026-10-19T15:48:45.028Z",
+  "lattice": "1.5.1",
+  "commit": "b855313",
+  "node": "v24.14.1",
+  "cpu": "Apple M4 Max",
+  "platform": "darwin 25.6.0 arm64",
+  "provider": "mocked (createFakeProvider), no network",
+  "signMs": {
+    "n": 1000,
+    "median": 0.041,
+    "p95": 0.052,
+    "mean": 0.042
+  },
+  "verifyMs": {
+    "n": 1000,
+    "median": 0.077,
+    "p95": 0.095,
+    "mean": 0.08
+  },
+  "oneMiBImage": {
+    "runUnsignedMs": {
+      "n": 40,
+      "median": 0.085,
+      "p95": 0.102,
+      "mean": 0.086
+    },
+    "runSignedMs": {
+      "n": 40,
+      "median": 0.65,
+      "p95": 1.159,
+      "mean": 0.711
+    },
+    "issuanceOverheadMedianMs": 0.565,
+    "inputHashes": 1
+  },
+  "receiptSize": {
+    "byInputs": [
+      {
+        "inputs": 0,
+        "envelopeBytes": 993,
+        "bodyBytes": 593
+      },
+      {
+        "inputs": 1,
+        "envelopeBytes": 1081,
+        "bodyBytes": 659
+      },
+      {
+        "inputs": 2,
+        "envelopeBytes": 1169,
+        "bodyBytes": 726
+      },
+      {
+        "inputs": 4,
+        "envelopeBytes": 1349,
+        "bodyBytes": 860
+      },
+      {
+        "inputs": 8,
+        "envelopeBytes": 1705,
+        "bodyBytes": 1128
+      }
+    ],
+    "baseEnvelopeBytes": 993,
+    "baseBodyBytes": 593,
+    "perInputEnvelopeBytes": 89,
+    "perInputBodyBytes": 66.875
+  },
+  "tamperSweep": {
+    "receipts": 72,
+    "mutations": 3744,
+    "rejected": 3744,
+    "classes": {
+      "payload-bit-flip": {
+        "total": 2160,
+        "rejected": 2160
+      },
+      "signature-bit-flip": {
+        "total": 720,
+        "rejected": 720
+      },
+      "keyid-unknown": {
+        "total": 72,
+        "rejected": 72
+      },
+      "keyid-other-valid-key": {
+        "total": 72,
+        "rejected": 72
+      },
+      "body-kid-swapped": {
+        "total": 72,
+        "rejected": 72
+      },
+      "version-downgrade-v1": {
+        "total": 72,
+        "rejected": 72
+      },
+      "version-removed": {
+        "total": 72,
+        "rejected": 72
+      },
+      "output-hash-dropped": {
+        "total": 72,
+        "rejected": 72
+      },
+      "audience-edited": {
+        "total": 72,
+        "rejected": 72
+      },
+      "nonce-edited": {
+        "total": 72,
+        "rejected": 72
+      },
+      "expiry-extended": {
+        "total": 72,
+        "rejected": 72
+      },
+      "keys-reordered": {
+        "total": 72,
+        "rejected": 72
+      },
+      "payload-base64url": {
+        "total": 72,
+        "rejected": 72
+      },
+      "payload-swapped-between-receipts": {
+        "total": 72,
+        "rejected": 72
+      }
+    }
+  },
+  "replay": {
+    "runs": 350,
+    "verifiedBeforeReplay": 350,
+    "outputHashMatched": 350
+  }
+}

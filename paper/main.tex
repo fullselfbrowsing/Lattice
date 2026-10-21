@@ -16,11 +16,10 @@
 \pgfplotsset{compat=1.18}
 \usepackage[hidelinks]{hyperref}
 
-% No automatic end-of-line hyphenation. Lines stay justified and avoid overfull
-% boxes through micro-stretch rather than by breaking words with a hyphen.
-\hyphenpenalty=10000
-\exhyphenpenalty=10000
-\tolerance=9999
+% Standard TeX hyphenation. Compound modifiers are hyphenated in the source
+% (capability-first, redact-then-sign); em dashes are still avoided in prose.
+% Long unbreakable \code{} identifiers still need extra stretch on some lines.
+\tolerance=3000
 \emergencystretch=3em
 
 % IEEEtran prints "Abstract" and "Index Terms" followed by an em dash. Replace that
@@ -46,10 +45,18 @@
 
 \title{Lattice: Signed, Replayable Capability Receipts for Model Runs}
 
-\author{\IEEEauthorblockN{Lakshman Turlapati}
-\IEEEauthorblockA{Full Self Browsing\\
-Email: lakshmanturlapati@gmail.com\\
-Code: \url{https://github.com/fullselfbrowsing/Lattice}}}
+\author{\IEEEauthorblockN{Lakshman Turlapati\IEEEauthorrefmark{1}}
+\IEEEauthorblockA{Naveen Jindal School of Management\\
+The University of Texas at Dallas, Richardson, Texas, USA\\
+vxt230021@utdallas.edu}
+\IEEEauthorblockA{Full Self Browsing, open-source project\\
+\url{https://github.com/fullselfbrowsing/Lattice}}
+\and
+\IEEEauthorblockN{Rabih Neouchi}
+\IEEEauthorblockA{Naveen Jindal School of Management\\
+The University of Texas at Dallas, Richardson, Texas, USA\\
+Rabih.Neouchi@UTDallas.edu}
+\thanks{\IEEEauthorrefmark{1}Corresponding author.}}
 
 \maketitle
 
@@ -58,7 +65,7 @@ Code: \url{https://github.com/fullselfbrowsing/Lattice}}}
 Production systems built on large language models increasingly route work across
 many providers and modalities, yet the run itself remains opaque. A typical stack
 records, at best, a free text log that no third party can verify and no operator
-can replay. We present Lattice, a capability first TypeScript runtime in which
+can replay. We present Lattice, a capability-first TypeScript runtime in which
 every model run emits a \emph{capability receipt}: a canonical, signed, and
 replayable record of what the system was asked to do, how it routed the work, what
 constraints it enforced, and what it produced. A receipt is canonicalized with the
@@ -69,13 +76,15 @@ opaque model call, output invariants carry terminal semantics so a violated run 
 never silently retried, and a verifier can reconstruct the run offline and confirm
 that the recomputed output hash matches the signed receipt. We describe the threat
 model, the design of the receipt and replay pipeline, and an implementation that
-ships as two published npm packages at version 1.5.0 with modular entrypoints,
-1,248 automated tests across 100 files, a seven provider parity contract, and a
-content addressed command line tool for reproduction and verification. Our
-evaluation is assurance by construction: the guarantees are expressed as code level
-invariants and property tests rather than as a latency benchmark. The result is a
-small runtime that makes auditability and reproducibility a default property of
-every multimodal model run.
+ships as two published npm packages with modular entrypoints, a seven-provider parity
+contract, and a content-addressed command line tool for reproduction and verification.
+We evaluate the implementation two ways. Measured against a mocked provider, signing
+and verifying a receipt each take a fraction of a millisecond, a receipt is about a
+kilobyte, every one of 3,744 tamper mutations is rejected, and 350 of 350 offline
+replays reproduce the signed output hash. By construction, the
+guarantees are also expressed as code-level invariants and property tests that fail
+the build when a guarantee weakens. The result is a small runtime that makes
+auditability and reproducibility a default property of every multimodal model run.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -99,17 +108,17 @@ record. Today the honest answer to both questions is usually no.
 The reason is structural. The dominant integration libraries are provider wrappers.
 They normalize the shape of a chat or generation call across vendors and they
 provide convenience around tools, memory, and agents. They do not produce a
-tamper evident record of a run, they do not commit to a deterministic and
+tamper-evident record of a run, they do not commit to a deterministic and
 inspectable account of why one model was chosen over another, and they do not let a
 third party replay the run and check the result against a signed artifact. A free
 text log is not a proof. It can be edited after the fact, it does not bind the
 inputs to the outputs, and it carries no signature that a verifier can check with a
 public key.
 
-This paper argues that the missing primitive is a per run, signed, replayable
+This paper argues that the missing primitive is a per-run, signed, replayable
 \emph{capability receipt}, and that a runtime can make such a receipt a default
-byproduct of normal operation rather than an after the fact instrumentation task.
-We build this argument concretely through Lattice, a capability first runtime SDK
+byproduct of normal operation rather than an after-the-fact instrumentation task.
+We build this argument concretely through Lattice, a capability-first runtime SDK
 written in TypeScript. A developer describes the job, supplies any mix of artifacts,
 declares the desired outputs and policy constraints, and optionally attaches a
 contract. Lattice then routes the work deterministically, packs context, prepares
@@ -134,7 +143,7 @@ output slips through.
 canonicalized with RFC 8785, redacted before signing, and signed with Ed25519 inside
 a Dead Simple Signing Envelope. The receipt binds the run record to a key through a
 signature that any holder of the public key can check.
-\item \textbf{Offline verifiable replay.} A receipt and its content addressed
+\item \textbf{Offline verifiable replay.} A receipt and its content-addressed
 artifacts can be materialized into a replay envelope. Materialization verifies the
 signature before it loads any artifact, and a property test confirms that
 reconstructing the run and recomputing the output hash yields the value committed in
@@ -142,13 +151,13 @@ the receipt.
 \end{enumerate}
 
 We make the following contributions. We define the capability receipt as a signing
-and replay primitive for multimodal model runs, and we show how a redact then sign
+and replay primitive for multimodal model runs, and we show how a redact-then-sign
 ordering and a canonical encoding turn it into a verifiable artifact rather than a
 log line. We show how a deterministic and inspectable router, terminal output
-invariants, and a content addressed verification tool compose into a runtime where
+invariants, and a content-addressed verification tool compose into a runtime where
 auditability and reproducibility are default properties. We describe a working
-implementation that ships publicly with supply chain provenance, modular adoption
-paths, a seven provider parity contract, and a test suite that encodes the
+implementation that ships publicly with supply-chain provenance, modular adoption
+paths, a seven-provider parity contract, and a test suite that encodes the
 guarantees as invariants. We also show how external executors can mint compatible
 receipts without adopting Lattice's provider or agent runtime. The remainder of the
 paper covers background and related work, the threat model and goals, the design, the
@@ -161,7 +170,7 @@ conclusion.
 \subsection{Provider wrappers and agent frameworks}
 
 A first family of systems normalizes model access. The Vercel AI SDK
-\cite{vercelaisdk} offers a broad provider agnostic TypeScript toolkit with
+\cite{vercelaisdk} offers a broad provider-agnostic TypeScript toolkit with
 multimodal generation, tools, and agents. LangChain and LangGraph \cite{langchain}
 provide orchestration, sessions, and tracing. LiteLLM \cite{litellm} is strong
 routing infrastructure that exposes a common interface across many providers with
@@ -174,10 +183,10 @@ that a third party can verify against a public key, and their routing is general
 either configuration driven or model chosen rather than a deterministic pure
 function whose full decision is recorded.
 
-\subsection{Software supply chain provenance}
+\subsection{Software supply-chain provenance}
 
 A second family secures the provenance of software artifacts. in-toto
-\cite{intoto} provides end to end guarantees over a software supply chain by signing
+\cite{intoto} provides end-to-end guarantees over a software supply chain by signing
 the steps that produced an artifact. The Dead Simple Signing Envelope \cite{dsse}
 defines a minimal envelope and a pre authentication encoding so that signatures
 commit unambiguously to a payload and its type. Sigstore \cite{sigstore} makes
@@ -213,12 +222,70 @@ checkable and replayable. Merkle trees \cite{merkle} provide a standard way to c
 to a set of items with a single root, which we identify as the natural mechanism for
 a future signed lineage root over the artifacts that a run consumed and produced.
 
+\subsection{Signed receipts for agent actions}
+
+Four systems from 2026 target evidence for autonomous agent runs and are the closest
+prior work. Sello \cite{figuera2026notarized} has the service that receives an agent's
+call sign a receipt with its own Ed25519 key inside a COSE envelope, encrypt it to the
+agent's owner, and publish it to a witnessed Merkle log; verification needs the log
+inclusion proof and a key registry, inputs and outputs appear only as hashes, and the
+protocol is independent of models and providers. Agent Flight Recorder
+\cite{bindschaedler2026afr} is middleware that hash-chains agent events into Merkle
+epochs and anchors epoch roots on a public chain; there is no per-event signature, a
+verifier needs read access to the chain, and policy verdicts are recorded rather than
+enforced. NovaFabric \cite{ardebili2026novafabric} captures traffic to several
+providers into an operator-signed evidence bundle, with Ed25519 at the collector and an
+ECDSA P-256 seal per tenant inside a DSSE envelope, that is designed for offline
+verification with stock tools and supports four replay modes; its policy gates act on
+promotion, export, and replay rather than on live runs, and its author describes the
+implementation as experimental. Janus \cite{arslan2026janus} is the closest in spirit:
+a single-node daemon appends each agent step's proposal, gate verdict, and validator
+response to a hash-chained log whose segments it signs with Ed25519 before the step
+runs or its effect is released, an auditor re-derives every verdict offline from the
+log and one public key, and replay re-derived all 287 terminal sagas in the paper's
+experiment; it does not choose models or providers, model decision records are
+self-reported rather than signed, and effects on its SDK path are admitted
+cooperatively rather than held. TrustTrack \cite{li2025trusttrack} is a vision paper
+that proposes verifiable identity, policy commitments, and tamper-resistant behavioral
+logs for multi-agent systems, without an implementation. Certificate Transparency
+\cite{rfc6962,rfc9162} is the reference design for the log-based approach that Sello
+and Agent Flight Recorder build on: it makes issuance auditable after the fact through
+an append-only log, whereas a Lattice receipt is checkable on its own with a public key
+and binds the run to a policy decision and a replay path.
+Table~\ref{tab:receipts} compares the four implemented systems with Lattice.
+
+\begin{table*}[t]
+\caption{Agent receipt systems compared with Lattice. Cells summarize each paper's
+own description; ``not stated'' means the source does not say.}
+\label{tab:receipts}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{19mm}>{\raggedright\arraybackslash}p{30mm}>{\raggedright\arraybackslash}p{27mm}>{\raggedright\arraybackslash}p{24mm}>{\raggedright\arraybackslash}p{30mm}>{\raggedright\arraybackslash}p{14mm}>{\raggedright\arraybackslash}p{18mm}@{}}
+\toprule
+System & Signer & Offline verify & Replay & Policy checks & Routing & Multi-provider \\
+\midrule
+Sello \cite{figuera2026notarized} & receiving service, Ed25519 in COSE & no; needs log proof and key registry & no; hashes only & no; service denials are recorded & no & not model specific \\
+Agent Flight Recorder \cite{bindschaedler2026afr} & none per event; ECDSA on the chain anchor & no; needs chain read & partial; forensic reconstruction & no; verdicts logged & no & not stated \\
+NovaFabric \cite{ardebili2026novafabric} & operator; collector Ed25519 and tenant ECDSA seal & claimed; not independently tested & yes; four modes & partial; gates on export and replay & no & yes, capture \\
+Janus \cite{arslan2026janus} & log daemon and participants, Ed25519 & yes; log and one public key & yes; re-derives decisions & yes; pre-execution and pre-release gates & not stated & not stated \\
+Lattice & runtime signer over a key set, Ed25519 in DSSE & yes; public key only & yes; offline output hash match & yes; invariants, budgets, and policy at run time & yes; deterministic & yes; seven providers \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \subsection{The gap}
 
-Across these families, no system provides a per run, signed, canonical, and offline
-replayable receipt for multimodal model work, backed by a deterministic and
-inspectable router and by output invariants with terminal semantics. Lattice
-occupies that gap.
+Across these families, and to our knowledge, Lattice is the first open SDK that
+combines per-run signed receipts, deterministic routing, run-time policy enforcement,
+and offline replay in one runtime. The provider wrappers and agent frameworks route
+and orchestrate but do not sign; the supply chain systems sign and verify offline but
+know nothing about model runs; and the agent receipt systems in
+Table~\ref{tab:receipts} sign and verify evidence, with Janus also gating effects
+and replaying decisions, but none of them chooses the model or spans providers, so
+their evidence is never bound to a routing decision. The design dates
+from the project's first public commit on April 21, 2026, and the repository history
+is public.
 
 % --- Threat Model and Goals -----------------------------------------------
 \section{Threat Model and Goals}
@@ -240,7 +307,9 @@ claimed output after a run completes. We assume an adversary who can attempt to
 substitute a different model route while presenting a receipt that attests to the
 intended route. We consider an adversary who has obtained a valid signing key and who
 then tries to mint a receipt in an older schema in order to bypass integrity fields
-that newer schemas commit to, a schema downgrade attack. We also consider a careless
+that newer schemas commit to, a schema downgrade attack. We consider an adversary who
+replays a valid receipt from a different run, a different relying party, or an
+earlier time and presents it as proof of the current run. We also consider a careless
 issuer whose run inputs contain secrets or personally identifiable information that
 must never be embedded in a signed and shareable artifact.
 
@@ -264,14 +333,21 @@ Several properties are explicitly out of scope. We do not provide confidentialit
 provider traffic, which is the responsibility of transport security. We do not
 reproduce the live behavior of a remote model, since model providers are
 nondeterministic and outside our trust boundary. Replay reconstructs the recorded run
-and its output hash, not a fresh call to the provider. We also do not operate a hosted
-control plane. Lattice is a runtime SDK, and the receipt is a portable artifact that
-travels with the run rather than a record locked inside a service.
+and its output hash, not a fresh call to the provider. A signature alone proves
+integrity and attribution, not freshness: binding a receipt to a relying party, a
+nonce, or a validity window requires the optional v1.4 fields and the matching
+verifier options described under verification below, and a verifier that must
+accept a receipt only once keeps its own record of accepted content identifiers.
+Dropping leaf receipts from a receipt tree leaves a smaller tree that still verifies,
+so tail truncation is detectable only against an out of band count or anchor. We also
+do not operate a hosted control plane. Lattice is a runtime SDK, and the receipt is a
+portable artifact that travels with the run rather than a record locked inside a
+service.
 
 % --- Design ---------------------------------------------------------------
 \section{Design}
 
-Figure~\ref{fig:arch} shows the end to end run lifecycle that produces and then
+Figure~\ref{fig:arch} shows the end-to-end run lifecycle that produces and then
 consumes a capability receipt. The subsections that follow walk through each stage.
 
 \begin{figure*}[t]
@@ -294,18 +370,18 @@ consumes a capability receipt. The subsections that follow walk through each sta
 \caption{The Lattice run lifecycle. A run intent is routed by a deterministic and
 inspectable function, executed through a nine stage pipeline, checked by terminal
 output invariants, and committed to a signed capability receipt. The receipt is later
-consumed by offline verification and by content addressed reproduction.}
+consumed by offline verification and by content-addressed reproduction.}
 \label{fig:arch}
 \end{figure*}
 
-\subsection{The capability first run model}
+\subsection{The capability-first run model}
 
 A run is described by a small intent: a \code{task} string, a set of \code{artifacts}
 that may be text, JSON, images, audio, documents, or tool results, a map of declared
 \code{outputs} with their schemas, a \code{policy} that expresses privacy, latency,
 provider allow and deny lists, and budget, and an optional \code{contract}. The
 developer does not select a model. The runtime selects one from a capability catalog
-and records the decision. This capability first shape is what makes a receipt
+and records the decision. This capability-first shape is what makes a receipt
 meaningful, because the receipt can record the declared intent and the chosen route
 side by side.
 
@@ -319,10 +395,14 @@ unavailable, when an explicit provider or model override does not match, when a
 required input or output modality is unsupported, when structured output is required
 but unsupported, or when the estimated input exceeds the context window. It then
 applies policy filters that reject on an allow or deny list, on a privacy class, on a
-no logging or no upload requirement, on a latency class, or on a budget ceiling.
-Surviving candidates are scored from cost, latency, context headroom, and catalog
-index, and ties are broken by a stable order over acceptance status, score, provider
-name, and model name. The decision exposes the selected route, all candidates, all
+no-logging or no-upload requirement, on a latency class, or on a budget ceiling.
+Surviving candidates are scored from cost, latency, and context headroom, and ties
+are broken by a stable order over acceptance status, score, provider name, and model
+name, with names compared by code unit rather than by locale so the order is the same
+on every machine. The catalog position is deliberately not part of the score, so the
+decision does not depend on the order in which providers were registered; a test evaluates
+every permutation of a near-equal-cost catalog and requires the same selected route
+and the same fallback chain. The decision exposes the selected route, all candidates, all
 rejected candidates, a fallback chain of policy preserving alternatives, and a
 deduplicated list of typed reasons when no route is possible. The full execution plan
 is stable JSON with a nine stage pipeline: analysis, transforms, context packing,
@@ -341,10 +421,17 @@ and \code{matches}, where the last validates against a Standard Schema
 no randomness, so the same output and the same invariants always yield the same
 result. The kernel aborts on the first violation. The default detector set for
 \code{noPII} contains four detectors: email, United States social security number,
-credit card validated by the Luhn checksum, and United States phone number. When a no
-personally identifiable information invariant fires, the evidence is redacted to the
-detector name and the matched substring, so the violating secret is not copied into
-the evidence. A violation produces a \code{TripwireViolationError} that carries the
+credit card validated by the Luhn checksum, and United States phone number. The
+kernel scans strings and walks nested objects, arrays, and wildcard paths in a
+deterministic order, so a value buried inside a structured output is not missed.
+When a no personally identifiable information invariant fires, the runtime error
+returned to the caller carries the detector name and the matched substring so the
+violation can be debugged, and the receipt redaction policy replaces that substring
+with the detector name, the match length, and a shape mask before anything is signed;
+the other three invariant kinds have their observed value reduced to a type label from a
+closed set in the same step, and every kind's message is rebuilt from the invariant kind
+and the declared path so that neither model produced object keys nor schema issue
+text reach the signed bytes. A violation produces a \code{TripwireViolationError} that carries the
 flag \code{terminal: true}. The predicate \code{isTerminal} returns true for a
 tripwire violation and for a no contract match, and the fallback chain consults this
 predicate so that a terminal failure is never retried. This matters for safety: a
@@ -371,16 +458,20 @@ is the heart of the security argument. Figure~\ref{fig:pipeline} shows the pipel
 and Figure~\ref{fig:envelope} shows the resulting envelope.
 
 First, the runtime assembles the raw receipt body from the run record. Second, it
-redacts the body. Redaction removes secrets and detected personally identifiable
-information and records a manifest of redactions, each with a path and a reason, and a
-signed redaction policy identifier whose default value is \code{lattice.default.v1}.
+redacts the body. Redaction rewrites the tripwire evidence for every invariant kind,
+replacing a matched personally identifiable value with a detector name, a length, and
+a shape mask and reducing other observed values to a type label, and records a
+manifest of redactions, each with a path and a reason, and a signed redaction policy
+identifier whose default value is \code{lattice.default.v1}. Each manifest entry is
+written at the moment of the corresponding rewrite, so the manifest cannot claim a
+redaction that did not happen.
 Third, it canonicalizes the redacted body with RFC 8785 \cite{rfc8785}. Fourth, it
 base64 encodes the canonical bytes as the payload. Fifth, it builds the DSSE pre
 authentication encoding over the payload type and the payload. Sixth, it signs the
 pre authentication encoding with Ed25519. The ordering is enforced structurally, not
 by convention: the canonicalization function is only ever called on the output of the
 redaction function, so a code path that signs unredacted bytes is unrepresentable.
-This is what we mean by redact then sign as an architectural invariant rather than a
+This is what we mean by redact-then-sign as an architectural invariant rather than a
 guideline.
 
 \begin{figure}[t]
@@ -432,27 +523,40 @@ about what the signature commits to.
 
 \subsection{Schema versioning and downgrade defense}
 
-Receipts carry an explicit version. Three versions exist: \code{lattice-receipt/v1},
-\code{lattice-receipt/v1.1}, and \code{lattice-receipt/v1.2}. The v1.2 schema adds an
-optional and signed model class field that records the training class of the chosen
-model. Verification rejects a body whose version is the original v1 or is absent, with
-the error \code{schema-version-too-low}, and it does so before any cryptographic work.
-This is the downgrade defense from the threat model. An adversary who holds a valid
-signing key still cannot mint a v1 shaped body to evade the integrity fields that the
-v1.1 and v1.2 schemas commit to, because the structural version check fails first.
+Receipts carry an explicit version. Five versions exist: \code{lattice-receipt/v1};
+v1.1, which adds the step-marker fields; v1.2, which adds an optional and signed model
+class field recording the training class of the chosen model; v1.3, which adds the
+parent receipt content identifier and the artifact lineage root; and v1.4, which adds
+optional audience, nonce, and expiry fields for freshness binding. New receipts are
+minted at v1.4 and verifiers accept v1.1 and later. Verification rejects a body whose
+version is the original v1 or is absent, with the error \code{schema-version-too-low},
+and it does so before any cryptographic work. A verifier that depends on a newer
+schema's commitments raises the floor with a minimum version option and receives the
+same error for anything older. This is the downgrade defense from the threat model.
+An adversary who holds a valid signing key still cannot mint a v1 shaped body to evade
+the integrity fields that later schemas commit to, because the structural version
+check fails first.
 
 \subsection{Verification}
 
 Verification, \code{verifyReceipt}, returns a result that is either an ok value with
 the verified body and the resolved key state, or a failure value with a typed error.
-There are exactly seven error kinds, listed in Table~\ref{tab:verify}. Verification
-checks the envelope shape, the schema version, the key existence and state, the
-re canonicalization match, and finally the Ed25519 signature, with a defense in depth
-check that the \code{kid} inside the body matches the key entry.
+There are exactly ten error kinds, listed in Table~\ref{tab:verify}. Verification
+checks the envelope shape, the schema version against the floor, the key existence
+and state, the re canonicalization match, and the Ed25519 signature, with a defense in
+depth check that the \code{kid} inside the body matches the key entry. Only after the
+signature holds does it apply the optional binding checks: an expected audience, an
+expected nonce, the receipt's own expiry instant, and a maximum age over the issue
+time. Running the binding checks last means an unauthenticated envelope cannot be
+used to probe which audience or nonce a verifier expects. A companion function,
+\code{verifyChain}, verifies a set of receipts as a tree linked by parent content
+identifiers: every link must verify, content identifiers must be unique, all receipts
+must share one run identifier, exactly one receipt may lack a parent, and every
+receipt must be reachable from that root.
 
 \begin{table}[t]
 \centering
-\caption{The seven \code{verifyReceipt} error kinds.}
+\caption{The ten \code{verifyReceipt} error kinds, in the order they are checked.}
 \label{tab:verify}
 \scriptsize
 \begin{tabular}{@{}l p{0.47\columnwidth}@{}}
@@ -461,11 +565,14 @@ Error kind & Fires when \\
 \midrule
 \code{envelope-malformed} & the envelope cannot be decoded or has no signatures \\
 \code{version-mismatch} & the body shape or version is unknown \\
-\code{schema-version-too-low} & the body is v1 or has no version (downgrade defense) \\
+\code{schema-version-too-low} & the body is v1, has no version, or is below the caller's floor \\
 \code{key-not-found} & the \code{kid} is not in the key set \\
 \code{key-revoked} & the resolved key is in the revoked state \\
 \code{canonicalization-mismatch} & the re canonicalized body differs from the signed bytes \\
 \code{signature-invalid} & the Ed25519 check fails or the body \code{kid} mismatches \\
+\code{audience-mismatch} & the verifier expects an audience the receipt lacks or differs on \\
+\code{nonce-mismatch} & the verifier expects a nonce the receipt lacks or differs on \\
+\code{receipt-expired} & the receipt's expiry instant or the verifier's maximum age has passed \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -474,7 +581,7 @@ Error kind & Fires when \\
 
 A receipt becomes useful for reproduction through replay. A replay envelope carries
 optional receipt and contract fields. The function \code{materializeReplayEnvelope}
-reconstructs a replay envelope from a receipt and a set of content addressed
+reconstructs a replay envelope from a receipt and a set of content-addressed
 artifacts, and it enforces a critical ordering: it verifies the receipt before it
 loads any artifact. A test confirms that the artifact loader is called zero times when
 verification fails, which prevents a tampered receipt from causing artifact loads or
@@ -502,7 +609,7 @@ Guarantee & Mechanism & Enforcement \\
 \midrule
 Deterministic routing & a pure routing function & recorded decision, no I/O or randomness \\
 Terminal invariants & \code{isTerminal} consulted by fallback & fallback never retries a terminal error \\
-Redact then sign & canonicalize only on redaction output & ordering is structurally unrepresentable otherwise \\
+Redact-then-sign & canonicalize only on redaction output & ordering is structurally unrepresentable otherwise \\
 Verifiable replay & verify before load & loader call count is zero on verify failure; output hash round trip \\
 \bottomrule
 \end{tabular}
@@ -514,19 +621,17 @@ Verifiable replay & verify before load & loader call count is zero on verify fai
 \subsection{Packaging and footprint}
 
 Lattice is a TypeScript pnpm workspace that publishes two packages,
-\code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli}, both at
-version 1.5.0. The packages are live on the public npm registry. They are published
-with an OpenID Connect trusted publisher and with supply chain provenance attestations
-in the spirit of SLSA \cite{slsa}, and a tagged GitHub release accompanies the
-publish. The runtime targets Node version 24 or newer. The implementation is about
-29,400 lines of production TypeScript across 130 non-test source files. The core
-package has a deliberately small runtime dependency surface of three packages:
-\code{canonicalize} for RFC 8785 encoding, \code{@standard-schema/spec} for schema
-contracts, and \code{mime} for artifact typing. The Ed25519 reference oracle and the
-schema library used in tests are development dependencies only, so a consumer of the
-core package does not inherit them.
+\code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli}, on the
+public npm registry. They are published with an OpenID Connect trusted publisher and
+with supply-chain provenance attestations in the spirit of SLSA \cite{slsa}, and a
+tagged GitHub release accompanies each publish. The runtime targets Node version 24 or
+newer. The core package has a deliberately small runtime dependency surface of four
+packages: \code{canonicalize} for RFC 8785 encoding, \code{@standard-schema/spec} for
+schema contracts, \code{mime} for artifact typing, and \code{@noble/ed25519} for the
+Node 20 audit signing path. The schema library used in tests is a development
+dependency only, so a consumer of the core package does not inherit it.
 
-Version 1.5.0 adds modular public subpaths for \code{providers}, \code{audit},
+Modular public subpaths exist for \code{providers}, \code{audit},
 \code{context}, \code{artifacts}, \code{routing}, \code{tools}, \code{storage},
 \code{eval}, \code{agents}, and \code{core}. These entrypoints let a downstream
 runtime adopt only the provider layer, only signed audit artifacts, or only context
@@ -543,7 +648,7 @@ silent regression in the platform implementation, a development only parity orac
 signs the same message with an independent Ed25519 library and asserts a byte for byte
 match in the test suite. The oracle is never on the production signing path.
 
-\subsection{The seven provider parity contract}
+\subsection{The seven-provider parity contract}
 
 Lattice defines seven logical provider adapters: \code{openai},
 \code{openai-compatible}, \code{anthropic}, \code{gemini}, \code{xai},
@@ -557,7 +662,7 @@ response pass through, and that the set of adapter identifiers has size seven. T
 parity contract is what lets a receipt mean the same thing regardless of which provider
 served the run.
 
-The same provider contract now exposes opt in native provider features for provider
+The same provider contract now exposes opt-in native provider features for provider
 only consumers. \code{ProviderRunRequest.nativeTools}, \code{nativeToolChoice}, and
 \code{nativeStructuredOutput} let an external orchestrator use native tool calling
 and structured output where adapters support it, without changing the default
@@ -629,13 +734,17 @@ record into an executable regression and audit gate.
 \subsection{Agents and chained receipts}
 
 Lattice exposes a runtime agent entry point, \code{ai.runAgent}, that drives a uniform
-tool use loop across all seven providers, and an opt in multi agent crew surface,
+tool use loop across all seven providers, and an opt-in multi-agent crew surface,
 \code{defineAgent} and \code{runAgentCrew}. A crew shares a budget with structural caps
 on total iterations, per agent iterations, concurrent children, and depth, and it
 coordinates rate limits through a token bucket with sensible defaults. Crucially, each
 child receipt chains to a crew root through a parent receipt content identifier, so a
-multi agent run produces a verifiable tree of receipts rather than a single opaque
-trace. A helper, \code{evalAgentRun}, gates iterations to goal and cost against a
+multi-agent run produces a verifiable tree of receipts rather than a single opaque
+trace. Each completion receipt commits to that agent's output hash, and
+\code{verifyChain}, exposed in the command line tool as \code{receipt verify-chain},
+checks every link, the single root, and the parent linkage of the whole tree. An
+optional expected count covers the truncation case noted in the non goals, and an
+optional expected root identifier detects a replaced root. A helper, \code{evalAgentRun}, gates iterations to goal and cost against a
 baseline. Three runnable examples exercise these surfaces end to end: a multimodal work
 inbox that demonstrates a contract, a signed receipt, a tripwire violation, and a no
 contract match, a single agent loop that emits per iteration checkpoint receipts, and a
@@ -644,12 +753,64 @@ crew example that demonstrates chained receipts and an evaluation gate.
 % --- Evaluation -----------------------------------------------------------
 \section{Evaluation}
 
-Our evaluation is assurance by construction. The claims in this paper are properties of
-the system, and we evaluate them by encoding each as an invariant or a property test
-that fails the build when the property does not hold, rather than by measuring latency
-or model output quality, which depend on providers outside our trust boundary. The
-suite contains 1,248 automated test cases across 100 test files, with 1,086 in the
-runtime package and 162 in the command line package, and it runs under a standard
+We evaluate Lattice in two ways. The first is measured: the cost that receipts add to a
+run, the size of a receipt, and whether the verifier rejects every tampered receipt and
+reproduces every replay, all against a mocked provider so that no model behavior enters
+the measurement. The second is assurance by construction: the guarantees are encoded as
+invariants and property tests that fail the build when a guarantee weakens. We do not
+measure model output quality, which depends on providers outside our trust boundary.
+
+\subsection{Measured cost and tamper resistance}
+
+A benchmark script in the repository (\code{scripts/bench-receipts.mjs}) runs
+against the built package through its public exports with the in-repo mocked provider
+and no network, and writes every number below to a committed JSON file
+(\code{paper/bench/results.json}) so the table can be regenerated on any machine.
+Table~\ref{tab:bench} reports the run on Node v24.14.1 on an Apple M4 Max laptop processor.
+
+\begin{table}[t]
+\caption{Measured receipt cost and tamper resistance against a mocked provider.
+Latencies are wall clock; n is the number of samples.}
+\label{tab:bench}
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{44mm}>{\raggedright\arraybackslash}p{40mm}@{}}
+\toprule
+Measurement & Result \\
+\midrule
+% bench-table:begin (generated by scripts/render-bench-table.mjs from paper/bench/results.json, commit b855313)
+Create a receipt: redact, canonicalize, sign & median 0.041 ms, p95 0.052 ms (n=1,000) \\
+Verify a receipt & median 0.077 ms, p95 0.095 ms (n=1,000) \\
+Receipt issuance overhead on a run with a 1 MiB image input & 0.565 ms, median of 40 signed minus 40 unsigned runs \\
+Envelope size & 993 bytes with no inputs, plus 89 bytes per input hash (signed body 593 bytes, plus 66.875) \\
+Tamper sweep & 3,744 of 3,744 mutations rejected: 72 receipts, 52 mutations each across 14 classes \\
+Offline replay & 350 of 350 runs reproduce the signed output hash \\
+% bench-table:end
+\bottomrule
+\end{tabular}
+\end{table}
+
+Creating a receipt costs well under a tenth of a millisecond because the body is small
+and Ed25519 signing is fast; verification is slower than signing because it also
+re-canonicalizes the body and checks the ten failure branches in order. With a 1 MiB
+image on the run, issuance adds about half a millisecond, which is the SHA-256 over the
+input bytes for the input hash and the lineage root. A receipt with no inputs is under
+a kilobyte on the wire, and each input adds one 64-character hash. The tamper sweep
+applies 52 mutations to each of 72 signed receipts: single-bit flips at random
+positions in the payload and in the signature, an unknown key identifier, a valid but
+wrong key identifier, a swapped body key identifier, a downgrade to the original schema
+version, a removed version, a dropped output hash, edited audience, nonce, and expiry
+fields, reordered keys in the payload, a base64url payload, and a payload swapped in
+from another valid receipt. Every mutation is rejected by a typed verification failure
+and none makes the verifier throw. The replay check runs 350 runs with distinct
+outputs through the runtime with a signer, materializes each receipt through the
+artifact loader, replays it offline, and compares the recomputed output hash with the
+signed one; all 350 match.
+
+\subsection{Assurance by construction}
+
+The suite contains 1,482 automated test cases across 105 test files, with 1,305 in the
+runtime package and 177 in the command line package, and it runs under a standard
 TypeScript test runner. Figure~\ref{fig:tests} shows the distribution by package.
 
 \begin{figure}[t]
@@ -671,11 +832,11 @@ TypeScript test runner. Figure~\ref{fig:tests} shows the distribution by package
   ylabel style={font=\scriptsize},
   enlarge x limits=0.5,
 ]
-\addplot[draw=blue!60!black, fill=blue!30] coordinates {(runtime package,1086) (CLI package,162)};
+\addplot[draw=blue!60!black, fill=blue!30] coordinates {(runtime package,1305) (CLI package,177)};
 \end{axis}
 \end{tikzpicture}
-\caption{Automated test cases by package. The suite totals 1,248 cases across 100
-files, 1,086 in the runtime package and 162 in the command line package, and it encodes the
+\caption{Automated test cases by package. The suite totals 1,482 cases across 105
+files, 1,305 in the runtime package and 177 in the command line package, and it encodes the
 paper's guarantees as executable obligations.}
 \label{fig:tests}
 \end{figure}
@@ -684,19 +845,25 @@ We organize the evaluation around the four guarantees.
 
 \textbf{Determinism of routing and invariants.} The router and the tripwire kernel are
 pure functions. Tests assert that the same inputs always produce the same route
-decision and the same tripwire result, and the absence of input, output, clock reads,
-and randomness in these functions is verified by construction and by review. Because
-the decision is recorded in the plan and the receipt, a reviewer can reproduce a route
-by re running the function.
+decision and the same tripwire result, that every permutation of a near equal cost
+catalog yields the same selected route and fallback chain, and that the no personally
+identifiable information walk reports the same violation regardless of key insertion
+order; the absence of input, output, clock reads, and randomness in these functions is
+verified by construction and by review. Because the decision is recorded in the plan
+and the receipt, a reviewer can reproduce a route by re running the function.
 
-\textbf{Redact then sign.} The ordering is structurally enforced because the
+\textbf{Redact-then-sign.} The ordering is structurally enforced because the
 canonicalization function is only ever called on the output of the redaction function.
 Tests confirm that the redaction manifest and the signed redaction policy identifier
-appear in the signed body and that a no personally identifiable information violation
-redacts evidence to a detector name and a matched substring.
+appear in the signed body, that for every invariant kind a sentinel value placed in
+the evidence does not appear anywhere in the canonical signed bytes, that a no
+personally identifiable information violation is signed as a detector name, a length,
+and a shape mask while the runtime error still carries the match, and that redaction
+is idempotent.
 
-\textbf{Downgrade resistance and verification.} Tests cover all seven verification
-error kinds. In particular, a body in the original v1 schema, or a body with no
+\textbf{Downgrade resistance and verification.} Tests cover all ten verification
+error kinds, including the audience, nonce, and expiry bindings, the caller raised
+version floor, and the chain verifier's structural failures. In particular, a body in the original v1 schema, or a body with no
 version, is rejected with a schema version too low error before any cryptographic work,
 which demonstrates the downgrade defense. Tests also confirm that a revoked key yields
 a key revoked error and that a mismatch between the body key identifier and the key
@@ -732,6 +899,21 @@ makes a model or prompt change a reviewable event with measurable consequences. 
 the package itself is published with provenance, the chain of trust extends from the
 source commit through the published tarball to the receipts that the runtime emits.
 
+The design has also been tested from outside. An independent evaluation harness run
+against the previous release \cite{latticeissue21} found three gaps: a violated
+no-personally-identifiable-information invariant copied the matched substring into the
+signed evidence while the redaction manifest claimed it had been redacted; receipts
+carried no freshness or audience binding, so a valid receipt could be replayed to a
+different relying party at any later time; and crew receipts formed a tree that no
+verifier checked as a whole. All three are fixed in the release that accompanies this
+paper \cite{latticepr22}: evidence is rewritten to a detector name, a length, and a
+shape mask before signing for every invariant kind, receipts carry optional audience,
+nonce, and expiry fields that the verifier enforces, and a chain verifier checks every
+link, the single root, and parent linkage of a receipt tree. Two further rounds of
+review on that change closed edge cases in the same areas, including a shape that
+mimicked redacted evidence, timestamps whose meaning depended on the verifier's
+timezone, and shared object references that a depth-capped walk could skip.
+
 Three design tensions are worth naming. The first is determinism against model
 nondeterminism. Models are not deterministic, so Lattice does not promise to reproduce a
 live call. It promises to reproduce the recorded run and to bind the inputs to the
@@ -749,13 +931,22 @@ split because parity is what makes a receipt portable.
 
 Several limitations follow directly from the design. Replay reconstructs the run record
 and the output hash, not a fresh model call, so a receipt is evidence about a past run
-rather than a way to obtain new model behavior. Semantic determinism for free form text
+rather than a way to obtain new model behavior. Semantic determinism for free-form text
 relies on a layered judge in the evaluation tool, which is more expensive and less
-crisp than an exact hash match. The capability registry is a point in time snapshot
+crisp than an exact hash match. The capability registry is a point-in-time snapshot
 refreshed by continuous integration, so a brand new model may be absent until the next
 refresh, although capability negotiation can refine a profile at call time. The full
 runtime package still targets Node 24, even though several modular subpaths are
-validated for Node 20 style consumers. Finally, external audit helpers can sign and
+validated for Node 20 style consumers. When a configured signer fails, the runtime does
+not hide the gap: by default the result carries a receipt error field and an event, and
+an operator can instead configure the run to fail. The default personally identifiable
+information detectors are regular expressions over four United States and email formats
+documented in the source; names, addresses, and non United States formats are not
+detected, and the must-cite invariant checks that a citation is present, not that it
+supports the claim. No replay cache ships with the verifier, so a relying party that
+must accept a receipt only once keeps its own record of accepted content identifiers,
+and dropping leaf receipts from a crew tree is detectable only with an out-of-band
+count or an external anchor. Finally, external audit helpers can sign and
 replay evidence produced elsewhere, but they cannot prove that the external executor
 used the claimed provider unless that executor supplies trustworthy raw envelopes.
 
@@ -777,16 +968,16 @@ stack.
 \section{Conclusion}
 
 Production systems built on large language models need runs that an auditor can verify
-and an operator can reproduce. We presented Lattice, a capability first runtime in which
+and an operator can reproduce. We presented Lattice, a capability-first runtime in which
 every multimodal model run emits a capability receipt that is canonicalized, redacted
 before signing, and signed inside a Dead Simple Signing Envelope, backed by a
 deterministic and inspectable router and by output invariants with terminal semantics. A
 verifier can check a receipt with a public key and replay the run offline, confirming
 that the recomputed output hash matches the signed value. The implementation ships
-publicly with supply chain provenance, a seven provider parity contract, a registry of
-332 model profiles, modular adoption paths, and 1,248 tests that encode the guarantees
-as invariants. By making a signed and replayable receipt a default byproduct of every run, Lattice turns
-auditability and reproducibility from after the fact instrumentation into properties of
+publicly with supply-chain provenance, a seven-provider parity contract, a registry of
+332 model profiles, modular adoption paths, a measured sub-millisecond signing and
+verification cost, and a test suite that encodes the guarantees as invariants. By making a signed and replayable receipt a default byproduct of every run, Lattice turns
+auditability and reproducibility from after-the-fact instrumentation into properties of
 the runtime itself.
 
 % --- References -----------------------------------------------------------

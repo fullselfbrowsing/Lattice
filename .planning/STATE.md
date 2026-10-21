@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-06-23 - Refreshed the root README for Lattice 1.5.1
+Last activity: 2026-10-18 - Completed quick task 261018-5tt: patched GitHub issue #21 (receipt redaction, v1.4 binding, verifyChain, signer policy, crew outputHash, routing order, nested noPII, mustCite options, paper refresh)
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-10-18 | Patch issue #21 receipt hardening | Fixed all ten eval-harness findings: real redaction of signed tripwire evidence for every invariant kind, receipt schema v1.4 with audience, nonce, and expiry plus verifier options and minVersion, `verifyChain` in core and CLI, signer-failure flag or throw policy with `receiptError`, crew completion `outputHash`, catalog-order-independent routing, nested `noPII` scanning, `mustCite` options; paper, SECURITY.md, README, docs, and changeset updated; PDF rebuilt (9 pages). |
 | 2026-06-23 | Refresh root README | Replaced stale v1.2 and v1.3 release narrative with a current Lattice 1.5.1 README covering status, quick start, runtime usage, modular entrypoints, providers, audit, tools, agents, CLI, and development. |
 | 2026-06-23 | Track paper PDF | Added `paper/main.pdf` to git by allowing the file through the paper ignore rules and preserving the 8-page rebuilt PDF alongside the source. |
 | 2026-06-23 | Merge paper PR #15 | Reconciled the paper refresh branch with current `main`, resolved the planning state conflict, reran paper merge checks, and prepared PR #15 for merge. |

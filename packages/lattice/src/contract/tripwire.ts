@@ -12,15 +12,27 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
 /**
  * Evidence emitted when a tripwire invariant fires.
  *
- * `observed` is the SHAPE-MATCHED redacted payload, not the raw output:
+ * `path` is always the DECLARED path from the invariant (or the located
+ * citations key for `must-cite`), never a location derived from the output.
+ *
+ * `observed` is the runtime (unsigned) view of what the kernel saw. It is
+ * narrowed, not sanitized:
  *   - for `must-cite`: the citations array as found at the located path
  *   - for `field-from-table`: the actual value at `path`
- *   - for `no-pii`: ONLY `{ detector, substring }` — never the full input
+ *   - for `no-pii`: ONLY `{ detector, substring, foundAt }` — the matched
+ *     fragment and its concrete location below `path`, never the full input
  *     (T-08-01 in the 08-01-PLAN threat register)
  *   - for `matches`: the value at `path`
  *
- * Phase 9 receipts will sign this evidence, so leaking the full PII into
- * `observed` would defeat redact-before-sign.
+ * `message` may embed the same runtime content (the concrete location, a
+ * schema library's issue text) because it exists to make the runtime error
+ * actionable.
+ *
+ * This evidence reaches callers through `result.error.evidence` so they can
+ * debug the violation. Before any of it is SIGNED into a receipt,
+ * receipts/redact.ts rewrites `observed` (and the `matches` message) to a
+ * non-reversible shape. Do not add fields here that must survive signing
+ * without also teaching redact.ts about them.
  */
 export interface TripwireEvidence {
   readonly invariantId: string;
@@ -85,15 +97,37 @@ async function evaluateOne(
   }
 }
 
+const DEFAULT_MUST_CITE_KEYS: readonly string[] = ["source"];
+
+/**
+ * `must-cite` checks that a citation naming `artifactName` is PRESENT in the
+ * located citations array. It does not verify that the cited artifact
+ * supports the claim; that is a semantic judgment outside the kernel.
+ *
+ * Defaults reproduce the original behavior exactly: search top-level
+ * `citations` then `evidence`, compare string entries directly and object
+ * entries by their `source` key, case-sensitively. `decl.path`, `decl.keys`,
+ * and `decl.caseInsensitive` (issue #21 F9) relax each of those in turn.
+ */
 function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireResult {
-  const located = locateCitations(output);
+  const located =
+    decl.path !== undefined
+      ? locateCitationsAtPath(output, decl.path)
+      : locateCitations(output);
   const cites = located?.value ?? [];
-  const path = located?.path ?? "citations";
+  const path = located?.path ?? decl.path ?? "citations";
+  const keys = decl.keys ?? DEFAULT_MUST_CITE_KEYS;
+  const equals = (candidate: unknown): boolean =>
+    typeof candidate === "string" &&
+    (decl.caseInsensitive === true
+      ? candidate.toLowerCase() === decl.artifactName.toLowerCase()
+      : candidate === decl.artifactName);
 
   const matched = cites.some((entry) => {
-    if (typeof entry === "string") return entry === decl.artifactName;
-    if (typeof entry === "object" && entry !== null && "source" in entry) {
-      return (entry as { source?: unknown }).source === decl.artifactName;
+    if (typeof entry === "string") return equals(entry);
+    if (typeof entry === "object" && entry !== null) {
+      const record = entry as Record<string, unknown>;
+      return keys.some((key) => key in record && equals(record[key]));
     }
     return false;
   });
@@ -132,6 +166,20 @@ function locateCitations(
   return undefined;
 }
 
+/**
+ * Locate a citations array at an explicit resolvePath expression (issue #21
+ * F9). The resolved value must itself be an array; a `[*]` wildcard result
+ * is an array of per-element resolutions and is NOT flattened, so point the
+ * path at the array that holds the citation entries.
+ */
+function locateCitationsAtPath(
+  output: unknown,
+  path: string,
+): { readonly value: readonly unknown[]; readonly path: string } | undefined {
+  const value = resolvePath(output, path);
+  return Array.isArray(value) ? { value, path } : undefined;
+}
+
 function evaluateFieldFromTable(
   output: unknown,
   decl: FieldFromTableInvariant,
@@ -152,32 +200,152 @@ function evaluateFieldFromTable(
   };
 }
 
+/**
+ * Bound on how deep the no-pii walk descends into nested containers. Values
+ * below this depth are not scanned. Provider outputs are bounded by token
+ * caps, so 32 levels is far beyond anything a schema produces; the cap only
+ * guards pathological inputs. Documented in the no-pii invariant docs.
+ */
+const MAX_NO_PII_WALK_DEPTH = 32;
+
+type PathFrame =
+  | { readonly kind: "index"; readonly index: number }
+  | { readonly kind: "key"; readonly key: string };
+
+interface PiiHit {
+  readonly detector: string;
+  readonly substring: string;
+  readonly frames: readonly PathFrame[];
+}
+
+function isPlainObject(value: object): boolean {
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Depth-first scan for PII. Deterministic by construction (issue #21 F8):
+ *   - strings run the detectors in order; the first match wins
+ *   - arrays are walked in index order
+ *   - plain objects are walked in sorted key order (UTF-16 code units, the
+ *     same order JCS uses), so insertion order never changes the verdict
+ *   - Date, Map, typed arrays, and other non-plain objects are skipped
+ *   - numbers, booleans, null, undefined pass (numbers are not stringified)
+ *   - a `visited` map records the shallowest depth at which each object has
+ *     been scanned. Meeting an object again at the same or a greater depth
+ *     is a cycle or a shared reference whose subtree was already covered at
+ *     least as deeply, so it is skipped. Meeting it strictly shallower
+ *     rescans it, because the earlier visit may have lost descendants to the
+ *     depth cap (review finding on PR #22: an object first reached at depth
+ *     31 was marked scanned while its children were cut at 32, and a later
+ *     shallow reference to it was skipped). Each object is rescanned at most
+ *     MAX_NO_PII_WALK_DEPTH times, so shared references cannot blow up the
+ *     walk the way a path-stack-only cycle guard would on a diamond graph.
+ * Traversal order takes precedence over detector order: the first string
+ * reached that any detector flags is the reported violation.
+ */
+function scanForPii(
+  value: unknown,
+  detectors: readonly PiiDetector[],
+  frames: PathFrame[],
+  visited: Map<object, number>,
+  depth: number,
+): PiiHit | undefined {
+  if (typeof value === "string") {
+    for (const detector of detectors) {
+      const result = detector.detect(value);
+      if (result.matched) {
+        return { detector: detector.name, substring: result.substring, frames: [...frames] };
+      }
+    }
+    return undefined;
+  }
+  if (typeof value !== "object" || value === null) return undefined;
+  if (depth >= MAX_NO_PII_WALK_DEPTH) return undefined;
+  const scannedAt = visited.get(value);
+  if (scannedAt !== undefined && scannedAt <= depth) return undefined;
+  visited.set(value, depth);
+
+  if (Array.isArray(value)) {
+    for (const [index, entry] of value.entries()) {
+      frames.push({ kind: "index", index });
+      const hit = scanForPii(entry, detectors, frames, visited, depth + 1);
+      frames.pop();
+      if (hit !== undefined) return hit;
+    }
+    return undefined;
+  }
+
+  if (!isPlainObject(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record).sort()) {
+    frames.push({ kind: "key", key });
+    const hit = scanForPii(record[key], detectors, frames, visited, depth + 1);
+    frames.pop();
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+}
+
+/**
+ * Build the concrete path of a violating string from the declared path plus
+ * the frames walked below it. Leading index frames fill `[*]` wildcards in
+ * order, because resolvePath materializes exactly one array level per
+ * wildcard; remaining frames append `[i]` or `.key`.
+ *
+ *   items        + [2].note  -> items[2].note
+ *   items[*].note + [2]      -> items[2].note
+ *   a[*].b       + [1][1]    -> a[1].b[1]
+ *   ""           + x.y       -> x.y
+ */
+function formatViolationPath(declaredPath: string, frames: readonly PathFrame[]): string {
+  let path = declaredPath;
+  let wildcardsLeft = declaredPath.split("[*]").length - 1;
+  for (const frame of frames) {
+    if (frame.kind === "index") {
+      if (wildcardsLeft > 0) {
+        path = path.replace("[*]", `[${frame.index}]`);
+        wildcardsLeft -= 1;
+      } else {
+        path += `[${frame.index}]`;
+      }
+      continue;
+    }
+    path = path === "" ? frame.key : `${path}.${frame.key}`;
+  }
+  return path;
+}
+
 function evaluateNoPii(
   output: unknown,
   decl: NoPiiInvariant,
   detectors: readonly PiiDetector[],
 ): TripwireResult {
   const value = resolvePath(output, decl.path);
-  if (typeof value !== "string") return { ok: true };
+  // Issue #21 F8: a non-string value at the path used to pass silently,
+  // which let PII inside nested objects, arrays, and `[*]` wildcard results
+  // through. Walk containers instead; see scanForPii for the order rules.
+  const hit = scanForPii(value, detectors, [], new Map<object, number>(), 0);
+  if (hit === undefined) return { ok: true };
 
-  for (const detector of detectors) {
-    const result = detector.detect(value);
-    if (result.matched) {
-      return {
-        ok: false,
-        evidence: {
-          invariantId: decl.id,
-          kind: "no-pii",
-          path: decl.path,
-          // CRITICAL: redacted — only the detector name and the matched
-          // substring, never the full input string (T-08-01).
-          observed: { detector: detector.name, substring: result.substring },
-          message: `no-pii: detector "${detector.name}" flagged content at "${decl.path}".`,
-        },
-      };
-    }
-  }
-  return { ok: true };
+  const foundAt = formatViolationPath(decl.path, hit.frames);
+  return {
+    ok: false,
+    evidence: {
+      invariantId: decl.id,
+      kind: "no-pii",
+      // `path` stays the DECLARED path, which is developer-owned. The
+      // concrete location can contain model-produced object keys, so it
+      // travels only in `observed.foundAt` and `message`, both of which
+      // receipts/redact.ts rewrites before anything is signed.
+      path: decl.path,
+      // Narrowed to the detector name and the matched substring, never
+      // the full input string (T-08-01). The substring itself is still
+      // sensitive; receipts/redact.ts masks it before signing.
+      observed: { detector: hit.detector, substring: hit.substring, foundAt },
+      message: `no-pii: detector "${hit.detector}" flagged content at "${foundAt}".`,
+    },
+  };
 }
 
 async function evaluateMatches(

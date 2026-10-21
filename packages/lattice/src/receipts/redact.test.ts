@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import type { TripwireEvidence } from "../contract/tripwire.js";
+
 import { canonicalizeReceiptBody } from "./canonical.js";
 import {
   DEFAULT_REDACTION_POLICY_ID,
+  NO_PII_REDACTION_REASON,
+  TRIPWIRE_MESSAGE_REDACTION_REASON,
+  TRIPWIRE_OBSERVED_REDACTION_REASON,
+  maskPiiSubstring,
   redactReceiptBody,
 } from "./redact.js";
 import type {
@@ -40,9 +46,42 @@ function makeBody(
   };
 }
 
+function evidence(
+  kind: TripwireEvidence["kind"],
+  observed: unknown,
+  message = `${kind}: violation`,
+): TripwireEvidence {
+  return { invariantId: "x", kind, path: "text", observed, message };
+}
+
 describe("DEFAULT_REDACTION_POLICY_ID", () => {
   it('equals exactly "lattice.default.v1"', () => {
     expect(DEFAULT_REDACTION_POLICY_ID).toBe("lattice.default.v1");
+  });
+});
+
+describe("maskPiiSubstring", () => {
+  it.each([
+    ["123-45-6789", "***-**-****"],
+    ["alice@example.com", "*****@*******.***"],
+    ["+1 (415) 555-0100", "+* (***) ***-****"],
+    ["4111 1111 1111 1111", "**** **** **** ****"],
+    ["", ""],
+    // Non-ASCII scripts (review follow-up): letters, digits, and marks in any
+    // script are masked; punctuation and whitespace stay.
+    ["José Müller", "**** ******"],
+    ["４１１１ １１１１", "**** ****"],
+    ["٠١٢-٣٤-٥٦٧٨", "***-**-****"],
+    ["山田太郎", "****"],
+    ["é", "**"],
+    ["Пётр@почта.рф", "****@*****.**"],
+  ])("masks %j as %j", (input, expected) => {
+    expect(maskPiiSubstring(input)).toBe(expected);
+  });
+
+  it("is idempotent", () => {
+    const once = maskPiiSubstring("Bob.Smith+tag@example.co.uk");
+    expect(maskPiiSubstring(once)).toBe(once);
   });
 });
 
@@ -67,42 +106,6 @@ describe("redactReceiptBody", () => {
     expect(body.redactionPolicyId).toBe("lattice.default.v1");
   });
 
-  it("populates redactions[] for a no-pii tripwireEvidence", () => {
-    const body = makeBody({
-      contractVerdict: "tripwire-violated",
-      tripwireEvidence: {
-        invariantId: "x",
-        kind: "no-pii",
-        path: "text",
-        observed: { detector: "luhn", substring: "4111****1111" },
-        message: "no-pii: detector luhn flagged content",
-      },
-    });
-    const result = redactReceiptBody(body);
-    expect(result.redactions).toHaveLength(1);
-    expect(result.redactions[0]).toEqual({
-      path: "tripwireEvidence.observed",
-      reason: "no-pii-detector-substring-only",
-    });
-    // Manifest is also written into the body for signing.
-    expect(result.body.redactions).toEqual(result.redactions);
-  });
-
-  it("leaves redactions[] empty for non-no-pii tripwire kinds", () => {
-    const body = makeBody({
-      contractVerdict: "tripwire-violated",
-      tripwireEvidence: {
-        invariantId: "x",
-        kind: "must-cite",
-        path: "citations",
-        observed: [],
-        message: "must-cite",
-      },
-    });
-    const result = redactReceiptBody(body);
-    expect(result.redactions).toHaveLength(0);
-  });
-
   it("leaves redactions[] empty when no tripwireEvidence is present", () => {
     const body = makeBody();
     const result = redactReceiptBody(body);
@@ -121,40 +124,299 @@ describe("redactReceiptBody", () => {
     expect(result.body.redactionPolicyId).toBe("lattice.default.v1");
   });
 
-  it("sorts redactions[] by path (single-entry default policy is trivially sorted)", () => {
-    const body = makeBody({
-      contractVerdict: "tripwire-violated",
-      tripwireEvidence: {
+  describe("no-pii", () => {
+    it("rewrites observed to detector, length, and mask and records the manifest entry", () => {
+      const body = makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", {
+          detector: "credit-card",
+          substring: "4111 1111 1111 1111",
+        }),
+      });
+      const result = redactReceiptBody(body);
+      expect(result.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
+        { path: "tripwireEvidence.observed", reason: NO_PII_REDACTION_REASON },
+      ]);
+      // Manifest is also written into the body for signing.
+      expect(result.body.redactions).toEqual(result.redactions);
+      expect(result.body.tripwireEvidence?.observed).toEqual({
+        detector: "credit-card",
+        length: 19,
+        mask: "**** **** **** ****",
+      });
+      expect(JSON.stringify(result.body)).not.toContain("4111");
+    });
+
+    it("drops foundAt and rebuilds the message from the detector and declared path (review follow-up)", () => {
+      // The kernel's message and observed.foundAt carry the concrete location,
+      // which can contain model-produced object keys. Neither may be signed.
+      const original = evidence(
+        "no-pii",
+        { detector: "email", substring: "a@b.co", foundAt: 'text.customer["bob@example.com"]' },
+        'no-pii: detector "email" flagged content at "text.customer["bob@example.com"]".',
+      );
+      const result = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: original }),
+      );
+      expect(result.body.tripwireEvidence).toEqual({
         invariantId: "x",
         kind: "no-pii",
         path: "text",
-        observed: { detector: "luhn", substring: "***" },
-        message: "no-pii",
-      },
+        observed: { detector: "email", length: 6, mask: "*@*.**" },
+        message: 'no-pii: detector "email" flagged content at "text".',
+      });
+      expect(JSON.stringify(result.body)).not.toContain("customer");
+      expect(JSON.stringify(result.body)).not.toContain("bob@example.com");
+    });
+
+    it.each([
+      ["a bare string", "just a string"],
+      ["an empty object", {}],
+      ["an object without substring", { detector: "email" }],
+      ["a non-string substring", { detector: "email", substring: 42 }],
+      ["null", null],
+    ])("collapses a malformed observed (%s) to a safe empty shape", (_label, observed) => {
+      const result = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: evidence("no-pii", observed) }),
+      );
+      const redacted = result.body.tripwireEvidence?.observed as Record<string, unknown>;
+      expect(redacted.length).toBe(0);
+      expect(redacted.mask).toBe("");
+      expect(typeof redacted.detector).toBe("string");
+      expect("substring" in redacted).toBe(false);
+    });
+
+    it("defaults detector to \"unknown\" when the kernel did not name one", () => {
+      const result = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: evidence("no-pii", { substring: "x@y.z" }) }),
+      );
+      expect(result.body.tripwireEvidence?.observed).toEqual({
+        detector: "unknown",
+        length: 5,
+        mask: "*@*.*",
+      });
+    });
+
+    it("re-masks a forged already-redacted shape so cleartext cannot ride in the mask field", () => {
+      const result = redactReceiptBody(
+        makeBody({
+          contractVerdict: "tripwire-violated",
+          tripwireEvidence: evidence("no-pii", {
+            detector: "us-ssn",
+            length: 11,
+            mask: "123-45-6789",
+          }),
+        }),
+      );
+      expect(result.body.tripwireEvidence?.observed).toEqual({
+        detector: "us-ssn",
+        length: 11,
+        mask: "***-**-****",
+      });
+    });
+  });
+
+  describe("must-cite, field-from-table, matches", () => {
+    it.each<[string, unknown, Record<string, unknown>]>([
+      ["string", "SENSITIVE VALUE", { valueType: "string" }],
+      ["number", 4155551234, { valueType: "number" }],
+      ["boolean", true, { valueType: "boolean" }],
+      ["null", null, { valueType: "null" }],
+      ["undefined", undefined, { valueType: "undefined" }],
+      ["array", ["doc-1", { source: "doc-2" }], { valueType: "array" }],
+      ["object", { nested: { email: "a@b.co" } }, { valueType: "object" }],
+      // Review follow-up: a raw value that mimics the redacted shape but
+      // carries an extra field is NOT passed through; nothing survives.
+      ["shape-mimicking object", { valueType: "number", length: 4111111111111111 }, { valueType: "object" }],
+      ["shape-mimicking object with extra key", { valueType: "string", ssn: "123-45-6789" }, { valueType: "object" }],
+      // A bare { valueType } passes through: it carries nothing but one of
+      // seven fixed strings, so it is harmless and keeps redaction idempotent.
+      ["bare valueType object", { valueType: "string" }, { valueType: "string" }],
+      ["unknown valueType literal", { valueType: "secret-value" }, { valueType: "object" }],
+    ])("elides a %s observed value to its shape", (_label, observed, expected) => {
+      const result = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence: evidence("field-from-table", observed) }),
+      );
+      expect(result.body.tripwireEvidence?.observed).toEqual(expected);
+      expect(result.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
+        { path: "tripwireEvidence.observed", reason: TRIPWIRE_OBSERVED_REDACTION_REASON },
+      ]);
+      expect(result.body.tripwireEvidence?.message).toBe(
+        'field-from-table: value at "text" not in allowedValues.',
+      );
+    });
+
+    it("elides the must-cite citations array and templates its message", () => {
+      const result = redactReceiptBody(
+        makeBody({
+          contractVerdict: "tripwire-violated",
+          tripwireEvidence: evidence("must-cite", [{ source: "private-memo.pdf" }], 'must-cite: no citation found for "doc".'),
+        }),
+      );
+      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "array" });
+      expect(result.body.tripwireEvidence?.message).toBe('must-cite: no matching citation at "text".');
+      expect(JSON.stringify(result.body)).not.toContain("private-memo");
+    });
+
+    it("replaces the matches message (schema issue text may embed the value) and records both entries sorted by path", () => {
+      const result = redactReceiptBody(
+        makeBody({
+          contractVerdict: "tripwire-violated",
+          tripwireEvidence: {
+            invariantId: "x",
+            kind: "matches",
+            path: "data.ssn",
+            observed: "123-45-6789",
+            message: 'Invalid input "123-45-6789": expected pattern',
+          },
+        }),
+      );
+      expect(result.body.tripwireEvidence?.message).toBe('matches: schema validation failed at "data.ssn".');
+      expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "string" });
+      expect(result.redactions).toEqual([
+        { path: "tripwireEvidence.message", reason: TRIPWIRE_MESSAGE_REDACTION_REASON },
+        { path: "tripwireEvidence.observed", reason: TRIPWIRE_OBSERVED_REDACTION_REASON },
+      ]);
+      expect(JSON.stringify(result.body)).not.toContain("123-45-6789");
+    });
+  });
+
+  describe("idempotency", () => {
+    it.each<TripwireEvidence>([
+      evidence("no-pii", { detector: "email", substring: "alice@example.com" }),
+      evidence("must-cite", ["doc-1"]),
+      evidence("field-from-table", "value"),
+      { invariantId: "x", kind: "matches", path: "p", observed: { a: 1 }, message: "issue text" },
+    ])("redacting an already-redacted $kind body is a no-op", (tripwireEvidence) => {
+      const once = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence }),
+      ).body;
+      const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+      expect(twice).toEqual(once);
+    });
+  });
+
+  it("sorts redactions[] by path", () => {
+    const body = makeBody({
+      contractVerdict: "tripwire-violated",
+      tripwireEvidence: { invariantId: "x", kind: "matches", path: "p", observed: 1, message: "m" },
     });
     const result = redactReceiptBody(body);
-    // Verify each entry is lexicographically <= the next.
     const paths = result.redactions.map((r) => r.path);
-    const sorted = [...paths].sort();
-    expect(paths).toEqual(sorted);
+    expect(paths).toEqual([...paths].sort());
+    expect(paths.length).toBe(2);
   });
 
   it("redact→canonicalize produces byte-identical output on identical inputs", () => {
     const body = makeBody({
       contractVerdict: "tripwire-violated",
-      tripwireEvidence: {
-        invariantId: "x",
-        kind: "no-pii",
-        path: "text",
-        observed: { detector: "luhn", substring: "***" },
-        message: "no-pii",
-      },
+      tripwireEvidence: evidence("no-pii", { detector: "luhn", substring: "4111111111111111" }),
     });
     const firstBytes = canonicalizeReceiptBody(redactReceiptBody(body).body);
     const secondBytes = canonicalizeReceiptBody(redactReceiptBody(body).body);
     expect(firstBytes.byteLength).toBe(secondBytes.byteLength);
     for (let i = 0; i < firstBytes.byteLength; i += 1) {
       expect(firstBytes[i]).toBe(secondBytes[i]);
+    }
+  });
+});
+
+describe("redactReceiptBody — shape mimicry and non-ASCII matches (review follow-up round 2)", () => {
+  it("a raw field-from-table value shaped like redacted evidence does not smuggle its number into the signed body", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("field-from-table", { valueType: "number", length: 4111111111111111 }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({ valueType: "object" });
+    expect(JSON.stringify(result.body)).not.toContain("4111111111111111");
+  });
+
+  it("a forged already-redacted no-pii shape has its number replaced by the mask length and its mask re-masked", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", {
+          detector: "us-ssn",
+          length: 123456789,
+          mask: "123-45-6789",
+        }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({
+      detector: "us-ssn",
+      length: 11,
+      mask: "***-**-****",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("123456789");
+    expect(JSON.stringify(result.body)).not.toContain("123-45-6789");
+  });
+
+  it("a custom detector's non-ASCII match is fully masked", () => {
+    const result = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring: "José-７７３１-Müller" }),
+      }),
+    );
+    expect(result.body.tripwireEvidence?.observed).toEqual({
+      detector: "name",
+      length: 16,
+      mask: "****-****-******",
+    });
+    const json = JSON.stringify(result.body);
+    expect(json).not.toContain("José");
+    expect(json).not.toContain("Müller");
+    expect(json).not.toContain("７７３１");
+  });
+
+  it("counts length in code points so supplementary-plane matches redact to the same bytes twice (review follow-up round 3)", () => {
+    // U+1D504 (mathematical fraktur A) is one letter but two UTF-16 units.
+    // Masking it to one "*" would make String#length disagree between the
+    // first pass (over the match) and a second pass (over the mask).
+    const substring = "\u{1D504}bc";
+    expect(substring.length).toBe(4);
+    const once = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring }),
+      }),
+    ).body;
+    expect(once.tripwireEvidence?.observed).toEqual({ detector: "name", length: 3, mask: "***" });
+    const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+    expect(twice).toEqual(once);
+    expect(JSON.stringify(once)).not.toContain(substring);
+  });
+
+  it("keeps a non-letter supplementary-plane character in the mask without changing length across passes", () => {
+    // An emoji is not \\p{L}, \\p{N}, or \\p{M}, so it survives masking as one
+    // code point (two UTF-16 units) in both passes.
+    const substring = "ok\u{1F600}";
+    const once = redactReceiptBody(
+      makeBody({
+        contractVerdict: "tripwire-violated",
+        tripwireEvidence: evidence("no-pii", { detector: "name", substring }),
+      }),
+    ).body;
+    expect(once.tripwireEvidence?.observed).toEqual({ detector: "name", length: 3, mask: "**\u{1F600}" });
+    const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+    expect(twice).toEqual(once);
+  });
+
+  it("remains idempotent for the mimic and non-ASCII cases", () => {
+    for (const tripwireEvidence of [
+      evidence("field-from-table", { valueType: "number", length: 42 }),
+      evidence("no-pii", { detector: "name", substring: "山田太郎" }),
+      evidence("no-pii", { detector: "name", substring: "\u{1D504}\u{1D505} e\u0301" }),
+    ]) {
+      const once = redactReceiptBody(
+        makeBody({ contractVerdict: "tripwire-violated", tripwireEvidence }),
+      ).body;
+      const twice = redactReceiptBody(once, once.redactionPolicyId).body;
+      expect(twice).toEqual(once);
     }
   });
 });

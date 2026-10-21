@@ -9,6 +9,7 @@ import { createFakeProvider } from "../../providers/fake.js";
 import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import {
@@ -23,7 +24,7 @@ import { defineTool } from "../../tools/tools.js";
 import { formatToolsForProvider } from "../format-tools.js";
 import { createNoopAgentHost, type AgentHost } from "../host.js";
 import { runAgentInternal, type DispatchToolUseContext } from "../runtime.js";
-import type { AgentFailure } from "../types.js";
+import type { AgentFailure, AgentResult } from "../types.js";
 
 import { defineAgent, type AgentSpec } from "./agent-spec.js";
 import { validateCrewPolicy } from "./crew-policy.js";
@@ -777,6 +778,57 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     expect(summary.receipts).toEqual([await receiptCid(childEnvelope)]);
   });
 
+  it("child completion receipt commits to the child's output via outputHash and keeps inputHashes empty (issue #21 F6)", async () => {
+    const { signer } = await makeSigner("kid:crew-output-hash");
+    const rootEnvelope = await createReceipt(
+      {
+        runId: "crew-run-output-hash",
+        model: { requested: "lattice-crew/run", observed: null },
+        route: { providerId: "lattice-crew", capabilityId: "lattice-crew/run", attemptNumber: 1 },
+        usage: ZERO_USAGE,
+        contractVerdict: "success",
+        contractHash: null,
+        inputHashes: [],
+        outputHash: null,
+      },
+      signer,
+    );
+    const crewRootCid = await receiptCid(rootEnvelope);
+
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["hashed child answer"]);
+    const minted: ReceiptEnvelope[] = [];
+    let captured: AgentResult | undefined;
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        recordAgentResult: (_id, result) => {
+          captured = result;
+        },
+      }),
+    );
+
+    await dispatcher.dispatchToolUse(
+      { id: "rc-hash", name: "researcher", args: { task: "hash me" } },
+      makeLoopCtx(),
+    );
+
+    expect(minted.length).toBe(1);
+    expect(captured?.kind).toBe("success");
+    if (captured === undefined || captured.kind !== "success") return;
+    const body = JSON.parse(atob(minted[0]!.payload)) as CapabilityReceiptBody;
+    expect(body.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(body.outputHash).toBe(await hashOutputForReceipt(captured.output));
+    expect(body.inputHashes).toEqual([]);
+  });
+
   it("mints a child completion receipt with lineageMerkleRoot when child artifacts carry lineage", async () => {
     const { signer, publicKeyJwk, kid } = await makeSigner("kid:crew-lineage");
     const keySet = createMemoryKeySet([{ kid, state: "active", publicKeyJwk }]);
@@ -872,5 +924,97 @@ describe("createCrewDispatcher — receipt chaining via parentReceiptCid (DELEG-
     };
     expect(summary.summary).toBe("unsigned summary");
     expect(summary.receipts).toEqual([]);
+  });
+});
+
+describe("createCrewDispatcher — signer failure is recorded on the tracer (issue #21 F5)", () => {
+  it("records a step.transition with mintError, keeps the child summary, and mints nothing", async () => {
+    const failingSigner: ReceiptSigner = {
+      kid: "boom",
+      publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+      async sign(): Promise<Uint8Array> {
+        throw new Error("crew signer down");
+      },
+    };
+    const traced: Array<{ name: string; attributes: Record<string, unknown> | undefined }> = [];
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["summary despite signer failure"]);
+    const minted: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer: failingSigner,
+        crewRootCid: `sha256:${"ab".repeat(32)}`,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        tracer: {
+          kind: "tracer",
+          event: (name, attributes) => {
+            traced.push({ name, attributes });
+          },
+        },
+      }),
+    );
+
+    const dispatched = await dispatcher.dispatchToolUse(
+      { id: "rc-fail", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+
+    expect(minted).toHaveLength(0);
+    const summary = JSON.parse(dispatched?.content ?? "{}") as { summary: string; receipts: string[] };
+    expect(summary.receipts).toEqual([]);
+    expect(summary.summary).toContain("summary despite signer failure");
+
+    // The same tracer is threaded into the child loop, whose checkpoint hook
+    // also reports its own mint failure; filter to the dispatcher's event.
+    const mintEvents = traced.filter(
+      (entry) =>
+        entry.name === "step.transition" &&
+        entry.attributes?.stepName === "crew-agent-completion:researcher",
+    );
+    expect(mintEvents).toHaveLength(1);
+    expect(mintEvents[0]?.attributes?.mintError).toBe("crew signer down");
+  });
+});
+
+describe("createCrewDispatcher — crew runId on child completion receipts (review follow-up)", () => {
+  async function dispatchOnce(ctxOverrides: Partial<CrewDispatchContext>): Promise<CapabilityReceiptBody> {
+    const { signer } = await makeSigner("kid:crew-run-id");
+    const researcher = makeResearcherSpec();
+    const root = makeRootSpec([researcher]);
+    const scripted = makeScriptedFake(["run id check"]);
+    const minted: ReceiptEnvelope[] = [];
+    const dispatcher = createCrewDispatcher(
+      root,
+      makeCtx({
+        config: { providers: [scripted.fake] },
+        signer,
+        crewRootCid: `sha256:${"cd".repeat(32)}`,
+        mintedReceipts: (envelope) => {
+          minted.push(envelope);
+        },
+        ...ctxOverrides,
+      }),
+    );
+    await dispatcher.dispatchToolUse(
+      { id: "rc-run-id", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+    expect(minted).toHaveLength(1);
+    return JSON.parse(atob(minted[0]!.payload)) as CapabilityReceiptBody;
+  }
+
+  it("stamps ctx.runId so the child receipt shares the crew root's runId", async () => {
+    const body = await dispatchOnce({ runId: "runAgentCrew-fixed-run" });
+    expect(body.runId).toBe("runAgentCrew-fixed-run");
+  });
+
+  it("falls back to a generated lattice-crew id for standalone dispatchers", async () => {
+    const body = await dispatchOnce({});
+    expect(body.runId).toMatch(/^lattice-crew-[0-9a-f-]{36}$/u);
   });
 });

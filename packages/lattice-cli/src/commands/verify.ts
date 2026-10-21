@@ -1,5 +1,6 @@
 /**
- * `lattice verify <receipt-path> [--key <keyset-path>]`
+ * `lattice verify <receipt-path> [--key <keyset-path>] [--min-version <v>]
+ *                 [--audience <aud>] [--nonce <nonce>] [--max-age-ms <ms>]`
  *
  * Offline integrity check for a signed capability receipt. Reads the
  * receipt JSON, loads the keyset JSON file (default `~/.lattice/keyset.json`),
@@ -8,8 +9,18 @@
  * Output contract (CONTEXT.md exit-code matrix):
  *   exit 0 — success    : single stdout line `OK kid=<kid> verdict=<contractVerdict>`
  *   exit 1 — verify FAIL: single stderr line `FAIL kind=<VerifyErrorKind> reason=<message>`
- *   exit 2 — load FAIL  : single stderr line `FAIL kind=keyset-load-failed reason=...`
- *                         or `FAIL kind=receipt-load-failed reason=...`
+ *                         VerifyErrorKind now includes `audience-mismatch`,
+ *                         `nonce-mismatch`, and `receipt-expired`.
+ *   exit 2 — load FAIL  : single stderr line `FAIL kind=keyset-load-failed reason=...`,
+ *                         `FAIL kind=receipt-load-failed reason=...`, or
+ *                         `FAIL kind=invalid-argument reason=...` for a bad flag value.
+ *
+ * Verifier policy flags (issue #21):
+ *   --min-version   lowest accepted schema version (`lattice-receipt/v1.3` ...)
+ *   --audience      the receipt's `audience` must equal this value
+ *   --nonce         the receipt's `nonce` must equal this value
+ *   --max-age-ms    reject when `issuedAt + max-age-ms` is in the past
+ * A receipt carrying `expiresAt` is always checked against the clock.
  *
  * Redaction discipline (CLI-05): the success line ONLY surfaces fields
  * already present on the signed body (`kid`, `contractVerdict`). No payload
@@ -31,6 +42,7 @@ import {
   isKeysetLoadError,
   loadKeySetFromPath,
 } from "../io/keyset-loader.js";
+import { buildVerifyOptions, type VerifyOptionArgs } from "../receipt/verify-options.js";
 
 const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json" as const;
 
@@ -57,7 +69,7 @@ function isReceiptEnvelopeShape(value: unknown): value is ReceiptEnvelope {
   return true;
 }
 
-export interface RunVerifyArgs {
+export interface RunVerifyArgs extends VerifyOptionArgs {
   readonly receipt: string;
   readonly key?: string;
 }
@@ -71,6 +83,15 @@ export async function runVerify(
   args: RunVerifyArgs,
   deps: VerifyDeps = defaultDeps,
 ): Promise<void> {
+  // Step 0: translate policy flags. A bad flag is a usage error (exit 2),
+  // never a verify verdict.
+  const built = buildVerifyOptions(args);
+  if (!built.ok) {
+    deps.stderr(`FAIL kind=invalid-argument reason=${built.reason}`);
+    deps.exit(2);
+    return;
+  }
+
   // Step 1: load the keyset. Failure here is distinct from a verify failure
   // (exit 2 vs exit 1) so scripts can branch on "I cannot verify" vs "the
   // receipt does not verify".
@@ -110,7 +131,7 @@ export async function runVerify(
   // Step 3: verify. Branch on `result.ok` — the union narrows so we never
   // touch `result.error` on the success path or `result.body` on the failure
   // path (exactOptionalPropertyTypes safety).
-  const result = await verifyReceipt(envelope, keySet);
+  const result = await verifyReceipt(envelope, keySet, built.options);
   if (result.ok) {
     deps.stdout(`OK kid=${result.body.kid} verdict=${result.body.contractVerdict}`);
     deps.exit(0);
@@ -137,15 +158,39 @@ export default defineCommand({
       description:
         "Path to the keyset JSON file (default: ~/.lattice/keyset.json).",
     },
+    "min-version": {
+      type: "string",
+      description:
+        "Lowest accepted receipt schema version, e.g. lattice-receipt/v1.3.",
+    },
+    audience: {
+      type: "string",
+      description: "Require the receipt's audience to equal this value.",
+    },
+    nonce: {
+      type: "string",
+      description: "Require the receipt's nonce to equal this value.",
+    },
+    "max-age-ms": {
+      type: "string",
+      description:
+        "Reject receipts whose issuedAt is older than this many milliseconds.",
+    },
   },
   async run({ args }) {
-    // exactOptionalPropertyTypes: only set `key` when citty actually parsed a
-    // value. Spreading conditionally avoids `key: undefined` reaching the
-    // optional `RunVerifyArgs.key?: string`.
-    const callArgs: RunVerifyArgs =
-      args.key === undefined
-        ? { receipt: args.receipt }
-        : { receipt: args.receipt, key: args.key };
+    // exactOptionalPropertyTypes: spread conditionally so citty's
+    // `string | undefined` parsed args never reach the optional slots as an
+    // explicit `undefined`.
+    const callArgs: RunVerifyArgs = {
+      receipt: args.receipt,
+      ...(args.key !== undefined ? { key: args.key } : {}),
+      ...(args["min-version"] !== undefined ? { minVersion: args["min-version"] } : {}),
+      ...(args.audience !== undefined ? { audience: args.audience } : {}),
+      ...(args.nonce !== undefined ? { nonce: args.nonce } : {}),
+      ...(args["max-age-ms"] !== undefined
+        ? { maxAgeMs: Number(args["max-age-ms"]) }
+        : {}),
+    };
     await runVerify(callArgs);
   },
 });

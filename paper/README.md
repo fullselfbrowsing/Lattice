@@ -30,6 +30,19 @@ vendored into this directory.
 - Windows: install MiKTeX, which fetches missing packages on first use.
 - Single binary alternative: `tectonic main.tex` (auto-fetches every package it needs).
 
+## Measured results
+
+The numbers in the "Measured cost and tamper resistance" table come from
+`scripts/bench-receipts.mjs`, which runs against the built package with the
+mocked provider and writes `paper/bench/results.json`. Regenerate them with:
+
+```bash
+pnpm -r build && pnpm bench:receipts
+```
+
+Latencies depend on the machine; the tamper-sweep and replay counts must always
+be 100 % and the script exits non-zero otherwise.
+
 ## Build
 
 ```sh

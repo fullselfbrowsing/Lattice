@@ -43,6 +43,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import type { ArtifactRef } from "../../artifacts/artifact.js";
 import { isArtifactRef, toArtifactRef } from "../../artifacts/artifact.js";
+import { STEP_TRANSITION_EVENT_NAME } from "../../contract/checkpoint.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { validateSchemaOutput } from "../../outputs/validate.js";
 import type {
@@ -51,6 +52,7 @@ import type {
   Usage,
 } from "../../providers/provider.js";
 import { receiptCid } from "../../receipts/cid.js";
+import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
 import { createReceipt } from "../../receipts/receipt.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
@@ -97,6 +99,13 @@ export interface CrewDispatchContext {
   readonly crewRootCid?: string;
   /** Crew-level signer threaded into children + completion receipts. */
   readonly signer?: ReceiptSigner;
+  /**
+   * Crew run id stamped on every child completion receipt. runAgentCrew
+   * passes the same id it used for the crew-root receipt so the whole tree
+   * shares one runId and passes `verifyChain`. Standalone dispatchers get a
+   * generated `lattice-crew-<uuid>`.
+   */
+  readonly runId?: string;
   /**
    * Feeds the per-agent tracker + crew aggregator. Called exactly once per
    * child dispatch with the child run's cumulative usage (Pitfall 3).
@@ -172,7 +181,7 @@ export function createCrewDispatcher(
 ): CrewDispatcher {
   return createDispatcherNode(spec, ctx, {
     exhausted: false,
-    runId: `lattice-crew-${crypto.randomUUID()}`,
+    runId: ctx.runId ?? `lattice-crew-${crypto.randomUUID()}`,
   });
 }
 
@@ -345,6 +354,9 @@ function createDispatcherNode(
       try {
         const lineageMerkleRoot =
           await computeArtifactLineageMerkleRoot(childArtifacts);
+        // Issue #21 F6: commit to the child's output exactly as ai.run does
+        // so a verifier can recompute it from the child's result.
+        const outputHash = await hashOutputForReceipt(childResult.output);
         const envelope = await createReceipt(
           {
             runId: shared.runId,
@@ -361,16 +373,27 @@ function createDispatcherNode(
             ...(lineageMerkleRoot !== undefined ? { lineageMerkleRoot } : {}),
             contractVerdict: "success",
             contractHash: null,
+            // The child intent carries no input artifacts (only a task string
+            // and tools). inputHashes must stay empty: materializeReplayEnvelope
+            // resolves every non-empty entry through the artifact loader, so a
+            // hash of the task string would break replay.
             inputHashes: [],
-            outputHash: null,
+            outputHash,
             stepName: `crew-agent-completion:${childSpec.id}`,
           },
           ctx.signer,
         );
         ctx.mintedReceipts(envelope);
         receipts.push(await receiptCid(envelope));
-      } catch {
-        // Best-effort: the summary simply carries no completion CID.
+      } catch (error) {
+        // Best-effort: the summary simply carries no completion CID, but the
+        // gap is no longer silent (issue #21 F5). Record it on the tracer the
+        // same way checkpoint.ts reports mint errors.
+        ctx.tracer?.event?.(STEP_TRANSITION_EVENT_NAME, {
+          runId: shared.runId,
+          stepName: `crew-agent-completion:${childSpec.id}`,
+          mintError: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

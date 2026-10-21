@@ -33,6 +33,7 @@ Default attributes include:
 - `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` when usage metadata is available
 - `llm.token_count.prompt` and `llm.token_count.completion` for Phoenix/OpenInference compatibility
 - `lattice.receipt.cid` and signature references when an event carries a receipt envelope
+- `lattice.receipt.error` and `lattice.receipt.mint_error.present` when receipt issuance fails and the run continues in flag mode
 
 The default sanitizer excludes raw prompt, output, artifact, message, body, payload, header, authorization, API key, token, password, and secret-shaped metadata. To include bounded custom metadata, pass:
 
