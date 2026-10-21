@@ -1,0 +1,450 @@
+{
+  "routing": {
+    "requests": 1000,
+    "repeatedEvaluations": 20000,
+    "identicalDecisionRate": 1,
+    "catalogPermutationSameSelectionRate": 1,
+    "routed": 938,
+    "noRoute": 62,
+    "selectedViolatingPolicy": 0,
+    "noRouteDespiteFeasibleCandidate": 0
+  },
+  "pii": {
+    "overall_allPII": {
+      "n": 3000,
+      "tp": 1401,
+      "fp": 0,
+      "fn": 599,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.7005
+    },
+    "inScopeOnly": {
+      "n": 2400,
+      "tp": 1399,
+      "fp": 0,
+      "fn": 1,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.9993
+    },
+    "outOfScopeOnly": {
+      "n": 1600,
+      "tp": 2,
+      "fp": 0,
+      "fn": 598,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.0033
+    },
+    "byLabel": [
+      {
+        "label": "email",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "email-obfuscated",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "ssn-dashed",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "ssn-nodash",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "ssn-spaced",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 0.99
+      },
+      {
+        "label": "cc-plain",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-spaced",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-dashed",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-amex",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "phone-dashed",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "phone-paren",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "phone-dotted",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "phone-+1",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "phone-plain10",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "name-address",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "iban",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0.02
+      },
+      {
+        "label": "uk-phone",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "ipv4",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "dob",
+        "isPII": true,
+        "inScope": false,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-date",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-version",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-order-id-3-2-4",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-sku-3-3-4",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-16digit-random",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-sha",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-amount",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-isbn13",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-plain-text",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-decorator",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "nested-object-email",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      }
+    ],
+    "evidenceContainsRawPIIRate": 0.9286224125624554
+  },
+  "mustCite": {
+    "cases": 15,
+    "agree": 15,
+    "rows": [
+      {
+        "label": "string-cite",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "object-cite",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "evidence-key",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "multi-cite",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "missing",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "empty",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "wrong-doc",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "case-variant",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "case-variant-opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "nested-citations",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "inline-text-only",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "object-other-key",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "object-id-key",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "hallucinated-cite-string",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "named-without-brackets",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      }
+    ]
+  },
+  "leakage": [
+    {
+      "adapter": "openai",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "openai",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "openai-compatible",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "openai-compatible",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "anthropic",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "anthropic",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "gemini",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "gemini",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "xai",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "xai",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "openrouter",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "openrouter",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    },
+    {
+      "adapter": "lm-studio",
+      "noPiiContract": false,
+      "verdict": "success",
+      "leakedFields": "none",
+      "redactionsManifest": "[]"
+    },
+    {
+      "adapter": "lm-studio",
+      "noPiiContract": true,
+      "verdict": "tripwire-violated",
+      "leakedFields": "none",
+      "redactionsManifest": "[{\"path\":\"tripwireEvidence.message\",\"reason\":\"tripwire-message-templated\"},{\"path\":\"tripwireEvidence.observed\",\"reason\":\"no-pii-detector-mask-only\"}]"
+    }
+  ]
+}

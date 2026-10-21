@@ -1,0 +1,103 @@
+{
+  "checks": 16,
+  "passed": 16,
+  "failed": [],
+  "rows": [
+    {
+      "check": "plain-verifies",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "advisories-on-unbound-receipt",
+      "ok": true,
+      "kind": "3",
+      "message": "audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party || nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay || this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+    },
+    {
+      "check": "bound-accepts-matching-options",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "audience-mismatch",
+      "ok": true,
+      "kind": "audience-mismatch",
+      "message": "receipt audience \"relying-party\" does not match expected \"other\""
+    },
+    {
+      "check": "nonce-mismatch",
+      "ok": true,
+      "kind": "nonce-mismatch",
+      "message": "receipt nonce does not match the expected nonce"
+    },
+    {
+      "check": "expired",
+      "ok": true,
+      "kind": "receipt-expired",
+      "message": "receipt expired at 2099-01-01T00:00:00Z"
+    },
+    {
+      "check": "minVersion-v1.4-accepts-current",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "minVersion-floor-rejects-v1.1",
+      "ok": true,
+      "kind": "schema-version-too-low",
+      "message": "Receipt body.version \"lattice-receipt/v1.1\" is below the accepted floor \"lattice-receipt/v1.4\" (CRYPTO-01). Accepted: lattice-receipt/v1.4."
+    },
+    {
+      "check": "v1.1-still-verifies-without-minVersion",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "truncate-without-expectedCount",
+      "ok": true,
+      "kind": "accepted",
+      "message": "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt || audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party || nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay || this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+    },
+    {
+      "check": "truncate-with-expectedCount",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chain has 3 receipts; expected 4"
+    },
+    {
+      "check": "closed-chain-accepts",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "closed-chain-dropped-leaf",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainMemberCids lists 2 members but the chain has 1 receipts besides the closer; a member was added or dropped"
+    },
+    {
+      "check": "signer-flag-default",
+      "ok": true,
+      "kind": "signer-failed",
+      "message": "signer down"
+    },
+    {
+      "check": "signer-throw",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": ""
+    },
+    {
+      "check": "no-signer-no-receipt",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    }
+  ]
+}

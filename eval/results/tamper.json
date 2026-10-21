@@ -1,0 +1,546 @@
+{
+  "baseReceipts": 70,
+  "attackCases": 3570,
+  "attackRejected": 3570,
+  "summary": [
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-outputHash",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-outputHash",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-outputHash",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-inputHashes",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-inputHashes",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-inputHashes",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-route-provider",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-route-provider",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-route-provider",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-model",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-model",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-model",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-usage-cost",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-usage-cost",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-usage-cost",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-verdict",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-verdict",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-verdict",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-issuedAt",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-issuedAt",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-issuedAt",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-runId",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-runId",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-runId",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "drop-redactions",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "version-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "drop-redactions",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "version-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "drop-redactions",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "version-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "edit-redactionPolicy",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "edit-redactionPolicy",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "edit-redactionPolicy",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "add-field",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "canonicalization-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "add-field",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "add-field",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-keep-sig",
+      "mutation": "unicode-nfd",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-jcs-keep-sig",
+      "mutation": "unicode-nfd",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "body-edit-attacker-sig-legit-kid",
+      "mutation": "unicode-nfd",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "encoding",
+      "mutation": "key-reorder",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "canonicalization-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "encoding",
+      "mutation": "whitespace",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "canonicalization-mismatch:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "sig-bitflip",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "sig-swap-same-key",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "sig-truncate",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "sig-empty-list",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "envelope-malformed:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "payload-truncate",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "envelope-malformed:70",
+      "rate": 1
+    },
+    {
+      "category": "signature",
+      "mutation": "payloadType-change",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "envelope-malformed:70",
+      "rate": 1
+    },
+    {
+      "category": "key",
+      "mutation": "keyid-to-other-trusted",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "key",
+      "mutation": "keyid-unknown",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "key-not-found:70",
+      "rate": 1
+    },
+    {
+      "category": "key",
+      "mutation": "forge-attacker-key-own-kid",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "key-not-found:70",
+      "rate": 1
+    },
+    {
+      "category": "key",
+      "mutation": "resign-revoked-key",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "key-revoked:70",
+      "rate": 1
+    },
+    {
+      "category": "key",
+      "mutation": "resign-other-key-body-kid-mismatch",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "signature-invalid:70",
+      "rate": 1
+    },
+    {
+      "category": "downgrade",
+      "mutation": "version-v1-resigned-valid-key",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "schema-version-too-low:70",
+      "rate": 1
+    },
+    {
+      "category": "downgrade",
+      "mutation": "version-absent-resigned-valid-key",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 70,
+      "kinds": "schema-version-too-low:70",
+      "rate": 1
+    },
+    {
+      "category": "control-accept",
+      "mutation": "untouched",
+      "expectReject": false,
+      "n": 70,
+      "rejected": 0,
+      "kinds": "accepted(active):70",
+      "rate": 0
+    },
+    {
+      "category": "control-accept",
+      "mutation": "retired-key-legit-signature",
+      "expectReject": false,
+      "n": 70,
+      "rejected": 0,
+      "kinds": "accepted(retired):70",
+      "rate": 0
+    },
+    {
+      "category": "control-accept",
+      "mutation": "version-v1.1-resigned-valid-key (key holder)",
+      "expectReject": false,
+      "n": 70,
+      "rejected": 0,
+      "kinds": "accepted(active):70",
+      "rate": 0
+    },
+    {
+      "category": "replay",
+      "mutation": "same-receipt-presented-again (no nonce/audience)",
+      "expectReject": true,
+      "n": 70,
+      "rejected": 0,
+      "kinds": "accepted(active):70",
+      "rate": 0
+    }
+  ],
+  "chainSummary": [
+    {
+      "mutation": "swap-adjacent-links",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 0,
+      "chainVerifierReason": "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+    },
+    {
+      "mutation": "drop-middle-link",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 1,
+      "chainVerifierReason": "orphan-link"
+    },
+    {
+      "mutation": "splice-foreign-link",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 1,
+      "chainVerifierReason": "orphan-link"
+    },
+    {
+      "mutation": "truncate-tail",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 0,
+      "chainVerifierReason": "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+    },
+    {
+      "mutation": "truncate-tail-expectedCount",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 1,
+      "chainVerifierReason": "count-mismatch"
+    },
+    {
+      "mutation": "replace-root",
+      "n": 50,
+      "perReceiptRejectRate": 0,
+      "chainVerifierRejectRate": 1,
+      "chainVerifierReason": "orphan-link"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+label,labeledSatisfies,passed,agree
+string-cite,true,true,true
+object-cite,true,true,true
+evidence-key,true,true,true
+multi-cite,true,true,true
+missing,false,false,true
+empty,false,false,true
+wrong-doc,false,false,true
+case-variant,false,false,true
+case-variant-opt-in,true,true,true
+nested-citations,true,true,true
+inline-text-only,true,true,true
+object-other-key,false,false,true
+object-id-key,true,true,true
+hallucinated-cite-string,false,false,true
+named-without-brackets,true,true,true

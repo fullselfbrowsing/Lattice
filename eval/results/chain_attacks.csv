@@ -1,0 +1,7 @@
+mutation,n,perReceiptRejectRate,chainVerifierRejectRate,chainVerifierReason
+swap-adjacent-links,50,0,0,"tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+drop-middle-link,50,0,1,orphan-link
+splice-foreign-link,50,0,1,orphan-link
+truncate-tail,50,0,0,"tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+truncate-tail-expectedCount,50,0,1,count-mismatch
+replace-root,50,0,1,orphan-link

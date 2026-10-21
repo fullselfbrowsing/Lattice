@@ -1,37 +1,37 @@
 {
-  "generatedAt": "2026-10-19T15:48:45.028Z",
-  "lattice": "1.5.1",
-  "commit": "b855313",
-  "node": "v24.14.1",
-  "cpu": "Apple M4 Max",
-  "platform": "darwin 25.6.0 arm64",
+  "generatedAt": "2026-10-21T16:30:43.405Z",
+  "lattice": "1.6.0",
+  "commit": "4549334",
+  "node": "v24.22.1",
+  "cpu": "Intel(R) Xeon(R) Processor",
+  "platform": "linux 6.12.94+ x64",
   "provider": "mocked (createFakeProvider), no network",
   "signMs": {
     "n": 1000,
-    "median": 0.041,
-    "p95": 0.052,
-    "mean": 0.042
+    "median": 0.067,
+    "p95": 0.095,
+    "mean": 0.073
   },
   "verifyMs": {
     "n": 1000,
-    "median": 0.077,
-    "p95": 0.095,
-    "mean": 0.08
+    "median": 0.126,
+    "p95": 0.177,
+    "mean": 0.136
   },
   "oneMiBImage": {
     "runUnsignedMs": {
       "n": 40,
-      "median": 0.085,
-      "p95": 0.102,
-      "mean": 0.086
+      "median": 0.608,
+      "p95": 0.729,
+      "mean": 0.517
     },
     "runSignedMs": {
       "n": 40,
-      "median": 0.65,
-      "p95": 1.159,
-      "mean": 0.711
+      "median": 2.01,
+      "p95": 5.703,
+      "mean": 2.52
     },
-    "issuanceOverheadMedianMs": 0.565,
+    "issuanceOverheadMedianMs": 1.402,
     "inputHashes": 1
   },
   "receiptSize": {

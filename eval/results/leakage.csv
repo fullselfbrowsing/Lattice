@@ -1,0 +1,15 @@
+adapter,noPiiContract,verdict,leakedFields,redactionsManifest
+openai,false,success,none,[]
+openai,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+openai-compatible,false,success,none,[]
+openai-compatible,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+anthropic,false,success,none,[]
+anthropic,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+gemini,false,success,none,[]
+gemini,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+xai,false,success,none,[]
+xai,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+openrouter,false,success,none,[]
+openrouter,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"
+lm-studio,false,success,none,[]
+lm-studio,true,tripwire-violated,none,"[{""path"":""tripwireEvidence.message"",""reason"":""tripwire-message-templated""},{""path"":""tripwireEvidence.observed"",""reason"":""no-pii-detector-mask-only""}]"

@@ -1,0 +1,20 @@
+┌─────────┬──────────────────────────────────────────┬──────┬──────────────────────────┐
+│ (index) │ check                                    │ ok   │ kind                     │
+├─────────┼──────────────────────────────────────────┼──────┼──────────────────────────┤
+│ 0       │ 'plain-verifies'                         │ true │ ''                       │
+│ 1       │ 'advisories-on-unbound-receipt'          │ true │ '3'                      │
+│ 2       │ 'bound-accepts-matching-options'         │ true │ ''                       │
+│ 3       │ 'audience-mismatch'                      │ true │ 'audience-mismatch'      │
+│ 4       │ 'nonce-mismatch'                         │ true │ 'nonce-mismatch'         │
+│ 5       │ 'expired'                                │ true │ 'receipt-expired'        │
+│ 6       │ 'minVersion-v1.4-accepts-current'        │ true │ ''                       │
+│ 7       │ 'minVersion-floor-rejects-v1.1'          │ true │ 'schema-version-too-low' │
+│ 8       │ 'v1.1-still-verifies-without-minVersion' │ true │ ''                       │
+│ 9       │ 'truncate-without-expectedCount'         │ true │ 'accepted'               │
+│ 10      │ 'truncate-with-expectedCount'            │ true │ 'count-mismatch'         │
+│ 11      │ 'closed-chain-accepts'                   │ true │ ''                       │
+│ 12      │ 'closed-chain-dropped-leaf'              │ true │ 'count-mismatch'         │
+│ 13      │ 'signer-flag-default'                    │ true │ 'signer-failed'          │
+│ 14      │ 'signer-throw'                           │ true │ 'ReceiptSigningError'    │
+│ 15      │ 'no-signer-no-receipt'                   │ true │ ''                       │
+└─────────┴──────────────────────────────────────────┴──────┴──────────────────────────┘
