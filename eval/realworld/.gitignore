@@ -3,3 +3,7 @@ integrations/janus/go.mod
 integrations/janus/go.sum
 integrations/janus/janus-wrap
 scripts/__pycache__/
+*.key
+**/*.key
+.env
+.env.*

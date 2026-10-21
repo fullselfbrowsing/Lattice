@@ -2,3 +2,10 @@ node_modules/
 dist/
 coverage/
 examples/work-inbox/.lattice/
+
+# Secrets. Never commit API keys or env files.
+*.key
+**/*.key
+.env
+.env.*
+!.env.example

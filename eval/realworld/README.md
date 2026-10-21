@@ -13,6 +13,12 @@ wraps the recorded payloads. `scripts/05-charts.py` writes the figures and the
 LaTeX fragment from the JSON only.
 
 Raw measurements are `results/live.json`, `results/datasets.json`, and
-`results/compare.json`. Generated figures are `results/rw-*.pdf` and
-`results/rw-*.png`. The comparison artifacts directory is gitignored because it
-contains signing keys.
+`results/compare.json`. The broader comparison adds `results/pii-tools.json`,
+`results/citations.json`, `results/gateways.json`, `results/tamper-classes.json`,
+and, when `OPENROUTER_API_KEY` is set in the environment,
+`results/openrouter.json`. Generated figures are `results/rw-*.pdf` and
+`results/rw-*.png`. `scripts/12-charts.py` writes `realworld-broad.tex` from
+those files. The comparison artifacts directory is gitignored because it
+contains signing keys. Do not commit API keys. `scripts/10-openrouter.mjs`
+reads the key from the environment and refuses to write a file that still
+contains it.

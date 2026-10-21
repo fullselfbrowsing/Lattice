@@ -12,3 +12,7 @@ python3 eval/realworld/scripts/02-prepare.py
 node eval/realworld/scripts/02-score.mjs
 python3 eval/realworld/scripts/04-compare.py
 python3 eval/realworld/scripts/05-charts.py
+# The broader comparison is separate. 06-pii-tools.py, 07-cite.py, 08-gateways.py,
+# and 09-tamper-classes.py need the cached datasets and the local tool installs.
+# 10-openrouter.mjs additionally needs OPENROUTER_API_KEY and only calls :free models.
+# 11-rescore-lattice.py patches the Lattice rows. 12-charts.py regenerates the fragment.
