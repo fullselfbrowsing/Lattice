@@ -416,10 +416,21 @@ describe("runAgentCrew — signed receipt chain", () => {
     });
     expect(chain).toMatchObject({ ok: true, rootCid: result.crewRootCid, count: result.receipts.length });
 
-    // Issue #21 F6: the crew-start root has no output yet, but every agent
-    // completion receipt commits to that agent's output.
-    expect(bodies[0]?.outputHash).toBeNull();
+    // The crew-start receipt commits to the crew plan (root id and child
+    // ids) rather than a null output hash. Agent completion receipts still
+    // commit to each agent's output.
+    expect(bodies[0]?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(bodies[0]?.outputHash).toBe(
+      await hashOutputForReceipt({
+        kind: "crew-start",
+        rootId: "lead",
+        childIds: ["researcher"],
+      }),
+    );
+    expect(bodies[0]?.chainClosure).toBe("member-cids");
     expect(bodies[0]?.inputHashes).toEqual([]);
+    const closeBody = bodies.find((body) => body.stepName === "crew-close:lead");
+    expect(closeBody?.chainMemberCids?.length).toBe(result.receipts.length - 1);
     const leadBody = bodies.find((body) => body.stepName === "crew-agent-completion:lead");
     expect(leadBody).toBeDefined();
     if (result.result.kind === "success") {

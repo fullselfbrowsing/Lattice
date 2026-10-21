@@ -100,30 +100,34 @@ async function evaluateOne(
 const DEFAULT_MUST_CITE_KEYS: readonly string[] = ["source"];
 
 /**
- * `must-cite` checks that a citation naming `artifactName` is PRESENT in the
- * located citations array. It does not verify that the cited artifact
- * supports the claim; that is a semantic judgment outside the kernel.
+ * `must-cite` checks that a citation naming `artifactName` is present.
  *
- * Defaults reproduce the original behavior exactly: search top-level
- * `citations` then `evidence`, compare string entries directly and object
- * entries by their `source` key, case-sensitively. `decl.path`, `decl.keys`,
- * and `decl.caseInsensitive` (issue #21 F9) relax each of those in turn.
+ * A structured entry still counts: top-level `citations` then `evidence`,
+ * string entries compared directly and object entries by `source`,
+ * case-sensitively, unless `decl.path`, `decl.keys`, or
+ * `decl.caseInsensitive` say otherwise (issue #21 F9). When that search
+ * misses, a nested `citations` or `evidence` array is used.
+ *
+ * An inline marker in any other string also counts: `[name]` or `(name)`,
+ * with the name as a whole word inside the brackets. A structured entry
+ * that names the artifact is rejected when the prose contains square-bracket
+ * citations and none of them name the artifact. That is a fabricated
+ * citation: the list was filled in while the text cites something else.
+ * The check still does not judge whether the cited artifact supports the
+ * claim.
  */
 function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireResult {
   const located =
     decl.path !== undefined
       ? locateCitationsAtPath(output, decl.path)
-      : locateCitations(output);
+      : locateCitations(output) ?? locateNestedCitations(output);
   const cites = located?.value ?? [];
   const path = located?.path ?? decl.path ?? "citations";
   const keys = decl.keys ?? DEFAULT_MUST_CITE_KEYS;
   const equals = (candidate: unknown): boolean =>
-    typeof candidate === "string" &&
-    (decl.caseInsensitive === true
-      ? candidate.toLowerCase() === decl.artifactName.toLowerCase()
-      : candidate === decl.artifactName);
+    typeof candidate === "string" && namesEqual(candidate, decl.artifactName, decl.caseInsensitive === true);
 
-  const matched = cites.some((entry) => {
+  const structured = cites.some((entry) => {
     if (typeof entry === "string") return equals(entry);
     if (typeof entry === "object" && entry !== null) {
       const record = entry as Record<string, unknown>;
@@ -131,8 +135,10 @@ function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireRes
     }
     return false;
   });
+  const inline = outputHasInlineCitation(output, decl.artifactName, decl.caseInsensitive === true);
+  const fabricated = structured && proseCitesSomethingElse(output, decl.artifactName, decl.caseInsensitive === true);
 
-  if (matched) return { ok: true };
+  if ((structured && !fabricated) || inline) return { ok: true };
 
   return {
     ok: false,
@@ -141,9 +147,88 @@ function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireRes
       kind: "must-cite",
       path,
       observed: cites,
-      message: `must-cite: no citation found for "${decl.artifactName}".`,
+      message: fabricated
+        ? `must-cite: citation "${decl.artifactName}" is not cited in the text.`
+        : `must-cite: no citation found for "${decl.artifactName}".`,
     },
   };
+}
+
+function namesEqual(candidate: string, artifactName: string, caseInsensitive: boolean): boolean {
+  return caseInsensitive
+    ? candidate.toLowerCase() === artifactName.toLowerCase()
+    : candidate === artifactName;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const CITATION_CONTAINER_KEYS: ReadonlySet<string> = new Set(["citations", "evidence"]);
+
+function collectProse(value: unknown, out: string[], depth: number): void {
+  if (depth > 8 || out.length > 200) return;
+  if (typeof value === "string") {
+    out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) collectProse(entry, out, depth + 1);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (CITATION_CONTAINER_KEYS.has(key)) continue;
+    collectProse(record[key], out, depth + 1);
+  }
+}
+
+function proseStrings(output: unknown): readonly string[] {
+  const out: string[] = [];
+  collectProse(output, out, 0);
+  return out;
+}
+
+function nameToken(artifactName: string): string {
+  // Hyphen is not a word character, so `\b` would match inside `doc-a-draft`.
+  // Treat a letter, digit, underscore, or hyphen as part of the token.
+  const name = escapeRegExp(artifactName);
+  return `(?<![\\w-])${name}(?![\\w-])`;
+}
+
+function outputHasInlineCitation(
+  output: unknown,
+  artifactName: string,
+  caseInsensitive: boolean,
+): boolean {
+  const name = nameToken(artifactName);
+  const flags = caseInsensitive ? "i" : "";
+  const pattern = new RegExp(
+    `(?:\\[[^\\]\\n]{0,120}${name}[^\\]\\n]{0,120}\\]|\\([^)\\n]{0,120}${name}[^)\\n]{0,120}\\))`,
+    flags,
+  );
+  return proseStrings(output).some((text) => pattern.test(text));
+}
+
+/**
+ * True when the prose has at least one square-bracket citation and none of
+ * them name `artifactName`. Parentheses are not markers here: a phone
+ * number or an aside would otherwise look like a competing citation.
+ */
+function proseCitesSomethingElse(
+  output: unknown,
+  artifactName: string,
+  caseInsensitive: boolean,
+): boolean {
+  const name = nameToken(artifactName);
+  const flags = caseInsensitive ? "i" : "";
+  const named = new RegExp(`\\[[^\\]\\n]{0,120}${name}[^\\]\\n]{0,120}\\]`, flags);
+  const any = /\[[^\]\n]{1,120}\]/;
+  const prose = proseStrings(output);
+  const hasMarker = prose.some((text) => any.test(text));
+  if (!hasMarker) return false;
+  return !prose.some((text) => named.test(text));
 }
 
 /**
@@ -162,6 +247,43 @@ function locateCitations(
   for (const key of ["citations", "evidence"] as const) {
     const value = record[key];
     if (Array.isArray(value)) return { value, path: key };
+  }
+  return undefined;
+}
+
+/**
+ * First nested `citations` or `evidence` array, used when the output wraps
+ * the list (for example `{ answer: { citations: [...] } }`). The path is the
+ * dotted location so evidence still names where the list was found.
+ */
+function locateNestedCitations(
+  output: unknown,
+): { readonly value: readonly unknown[]; readonly path: string } | undefined {
+  const found = walkForCitations(output, "", 0);
+  return found;
+}
+
+function walkForCitations(
+  value: unknown,
+  path: string,
+  depth: number,
+): { readonly value: readonly unknown[]; readonly path: string } | undefined {
+  if (depth > 8 || typeof value !== "object" || value === null) return undefined;
+  if (Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of ["citations", "evidence"] as const) {
+    if (path === "" && key in record) continue;
+    const entry = record[key];
+    if (Array.isArray(entry)) {
+      const here = path === "" ? key : `${path}.${key}`;
+      return { value: entry, path: here };
+    }
+  }
+  for (const key of Object.keys(record).sort()) {
+    if (key === "citations" || key === "evidence") continue;
+    const here = path === "" ? key : `${path}.${key}`;
+    const found = walkForCitations(record[key], here, depth + 1);
+    if (found !== undefined) return found;
   }
   return undefined;
 }

@@ -86,6 +86,18 @@ export interface CapabilityReceiptBody {
   readonly nonce?: string;
   /** ISO 8601 UTC instant after which every verifier rejects the receipt. */
   readonly expiresAt?: string;
+  /**
+   * When `"member-cids"`, `verifyChain` requires exactly one other receipt
+   * whose `chainMemberCids` lists every remaining member. Crew-start
+   * receipts set this so a dropped leaf fails closed. Absent on older
+   * receipts; those still need `expectedCount`.
+   */
+  readonly chainClosure?: "member-cids";
+  /**
+   * CIDs of every other receipt in the tree, sorted. Present only on the
+   * closing receipt of a chain that declared `chainClosure`.
+   */
+  readonly chainMemberCids?: readonly string[];
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -230,6 +242,13 @@ export interface VerifyChainOk {
   readonly depth: number;
   /** CIDs in input order. */
   readonly cids: readonly string[];
+  /**
+   * Set when verification succeeded but a stronger check was left to the
+   * caller: audience, nonce, expiry, a raised `minVersion`, or
+   * `expectedCount` on a chain that does not carry `chainClosure`.
+   * Omitted when there is nothing to warn about.
+   */
+  readonly advisories?: readonly string[];
 }
 
 export interface VerifyChainFail {

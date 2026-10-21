@@ -212,6 +212,23 @@ export async function runAgentCrew(
     receipts.push(parentEnvelope);
   }
 
+  if (options.signer !== undefined && crewRoot !== undefined) {
+    const memberCids: string[] = [];
+    for (const envelope of receipts) {
+      memberCids.push(await receiptCid(envelope));
+    }
+    receipts.push(
+      await mintCrewClose({
+        runId,
+        rootId: options.root.id,
+        signer: options.signer,
+        parentReceiptCid: crewRoot.cid,
+        memberCids,
+        success: parentResult.kind === "success",
+      }),
+    );
+  }
+
   await populateReceiptCidIndex(receipts, receiptCidsByAgent);
 
   const result = dispatcher.crewBudgetExhausted() || crewBudgetViolated({
@@ -423,6 +440,18 @@ async function maybeMintCrewRoot(input: {
   readonly signer?: ReceiptSigner;
 }): Promise<{ readonly envelope: ReceiptEnvelope; readonly cid: string } | undefined> {
   if (input.signer === undefined) return undefined;
+  const childIds = (input.root.childAgents ?? []).map((child) => child.id);
+  // The root is minted BEFORE any agent runs so children have a chain
+  // anchor (dispatcher.ts Pitfall 2). Its output is the crew plan, which
+  // exists now, so the receipt does not carry a null output hash. The
+  // per-agent completion receipts still hash each agent's output.
+  // chainClosure tells verifyChain to require the closing receipt minted
+  // after the crew finishes, which is what makes a dropped leaf fail.
+  const outputHash = await hashOutputForReceipt({
+    kind: "crew-start",
+    rootId: input.root.id,
+    childIds,
+  });
   const envelope = await createReceipt(
     {
       runId: input.runId,
@@ -436,16 +465,44 @@ async function maybeMintCrewRoot(input: {
       contractVerdict: "success",
       contractHash: null,
       inputHashes: [],
-      // The root is minted BEFORE any agent runs so children have a chain
-      // anchor (dispatcher.ts Pitfall 2). There is no output to commit to
-      // yet; the per-agent completion receipts chained to this root carry
-      // the output hashes.
-      outputHash: null,
+      outputHash,
+      chainClosure: "member-cids",
       stepName: `crew-start:${input.root.id}`,
     },
     input.signer,
   );
   return { envelope, cid: await receiptCid(envelope) };
+}
+
+async function mintCrewClose(input: {
+  readonly runId: string;
+  readonly rootId: string;
+  readonly signer: ReceiptSigner;
+  readonly parentReceiptCid: string;
+  readonly memberCids: readonly string[];
+  readonly success: boolean;
+}): Promise<ReceiptEnvelope> {
+  const memberCids = [...input.memberCids].sort();
+  return createReceipt(
+    {
+      runId: input.runId,
+      model: { requested: "lattice-crew/close", observed: null },
+      route: {
+        providerId: "lattice-crew",
+        capabilityId: "lattice-crew/close",
+        attemptNumber: 1,
+      },
+      parentReceiptCid: input.parentReceiptCid,
+      usage: ZERO_USAGE,
+      contractVerdict: input.success ? "success" : "execution-failed",
+      contractHash: null,
+      inputHashes: [],
+      outputHash: await hashOutputForReceipt({ kind: "crew-close", memberCids }),
+      chainMemberCids: memberCids,
+      stepName: `crew-close:${input.rootId}`,
+    },
+    input.signer,
+  );
 }
 
 async function createAgentCompletionReceipt(input: {

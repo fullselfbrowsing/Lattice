@@ -152,6 +152,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "permissionGuardRegisterOptions",
   "realtimeStepName",
   "receiptCid",
+  "receiptVerifyAdvisories",
   "redactArtifactRef",
   "redactPlan",
   "redactReplayEnvelope",

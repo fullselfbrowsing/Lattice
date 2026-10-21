@@ -240,16 +240,59 @@ describe("verifyChain — structural failures", () => {
 });
 
 describe("verifyChain — out-of-band commitments", () => {
-  it("documents the limitation: a dropped leaf still verifies without expectedCount", async () => {
+  it("warns that a dropped leaf is unchecked without expectedCount, and expectedCount catches it", async () => {
     const { signer, keySet } = await makeSigner();
     const { root, children } = await mintTree(signer, 3);
     const truncated = [root, children[0]!, children[1]!];
     const silent = await verifyChain(truncated, keySet);
     expect(silent.ok).toBe(true);
+    if (silent.ok) {
+      expect(silent.advisories?.some((note) => note.includes("tail truncation"))).toBe(true);
+    }
 
     const caught = await verifyChain(truncated, keySet, { expectedCount: 4 });
     expect(caught.ok).toBe(false);
     if (!caught.ok) expect(caught.error.kind).toBe("count-mismatch");
+  });
+
+  it("rejects a dropped leaf when the root declares chainClosure", async () => {
+    const { signer, keySet } = await makeSigner();
+    const root = await createReceipt(
+      minimalInput({ stepName: "crew-start:lead", chainClosure: "member-cids" }),
+      signer,
+    );
+    const rootCid = await receiptCid(root);
+    const children: ReceiptEnvelope[] = [];
+    for (let i = 0; i < 2; i += 1) {
+      children.push(
+        await createReceipt(
+          minimalInput({ parentReceiptCid: rootCid, stepName: `child-${i}` }),
+          signer,
+        ),
+      );
+    }
+    const memberCids = [rootCid, ...(await Promise.all(children.map((child) => receiptCid(child))))].sort();
+    const closer = await createReceipt(
+      minimalInput({
+        parentReceiptCid: rootCid,
+        stepName: "crew-close:lead",
+        chainMemberCids: memberCids,
+        outputHash: "c".repeat(64),
+      }),
+      signer,
+    );
+    const full = [root, ...children, closer];
+    expect((await verifyChain(full, keySet)).ok).toBe(true);
+
+    const truncated = [root, children[0]!, closer];
+    const dropped = await verifyChain(truncated, keySet);
+    expect(dropped.ok).toBe(false);
+    if (!dropped.ok) expect(dropped.error.kind).toBe("count-mismatch");
+
+    const withoutCloser = [root, ...children];
+    const open = await verifyChain(withoutCloser, keySet);
+    expect(open.ok).toBe(false);
+    if (!open.ok) expect(open.error.message).toContain("chainMemberCids");
   });
 
   it("rejects a replaced root via expectedRootCid", async () => {

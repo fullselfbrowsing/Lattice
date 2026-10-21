@@ -13,9 +13,13 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
  */
 
 /**
- * `must-cite` checks that a citation entry naming `artifactName` is PRESENT
- * in the located citations array. It does NOT verify that the cited
- * artifact supports the claim.
+ * `must-cite` checks that a citation naming `artifactName` is present.
+ * A structured entry in the located citations array counts, and so does an
+ * inline marker in the output text (`[name]` or `(name)`). A structured
+ * entry does NOT count when the prose cites a different work in square
+ * brackets and never cites this one: that entry is a fabricated citation.
+ * The check still does not judge whether the cited artifact supports the
+ * claim.
  *
  * With every optional field absent the check reproduces the original
  * behavior: search top-level `citations` then `evidence`, compare string

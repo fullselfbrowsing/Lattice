@@ -36,7 +36,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { defineCommand } from "citty";
-import { verifyReceipt, type ReceiptEnvelope } from "@full-self-browsing/lattice";
+import {
+  receiptVerifyAdvisories,
+  verifyReceipt,
+  type ReceiptEnvelope,
+} from "@full-self-browsing/lattice";
 
 import {
   isKeysetLoadError,
@@ -134,6 +138,9 @@ export async function runVerify(
   const result = await verifyReceipt(envelope, keySet, built.options);
   if (result.ok) {
     deps.stdout(`OK kid=${result.body.kid} verdict=${result.body.contractVerdict}`);
+    for (const note of receiptVerifyAdvisories(result.body, built.options)) {
+      deps.stderr(`WARN ${note}`);
+    }
     deps.exit(0);
     return;
   }

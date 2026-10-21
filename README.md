@@ -288,7 +288,7 @@ await verifyReceipt(
 );
 ```
 
-`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Receipts that chain through `parentReceiptCid`, such as a crew root and its agent completion receipts, verify as one tree with `verifyChain`:
+`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Audience, nonce, `maxAgeMs`, and a raised `minVersion` are opt-in, so a receipt that omits them still verifies; `receiptVerifyAdvisories` describes what was not checked. Receipts that chain through `parentReceiptCid`, such as a crew root and its agent completion receipts, verify as one tree with `verifyChain`:
 
 ```ts
 import { verifyChain } from "@full-self-browsing/lattice/audit";
@@ -300,7 +300,7 @@ const chain = await verifyChain(receipts, keySet, {
 if (!chain.ok) throw new Error(`${chain.error.kind}: ${chain.error.message}`);
 ```
 
-Dropped leaf receipts are only detectable when `expectedCount` or an external anchor supplies an out-of-band commitment; `expectedRootCid` detects a replaced root, not a missing leaf.
+Dropped leaf receipts are detectable when `expectedCount` or an external anchor supplies an out-of-band commitment, or when the root receipt sets `chainClosure` and a closing receipt lists `chainMemberCids` (crew runs do this). A chain with neither still verifies, and the result's `advisories` say that tail truncation was not checked. `expectedRootCid` detects a replaced root, not a missing leaf.
 
 ## Tools and MCP
 

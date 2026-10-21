@@ -92,8 +92,11 @@ describe("defaultPiiDetectors", () => {
       }
     });
 
-    it("Test 10: does not match unseparated 4155551234", () => {
-      expect(detector.detect("4155551234").matched).toBe(false);
+    it("Test 10: matches a plain 10-digit phone and ignores an 11-digit run", () => {
+      const result = detector.detect("Call 4155551234 anytime");
+      expect(result.matched).toBe(true);
+      if (result.matched) expect(result.substring).toBe("4155551234");
+      expect(detector.detect("14155551234").matched).toBe(false);
     });
   });
 
@@ -181,18 +184,21 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
     if (result.matched) expect(result.substring).toBe(expected);
   });
 
-  it("still does not match an unseparated 10-digit run or an 11-digit run", () => {
-    expect(detector.detect("4155551234").matched).toBe(false);
+  it("matches a plain 10-digit run and still skips an 11-digit run", () => {
+    expect(detector.detect("4155551234").matched).toBe(true);
+    expect(detector.detect("call 4155551234").matched).toBe(true);
     expect(detector.detect("14155551234").matched).toBe(false);
     // E.164 is unseparated and stays out of scope; a bare `1` glued to the
     // area code needs its own separator so it is not confused with a longer
-    // number.
+    // number. The 11-digit run is not a 10-digit match either.
     expect(detector.detect("+14155551234").matched).toBe(false);
     expect(detector.detect("1415-555-1234").matched).toBe(false);
   });
 
-  it("documented false positive: a ddd-ddd-dddd SKU is flagged", () => {
-    expect(detector.detect("SKU 123-456-7890").matched).toBe(true);
+  it("does not flag a phone-shaped SKU or a 10-digit part number", () => {
+    expect(detector.detect("SKU 123-456-7890").matched).toBe(false);
+    expect(detector.detect("SKU 1234567890").matched).toBe(false);
+    expect(detector.detect("part 415-555-0199").matched).toBe(false);
   });
 
   it("does not flag an ISBN-13 or a plain date", () => {
@@ -201,11 +207,42 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
   });
 });
 
-describe("us-ssn detector — scope (issue #21 F8)", () => {
+describe("us-ssn detector — undashed and spaced forms", () => {
   const detector = findDetector("us-ssn");
 
-  it("does not match an undashed 9-digit run (documented: collides with order ids)", () => {
+  it("matches an undashed 9-digit SSN and a spaced 3-2-4 SSN", () => {
+    const bare = detector.detect("SSN 123456789 on file");
+    expect(bare.matched).toBe(true);
+    if (bare.matched) expect(bare.substring).toBe("123456789");
+    const spaced = detector.detect("123 45 6789");
+    expect(spaced.matched).toBe(true);
+    if (spaced.matched) expect(spaced.substring).toBe("123 45 6789");
+  });
+
+  it("does not flag an SSN-shaped order id, dashed or undashed", () => {
     expect(detector.detect("order 123456789").matched).toBe(false);
-    expect(detector.detect("123 45 6789").matched).toBe(false);
+    expect(detector.detect("order 123-45-6789").matched).toBe(false);
+    expect(detector.detect("invoice 123-45-6789").matched).toBe(false);
+    expect(detector.detect("ref 123456789").matched).toBe(false);
+  });
+
+  it("does not treat a 16-digit reference as an SSN", () => {
+    expect(detector.detect("ref 4111111111111111").matched).toBe(false);
+    expect(detector.detect("1234567890123456").matched).toBe(false);
+  });
+});
+
+describe("credit-card detector — reference numbers", () => {
+  const detector = findDetector("credit-card");
+
+  it("does not flag a 16-digit reference or an ISBN-13", () => {
+    expect(detector.detect("ref 4111111111111111").matched).toBe(false);
+    expect(detector.detect("ref 1234567890123456").matched).toBe(false);
+    expect(detector.detect("ISBN 9780306406157").matched).toBe(false);
+    expect(detector.detect("order 4111111111111111").matched).toBe(false);
+  });
+
+  it("still flags a Luhn-valid Visa number that is not an identifier", () => {
+    expect(detector.detect("Card: 4111111111111111 end").matched).toBe(true);
   });
 });

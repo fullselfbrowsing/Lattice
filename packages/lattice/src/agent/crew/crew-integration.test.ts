@@ -146,7 +146,7 @@ describe("runAgentCrew public integration", () => {
     ]);
     expect(result.totalIterations).toBe(5);
     expect(result.crewRootCid).toMatch(/^sha256:[a-f0-9]{64}$/u);
-    expect(result.receipts).toHaveLength(4);
+    expect(result.receipts).toHaveLength(5);
     for (const envelope of result.receipts) {
       expect(await verifyReceipt(envelope, keySet)).toMatchObject({ ok: true });
     }
@@ -157,7 +157,7 @@ describe("runAgentCrew public integration", () => {
     expect(await verifyChain(result.receipts, keySet)).toMatchObject({
       ok: true,
       rootCid: result.crewRootCid,
-      count: 4,
+      count: 5,
       depth: 1,
     });
   });

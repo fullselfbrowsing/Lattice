@@ -201,6 +201,9 @@ export async function runReceiptVerifyChain(
   });
   if (result.ok) {
     deps.stdout(`OK root=${result.rootCid} links=${result.count}`);
+    for (const note of result.advisories ?? []) {
+      deps.stderr(`WARN ${note}`);
+    }
     deps.exit(0);
     return;
   }

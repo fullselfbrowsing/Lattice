@@ -8,7 +8,7 @@ import type {
   VerifyChainResult,
   VerifyOptions,
 } from "./types.js";
-import { verifyReceipt } from "./verify.js";
+import { receiptVerifyAdvisories, verifyReceipt } from "./verify.js";
 
 interface ChainNode {
   readonly cid: string;
@@ -49,15 +49,18 @@ async function safeCid(envelope: ReceiptEnvelope): Promise<string | undefined> {
  *   6. `expectedCount` and `expectedRootCid` match when given
  *      (`count-mismatch`, `root-mismatch`)
  *
- * LIMITATION, tail truncation: dropping LEAF receipts (for example one
- * child's completion receipt) leaves a smaller tree that is still fully
- * valid. Nothing inside the receipts commits to the tree's size or to its
- * last member, so this function cannot detect that on its own. Only an
- * out-of-band commitment catches it: pass `expectedCount`, or anchor the
- * set externally, for example through the receipt CID lists a `CrewResult`
- * reports per agent. `expectedRootCid` does NOT detect dropped leaves (the
- * root is unchanged); it detects a replaced root. Dropping the root or an
- * interior node IS detected (`no-root`, `orphan-link`).
+ * Tail truncation: dropping LEAF receipts leaves a smaller tree that is
+ * still fully linked. Two commitments catch it. Pass `expectedCount`, or
+ * mint the root with `chainClosure: "member-cids"` and a closing receipt
+ * whose `chainMemberCids` lists every other member (crew runs do this).
+ * A chain that has neither still verifies, and the result carries an
+ * advisory saying so. `expectedRootCid` detects a replaced root, not a
+ * missing leaf. Dropping the root or an interior node is detected
+ * (`no-root`, `orphan-link`).
+ *
+ * A successful result also carries `advisories` when audience, nonce,
+ * expiry, or a raised `minVersion` were left unset. Those checks stay
+ * opt-in so older receipts keep verifying.
  *
  * No replay cache is kept; dedupe on `receiptCid()` if a receipt must only
  * be accepted once. Invalid caller options (unknown `minVersion`,
@@ -207,11 +210,81 @@ export async function verifyChain(
     });
   }
 
+  const closure = checkChainClosure(nodes);
+  if (closure !== undefined) return fail(closure);
+
+  const advisories = chainAdvisories(nodes, options, verifyOptions);
   return {
     ok: true,
     rootCid: root.cid,
     count: nodes.length,
     depth,
     cids: nodes.map((node) => node.cid),
+    ...(advisories.length > 0 ? { advisories } : {}),
   };
+}
+
+function checkChainClosure(nodes: readonly ChainNode[]): VerifyChainError | undefined {
+  const closers = nodes.filter((node) => node.body.chainClosure === "member-cids");
+  const listed = nodes.filter((node) => node.body.chainMemberCids !== undefined);
+  if (closers.length === 0 && listed.length === 0) return undefined;
+  if (closers.length === 0) {
+    return {
+      kind: "count-mismatch",
+      message: "a receipt lists chainMemberCids but no receipt declared chainClosure",
+    };
+  }
+  if (listed.length !== 1) {
+    return {
+      kind: "count-mismatch",
+      message: `chainClosure requires exactly one receipt with chainMemberCids, found ${listed.length}`,
+    };
+  }
+  const closer = listed[0]!;
+  const declared = closer.body.chainMemberCids;
+  if (declared === undefined || declared.some((cid) => typeof cid !== "string")) {
+    return {
+      kind: "count-mismatch",
+      cid: closer.cid,
+      message: "chainMemberCids must be an array of CID strings",
+    };
+  }
+  const actual = new Set(nodes.filter((node) => node.cid !== closer.cid).map((node) => node.cid));
+  const declaredSet = new Set(declared);
+  const same =
+    declaredSet.size === actual.size &&
+    declaredSet.size === declared.length &&
+    [...declaredSet].every((cid) => actual.has(cid));
+  if (!same) {
+    return {
+      kind: "count-mismatch",
+      cid: closer.cid,
+      message: `chainMemberCids lists ${declared.length} members but the chain has ${actual.size} receipts besides the closer; a member was added or dropped`,
+    };
+  }
+  return undefined;
+}
+
+function chainAdvisories(
+  nodes: readonly ChainNode[],
+  options: VerifyChainOptions,
+  verifyOptions: VerifyOptions,
+): readonly string[] {
+  const notes: string[] = [];
+  const closed = nodes.some((node) => node.body.chainClosure === "member-cids");
+  if (options.expectedCount === undefined && !closed) {
+    notes.push(
+      "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt",
+    );
+  }
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    for (const note of receiptVerifyAdvisories(node.body, verifyOptions)) {
+      if (!seen.has(note)) {
+        seen.add(note);
+        notes.push(note);
+      }
+    }
+  }
+  return notes;
 }

@@ -49,6 +49,8 @@ export interface CreateReceiptInput {
   readonly audience?: string;
   readonly nonce?: string;
   readonly expiresAt?: string;
+  readonly chainClosure?: "member-cids";
+  readonly chainMemberCids?: readonly string[];
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -131,6 +133,10 @@ export async function createReceipt(
     ...(input.audience !== undefined ? { audience: input.audience } : {}),
     ...(input.nonce !== undefined ? { nonce: input.nonce } : {}),
     ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+    ...(input.chainClosure !== undefined ? { chainClosure: input.chainClosure } : {}),
+    ...(input.chainMemberCids !== undefined
+      ? { chainMemberCids: input.chainMemberCids }
+      : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,

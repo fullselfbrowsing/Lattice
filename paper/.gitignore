@@ -1,9 +1,7 @@
-# LaTeX build artifacts
+# LaTeX build artifacts. Keep the submission PDF and generated tables.
 *.aux
 *.log
 *.out
-*.pdf
-!main.pdf
 *.bbl
 *.blg
 *.fls

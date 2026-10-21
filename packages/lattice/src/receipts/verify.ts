@@ -6,6 +6,7 @@ import {
   decodeEnvelope,
 } from "./envelope.js";
 import {
+  CURRENT_RECEIPT_VERSION,
   MIN_ACCEPTED_RECEIPT_VERSION,
   RECEIPT_VERSIONS,
   isReceiptVersion,
@@ -337,4 +338,42 @@ export async function verifyReceipt(
 
   // Step 13: success — surface the key state so callers can warn on retired.
   return { ok: true, body, keyState: entry.state };
+}
+
+/**
+ * Advisories for a receipt that verified. Binding checks stay opt-in so a
+ * receipt minted before audience, nonce, or expiry existed still verifies.
+ * Callers that need those guarantees pass `expectedAudience`,
+ * `expectedNonce`, `maxAgeMs`, or `minVersion`. `expiresAt`, when the
+ * issuer set it, is already enforced inside `verifyReceipt`.
+ */
+export function receiptVerifyAdvisories(
+  body: CapabilityReceiptBody,
+  options: VerifyOptions = {},
+): readonly string[] {
+  const notes: string[] = [];
+  if (options.expectedAudience === undefined && body.audience === undefined) {
+    notes.push(
+      "audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party",
+    );
+  }
+  if (options.expectedNonce === undefined && body.nonce === undefined) {
+    notes.push(
+      "nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay",
+    );
+  }
+  if (body.expiresAt === undefined && options.maxAgeMs === undefined) {
+    notes.push(
+      "this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire",
+    );
+  }
+  if (
+    options.minVersion === undefined &&
+    receiptVersionOrdinal(body.version) < receiptVersionOrdinal(CURRENT_RECEIPT_VERSION)
+  ) {
+    notes.push(
+      `minVersion was not passed; the floor stays ${MIN_ACCEPTED_RECEIPT_VERSION} and this receipt is ${body.version}`,
+    );
+  }
+  return notes;
 }

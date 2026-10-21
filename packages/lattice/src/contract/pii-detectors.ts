@@ -8,21 +8,25 @@
  * In-scope formats (anything else is NOT detected by default; supply your
  * own `PiiDetector` list to `evaluateTripwires` for more):
  *   - email        `local@domain.tld` (one `@`, a dot in the domain part)
- *   - us-ssn       `ddd-dd-dddd`, dashed only. Undashed 9-digit runs are
- *                  deliberately out of scope: they collide with order,
- *                  invoice, and account ids, and unlike card numbers an SSN
- *                  has no checksum to filter with.
+ *   - us-ssn       `ddd-dd-dddd`, `ddd dd dddd`, and an undashed 9-digit
+ *                  run. A candidate is skipped when an identifier cue
+ *                  (order, invoice, sku, ref, id, and the same family)
+ *                  appears in the 32 characters before it, so an
+ *                  SSN-shaped order id is not flagged. The cue is a whole
+ *                  word, so a real SSN labeled "SSN" still matches.
  *   - credit-card  13 to 19 digits with optional single space or dash
- *                  separators, Luhn-validated
+ *                  separators, a known card IIN, and a valid Luhn check.
+ *                  A 16-digit reference prefixed by ref/order/sku/id is
+ *                  not flagged, and an ISBN-13 (978/979) fails the IIN.
  *   - us-phone     `ddd-ddd-dddd`, `ddd.ddd.dddd`, `ddd ddd dddd`,
- *                  `(ddd) ddd-dddd`, each with an optional `+1` or `1`
- *                  trunk prefix. `+1` may be glued to the area code
- *                  (`+1415-555-1234`); a bare `1` prefix needs a separator so
- *                  it is not confused with a longer number. Unseparated
- *                  10-digit and 11-digit runs (E.164 `+14155551234`) are out
- *                  of scope.
- * Known false positive: any `ddd-ddd-dddd` SKU or part number is flagged by
- * us-phone, and Luhn-valid reference numbers are flagged by credit-card.
+ *                  `(ddd) ddd-dddd`, a plain 10-digit run, each with an
+ *                  optional `+1` or `1` trunk prefix. `+1` may be glued
+ *                  to the area code (`+1415-555-1234`); a bare `1` prefix
+ *                  needs a separator so it is not confused with a longer
+ *                  number. Unseparated 11-digit runs (E.164
+ *                  `+14155551234`) stay out of scope. The same identifier
+ *                  cue that protects order ids suppresses a phone-shaped
+ *                  SKU.
  * Names, postal addresses, IP addresses, dates of birth, and non-US formats
  * are not detected.
  *
@@ -80,6 +84,87 @@ function execFirst(regex: RegExp, input: string): string | undefined {
   return match ? match[0] : undefined;
 }
 
+/**
+ * Whole-word cues that mark the following number as an identifier rather
+ * than as PII. Kept tight: "id" is included because order and account ids
+ * are the documented collision, and it is matched as its own word so
+ * "valid" or "paid" do not count. The window is the 32 characters before
+ * the candidate, which covers "order ", "SKU ", and "ref ".
+ */
+const IDENTIFIER_WORDS: ReadonlySet<string> = new Set([
+  "order",
+  "orders",
+  "ord",
+  "oid",
+  "invoice",
+  "inv",
+  "sku",
+  "part",
+  "pn",
+  "ref",
+  "reference",
+  "refs",
+  "id",
+  "po",
+  "tracking",
+  "account",
+  "acct",
+  "item",
+  "ticket",
+  "txn",
+  "transaction",
+  "customer",
+  "confirmation",
+  "product",
+  "catalog",
+  "isbn",
+  "doi",
+  "serial",
+  "lot",
+]);
+
+function hasIdentifierCue(input: string, index: number): boolean {
+  // Only the two tokens immediately before the number. A wider window would
+  // treat an unrelated earlier word ("see the id. Then 123-45-6789" is
+  // already cut by punctuation below) as a label for this number.
+  const window = input.slice(Math.max(0, index - 48), index).replace(/.*[.;:!?]/, "");
+  const tokens = window.toLowerCase().match(/[a-z][a-z0-9-]*/g) ?? [];
+  return tokens.slice(-2).some((token) => IDENTIFIER_WORDS.has(token));
+}
+
+/** Major card IINs. ISBN-13 (978/979) and random references fail this. */
+function hasCardIin(digits: string): boolean {
+  if (digits.startsWith("4")) return true;
+  const two = Number(digits.slice(0, 2));
+  if (two >= 51 && two <= 55) return true;
+  const four = Number(digits.slice(0, 4));
+  if (four >= 2221 && four <= 2720) return true;
+  if (digits.startsWith("34") || digits.startsWith("37")) return true;
+  if (digits.startsWith("6011") || digits.startsWith("65")) return true;
+  const three = Number(digits.slice(0, 3));
+  if (three >= 644 && three <= 649) return true;
+  if (four >= 3528 && four <= 3589) return true;
+  if (three >= 300 && three <= 305) return true;
+  if (digits.startsWith("36") || digits.startsWith("38")) return true;
+  return false;
+}
+
+function firstUnsuppressed(
+  regex: RegExp,
+  input: string,
+): { readonly substring: string; readonly index: number } | undefined {
+  const flags = regex.flags.includes("g") ? regex.flags : `${regex.flags}g`;
+  const global = new RegExp(regex.source, flags);
+  let match: RegExpExecArray | null;
+  while ((match = global.exec(input)) !== null) {
+    if (!hasIdentifierCue(input, match.index)) {
+      return { substring: match[0], index: match.index };
+    }
+    if (match[0].length === 0) global.lastIndex += 1;
+  }
+  return undefined;
+}
+
 const emailDetector: PiiDetector = {
   name: "email",
   detect(input: string): PiiDetectorResult {
@@ -93,28 +178,37 @@ const emailDetector: PiiDetector = {
 const ssnDetector: PiiDetector = {
   name: "us-ssn",
   detect(input: string): PiiDetectorResult {
-    // 3-2-4 grouped SSN with word boundaries on both sides to avoid
-    // collapsing into longer adjacent digit runs (e.g., phone numbers).
-    // Dashed only, on purpose: see the module header for why undashed
-    // 9-digit runs are not treated as SSNs.
-    const substring = execFirst(/\b\d{3}-\d{2}-\d{4}\b/, input);
-    return substring !== undefined ? { matched: true, substring } : { matched: false };
+    // Dashed, spaced, then undashed. Word boundaries keep a 9-digit run
+    // from matching inside a 10-digit phone or a 16-digit reference.
+    // Identifier context ("order 123-45-6789", "order 123456789") is
+    // skipped so those stay non-matches; "SSN 123456789" has no such cue.
+    const candidate = firstUnsuppressed(
+      /\b\d{3}-\d{2}-\d{4}\b|\b\d{3} \d{2} \d{4}\b|\b\d{9}\b/,
+      input,
+    );
+    return candidate !== undefined
+      ? { matched: true, substring: candidate.substring }
+      : { matched: false };
   },
 };
 
 const creditCardDetector: PiiDetector = {
   name: "credit-card",
   detect(input: string): PiiDetectorResult {
-    // Match any 13-19 character sequence of digits with optional single
-    // space or dash separators, then validate with Luhn. The regex is
-    // intentionally permissive on separators (banks/forms vary); Luhn
-    // filters trivially-formatted strings per Pitfall #5 in CONTEXT.md.
-    const candidate = execFirst(/\b(?:\d[ -]?){13,19}\b/, input);
-    if (candidate === undefined) return { matched: false };
-    // Strip trailing space/dash that the regex may have absorbed.
-    const trimmed = candidate.replace(/[ -]+$/, "");
-    if (!luhn(trimmed)) return { matched: false };
-    return { matched: true, substring: trimmed };
+    // 13-19 digits with optional single space or dash separators, then a
+    // known IIN and Luhn. IIN drops ISBN-13 and most random 16-digit
+    // references; the identifier cue drops the rest ("ref 4111...").
+    const flags = "g";
+    const global = new RegExp(String.raw`\b(?:\d[ -]?){13,19}\b`, flags);
+    let match: RegExpExecArray | null;
+    while ((match = global.exec(input)) !== null) {
+      const trimmed = match[0].replace(/[ -]+$/, "");
+      const digits = trimmed.replace(/\D/g, "");
+      if (!luhn(trimmed) || !hasCardIin(digits)) continue;
+      if (hasIdentifierCue(input, match.index)) continue;
+      return { matched: true, substring: trimmed };
+    }
+    return { matched: false };
   },
 };
 
@@ -128,13 +222,17 @@ const phoneDetector: PiiDetector = {
     //      `+` still requires its own separator (`\b1[ .-]`).
     //   2. A parenthesized area code with no prefix.
     //   3. A bare area code at a word boundary followed by a separator.
-    // Separators may be dash, dot, or space (issue #21 F8); unseparated
-    // 10- and 11-digit runs still do not match.
-    const substring = execFirst(
-      /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/,
+    // Separators may be dash, dot, or space (issue #21 F8). A plain
+    // 10-digit run is included; an 11-digit run still is not, because
+    // `\b\d{10}\b` cannot start inside a longer digit run. Identifier
+    // context suppresses phone-shaped SKUs ("SKU 123-456-7890").
+    const candidate = firstUnsuppressed(
+      /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b|\b\d{10}\b/,
       input,
     );
-    return substring !== undefined ? { matched: true, substring } : { matched: false };
+    return candidate !== undefined
+      ? { matched: true, substring: candidate.substring }
+      : { matched: false };
   },
 };
 

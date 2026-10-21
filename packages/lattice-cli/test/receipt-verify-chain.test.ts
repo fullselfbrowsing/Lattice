@@ -142,7 +142,8 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
     await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath }, deps);
 
     expect(bag.exitCode).toBe(0);
-    expect(bag.stderr).toHaveLength(0);
+    expect(bag.stderr.every((line) => line.startsWith("WARN "))).toBe(true);
+    expect(bag.stderr.some((line) => line.includes("tail truncation"))).toBe(true);
     expect(bag.stdout).toHaveLength(1);
     expect(bag.stdout[0]).toMatch(/^OK root=sha256:[0-9a-f]{64} links=3$/);
     expect(bag.stdout[0]).toContain(fixture.rootCid);

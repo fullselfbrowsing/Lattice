@@ -113,7 +113,9 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     await runVerify({ receipt: receiptPath, key: keysetPath }, deps);
 
     expect(bag.exitCode).toBe(0);
-    expect(bag.stderr).toEqual([]);
+    expect(bag.stderr.length).toBeGreaterThan(0);
+    expect(bag.stderr.every((line) => line.startsWith("WARN "))).toBe(true);
+    expect(bag.stderr.some((line) => line.includes("audience"))).toBe(true);
     expect(bag.stdout).toHaveLength(1);
     expect(bag.stdout[0]).toMatch(/^OK kid=ok-kid-1 verdict=success$/);
   });

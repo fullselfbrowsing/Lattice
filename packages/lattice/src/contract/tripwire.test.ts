@@ -515,4 +515,54 @@ describe("must-cite options (issue #21 F9)", () => {
     const result = await evaluateTripwires({ evidence: ["doc-1"] }, [inv.mustCite("doc-1")]);
     expect(result).toEqual({ ok: true });
   });
+
+  it("accepts an inline bracket or parenthesis citation with no citations array", async () => {
+    expect(
+      await evaluateTripwires({ answer: "per [doc-a], refund" }, [inv.mustCite("doc-a")]),
+    ).toEqual({ ok: true });
+    expect(
+      await evaluateTripwires({ answer: "see (doc-a) for the policy" }, [inv.mustCite("doc-a")]),
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects a fabricated citations entry when the prose cites a different work", async () => {
+    const result = await evaluateTripwires(
+      { answer: "Refund per [Smith 1999].", citations: ["doc-a"] },
+      [inv.mustCite("doc-a")],
+    );
+    expectViolation(result);
+    expect(result.evidence.message).toContain("not cited in the text");
+  });
+
+  it("accepts a citations entry when the prose cites the same work", async () => {
+    expect(
+      await evaluateTripwires(
+        { answer: "Refund per [doc-a].", citations: ["doc-a"] },
+        [inv.mustCite("doc-a")],
+      ),
+    ).toEqual({ ok: true });
+  });
+
+  it("still accepts a citations array when the prose has no citation markers", async () => {
+    expect(
+      await evaluateTripwires({ text: "ok", citations: ["artifact-1"] }, [
+        inv.mustCite("artifact-1"),
+      ]),
+    ).toEqual({ ok: true });
+  });
+
+  it("finds a citations array nested under the answer", async () => {
+    expect(
+      await evaluateTripwires(
+        { answer: { text: "a", citations: ["doc-a"] } },
+        [inv.mustCite("doc-a")],
+      ),
+    ).toEqual({ ok: true });
+  });
+
+  it("does not treat a longer fabricated title as the artifact name", async () => {
+    expectViolation(
+      await evaluateTripwires({ answer: "per [doc-a-draft], refund" }, [inv.mustCite("doc-a")]),
+    );
+  });
 });

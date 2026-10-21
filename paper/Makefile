@@ -1,8 +1,10 @@
-# Build the Lattice IEEE paper.
+# Build the Information Systems Frontiers / design-science paper.
+# The IEEE conference version is paper/ieee/main.tex (its own Makefile).
 #
-# Requires a TeX distribution (TeX Live or MiKTeX) that provides latexmk and the
-# IEEEtran document class. IEEEtran.cls ships with standard TeX distributions, so
-# it does not need to be vendored.
+# Requires latexmk, article-class packages (natbib, booktabs, tabularx,
+# geometry, hyperref, setspace, mathptmx), and the generated files
+# numbers.tex, eval-tables.tex, Fig2.png, Fig3.png, and Fig4.png
+# from eval/scripts/06-report.py.
 
 MAIN := main
 
