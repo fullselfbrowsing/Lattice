@@ -1,7 +1,7 @@
 # Python packages for eval/realworld. Exact pins are versions recorded in
 # results/*.json or used to render the committed figures. ">=" lines are lower
 # bounds: the recorded run did not store that package's version. The scripts
-# now record installed versions in their output.
+# record installed versions in their output.
 # Recorded runtime: Python 3.12, Node v24.22.1, Ollama 0.40.7 serving
 # llama3.2:3b (digest a80c4f17acd5).
 

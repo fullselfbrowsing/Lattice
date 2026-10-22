@@ -47,7 +47,7 @@ xai & 50 & 50 & 50 & 50 & 50\\
 openrouter & 50 & 50 & 50 & 50 & 50\\
 lm-studio & 50 & 50 & 50 & 50 & 50\\
 \bottomrule\end{tabular}\end{table}
-\begin{table}[t]\centering\caption{Policy checks on a synthetic labeled set (100 samples per label). The original labels were written alongside the detectors. The added labels (support and CRM prose, tables and CSV rows, more card networks, and uncued numbers that are not PII) come from review findings. Rows with only the original negatives show what the added negatives change. The first-run labels row scores the original must-cite cases against the labels of the first run; inline-text-only and hallucinated-cite-string were relabeled to the current default, under which prose is read only on opt-in. The set is a regression suite, not a prevalence-weighted estimate. Functional environment (\texttt{env-functional.json}): Node v24.14.1, Apple M4 Max x16, darwin 25.6.0, commit 6d15f0a.}\label{tab:policy}\scriptsize
+\begin{table}[t]\centering\caption{Policy checks on a synthetic labeled set (100 samples per label). The original set was written alongside the detectors. The added set holds PII in support and CRM prose, tables, and CSV rows, more card networks, and uncued numbers that are not PII. Rows with only the original negatives leave the added negatives out. The mustCite cases are the original set, default-behavior cases, and opt-in prose checks. The prose-by-default row scores the original mustCite cases against labels that expect prose to be read by default; inline-text-only and hallucinated-cite-string differ, because the default reads prose only on opt-in. The set is a regression suite, not a prevalence-weighted estimate. Functional environment (\texttt{env-functional.json}): Node v24.14.1, Apple M4 Max x16, darwin 25.6.0, commit 6d15f0a.}\label{tab:policy}\scriptsize
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.42\linewidth}rrrrr@{}}\toprule Set & n & precision & recall & FP & FN\\\midrule
 noPII, in-scope PII types, all negatives & 5500 & 1 & 0.9429 & 0 & 200\\
 noPII, in-scope PII types, original negatives only & 4500 & 1 & 0.9429 & 0 & 200\\
@@ -60,8 +60,8 @@ added uncued numeric negatives & 1000 & \multicolumn{4}{l}{0 flagged}\\
 \midrule mustCite agreement, all cases & 36 & \multicolumn{4}{l}{36/36 agree with label}\\
 mustCite, default behavior & 22 & \multicolumn{4}{l}{22/22}\\
 mustCite, opt-in prose checks & 14 & \multicolumn{4}{l}{14/14}\\
-mustCite, original cases, current labels & 15 & \multicolumn{4}{l}{15/15}\\
-mustCite, original cases, first-run labels & 15 & \multicolumn{4}{l}{13/15 (2 relabeled)}\\
+mustCite, original cases & 15 & \multicolumn{4}{l}{15/15}\\
+mustCite, original cases, prose-by-default labels & 15 & \multicolumn{4}{l}{13/15 (2 labels differ)}\\
 \midrule routing determinism & 20000 & \multicolumn{4}{l}{identical 1.0000, permuted same 1.000, violations 0}\\
 \bottomrule\end{tabular}\end{table}
 % Existing test suite (functional environment): lattice 1596/1596 passed (0 failed); lattice-cli 190/190 passed (0 failed)
@@ -142,7 +142,7 @@ chain & replace-root & 0.00 / 1.00 & rejected: orphan-link\\
 \end{longtable}\endgroup
 \begingroup\ifdefined\setstretch\setstretch{1}\fi\setlength{\LTcapwidth}{\textwidth}\setlength{\LTpre}{\bigskipamount}\setlength{\LTpost}{\bigskipamount}
 \begin{longtable}{@{}>{\scriptsize\raggedright\arraybackslash}p{0.55\linewidth}>{\scriptsize\raggedright\arraybackslash}p{0.41\linewidth}@{}}
-\caption{Verifier opt-ins, structured advisories, chain closure, crew receipts, and signer-failure modes: 71 of 71 checks pass. Result gives the error kind, advisory, or exception the check expected. The two base-1.6.0 rows run the released 1.6.0 verifier on a chain minted by this build. Functional environment (\texttt{env-functional.json}): Node v24.14.1, Apple M4 Max x16, darwin 25.6.0, commit 6d15f0a.}\label{tab:v16}\\
+\caption{Verifier opt-ins, structured advisories, chain closure, crew receipts, and signer-failure modes: 71 of 71 checks pass. Result gives the error kind, advisory, or exception the check expected. The two base-1.6.0 rows run the released 1.6.0 verifier on a chain minted by the library at the functional commit. Functional environment (\texttt{env-functional.json}): Node v24.14.1, Apple M4 Max x16, darwin 25.6.0, commit 6d15f0a.}\label{tab:v16}\\
 \toprule Check & Result\\\midrule
 \endfirsthead
 \multicolumn{2}{@{}l}{\scriptsize Table~\ref{tab:v16}, continued}\\

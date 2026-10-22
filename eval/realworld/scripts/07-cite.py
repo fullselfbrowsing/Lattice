@@ -59,6 +59,7 @@ def main() -> None:
         "n": n,
         "mustCiteAnyGold": prior["mustCiteAnyGold"],
         "mustCiteNote": "Copied from datasets.json. The invariant is syntactic and case-sensitive.",
+        **({"mustCiteOptions": prior["mustCiteOptions"]} if prior.get("mustCiteOptions") else {}),
         "titleSubstringCaseSensitive": title_cs,
         "titleSubstringCaseInsensitive": title_ci,
         "answersWithSquareBracket": any_bracket,

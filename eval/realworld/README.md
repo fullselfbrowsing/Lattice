@@ -65,37 +65,53 @@ The comparison artifacts directory is gitignored because it contains signing
 keys. Do not commit API keys. `10-openrouter.mjs` reads the key from the
 environment and refuses to write a file that still contains it.
 
-## Corrections recorded after the run
+## Notes on the committed records
 
-The committed measurements were not re-run. These corrections were made to the
-records and the generated text afterwards.
+These notes cover the places where a committed record, the script that writes
+it, and the generated text differ.
 
-- cosign. `04-compare.py` called `sign-blob` without `--tlog-upload=false` and
-  `verify-blob` without `--insecure-ignore-tlog`. cosign v2.5.3 therefore
+- cosign. The measured run called `sign-blob` without `--tlog-upload=false`
+  and `verify-blob` without `--insecure-ignore-tlog`. cosign v2.5.3 therefore
   uploaded a hashedrekord entry for the eval blob to the public Rekor log (log
   index 3359395843, 2026-10-21T17:05:01Z), the 4916 ms wrap time includes that
   round trip, and verification was online. Only the blob hash and a throwaway
-  public key went to the log. `compare.json` now says so, its `offlineVerify`
-  for cosign is `null` (with `verifyOk: true`), and the script passes both
-  flags for future runs.
+  public key went to the log. The cosign entry in `compare.json` records this
+  in its `correction` field, with `tlogUpload: true`, `offlineVerify: null`,
+  and `verifyOk: true`. `04-compare.py` passes both flags, so a new run stays
+  local.
 - Replay. `replayOffline` returns the outputs the caller supplies, so the
-  former replay metric is a hash-binding check. The figures and tables call it
+  replay metric is a hash-binding check. The figures and tables call it
   signed output binding: yes when the record is signed and the system's own
   verifier rejected a byte edit. cosign, in-toto, Sello, Janus, and the
   NovaFabric capsule also meet it.
-- Hosted overhead. `10-openrouter.mjs` added the HTTP time of retried attempts
-  to the end-to-end time. `12-charts.py` recomputes end-to-end time as
-  `latticeMs + providerMs` from the per-trial rows. Only Xingchen (p50
-  0.019% to 0.032%, signed p50 9820 ms to 4812 ms) and one Liquid trial
-  changed. The script no longer adds retry time.
-- Drift. `drift[].uniqueExact` in `openrouter.json` counted failed calls'
-  empty answers. The published cells already counted successful answers only;
-  the script now writes them that way.
-- `datasets.json` scores Gretel credit cards with 0 gold documents because
-  `02-score.mjs` did not map `credit_card_number`. The published Gretel card
-  scores come from `pii-tools.json`, which maps it. The map is fixed for future
-  runs.
+- Hosted overhead. The end-to-end times in `openrouter.json` include the HTTP
+  time of retried attempts. `12-charts.py` computes end-to-end time as
+  `latticeMs + providerMs` from the per-trial rows, which leaves retries out,
+  and `10-openrouter.mjs` records it the same way. The two differ only for
+  Xingchen (overhead p50 0.019% recorded and 0.032% computed; signed p50
+  9820 ms recorded and 4812 ms computed) and one Liquid trial.
+- Drift. `drift[].uniqueExact` in `openrouter.json` counts failed calls' empty
+  answers. The published cells count successful answers only, and
+  `10-openrouter.mjs` computes `uniqueExact` over successful answers.
+- `datasets.json` scores Gretel credit cards with 0 gold documents because the
+  run that wrote it did not map `credit_card_number`. The published Gretel card
+  scores come from `pii-tools.json`, which maps it, and `02-score.mjs` maps it.
 - The dataset precision, recall, and F1 rows for Lattice were measured with the
-  `noPII` detectors at commit `a8cc091`. Later detectors narrow identifier-label
-  suppression and require a cue for bare numbers; the mocked harness covers
-  them.
+  `noPII` detectors at commit `a8cc091`. The current detectors narrow
+  identifier-label suppression and require a cue for bare numbers; the mocked
+  harness covers them.
+- `mustCite`. The RAG verdicts in `live.json` and `openrouter.json` (the
+  refund-policy passes, and the successes behind the drift cells) and the ASQA
+  `mustCiteAnyGold` count in `datasets.json` and `citations.json` were
+  measured with the `mustCite` rules at commit `a8cc091`. There, an inline
+  `[name]` or `(name)` marker containing the artifact name counted as a
+  citation by default. The current default reads only a structured
+  `citations` or `evidence` list and never reads the answer text. The recorded
+  RAG answers cite `[policy-refund]` only inline and the ASQA answers carry no
+  list, so under the current default every recorded RAG call would fail and
+  ASQA would accept no gold title. `01-live.mjs`, `10-openrouter.mjs`, and
+  `02-score.mjs` pass `{ inline: true }` and record it as `mustCiteOptions`.
+  With that option a bracket or parenthesis counts only when its content, or
+  one comma- or semicolon-separated part of it, equals the name, so a new ASQA
+  count can differ from the recorded one. `05-charts.py` and `12-charts.py`
+  print the `a8cc091` note for records without `mustCiteOptions`.

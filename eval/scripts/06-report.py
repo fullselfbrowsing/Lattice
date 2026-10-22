@@ -82,7 +82,7 @@ fig, ax1 = plt.subplots(figsize=(4.5, 3.2)); D = [c["depth"] for c in ch]
 ax1.plot(D, [float(c["verifyAllP50ms"]) for c in ch], "o-", label="verify chain p50 (ms)"); ax1.plot(D, [float(c["buildP50ms"]) for c in ch], "s-", label="build chain p50 (ms)")
 ax1.set_xscale("log", base=2); ax1.set_yscale("log"); ax1.set_xlabel("chain depth (receipts)"); ax1.set_ylabel("ms"); ax1.legend(fontsize=7); fig.tight_layout(); fig.savefig(os.path.join(R, "chain_scaling.png"), dpi=200)
 
-# Plot 4: PII per label (functional environment). Hatched bars are labels added after the first set.
+# Plot 4: PII per label (functional environment). Hatched bars are the added label set.
 bl = po["pii"]["byLabel"]; fig, ax = plt.subplots(figsize=(11, 3.9))
 cols = ["tab:green" if b["isPII"] and b["inScope"] else "tab:olive" if b["isPII"] else "tab:red" for b in bl]
 bars = ax.bar(range(len(bl)), [b["flaggedRate"] for b in bl], color=cols)
@@ -92,7 +92,7 @@ first_new = next((i for i, b in enumerate(bl) if b.get("set") == "new"), None)
 if first_new is not None: ax.axvline(first_new - 0.5, color="0.4", lw=0.8, ls="--")
 ax.set_xticks(range(len(bl))); ax.set_xticklabels([b["label"] for b in bl], rotation=70, ha="right", fontsize=6)
 ax.set_ylabel("flagged rate"); ax.set_xlim(-0.6, len(bl) - 0.4)
-ax.set_title("noPII flag rate (green: in-scope PII, olive: out-of-scope PII, red: non-PII; hatched, right of the dashed line: labels added from review findings)", fontsize=8)
+ax.set_title("noPII flag rate (green: in-scope PII, olive: out-of-scope PII, red: non-PII; hatched, right of the dashed line: added labels)", fontsize=8)
 fig.tight_layout(); fig.savefig(os.path.join(R, "pii_by_label.png"), dpi=200)
 
 T = []
@@ -112,7 +112,7 @@ T.append(r"\begin{table}[t]\centering\caption{Chained receipts (parentReceiptCid
 for c in ch: T.append(f"{c['depth']} & {c['totalBytes']} & {c['bytesPerLink']} & {c['buildP50ms']} & {c['verifyAllP50ms']}\\\\")
 T.append(r"\bottomrule\end{tabular}\end{table}")
 
-# Tamper and chain attacks (PAPER-17: p{} columns, short chain reasons, current caption).
+# Tamper and chain attacks: p{} columns and short chain reasons.
 def chain_reason(c):
     reasons = [x for x in str(c["chainVerifierReason"]).split(";")]
     if c["chainVerifierRejectRate"] == 0:
@@ -137,7 +137,7 @@ T.append(r"\bottomrule\end{tabular}\end{table}")
 p = po["pii"]; ro = po["routing"]; mc = po["mustCite"]
 def pget(k): return p.get(k) or {"n": 0, "precision": None, "recall": None, "fp": 0, "fn": 0}
 nl = p.get("newNegatives", {"n": 0, "fp": 0, "falsePositiveRate": None})
-T.append(r"\begin{table}[t]\centering\caption{Policy checks on a synthetic labeled set (100 samples per label). The original labels were written alongside the detectors. The added labels (support and CRM prose, tables and CSV rows, more card networks, and uncued numbers that are not PII) come from review findings. Rows with only the original negatives show what the added negatives change. The first-run labels row scores the original must-cite cases against the labels of the first run; %s were relabeled to the current default, under which prose is read only on opt-in. The set is a regression suite, not a prevalence-weighted estimate. %s}\label{tab:policy}\scriptsize" % (esc(" and ".join(mc.get("originalCommittedLabels", {}).get("relabeled", []))) or "none", FUN_CAP))
+T.append(r"\begin{table}[t]\centering\caption{Policy checks on a synthetic labeled set (100 samples per label). The original set was written alongside the detectors. The added set holds PII in support and CRM prose, tables, and CSV rows, more card networks, and uncued numbers that are not PII. Rows with only the original negatives leave the added negatives out. The mustCite cases are the original set, default-behavior cases, and opt-in prose checks. The prose-by-default row scores the original mustCite cases against labels that expect prose to be read by default; %s differ, because the default reads prose only on opt-in. The set is a regression suite, not a prevalence-weighted estimate. %s}\label{tab:policy}\scriptsize" % (esc(" and ".join(mc.get("originalCommittedLabels", {}).get("relabeled", []))) or "none", FUN_CAP))
 T.append(r"\begin{tabular}{@{}%srrrrr@{}}\toprule Set & n & precision & recall & FP & FN\\\midrule" % P(0.42))
 pii_rows = [
     ("inScopeOnly", "noPII, in-scope PII types, all negatives"),
@@ -157,8 +157,8 @@ if "byMode" in mc:
     T.append(r"mustCite, opt-in prose checks & %d & \multicolumn{4}{l}{%d/%d}\\" % (mc["byMode"]["optIn"]["cases"], mc["byMode"]["optIn"]["agree"], mc["byMode"]["optIn"]["cases"]))
 if "originalCommittedLabels" in mc:
     oc = mc["originalCommittedLabels"]
-    T.append(r"mustCite, original cases, current labels & %d & \multicolumn{4}{l}{%d/%d}\\" % (mc["original"]["cases"], mc["original"]["agree"], mc["original"]["cases"]))
-    T.append(r"mustCite, original cases, first-run labels & %d & \multicolumn{4}{l}{%d/%d (%d relabeled)}\\" % (oc["cases"], oc["agree"], oc["cases"], len(oc["relabeled"])))
+    T.append(r"mustCite, original cases & %d & \multicolumn{4}{l}{%d/%d}\\" % (mc["original"]["cases"], mc["original"]["agree"], mc["original"]["cases"]))
+    T.append(r"mustCite, original cases, prose-by-default labels & %d & \multicolumn{4}{l}{%d/%d (%d labels differ)}\\" % (oc["cases"], oc["agree"], oc["cases"], len(oc["relabeled"])))
 T.append(r"\midrule routing determinism & %d & \multicolumn{4}{l}{identical %.4f, permuted same %.3f, violations %d}\\" % (ro["repeatedEvaluations"], ro["identicalDecisionRate"], ro["catalogPermutationSameSelectionRate"], ro["selectedViolatingPolicy"]))
 T.append(r"\bottomrule\end{tabular}\end{table}")
 if tl and tc: T.append(f"% Existing test suite (functional environment): lattice {tl[0]}/{tl[2]} passed ({tl[1]} failed); lattice-cli {tc[0]}/{tc[2]} passed ({tc[1]} failed)")
@@ -167,7 +167,7 @@ v16_path = os.path.join(R, "v16.json")
 v16 = json.load(open(v16_path)) if os.path.exists(v16_path) else None
 if v16:
     v16_head = r"\toprule Check & Result\\\midrule"
-    LT += longtable_open("@{}%s%s@{}" % (P(0.55, SS), P(0.41, SS)), r"Verifier opt-ins, structured advisories, chain closure, crew receipts, and signer-failure modes: %d of %d checks pass. Result gives the error kind, advisory, or exception the check expected. The two base-1.6.0 rows run the released 1.6.0 verifier on a chain minted by this build. %s" % (v16["passed"], v16["checks"], FUN_CAP), "tab:v16", v16_head, 2)
+    LT += longtable_open("@{}%s%s@{}" % (P(0.55, SS), P(0.41, SS)), r"Verifier opt-ins, structured advisories, chain closure, crew receipts, and signer-failure modes: %d of %d checks pass. Result gives the error kind, advisory, or exception the check expected. The two base-1.6.0 rows run the released 1.6.0 verifier on a chain minted by the library at the functional commit. %s" % (v16["passed"], v16["checks"], FUN_CAP), "tab:v16", v16_head, 2)
     for row in v16["rows"]:
         kind = str(row.get("kind") or "")
         res = ("pass" if row["ok"] else "FAIL") + (f": {kind}" if kind else "")
@@ -176,13 +176,13 @@ if v16:
 
 paper = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "paper"))
 os.makedirs(paper, exist_ok=True)
-# One copy only: paper/eval-tables.tex (eval/results/tables.tex is no longer written).
+# One copy only: paper/eval-tables.tex.
 open(os.path.join(paper, "eval-tables.tex"), "w").write("\n".join(T + LT) + "\n")
 json.dump({"tests": {"lattice": tl, "cli": tc}, "format": "[passed, failed, total, suites]", "environment": "env-functional.json"}, open(os.path.join(R, "tests_summary.json"), "w"), indent=2)
 
 def tex_cmd(name, value, new=False):
     safe = str(value).replace("\\", "\\textbackslash ").replace("%", "\\%").replace("_", "\\_").replace("#", "\\#").replace("&", "\\&")
-    # New macros are not declared in paper/main.tex yet, so provide them before renewing.
+    # Macros that paper/main.tex does not declare are provided before they are renewed.
     return ("\\providecommand{\\" + name + "}{}" if new else "") + "\\renewcommand{\\" + name + "}{" + safe + "}"
 new_cmd = lambda name, value: tex_cmd(name, value, new=True)
 
@@ -304,7 +304,7 @@ summary = [
     "",
     f"- Latency (env-latency.json; 01-overhead, 02-chain, overhead/size/chain tables, Fig2-3): Node {env['node']}, {env['cpu']} x{env['cores']}, {env['totalMemGB']} GB, {env['platform']}, Lattice {env['latticeVersion']}, commit {env.get('gitCommit','')}, {env['date']}",
     f"- Functional (env-functional.json; 03-tamper, 04-replay, 05-policy, 07-v16, test counts, Fig4): Node {fenv['node']}, {fenv['cpu']} x{fenv['cores']}, {fenv['totalMemGB']} GB, {fenv['platform']}, Lattice {fenv['latticeVersion']}, library commit {fenv.get('libraryCommit', fenv.get('gitCommit',''))}, {fenv['date']}",
-    "- The functional scripts were re-run against the library at the functional commit. The latency numbers were not re-measured; they stay from the latency run.",
+    "- The functional scripts ran against the library at the functional commit. The latency numbers come from the latency run.",
     "",
     "## Latency (latency environment)",
     "",
@@ -322,7 +322,7 @@ summary = [
     f"- PII original labels only (in-scope): precision {pget('originalLabels_inScope')['precision']} recall {pget('originalLabels_inScope')['recall']} fn {pget('originalLabels_inScope')['fn']} n {pget('originalLabels_inScope')['n']}",
     f"- PII added labels only (in-scope): precision {pget('newLabels_inScope')['precision']} recall {pget('newLabels_inScope')['recall']} fp {pget('newLabels_inScope')['fp']} fn {pget('newLabels_inScope')['fn']} n {pget('newLabels_inScope')['n']}",
     f"- Added uncued numeric negatives: {nl.get('fp', 0)}/{nl.get('n', 0)} flagged",
-    f"- mustCite agree {mc['agree']}/{mc['cases']}" + (f"; default {mc['byMode']['default']['agree']}/{mc['byMode']['default']['cases']}, opt-in {mc['byMode']['optIn']['agree']}/{mc['byMode']['optIn']['cases']}" if "byMode" in mc else "") + (f"; original cases {mc['original']['agree']}/{mc['original']['cases']} (current labels), {oc['agree']}/{oc['cases']} (first-run labels; relabeled {', '.join(oc['relabeled'])})" if oc else ""),
+    f"- mustCite agree {mc['agree']}/{mc['cases']}" + (f"; default {mc['byMode']['default']['agree']}/{mc['byMode']['default']['cases']}, opt-in {mc['byMode']['optIn']['agree']}/{mc['byMode']['optIn']['cases']}" if "byMode" in mc else "") + (f"; original cases {mc['original']['agree']}/{mc['original']['cases']}; original cases against prose-by-default labels {oc['agree']}/{oc['cases']} (labels differ for {', '.join(oc['relabeled'])})" if oc else ""),
     f"- Verifier/closure/crew checks (07-v16): {v16['passed']}/{v16['checks']} pass" if v16 else "- Verifier checks: v16.json missing",
     f"- Routing identical {ro['identicalDecisionRate']} permutation-same {ro['catalogPermutationSameSelectionRate']} violations {ro['selectedViolatingPolicy']} false-no-route {ro['noRouteDespiteFeasibleCandidate']}",
     f"- Signed-byte marker leaks: {len(leaked)}/{len(po['leakage'])}",

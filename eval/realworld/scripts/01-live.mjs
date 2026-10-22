@@ -7,10 +7,15 @@ import {
   containsMarker, stats, writeJSON, fingerprintArtifactValue,
 } from "./lib.mjs";
 
+// The answer cites the clause inline as [policy-refund] and carries no
+// structured citation list. The default mustCite reads only such a list, so
+// the inline marker counts only with inline: true.
+const CITE_OPTIONS = { inline: true };
+
 const keys = await makeKeys();
 const httpLog = [];
 const out = {
-  env: hardware(),
+  env: { ...hardware(), mustCiteOptions: CITE_OPTIONS },
   note: "temperature and max_tokens are injected by a fetch wrapper because createOpenAICompatibleProvider does not send them.",
   overhead: [],
   workloads: [],
@@ -111,7 +116,7 @@ async function ragOnce(tag, temperature) {
     task: ragTask,
     artifacts: [L.artifact.text(POLICY, { label: "policy-refund" })],
     outputs: { answer: "text" },
-    contract: L.contract({ invariants: [L.inv.mustCite("policy-refund")] }),
+    contract: L.contract({ invariants: [L.inv.mustCite("policy-refund", CITE_OPTIONS)] }),
     policy: { privacy: "standard", maxCostUsd: 1 },
   }));
   const row = summarizeResult(timed);
@@ -319,7 +324,7 @@ const step2 = summarizeResult(await timeRun(() => ai(0, 60, keys.signer).run({
   task: "Using the note, tell the customer the refund window in one sentence and cite [policy-refund].",
   artifacts: [L.artifact.text(String(step1.output?.answer ?? ""), { label: "note" })],
   outputs: { answer: "text" },
-  contract: L.contract({ invariants: [L.inv.mustCite("policy-refund")] }),
+  contract: L.contract({ invariants: [L.inv.mustCite("policy-refund", CITE_OPTIONS)] }),
 })));
 out.sequential = {
   steps: [

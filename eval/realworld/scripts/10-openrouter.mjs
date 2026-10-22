@@ -41,6 +41,10 @@ const POLICY = [
   "Exchanges need a receipt.",
 ].join(" ");
 const RAG_TASK = "Using only the policy text, answer in one sentence and cite it as [policy-refund]. What is the refund window?";
+// The answer cites the clause inline as [policy-refund] and carries no
+// structured citation list. The default mustCite reads only such a list, so
+// the inline marker counts only with inline: true.
+const CITE_OPTIONS = { inline: true };
 const TICKET = [
   "Customer Jamie Lee wrote from jamie.lee@example.com.",
   "Phone 415-555-0134.",
@@ -459,6 +463,7 @@ const out = {
     note: "Lattice time is the runtime work around the provider call: routing, request packing, policy, output checks, redaction, signing, and receipt build. Provider time is the fetch plus the full response body. Pacing sleeps, HTTP 429 backoff, and failed-attempt HTTP time are excluded from Lattice time and from the end-to-end denominator. The adapter sends no temperature, max_tokens, or reasoning field; the fetch wrapper adds them. max_tokens is 8192. Models that advertise a reasoning parameter also receive reasoning.effort=low; a 400 that rejects that field is retried once without it. Inkling's HTTP 403 on ordinary chat calls is recorded as unavailable.",
     maxTokens: { overhead: MAX_TOKENS, rag: MAX_TOKENS, ticket: MAX_TOKENS, agent: MAX_TOKENS, crew: MAX_TOKENS, multimodal: MAX_TOKENS },
     reasoning: { effort: "low" },
+    mustCiteOptions: CITE_OPTIONS,
     timing: "latticeMs excludes provider body, retries, and backoff; e2eMs = latticeMs + providerMs; latticePct = 100 * latticeMs / e2eMs. retryProviderMs, backoffMs, and slackMs are recorded separately.",
     plan: PLAN,
     tasks: [...TASKS],
@@ -581,7 +586,7 @@ for (const model of MODELS) {
           task: RAG_TASK,
           artifacts: [L.artifact.text(POLICY, { label: "policy-refund" })],
           outputs: { answer: "text" },
-          contract: L.contract({ invariants: [L.inv.mustCite("policy-refund")] }),
+          contract: L.contract({ invariants: [L.inv.mustCite("policy-refund", CITE_OPTIONS)] }),
           policy: { privacy: "standard", maxCostUsd: 1 },
         }));
         if (halted(row) || unavailable(row)) break;

@@ -44,9 +44,17 @@ COLORS = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0
 # No timestamps or version strings in the files, so a rerun on the same inputs
 # writes the same bytes.
 SAVE_METADATA = {"pdf": {"CreationDate": None}, "png": {"Software": None}}
-# pii-tools.json from the recorded run does not name the Lattice commit. The
-# noPII detectors it measured are the ones at this commit.
+# pii-tools.json, openrouter.json, and citations.json from the recorded runs do
+# not name the Lattice commit. The noPII detectors and mustCite rules they
+# measured are the ones at this commit.
 LEGACY_DETECTOR_COMMIT = "a8cc091"
+# At that commit an inline [name] or (name) marker containing the artifact name
+# counted as a citation by default. Records that list mustCiteOptions were made
+# with the current library and the options named there.
+LEGACY_CITE_RULE = (
+    f"commit \\texttt{{{LEGACY_DETECTOR_COMMIT}}}, where an inline \\texttt{{[name]}} or \\texttt{{(name)}} marker "
+    "containing the artifact name counted as a citation by default"
+)
 FIGURES = (
     "rw-overhead-pct", "rw-latency-dist", "rw-replay", "rw-drift",
     "rw-pii-f1", "rw-pii-latency", "rw-tamper-heat", "rw-capability", "rw-gateway-latency",
@@ -680,7 +688,7 @@ def pii_caveats() -> str:
     )
     parts.append(
         f"The Lattice rows were measured with the detectors at commit \\texttt{{{detector_commit()}}}"
-        + ("; Section~\\ref{sec:realworld} describes how the released detectors differ." if detector_commit() == LEGACY_DETECTOR_COMMIT else ".")
+        + ("; Section~\\ref{sec:realworld} describes how the current detectors differ." if detector_commit() == LEGACY_DETECTOR_COMMIT else ".")
     )
     return " ".join(parts)
 
@@ -716,7 +724,13 @@ def write_fragment() -> None:
             "The Lattice rows therefore describe requests the adapter does not build on its own. "
             "Table~\\ref{tab:rw-models} uses the provider string returned on the chat response. "
             "A drift cell is distinct successful answers, successful calls, and attempts. "
-            "Output binding uses only calls that returned a receipt. "
+            + (
+                "A RAG call succeeds when the run returns an answer that passes \\texttt{mustCite}, which was called with \\texttt{inline:~true} because the answers cite the clause inline. "
+                if ((OPEN.get("env") or {}).get("mustCiteOptions") or {}).get("inline")
+                else f"A RAG call succeeds when the run returns an answer that passes \\texttt{{mustCite}}. The recorded verdicts come from the rules at {LEGACY_CITE_RULE}. "
+                "The current default reads only a structured citation list and would fail every recorded RAG answer unless \\texttt{inline:~true} is passed. "
+            )
+            +             "Output binding uses only calls that returned a receipt. "
             "The local row is the Ollama run in Section~\\ref{sec:realworld} (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
         )
         lines.append(" " + lattice_prose())
@@ -874,7 +888,13 @@ def write_fragment() -> None:
         lines.append(
             f"On ASQA dev \\citep{{asqa}} (n={CITE['n']}), a case-sensitive Wikipedia title substring matches {CITE['titleSubstringCaseSensitive']} long answers and a case-insensitive substring matches {CITE['titleSubstringCaseInsensitive']}. "
             f"Square-bracket citations appear in {CITE['answersWithSquareBracket']} answers and overlap a gold title in {CITE['bracketOverlapsGoldTitle']}. "
-            f"\\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. These three checks are different predicates."
+            f"\\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. These three checks are different predicates. "
+            + (
+                "\\texttt{mustCite} was called with \\texttt{inline:~true}, because the default reads only a structured citation list and these answers have none."
+                if (CITE.get("mustCiteOptions") or {}).get("inline")
+                else f"The \\texttt{{mustCite}} count was measured at {LEGACY_CITE_RULE.replace('the artifact name', 'the title')}. "
+                "The current default never reads the answer text, so it accepts a gold title in none of these answers unless \\texttt{inline:~true} is passed."
+            )
         )
         nli = CITE.get("nli") or {}
         if nli.get("measured"):

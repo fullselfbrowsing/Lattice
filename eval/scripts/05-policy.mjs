@@ -51,8 +51,8 @@ function luhnComplete(prefix, len) { const ds = (prefix + d(len - prefix.length 
   return ds.join("") + ((10 - (sum % 10)) % 10); }
 const grp = (s, g) => { const out = []; let i = 0; for (const n of g) { out.push(s.slice(i, i + n)); i += n; } return out; };
 const names = ["Alice Moreno", "Raj Patel", "Chen Wei", "Maria Lopez"];
-// Cue words and digit fixes below never call r(), so every label keeps the random
-// stream it had before: the same digits, the same surrounding random text.
+// Cue words and digit adjustments below never call r(), so they do not shift the
+// random stream: each label draws the same digits and surrounding random text.
 const SSN_CUES = ["SSN", "SSN:", "social security number", "SS#"];
 /** Make a 10-digit string NANP-valid (NXX-NXX-XXXX, no N11) without drawing new randomness. */
 function nanp(s) {
@@ -106,12 +106,12 @@ for (const [label, [inScope, isPII, g]] of Object.entries(gens)) for (let i = 0;
 for (let i = 0; i < 100; i++) { const res = await L.evaluateTripwires({ answer: { note: `mail ${pick(["a@b.com", "x@y.org"])}` } }, [L.inv.noPII("answer")]);
   pii.push({ label: "nested-object-email", set: "original", inScope: true, isPII: true, flagged: !res.ok, detector: res.ok ? "" : res.evidence.observed.detector, evidenceEqualsRawPII: false, text: "{answer:{note:...email}}" }); }
 
-// ---------- PII labels added after the first labeled set ----------
-// Appended after every original draw, so the data above is unchanged. These were
-// written from review findings, not alongside the detector: real PII in support and
-// CRM prose with no SSN/phone cue word or with a non-label word (customer, account,
-// patient, ID) in front, card networks beyond Visa/Mastercard/Amex, and bare numbers
-// that are not PII and carry no identifier label. Generators return either a
+// ---------- Added PII labels ----------
+// Appended after every original draw, so the data above does not depend on them.
+// These were not written alongside the detector: real PII in support and CRM prose
+// with no SSN/phone cue word or with a non-label word (customer, account, patient,
+// ID) in front, card networks beyond Visa/Mastercard/Amex, and bare numbers that
+// are not PII and carry no identifier label. Generators return either a
 // fragment (wrapped in random text like the original set) or { text, frag } for a
 // full sentence, table, or CSV row.
 function luhnValid(s) {
@@ -177,7 +177,7 @@ const origNegs = negs.filter((x) => x.set === "original"), newNegs = negs.filter
 const posIn = pii.filter((x) => x.isPII && x.inScope === true), posOut = pii.filter((x) => x.isPII && x.inScope === false), posAll = pii.filter((x) => x.isPII);
 const allLabels = Object.keys(gens).concat("nested-object-email", Object.keys(gens2));
 const piiSummary = {
-  // Headline keys (read by 06-report.py). They now include the new labels and negatives.
+  // Headline keys (read by 06-report.py). They include the added labels and negatives.
   overall_allPII: prf(pii), inScopeOnly: prf([...posIn, ...negs]), outOfScopeOnly: prf([...posOut, ...negs]),
   byLabel: allLabels.map((l) => { const xs = pii.filter((x) => x.label === l); return { label: l, set: xs[0].set, isPII: xs[0].isPII, inScope: xs[0].inScope, n: xs.length, flaggedRate: xs.filter((x) => x.flagged).length / xs.length }; }),
   evidenceContainsRawPIIRate: pii.filter((x) => x.flagged).length ? pii.filter((x) => x.evidenceEqualsRawPII).length / pii.filter((x) => x.flagged).length : null,
@@ -196,8 +196,9 @@ const piiSummary = {
 // Default matching is case-sensitive and reads `source` (or a string). `caseInsensitive`
 // and `keys` are explicit options, so a case variant or an `id` field is a miss unless opted in.
 // The default never reads prose: `inline`, `rejectUncited`, and `textPath` are opt-ins.
-// The first 15 cases are the original set; two of them are relabeled to the new default
-// (see CITE_COMMITTED_LABELS), and their opt-in twins are appended at the end.
+// The first 15 cases are the original set. Two of them are labeled for the default, which
+// does not read prose (CITE_COMMITTED_LABELS holds their prose-by-default labels), and
+// their opt-in twins are appended at the end.
 const citeCases = [
   ["string-cite", true, { answer: "a", citations: ["doc-a"] }], ["object-cite", true, { answer: "a", citations: [{ source: "doc-a" }] }],
   ["evidence-key", true, { answer: "a", evidence: ["doc-a"] }], ["multi-cite", true, { answer: "a", citations: ["doc-b", "doc-a"] }],
@@ -237,8 +238,8 @@ const citeCases = [
   ["rejectUncited-textPath-scopes-scan", true, { answer: "Refund approved.", title: "Notes on [Smith 1999]", citations: ["doc-a"] }, { rejectUncited: true, textPath: "answer" }],
   ["rejectUncited-without-textPath-reads-title", false, { answer: "Refund approved.", title: "Notes on [Smith 1999]", citations: ["doc-a"] }, { rejectUncited: true }],
 ];
-// Labels the original 15 cases carried in the committed first run, for an agreement
-// figure against those labels (EVAL-10). Only these two differ from the current labels.
+// Prose-by-default labels for the original 15 cases, for an agreement figure against
+// labels that expect prose to be read by default. Only these two differ from the labels above.
 const CITE_COMMITTED_LABELS = { "inline-text-only": true, "hallucinated-cite-string": false };
 const ORIGINAL_CITE_CASES = 15;
 const cite = [];
