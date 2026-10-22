@@ -11,35 +11,36 @@
   },
   "pii": {
     "overall_allPII": {
-      "n": 3000,
-      "tp": 1401,
+      "n": 6100,
+      "tp": 3314,
       "fp": 0,
-      "fn": 599,
-      "tn": 1000,
+      "fn": 786,
+      "tn": 2000,
       "precision": 1,
-      "recall": 0.7005
+      "recall": 0.8083
     },
     "inScopeOnly": {
-      "n": 2400,
-      "tp": 1399,
+      "n": 5500,
+      "tp": 3300,
       "fp": 0,
-      "fn": 1,
-      "tn": 1000,
+      "fn": 200,
+      "tn": 2000,
       "precision": 1,
-      "recall": 0.9993
+      "recall": 0.9429
     },
     "outOfScopeOnly": {
-      "n": 1600,
-      "tp": 2,
+      "n": 2600,
+      "tp": 14,
       "fp": 0,
-      "fn": 598,
-      "tn": 1000,
+      "fn": 586,
+      "tn": 2000,
       "precision": 1,
-      "recall": 0.0033
+      "recall": 0.0233
     },
     "byLabel": [
       {
         "label": "email",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -47,6 +48,7 @@
       },
       {
         "label": "email-obfuscated",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
@@ -54,6 +56,7 @@
       },
       {
         "label": "ssn-dashed",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -61,6 +64,7 @@
       },
       {
         "label": "ssn-nodash",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -68,13 +72,15 @@
       },
       {
         "label": "ssn-spaced",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
-        "flaggedRate": 0.99
+        "flaggedRate": 1
       },
       {
         "label": "cc-plain",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -82,6 +88,7 @@
       },
       {
         "label": "cc-spaced",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -89,6 +96,7 @@
       },
       {
         "label": "cc-dashed",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -96,6 +104,7 @@
       },
       {
         "label": "cc-amex",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -103,6 +112,7 @@
       },
       {
         "label": "phone-dashed",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -110,6 +120,7 @@
       },
       {
         "label": "phone-paren",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -117,6 +128,7 @@
       },
       {
         "label": "phone-dotted",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -124,6 +136,7 @@
       },
       {
         "label": "phone-+1",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -131,6 +144,7 @@
       },
       {
         "label": "phone-plain10",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
@@ -138,6 +152,7 @@
       },
       {
         "label": "name-address",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
@@ -145,13 +160,15 @@
       },
       {
         "label": "iban",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
-        "flaggedRate": 0.02
+        "flaggedRate": 0.14
       },
       {
         "label": "uk-phone",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
@@ -159,6 +176,7 @@
       },
       {
         "label": "ipv4",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
@@ -166,6 +184,7 @@
       },
       {
         "label": "dob",
+        "set": "original",
         "isPII": true,
         "inScope": false,
         "n": 100,
@@ -173,6 +192,7 @@
       },
       {
         "label": "neg-date",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -180,6 +200,7 @@
       },
       {
         "label": "neg-version",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -187,6 +208,7 @@
       },
       {
         "label": "neg-order-id-3-2-4",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -194,6 +216,7 @@
       },
       {
         "label": "neg-sku-3-3-4",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -201,6 +224,7 @@
       },
       {
         "label": "neg-16digit-random",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -208,6 +232,7 @@
       },
       {
         "label": "neg-sha",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -215,6 +240,7 @@
       },
       {
         "label": "neg-amount",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -222,6 +248,7 @@
       },
       {
         "label": "neg-isbn13",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -229,6 +256,7 @@
       },
       {
         "label": "neg-plain-text",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -236,6 +264,7 @@
       },
       {
         "label": "neg-decorator",
+        "set": "original",
         "isPII": false,
         "inScope": null,
         "n": 100,
@@ -243,109 +272,710 @@
       },
       {
         "label": "nested-object-email",
+        "set": "original",
         "isPII": true,
         "inScope": true,
         "n": 100,
         "flaggedRate": 1
+      },
+      {
+        "label": "crm-customer-ssn",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-customer-ssn-nodash",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-account-holder-ssn-spaced",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-patient-id-ssn",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-customer-phone",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-customer-phone-plain10",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-call-customer",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-call-customer-plain10",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "crm-customer-card",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-multiline-ticket",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-csv-ssn",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-csv-phone",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-csv-ssn-undashed",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "crm-markdown-row",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "crm-markdown-card",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-unionpay",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-maestro",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-mir",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-diners-309",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-diners-39",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "cc-rupay",
+        "set": "new",
+        "isPII": true,
+        "inScope": true,
+        "n": 100,
+        "flaggedRate": 1
+      },
+      {
+        "label": "neg-epoch-seconds",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-epoch-ms",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-bytes-9digit",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-bytes-10digit",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-population",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-aba-routing",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-spaced-triple",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-decimal",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-zip4-nodash",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
+      },
+      {
+        "label": "neg-build-id",
+        "set": "new",
+        "isPII": false,
+        "inScope": null,
+        "n": 100,
+        "flaggedRate": 0
       }
     ],
-    "evidenceContainsRawPIIRate": 0.9286224125624554
+    "evidenceContainsRawPIIRate": 0.9698249849124925,
+    "overall_originalNegatives": {
+      "n": 5100,
+      "tp": 3314,
+      "fp": 0,
+      "fn": 786,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.8083
+    },
+    "inScopeOnly_originalNegatives": {
+      "n": 4500,
+      "tp": 3300,
+      "fp": 0,
+      "fn": 200,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.9429
+    },
+    "originalLabels_inScope": {
+      "n": 2400,
+      "tp": 1400,
+      "fp": 0,
+      "fn": 0,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 1
+    },
+    "originalLabels_all": {
+      "n": 3000,
+      "tp": 1414,
+      "fp": 0,
+      "fn": 586,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.707
+    },
+    "newLabels_inScope": {
+      "n": 3100,
+      "tp": 1900,
+      "fp": 0,
+      "fn": 200,
+      "tn": 1000,
+      "precision": 1,
+      "recall": 0.9048
+    },
+    "newNegatives": {
+      "n": 1000,
+      "fp": 0,
+      "tn": 1000,
+      "falsePositiveRate": 0
+    },
+    "originalNegatives": {
+      "n": 1000,
+      "fp": 0,
+      "tn": 1000,
+      "falsePositiveRate": 0
+    },
+    "labelSets": {
+      "original": [
+        "email",
+        "email-obfuscated",
+        "ssn-dashed",
+        "ssn-nodash",
+        "ssn-spaced",
+        "cc-plain",
+        "cc-spaced",
+        "cc-dashed",
+        "cc-amex",
+        "phone-dashed",
+        "phone-paren",
+        "phone-dotted",
+        "phone-+1",
+        "phone-plain10",
+        "name-address",
+        "iban",
+        "uk-phone",
+        "ipv4",
+        "dob",
+        "neg-date",
+        "neg-version",
+        "neg-order-id-3-2-4",
+        "neg-sku-3-3-4",
+        "neg-16digit-random",
+        "neg-sha",
+        "neg-amount",
+        "neg-isbn13",
+        "neg-plain-text",
+        "neg-decorator",
+        "nested-object-email"
+      ],
+      "new": [
+        "crm-customer-ssn",
+        "crm-customer-ssn-nodash",
+        "crm-account-holder-ssn-spaced",
+        "crm-patient-id-ssn",
+        "crm-customer-phone",
+        "crm-customer-phone-plain10",
+        "crm-call-customer",
+        "crm-call-customer-plain10",
+        "crm-customer-card",
+        "crm-multiline-ticket",
+        "crm-csv-ssn",
+        "crm-csv-phone",
+        "crm-csv-ssn-undashed",
+        "crm-markdown-row",
+        "crm-markdown-card",
+        "cc-unionpay",
+        "cc-maestro",
+        "cc-mir",
+        "cc-diners-309",
+        "cc-diners-39",
+        "cc-rupay",
+        "neg-epoch-seconds",
+        "neg-epoch-ms",
+        "neg-bytes-9digit",
+        "neg-bytes-10digit",
+        "neg-population",
+        "neg-aba-routing",
+        "neg-spaced-triple",
+        "neg-decimal",
+        "neg-zip4-nodash",
+        "neg-build-id"
+      ],
+      "relabeled": [
+        "ssn-spaced",
+        "phone-plain10"
+      ]
+    }
   },
   "mustCite": {
-    "cases": 15,
-    "agree": 15,
+    "cases": 36,
+    "agree": 36,
     "rows": [
       {
         "label": "string-cite",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "object-cite",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "evidence-key",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "multi-cite",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "missing",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
         "label": "empty",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
         "label": "wrong-doc",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
         "label": "case-variant",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
         "label": "case-variant-opt-in",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "nested-citations",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "inline-text-only",
-        "labeledSatisfies": true,
-        "passed": true,
+        "set": "original",
+        "mode": "default",
+        "labeledSatisfies": false,
+        "passed": false,
         "agree": true
       },
       {
         "label": "object-other-key",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
         "label": "object-id-key",
+        "set": "original",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
       },
       {
         "label": "hallucinated-cite-string",
+        "set": "original",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "named-without-brackets",
+        "set": "original",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "numeric-marker-with-list",
+        "set": "new",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "numeric-markers-multi",
+        "set": "new",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "numeric-marker-without-list",
+        "set": "new",
+        "mode": "default",
         "labeledSatisfies": false,
         "passed": false,
         "agree": true
       },
       {
-        "label": "named-without-brackets",
+        "label": "markdown-link-with-list",
+        "set": "new",
+        "mode": "default",
         "labeledSatisfies": true,
         "passed": true,
         "agree": true
+      },
+      {
+        "label": "sic-with-list",
+        "set": "new",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "path-scoped-title-brackets",
+        "set": "new",
+        "mode": "default",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "path-scoped-list-omits",
+        "set": "new",
+        "mode": "default",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "inline-text-only-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "inline-paren-locator-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "inline-near-miss-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "inline-link-text-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "inline-list-omits-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "inline-textPath-other-field-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "hallucinated-cite-string-opt-in",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-numeric-label-key",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-numeric-position",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-numeric-other-entry",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-numeric-out-of-range",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-ignores-link-and-sic",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-textPath-scopes-scan",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": true,
+        "passed": true,
+        "agree": true
+      },
+      {
+        "label": "rejectUncited-without-textPath-reads-title",
+        "set": "new",
+        "mode": "opt-in",
+        "labeledSatisfies": false,
+        "passed": false,
+        "agree": true
       }
-    ]
+    ],
+    "byMode": {
+      "default": {
+        "cases": 22,
+        "agree": 22
+      },
+      "optIn": {
+        "cases": 14,
+        "agree": 14
+      }
+    },
+    "original": {
+      "cases": 15,
+      "agree": 15
+    },
+    "originalCommittedLabels": {
+      "cases": 15,
+      "agree": 13,
+      "relabeled": [
+        "inline-text-only",
+        "hallucinated-cite-string"
+      ]
+    },
+    "new": {
+      "cases": 21,
+      "agree": 21
+    }
   },
   "leakage": [
     {

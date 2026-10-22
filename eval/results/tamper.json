@@ -505,7 +505,7 @@
       "n": 50,
       "perReceiptRejectRate": 0,
       "chainVerifierRejectRate": 0,
-      "chainVerifierReason": "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+      "chainVerifierReason": "tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent"
     },
     {
       "mutation": "drop-middle-link",
@@ -526,7 +526,7 @@
       "n": 50,
       "perReceiptRejectRate": 0,
       "chainVerifierRejectRate": 0,
-      "chainVerifierReason": "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt|audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party|nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay|this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire"
+      "chainVerifierReason": "tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent"
     },
     {
       "mutation": "truncate-tail-expectedCount",

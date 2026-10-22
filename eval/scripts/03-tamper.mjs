@@ -91,8 +91,9 @@ for (const env of base) {
   await check("replay", "same-receipt-presented-again (no nonce/audience)", env, true);
 }
 
-// Chain attacks: Lattice verifyReceipt checks links individually; we report both
-// per-receipt verification and a harness chain verifier built from receiptCid.
+// Chain attacks: verifyReceipt checks links individually; we report both per-receipt
+// verification and the library's verifyChain (via 02-chain.mjs, no expectedCount
+// unless the mutation name says so). Accepted chains record their advisory codes.
 const chainRows = [];
 for (let t = 0; t < 50; t++) {
   const c = await buildChain(8, K.signer), c2 = await buildChain(8, K.signer);
@@ -107,7 +108,7 @@ for (let t = 0; t < 50; t++) {
     const x = f();
     const perReceipt = (await Promise.all(x.map((e) => L.verifyReceipt(e, keySet)))).some((v) => !v.ok);
     const chain = await verifyChain(x, keySet);
-    chainRows.push({ mutation: m, rejectedByPerReceiptVerify: perReceipt, rejectedByChainVerifier: !chain.ok, chainWhy: chain.why ?? (chain.advisories ?? []).join("|") });
+    chainRows.push({ mutation: m, rejectedByPerReceiptVerify: perReceipt, rejectedByChainVerifier: !chain.ok, chainWhy: chain.why ?? (chain.advisories ?? []).map((a) => a.code).join("|") });
     if (m === "truncate-tail") {
       const counted = await verifyChain(x, keySet, { expectedCount: 8 });
       chainRows.push({ mutation: "truncate-tail-expectedCount", rejectedByPerReceiptVerify: perReceipt, rejectedByChainVerifier: !counted.ok, chainWhy: counted.why ?? "" });

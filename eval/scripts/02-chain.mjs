@@ -15,10 +15,11 @@ export async function buildChain(D, signer = k.signer) {
 }
 // Lattice's tree verifier. Order of the array does not matter; parent links do.
 // A chain built by this file has no chainClosure, so tail truncation is an advisory
-// rather than a rejection unless the caller passes expectedCount.
+// rather than a rejection unless the caller passes expectedCount. Advisories are
+// structured { code, severity, message }; `why` lists their codes.
 export async function verifyChain(chain, keySet, options = {}) {
   const r = await L.verifyChain(chain, keySet, options);
-  if (r.ok) return { ok: true, why: (r.advisories ?? []).join("|"), advisories: r.advisories ?? [] };
+  if (r.ok) return { ok: true, why: (r.advisories ?? []).map((a) => a.code).join("|"), advisories: r.advisories ?? [] };
   return { ok: false, why: r.error.kind, advisories: [] };
 }
 if (import.meta.url === `file://${process.argv[1]}`) {
