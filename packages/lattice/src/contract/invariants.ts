@@ -20,12 +20,18 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
  * With every optional field absent the check is the original structured
  * match: search top-level `citations` then `evidence`, compare string
  * entries directly and object entries by their `source` key,
- * case-sensitively. One fallback extends it: when the top-level list is
- * missing or does not name the artifact, `citations` and `evidence` arrays
- * nested deeper in the output (for example `{ answer: { text, citations } }`
- * or `{ sections: [{ text, citations }] }`) are searched too, so an output
- * that passed before still passes. The output's prose is read only when
- * `inline` or `rejectUncited` is set.
+ * case-sensitively. One fallback extends it: when the first top-level list
+ * is missing or does not name the artifact, the other top-level list and the
+ * `citations` and `evidence` arrays nested deeper in the output (for example
+ * `{ answer: { text, citations } }` or `{ sections: [{ text, citations }] }`)
+ * are searched too, so an output that passed before still passes. The
+ * output's prose is read only when `inline` or `rejectUncited` is set.
+ *
+ * On a violation, evidence `path` is `path` when declared, else the key name
+ * (`citations` or `evidence`) of the reported list. It is never the dotted
+ * location of a nested list, which is built from the output's own keys; that
+ * location appears only in the runtime `message`, which receipts rebuild
+ * before signing.
  *
  * Optional fields are only present on the declaration when set, and
  * `inline` and `rejectUncited` only when `true`, so contracts that do not
@@ -51,33 +57,49 @@ export interface MustCiteInvariant {
   readonly caseInsensitive?: boolean;
   /**
    * Also pass on an inline marker when no located citations list has any
-   * entries: a `[...]` or `(...)` group in any output string whose content,
-   * or one of its `;`/`,`-separated parts, equals `artifactName` after
-   * trimming and dropping a `p. 4` or `§3` locator. `[doc-a]`,
-   * `(doc-a, p. 4)`, and `[doc-a; doc-b]` cite `doc-a`; `[doc-a.v2]` and
-   * `(not doc-a)` do not. Code spans and markdown link text are ignored. The
-   * match is syntactic, so a sentence that disowns `(doc-a)` still counts.
-   * A non-empty list that omits the artifact still fails. Default false.
+   * entries: a `[...]` or `(...)` group in the scanned text (see `textPath`)
+   * whose content, or one of its `;`/`,`-separated parts, equals
+   * `artifactName` after trimming, with or without a trailing `p. 4` or `§3`
+   * locator. `[doc-a]`, `(doc-a, p. 4)`, and `[doc-a; doc-b]` cite `doc-a`;
+   * `[doc-a.v2]` and `(not doc-a)` do not. Code spans and markdown link text
+   * are ignored. The match is syntactic, so a sentence that disowns
+   * `(doc-a)` still counts. A non-empty list that omits the artifact still
+   * fails. Default false.
    */
   readonly inline?: boolean;
   /**
-   * Fail a list entry that names the artifact when the output's text
-   * carries citation markers and none of them cites the artifact. Only these
-   * square-bracket forms are markers:
+   * Fail a list entry that names the artifact when the scanned text (see
+   * `textPath`) carries citation markers and none of them cites the
+   * artifact. Only these square-bracket forms are markers:
    *   - numbers and ranges from 1 to 999 (`[1]`, `[1, 2]`, `[2-4]`), resolved
    *     to the entry whose `label`, `marker`, or `id` is that number, else to
    *     the entry at that 1-based position. A number past the end of the
    *     list cites something else.
    *   - author-year references (`[Smith 1999]`, `[Smith et al., 2001]`).
+   *     Month names and date annotations are not authors, so `[March 2024]`,
+   *     `[Updated 2024]`, `[Est. 1999]`, and `[Copyright 2025]` are ignored.
    *   - a bracket equal to `artifactName` or to a list entry's identifier.
    * Links, footnotes, `[x]`, `[sic]`, `[INFO]`, `arr[0]`, timestamps, code
-   * spans, and parentheses are ignored. The scan reads every string except
-   * those below `citations`/`evidence` keys and the `path` subtree, in
-   * sorted key order, down to 32 levels; if it reaches that depth anywhere
-   * the verdict is unknown and the entry is not rejected. The runtime error
-   * names the first competing marker and where it was found. Default false.
+   * spans, and parentheses are ignored. Without `textPath` the scan reads
+   * every string in the output, so a number in brackets inside a log line
+   * or a JSON string (`"[200] OK"`, `'{"ids":[2,3]}'`) counts as a marker;
+   * set `textPath` to the answer field to avoid that. The scan skips strings
+   * below `citations`/`evidence` keys and the `path` subtree, walks in
+   * sorted key order, and goes down to 32 levels; if it reaches that depth
+   * anywhere the verdict is unknown and the entry is not rejected. The
+   * runtime error names the first competing marker and where it was found.
+   * Default false.
    */
   readonly rejectUncited?: boolean;
+  /**
+   * resolvePath expression for the text that `inline` and `rejectUncited`
+   * read, for example `answer` or `sections[*].text`. Only strings at or
+   * below it are scanned, still skipping `citations`/`evidence` keys and the
+   * `path` subtree. A path that resolves to nothing leaves no text, so
+   * `inline` finds no marker and `rejectUncited` finds no competing one.
+   * Default: the whole output. No effect unless one of those flags is set.
+   */
+  readonly textPath?: string;
 }
 
 export interface FieldFromTableInvariant {
@@ -117,6 +139,7 @@ export interface MustCiteOptions extends InvariantOptions {
   readonly caseInsensitive?: boolean;
   readonly inline?: boolean;
   readonly rejectUncited?: boolean;
+  readonly textPath?: string;
 }
 
 let counter = 0;
@@ -165,6 +188,7 @@ export const inv = {
       // The opt-in flags appear only when true, so `false` hashes like unset.
       ...(options?.inline === true ? { inline: true } : {}),
       ...(options?.rejectUncited === true ? { rejectUncited: true } : {}),
+      ...(options?.textPath !== undefined ? { textPath: options.textPath } : {}),
     });
   },
   fieldFromTable(

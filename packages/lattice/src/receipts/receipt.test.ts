@@ -5,7 +5,8 @@ import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { receiptCid } from "./cid.js";
 import { PAYLOAD_TYPE, base64Decode } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
-import type { TripwireEvidence } from "../contract/tripwire.js";
+import { inv, type InvariantDeclaration } from "../contract/invariants.js";
+import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 
 import {
   DEFAULT_REDACTION_POLICY_ID,
@@ -283,6 +284,65 @@ describe("receipt.ts — signed bytes never contain the matched value (issue #21
       const body = decodeBody(env.payload);
       expect(body.redactions.map((entry) => entry.reason)).toEqual(testCase.reasons);
       expect(body.redactions.every((entry) => entry.path.startsWith("tripwireEvidence."))).toBe(true);
+    });
+  }
+});
+
+describe("receipt.ts — must-cite evidence signs only developer-owned values", () => {
+  // The nested fallback finds lists under model-produced keys (a z.record or
+  // loose-object output). Their dotted location must never reach the signed
+  // body, neither as `path` nor through the templated message.
+  const cases: ReadonlyArray<{
+    readonly label: string;
+    readonly output: unknown;
+    readonly declaration: () => InvariantDeclaration;
+    readonly leaked: readonly string[];
+  }> = [
+    {
+      label: "a missing citation under a model-produced key",
+      output: { sections: { "Jane Roe SSN 123-45-6789": { text: "Refund denied.", citations: ["other-doc"] } } },
+      declaration: () => inv.mustCite("policy-refund"),
+      leaked: ["Jane Roe", "123-45-6789", "sections"],
+    },
+    {
+      label: "a rejectUncited failure in a list under a model-produced key",
+      output: {
+        sections: { "patient jane.roe@example.com": { text: "Refund per [Smith 1999].", citations: ["policy-refund"] } },
+      },
+      declaration: () => inv.mustCite("policy-refund", { rejectUncited: true }),
+      leaked: ["jane.roe", "example.com", "Smith 1999", "sections"],
+    },
+    {
+      label: "a list inside an array of answers",
+      output: { answers: [{ text: "x", evidence: ["other-doc"] }] },
+      declaration: () => inv.mustCite("policy-refund"),
+      leaked: ["answers", "[0]"],
+    },
+  ];
+
+  for (const testCase of cases) {
+    it(`${testCase.label}: the signed body carries the default key only`, async () => {
+      const tripwire = await evaluateTripwires(testCase.output, [testCase.declaration()]);
+      expect(tripwire.ok).toBe(false);
+      if (tripwire.ok) return;
+      const key = tripwire.evidence.path;
+      expect(["citations", "evidence"]).toContain(key);
+
+      const { signer } = await makeSigner();
+      const env = await createReceipt(
+        minimalInput({ contractVerdict: "tripwire-violated", tripwireEvidence: tripwire.evidence }),
+        signer,
+      );
+      const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+      for (const fragment of testCase.leaked) expect(rawJson).not.toContain(fragment);
+      const body = decodeBody(env.payload);
+      expect(body.tripwireEvidence).toEqual({
+        invariantId: tripwire.evidence.invariantId,
+        kind: "must-cite",
+        path: key,
+        observed: { valueType: "array" },
+        message: `must-cite: no matching citation at "${key}".`,
+      });
     });
   }
 });

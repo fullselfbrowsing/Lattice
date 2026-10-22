@@ -206,7 +206,21 @@ describe("inv.mustCite options (issue #21 F9)", () => {
     const plain = JSON.stringify(inv.mustCite("a", { id: "x" }));
     const inline = JSON.stringify(inv.mustCite("a", { id: "x", inline: true }));
     const rejectUncited = JSON.stringify(inv.mustCite("a", { id: "x", rejectUncited: true }));
-    expect(new Set([plain, inline, rejectUncited]).size).toBe(3);
+    const textPath = JSON.stringify(inv.mustCite("a", { id: "x", rejectUncited: true, textPath: "answer" }));
+    expect(new Set([plain, inline, rejectUncited, textPath]).size).toBe(4);
+  });
+
+  it("textPath is captured only when set", () => {
+    const scoped = inv.mustCite("a", { rejectUncited: true, textPath: "sections[*].text" });
+    expect(scoped).toEqual({
+      id: "must-cite-1",
+      kind: "must-cite",
+      artifactName: "a",
+      rejectUncited: true,
+      textPath: "sections[*].text",
+    });
+    const unset = inv.mustCite("a", { rejectUncited: true });
+    expect("textPath" in unset).toBe(false);
   });
 
   it("throws a TypeError on an empty or whitespace-only artifactName without consuming an id", () => {

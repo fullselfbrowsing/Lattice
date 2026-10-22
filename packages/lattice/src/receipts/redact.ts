@@ -17,7 +17,7 @@ export const NO_PII_REDACTION_REASON = "no-pii-detector-mask-only";
 export const TRIPWIRE_OBSERVED_REDACTION_REASON = "tripwire-observed-value-elided";
 /**
  * Manifest reason: `message` was rebuilt from developer-owned fields only
- * (invariant kind, declared path, detector name). Applies to every kind.
+ * (invariant kind, evidence path, detector name). Applies to every kind.
  */
 export const TRIPWIRE_MESSAGE_REDACTION_REASON = "tripwire-message-templated";
 
@@ -155,11 +155,14 @@ function redactObservedShape(observed: unknown): RedactedObservedShape {
 }
 
 /**
- * Rebuild the evidence message from developer-owned inputs only. The kernel's
- * message is written for the runtime error and may embed the concrete
- * location of a no-pii hit (model-produced object keys) or a schema
- * library's issue text (the offending value), so the signed copy never
- * reuses it.
+ * Rebuild the evidence message from developer-owned inputs only: the kind,
+ * the evidence `path`, and the no-pii detector name. The kernel's message is
+ * written for the runtime error and may embed the concrete location of a
+ * no-pii hit or a nested must-cite list (model-produced object keys), a
+ * competing citation marker, or a schema library's issue text (the offending
+ * value), so the signed copy never reuses it. `path` is safe to embed
+ * because the kernel only ever sets it to a declared path or, for must-cite,
+ * to the `citations`/`evidence` key name (see TripwireEvidence).
  */
 function templatedMessage(
   kind: TripwireEvidence["kind"],
@@ -201,10 +204,13 @@ function templatedMessage(
  *       matches          -> { valueType }
  *     The only free string in a signed shape is the no-pii `detector` name,
  *     which is developer-owned configuration in every kernel path.
- *     and rebuilds `tripwireEvidence.message` from the kind, the declared
+ *     and rebuilds `tripwireEvidence.message` from the kind, the evidence
  *     path, and the detector name, because the kernel's message may embed
- *     model-produced object keys (no-pii) or schema issue text (matches).
- *     `tripwireEvidence.path` is already the declared path and is kept.
+ *     model-produced object keys (no-pii, nested must-cite lists), citation
+ *     markers from the prose (must-cite), or schema issue text (matches).
+ *     `tripwireEvidence.path` is developer-owned in every kernel path (the
+ *     declared path, or the `citations`/`evidence` key name for a must-cite
+ *     without one) and is kept.
  *     Each rewrite pushes its manifest entry at the same moment, so the
  *     manifest can never claim a redaction that did not happen.
  *   - No hash of the observed value is kept. `outputHash` already commits to

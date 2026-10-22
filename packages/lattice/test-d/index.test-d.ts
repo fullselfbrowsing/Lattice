@@ -130,8 +130,9 @@ expectType<OtelHttpTraceConfig>(createPhoenixOtlpConfig({
   projectName: "lattice",
 }));
 
-const mustCiteOptions: MustCiteOptions = { inline: true, rejectUncited: true };
+const mustCiteOptions: MustCiteOptions = { inline: true, rejectUncited: true, textPath: "answer" };
 const mustCite = inv.mustCite("policy-refund", mustCiteOptions);
 expectType<MustCiteInvariant>(mustCite);
 expectType<boolean | undefined>(mustCite.inline);
 expectType<boolean | undefined>(mustCite.rejectUncited);
+expectType<string | undefined>(mustCite.textPath);

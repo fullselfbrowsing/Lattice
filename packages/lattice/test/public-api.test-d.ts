@@ -154,10 +154,12 @@ test("source public API types the must-cite opt-in flags", () => {
     caseInsensitive: true,
     inline: true,
     rejectUncited: true,
+    textPath: "answer",
   } satisfies MustCiteOptions;
   const decl = inv.mustCite("policy-refund", options);
   expectTypeOf(decl).toEqualTypeOf<MustCiteInvariant>();
   expectTypeOf(decl.inline).toEqualTypeOf<boolean | undefined>();
   expectTypeOf(decl.rejectUncited).toEqualTypeOf<boolean | undefined>();
+  expectTypeOf(decl.textPath).toEqualTypeOf<string | undefined>();
   assertType<InvariantDeclaration>(decl);
 });

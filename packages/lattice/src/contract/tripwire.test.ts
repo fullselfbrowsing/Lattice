@@ -694,6 +694,12 @@ describe("must-cite: correct citations pass by default and with rejectUncited", 
     ["a list of numbers covering the artifact", { answer: "Refunds [1, 3].", citations: ["doc-b", "doc-c", POLICY] }],
     ["one citing marker among others", { answer: "Fast [2] and fair [1].", citations: [POLICY, "doc-b"] }],
     ["no brackets at all", { answer: "Refund in 5 days.", citations: [POLICY] }],
+    ["a date stamp [March 2024]", { answer: "Refunds take 5 days. [March 2024]", citations: [POLICY] }],
+    ["an abbreviated date [Sept. 2024]", { answer: "Refunds take 5 days [Sept. 2024].", citations: [POLICY] }],
+    ["an annotation [Updated 2024]", { answer: "Refunds take 5 days [Updated 2024].", citations: [POLICY] }],
+    ["an annotation [Est. 1999]", { answer: "Acme [Est. 1999] refunds in 5 days.", citations: [POLICY] }],
+    ["a notice [Copyright 2025]", { answer: "Refunds take 5 days. [Copyright 2025]", citations: [POLICY] }],
+    ["an upper-case date [MARCH 2024]", { answer: "Refunds take 5 days [MARCH 2024].", citations: [POLICY] }],
   ];
 
   it.each(correctlyCited)("%s", async (_label, output) => {
@@ -737,6 +743,33 @@ describe("must-cite rejectUncited: what counts as citing something else", () => 
     expect(result.evidence.message).toBe(
       'must-cite: citation "doc-a" is not cited in the text; [Smith 1999] at "answer" cites another source.',
     );
+  });
+
+  it("only whole month and annotation words are excluded from author-year", async () => {
+    for (const marker of ["[Marchetti 2024]", "[Mayer 2019]", "[Updike 1999]", "[Smith and March 2024]"]) {
+      const result = await evaluateTripwires(
+        { answer: `Refund per ${marker}.`, citations: ["doc-a"] },
+        [inv.mustCite("doc-a", { rejectUncited: true })],
+      );
+      expectViolation(result);
+      expect(result.evidence.message).toContain(marker);
+    }
+  });
+
+  it("an artifact whose name ends in a locator shape still cites itself", async () => {
+    const name = "42 U.S.C. § 1983";
+    expect(
+      await evaluateTripwires(
+        { answer: `Claim under [${name}] and [2].`, citations: [name, "doc-b"] },
+        [inv.mustCite(name, { rejectUncited: true })],
+      ),
+    ).toEqual({ ok: true });
+    const result = await evaluateTripwires(
+      { answer: "Claim under [Handbook p. 12].", citations: [name, "Handbook p. 12"] },
+      [inv.mustCite(name, { rejectUncited: true })],
+    );
+    expectViolation(result);
+    expect(result.evidence.message).toContain("[Handbook p. 12]");
   });
 
   it("an out-of-range number cites something else", async () => {
@@ -832,6 +865,10 @@ describe("must-cite inline: the bracket content must equal the name", () => {
     ["a page locator", "doc-a", { answer: "See (doc-a, p. 4)." }, {}, true],
     ["a section locator", "doc-a", { answer: "See [doc-a §3]." }, {}, true],
     ["one of several works", "doc-b", { answer: "Per [doc-a; doc-b]." }, {}, true],
+    ["a name ending in a section sign", "42 U.S.C. § 1983", { answer: "Claim under [42 U.S.C. § 1983]." }, {}, true],
+    ["a name ending in a page locator", "Handbook p. 12", { answer: "See (Handbook p. 12)." }, {}, true],
+    ["a locator-shaped name plus a locator", "42 U.S.C. § 1983", { answer: "See [42 U.S.C. § 1983, p. 4]." }, {}, true],
+    ["a locator-shaped name with the locator missing", "Handbook p. 12", { answer: "See (Handbook)." }, {}, false],
     ["link text", "doc-a", { answer: "See [doc-a](https://example.com/doc-a)." }, {}, false],
     ["a code span", "doc-a", { answer: "Run `lookup(doc-a)`." }, {}, false],
   ];
@@ -888,6 +925,125 @@ describe("must-cite path scoping", () => {
   });
 });
 
+describe("must-cite textPath limits the prose scans", () => {
+  beforeEach(() => {
+    inv.__resetCounterForTests();
+  });
+
+  const nonProse: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
+    ["a status code in a log line", { answer: "Refund approved.", log: "[200] OK" }],
+    ["a JSON array in a string field", { answer: "Refund approved.", data: '{"ids":[2,3]}' }],
+  ];
+
+  it.each(nonProse)("%s rejects over the whole output and passes with textPath", async (_label, fields) => {
+    const output = { ...fields, citations: [POLICY] };
+    expectViolation(await evaluateTripwires(output, [inv.mustCite(POLICY, { rejectUncited: true })]));
+    expect(
+      await evaluateTripwires(output, [inv.mustCite(POLICY, { rejectUncited: true, textPath: "answer" })]),
+    ).toEqual({ ok: true });
+  });
+
+  it("markers outside textPath neither reject nor rescue", async () => {
+    const output = { answer: "Per [Smith 1999].", log: "[1]", citations: [POLICY] };
+    expect(await evaluateTripwires(output, [inv.mustCite(POLICY, { rejectUncited: true })])).toEqual({
+      ok: true,
+    });
+    const scoped = await evaluateTripwires(output, [
+      inv.mustCite(POLICY, { rejectUncited: true, textPath: "answer" }),
+    ]);
+    expectViolation(scoped);
+    expect(scoped.evidence.message).toContain('[Smith 1999] at "answer"');
+  });
+
+  it("a wildcard textPath reports the concrete location", async () => {
+    const output = { sections: [{ text: "Fine." }, { text: "Per [Smith 1999]." }], citations: [POLICY] };
+    const result = await evaluateTripwires(output, [
+      inv.mustCite(POLICY, { rejectUncited: true, textPath: "sections[*].text" }),
+    ]);
+    expectViolation(result);
+    expect(result.evidence.message).toContain('[Smith 1999] at "sections[1].text"');
+  });
+
+  it("inline reads only the textPath subtree", async () => {
+    const output = { answer: "Refund approved.", notes: "[doc-a]" };
+    expect(await evaluateTripwires(output, [inv.mustCite("doc-a", { inline: true })])).toEqual({ ok: true });
+    expectViolation(await evaluateTripwires(output, [inv.mustCite("doc-a", { inline: true, textPath: "answer" })]));
+    expect(
+      await evaluateTripwires(output, [inv.mustCite("doc-a", { inline: true, textPath: "notes" })]),
+    ).toEqual({ ok: true });
+  });
+
+  it("a textPath that resolves to nothing leaves no text to read", async () => {
+    const listed = { answer: "Per [Smith 1999].", citations: [POLICY] };
+    expect(
+      await evaluateTripwires(listed, [inv.mustCite(POLICY, { rejectUncited: true, textPath: "missing" })]),
+    ).toEqual({ ok: true });
+    expectViolation(
+      await evaluateTripwires({ answer: "per [doc-a]" }, [
+        inv.mustCite("doc-a", { inline: true, textPath: "missing" }),
+      ]),
+    );
+  });
+
+  it("textPath alone does not change the default structured match", async () => {
+    expect(
+      await evaluateTripwires({ answer: "Per [Smith 1999].", citations: [POLICY] }, [
+        inv.mustCite(POLICY, { textPath: "answer" }),
+      ]),
+    ).toEqual({ ok: true });
+    expectViolation(
+      await evaluateTripwires({ answer: "per [doc-a]" }, [inv.mustCite("doc-a", { textPath: "answer" })]),
+    );
+  });
+});
+
+describe("must-cite rejectUncited cost does not grow with range width or list size", () => {
+  beforeEach(() => {
+    inv.__resetCounterForTests();
+  });
+
+  it("128 KB of non-resolving [1-999] ranges against a 30-entry list evaluates in under 250 ms", async () => {
+    // No number resolves to doc-a: [1] is labelled for another entry and
+    // doc-a's own label is not a number, so every range must be checked in full.
+    const citations = [
+      { source: "doc-a", label: "Z" },
+      { source: "x", label: "1" },
+      ...Array.from({ length: 28 }, (_, i) => ({ source: `doc-${i + 2}`, label: `L${i + 2}` })),
+    ];
+    // Distinct groups, so memoizing a verdict per group content cannot hide the cost.
+    const ranges = Array.from({ length: 13_500 }, (_, i) => `[${1 + (i % 900)}-${999 - (i % 7)}] `).join("");
+    const wide = Array.from(
+      { length: 1_024 },
+      (_, i) => `[${Array.from({ length: 15 }, (_, j) => `${1 + ((i + j) % 90)}-999`).join(", ")}] `,
+    ).join("");
+    expect(ranges.length).toBeGreaterThan(128 * 1024);
+    const decl = inv.mustCite("doc-a", { rejectUncited: true });
+    const started = performance.now();
+    const result = await evaluateTripwires({ answer: ranges, citations }, [decl]);
+    const many = await evaluateTripwires({ answer: wide, citations }, [decl]);
+    expect(performance.now() - started).toBeLessThan(250);
+    expectViolation(result);
+    expect(result.evidence.message).toContain('[1-999] at "answer"');
+    expectViolation(many);
+  });
+
+  it("a range still cites the artifact when any number in it resolves to the artifact", async () => {
+    const citations = [{ source: "x", label: "1" }, ...Array.from({ length: 28 }, (_, i) => `doc-${i}`)];
+    citations.push({ source: "doc-a", label: "998" });
+    // 30 entries: positions 31 and up resolve only through doc-a's label 998.
+    expect(
+      await evaluateTripwires({ answer: "[31-999] ".repeat(4_096), citations }, [
+        inv.mustCite("doc-a", { rejectUncited: true }),
+      ]),
+    ).toEqual({ ok: true });
+    expectViolation(
+      await evaluateTripwires({ answer: "[31-997] and [999]", citations }, [
+        inv.mustCite("doc-a", { rejectUncited: true }),
+      ]),
+    );
+  });
+});
+
 describe("must-cite nested fallback", () => {
   beforeEach(() => {
     inv.__resetCounterForTests();
@@ -906,7 +1062,7 @@ describe("must-cite nested fallback", () => {
     expect(await evaluateTripwires(output, [inv.mustCite("doc-a")])).toEqual({ ok: true });
   });
 
-  it("evidence names the top-level list, else the first nested list in walk order", async () => {
+  it("evidence observes the top-level list, else the first nested list in walk order", async () => {
     const withTop = await evaluateTripwires(
       { citations: ["doc-b"], answer: { citations: ["doc-c"] } },
       [inv.mustCite("doc-a")],
@@ -914,20 +1070,61 @@ describe("must-cite nested fallback", () => {
     expectViolation(withTop);
     expect(withTop.evidence.path).toBe("citations");
     expect(withTop.evidence.observed).toEqual(["doc-b"]);
+    expect(withTop.evidence.message).toBe('must-cite: no citation found for "doc-a".');
 
     const nestedOnly = await evaluateTripwires(
       { answers: [{ citations: ["doc-b"] }], other: { citations: ["doc-c"] } },
       [inv.mustCite("doc-a")],
     );
     expectViolation(nestedOnly);
-    expect(nestedOnly.evidence.path).toBe("answers[0].citations");
     expect(nestedOnly.evidence.observed).toEqual(["doc-b"]);
+    expect(nestedOnly.evidence.message).toBe(
+      'must-cite: no citation found for "doc-a"; observed is the list at "answers[0].citations".',
+    );
   });
 
-  it("the top-level evidence list is not consulted when a top-level citations list exists", async () => {
-    expectViolation(
-      await evaluateTripwires({ citations: ["doc-b"], evidence: ["doc-a"] }, [inv.mustCite("doc-a")]),
+  it("evidence path is the key name, never the nested location built from output keys", async () => {
+    const key = "Jane Roe SSN 123-45-6789";
+    const keyed = await evaluateTripwires(
+      { sections: { [key]: { text: "Refund denied.", citations: ["other-doc"] } } },
+      [inv.mustCite("doc-a")],
     );
+    expectViolation(keyed);
+    expect(keyed.evidence.path).toBe("citations");
+    expect(keyed.evidence.message).toContain(`"sections.${key}.citations"`);
+
+    const indexed = await evaluateTripwires({ answers: [{ evidence: ["doc-b"] }] }, [inv.mustCite("doc-a")]);
+    expectViolation(indexed);
+    expect(indexed.evidence.path).toBe("evidence");
+
+    const uncited = await evaluateTripwires(
+      { sections: { "patient jane.roe@example.com": { text: "Per [Smith 1999].", citations: ["doc-a"] } } },
+      [inv.mustCite("doc-a", { rejectUncited: true })],
+    );
+    expectViolation(uncited);
+    expect(uncited.evidence.path).toBe("citations");
+  });
+
+  it("a top-level evidence list is searched when the top-level citations list misses", async () => {
+    expect(
+      await evaluateTripwires({ citations: ["doc-b"], evidence: ["doc-a"] }, [inv.mustCite("doc-a")]),
+    ).toEqual({ ok: true });
+    expect(
+      await evaluateTripwires({ citations: [], evidence: ["doc-a"] }, [inv.mustCite("doc-a")]),
+    ).toEqual({ ok: true });
+    const neither = await evaluateTripwires({ citations: ["doc-b"], evidence: ["doc-c"] }, [
+      inv.mustCite("doc-a"),
+    ]);
+    expectViolation(neither);
+    expect(neither.evidence.path).toBe("citations");
+    expect(neither.evidence.observed).toEqual(["doc-b"]);
+  });
+
+  it("rejectUncited resolves numbers against the top-level evidence list it matched", async () => {
+    const output = { answer: "Refunds [2].", citations: ["doc-b"], evidence: ["doc-c", "doc-a"] };
+    expect(await evaluateTripwires(output, [inv.mustCite("doc-a", { rejectUncited: true })])).toEqual({
+      ok: true,
+    });
   });
 });
 
