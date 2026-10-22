@@ -13,3 +13,7 @@
 *.nav
 *.snm
 *.vrb
+*.xdv
+# The papers include the rw-*.pdf figures only; the PNG previews stay in
+# eval/realworld/results.
+rw-*.png

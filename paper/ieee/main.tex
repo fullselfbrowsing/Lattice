@@ -1,10 +1,34 @@
+% IEEEtran selects the Type 1 ptm, phv, and pcr families while it loads.
+% XeTeX and LuaTeX (tectonic is XeTeX-based) have no TU-encoded shapes for
+% them, so those names are substituted silently here. The OpenType fonts are
+% set after the class loads. pdfLaTeX skips this block.
+\RequirePackage{iftex}
+\iftutex
+  \DeclareFontFamilySubstitution{TU}{ptm}{lmr}
+  \DeclareFontFamilySubstitution{TU}{phv}{lmss}
+  \DeclareFontFamilySubstitution{TU}{pcr}{lmtt}
+\fi
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
 
 % --- Packages -------------------------------------------------------------
 \usepackage{cite}
 \usepackage{amsmath}
-\usepackage{mathptmx} % Times text and math available in the build environment
+% Times text and math. pdfLaTeX uses mathptmx. XeTeX and LuaTeX load the
+% OpenType TeX Gyre clones of Times, Helvetica, and Courier by file name, and
+% TeX Gyre Termes Math.
+\iftutex
+  \usepackage{unicode-math}
+  \setmainfont{texgyretermes}[Extension=.otf, UprightFont=*-regular,
+    BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+  \setsansfont{texgyreheros}[Extension=.otf, UprightFont=*-regular,
+    BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+  \setmonofont{texgyrecursor}[Extension=.otf, UprightFont=*-regular,
+    BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+  \setmathfont{texgyretermes-math.otf}
+\else
+  \usepackage{mathptmx} % Times text and math available in the build environment
+\fi
 \usepackage{array}
 \usepackage{booktabs}
 \usepackage{url}
@@ -63,20 +87,22 @@ Rabih.Neouchi@UTDallas.edu}
 % --- Abstract -------------------------------------------------------------
 \begin{abstract}
 Production systems built on large language models usually keep a free-text log of a run.
-Lattice is a capability-first TypeScript runtime. When a signer is configured, a run emits
-a capability receipt: the request, the route, the constraints, and hashes of the outputs.
-The body is canonicalized with RFC 8785, matched personal data is masked before signing,
-and the envelope is signed with Ed25519. The signing key is not a receipt field. Routing
-is a deterministic function, and a violated output invariant is terminal. An offline
-evaluation against mocked providers measures signing cost, receipt size, tamper rejection,
-and replay. Replay binding, a schema-version floor, and a chain-length check are verifier
-opt-ins. New crew runs also close the receipt chain, so a dropped leaf fails verification.
-Auditability attaches to signed runs.
+Lattice is a capability-first TypeScript runtime. When a signer is configured,
+\code{ai.run} and multi-agent crews emit capability receipts. A receipt commits to hashes
+of the input artifacts and the output, a hash of the contract, and the selected route. It
+does not commit to the task text, the policy, or the reasons a route was chosen. The body
+is canonicalized with RFC 8785, matched personal data is masked before signing, and the
+envelope is signed with Ed25519. Routing is a deterministic function, and a violated
+output invariant is terminal. An offline evaluation against mocked providers measures
+signing cost, receipt size, tamper rejection, and whether a kept output still matches its
+signed hash. Audience and nonce binding, a schema-version floor, and a chain-length check
+are verifier opt-ins. A crew's closing receipt lists every other member of its chain, so a
+verifier that enforces closure rejects a dropped leaf.
 \end{abstract}
 
 \begin{IEEEkeywords}
 capability receipts, verifiable replay, LLM orchestration, software supply chain,
-canonical JSON, digital signatures, reproducibility, multimodal AI
+canonical JSON, digital signatures, reproducibility, audit trails
 \end{IEEEkeywords}
 
 % --- Introduction ---------------------------------------------------------
@@ -89,15 +115,16 @@ documents, structured outputs, and tool calls, and they increasingly spread a
 single task across several model providers for cost, latency, privacy, or
 capability reasons. As the stakes rise, two questions follow every run. First, can
 an operator or an auditor trust the record of what happened. Second, can anyone
-reproduce that run later, offline, without trusting the party that produced the
-record. Today the honest answer to both questions is usually no.
+later check, offline and without trusting whoever stored the record, that a kept
+input or output is the one the run used or returned. Today the honest answer to both
+questions is usually no.
 
 The reason is structural. The dominant integration libraries are provider wrappers.
 They normalize the shape of a chat or generation call across vendors and they
 provide convenience around tools, memory, and agents. They do not produce a
-tamper-evident record of a run, they do not commit to a deterministic and
+tamper-evident record of a run, they do not return a deterministic and
 inspectable account of why one model was chosen over another, and they do not let a
-third party replay the run and check the result against a signed artifact. A free
+third party check a kept result against a signed artifact. A free
 text log is not a proof. It can be edited after the fact, it does not bind the
 inputs to the outputs, and it carries no signature that a verifier can check with a
 public key.
@@ -109,8 +136,10 @@ We build this argument concretely through Lattice, a capability-first runtime SD
 written in TypeScript. A developer describes the job, supplies any mix of artifacts,
 declares the desired outputs and policy constraints, and optionally attaches a
 contract. Lattice then routes the work deterministically, packs context, prepares
-artifacts for the chosen provider, enforces output invariants, and emits a receipt
-on every outcome, success or failure.
+artifacts for the chosen provider, and enforces output invariants. When a signer is
+configured, \code{ai.run} emits a receipt on every outcome, success or failure, and a
+multi-agent crew emits a chain of receipts. The single-agent loop, \code{ai.runAgent},
+returns no receipt.
 
 Lattice provides four guarantees that together make a run auditable and
 reproducible.
@@ -118,27 +147,30 @@ reproducible.
 \begin{enumerate}
 \item \textbf{Deterministic and inspectable routing.} The router is a pure function
 of the capability catalog, the request, and the policy. It uses hard filters, a
-stable score, and a deterministic tie break, and it reports the full set of
-candidates, the rejected candidates, the fallback chain, and a typed list of reasons
-when no route is possible. There is no randomness and no model call inside routing.
+stable score, and a deterministic tie break, and its execution plan reports the full
+set of candidates, the rejected candidates, the fallback chain, and a typed list of
+reasons when no route is possible. There is no randomness and no model call inside
+routing. The receipt signs only the selected route.
 \item \textbf{Terminal output invariants.} Output level tripwires such as
-``must cite an artifact'' or ``no personally identifiable information'' are evaluated
-by a pure kernel. A violation produces a terminal error that the fallback chain is
+``must cite an artifact'' or ``no matched email, social security, phone, or card
+number'' are evaluated by a pure kernel. A violation produces a terminal error that the fallback chain is
 forbidden to retry, which prevents a system from quietly trying again until a banned
 output slips through.
-\item \textbf{Signed capability receipts.} Every run emits a receipt that is
-canonicalized with RFC 8785, redacted before signing, and signed with Ed25519 inside
-a Dead Simple Signing Envelope. The receipt binds the run record to a key through a
-signature that any holder of the public key can check.
-\item \textbf{Offline verifiable replay.} A receipt and its content-addressed
-artifacts can be materialized into a replay envelope. Materialization verifies the
-signature before it loads any artifact, and a property test confirms that
-reconstructing the run and recomputing the output hash yields the value committed in
-the receipt.
+\item \textbf{Signed capability receipts.} With a signer, every \code{ai.run}
+outcome and every crew run emits receipts that are canonicalized with RFC 8785,
+redacted before signing, and signed with Ed25519 inside a Dead Simple Signing
+Envelope. A receipt binds hashes of the input artifacts and the output, the contract
+hash, and the selected route to a key, through a signature that any holder of the
+public key can check.
+\item \textbf{Offline replay as output binding.} A receipt and its
+content-addressed artifacts can be materialized into a replay envelope.
+Materialization verifies the signature before it loads any artifact. Replay does not
+call a model: it recomputes the hash of the recorded output and compares it with the
+value the receipt commits to, and a property test checks that round trip.
 \end{enumerate}
 
 We make the following contributions. We define the capability receipt as a signing
-and replay primitive for multimodal model runs, and we show how a redact-then-sign
+and replay primitive for model runs, and we show how a redact-then-sign
 ordering and a canonical encoding turn it into a verifiable artifact rather than a
 log line. We show how a deterministic and inspectable router, terminal output
 invariants, and a content-addressed verification tool compose into a runtime where
@@ -168,7 +200,7 @@ valuable and widely used. None of them, however, emit a signed and replayable pe
 run receipt. Their tracing is observability for humans, not a cryptographic artifact
 that a third party can verify against a public key, and their routing is generally
 either configuration driven or model chosen rather than a deterministic pure
-function whose full decision is recorded.
+function whose full decision is returned for inspection.
 
 \subsection{Software supply-chain provenance}
 
@@ -206,8 +238,8 @@ community \cite{reproml} push toward runs that others can repeat. These efforts
 describe an artifact or a study. A capability receipt is complementary and finer
 grained. It describes a single production run and makes that run independently
 checkable and replayable. Merkle trees \cite{merkle} provide a standard way to commit
-to a set of items with a single root, which we identify as the natural mechanism for
-a future signed lineage root over the artifacts that a run consumed and produced.
+to a set of items with a single root; a Lattice receipt uses one for its signed lineage
+root over the artifacts that a run consumed and produced.
 
 \subsection{Signed receipts for agent actions}
 
@@ -238,25 +270,30 @@ logs for multi-agent systems, without an implementation. Certificate Transparenc
 \cite{rfc6962,rfc9162} is the reference design for the log-based approach that Sello
 and Agent Flight Recorder build on: it makes issuance auditable after the fact through
 an append-only log, whereas a Lattice receipt is checkable on its own with a public key
-and binds the run to a policy decision and a replay path.
-Table~\ref{tab:receipts} compares the four implemented systems with Lattice.
+and binds the selected route, the contract hash, and the output hash.
+Table~\ref{tab:receipts} compares the four implemented systems with Lattice, and
+Section~\ref{sec:realworld} runs each of them on the same recorded requests.
 
 \begin{table*}[t]
-\caption{Agent receipt systems compared with Lattice. Cells summarize each paper's
-own description; ``not stated'' means the source does not say.}
+\caption{Agent receipt systems compared with Lattice. The signer, policy, routing, and
+multi-provider cells summarize each paper's own description; ``not stated'' means the
+source does not say. The offline-verify and signed-output-binding cells agree with the
+runs in Table~\ref{tab:rw-matrix}, which used a mock transparency log for Sello and a mock
+chain anchor for Agent Flight Recorder. Signed output binding means the record is signed
+and the system's own verifier rejects a byte edit.}
 \label{tab:receipts}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{19mm}>{\raggedright\arraybackslash}p{30mm}>{\raggedright\arraybackslash}p{27mm}>{\raggedright\arraybackslash}p{24mm}>{\raggedright\arraybackslash}p{30mm}>{\raggedright\arraybackslash}p{14mm}>{\raggedright\arraybackslash}p{18mm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{19mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{24mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{15mm}>{\raggedright\arraybackslash}p{16mm}@{}}
 \toprule
-System & Signer & Offline verify & Replay & Policy checks & Routing & Multi-provider \\
+System & Signer & Offline verify & Signed output binding & Policy checks & Routing & Multi-provider \\
 \midrule
-Sello \cite{figuera2026notarized} & receiving service, Ed25519 in COSE & no; needs log proof and key registry & no; hashes only & no; service denials are recorded & no & not model specific \\
-Agent Flight Recorder \cite{bindschaedler2026afr} & none per event; ECDSA on the chain anchor & no; needs chain read & partial; forensic reconstruction & no; verdicts logged & no & not stated \\
-NovaFabric \cite{ardebili2026novafabric} & operator; collector Ed25519 and tenant ECDSA seal & claimed; not independently tested & yes; four modes & partial; gates on export and replay & no & yes, capture \\
-Janus \cite{arslan2026janus} & log daemon and participants, Ed25519 & yes; log and one public key & yes; re-derives decisions & yes; pre-execution and pre-release gates & not stated & not stated \\
-Lattice & runtime signer over a key set, Ed25519 in DSSE & yes; public key only & yes; offline output hash match & yes; invariants, budgets, and policy at run time & yes; deterministic & yes; seven providers \\
+Sello \cite{figuera2026notarized} & receiving service, Ed25519 in COSE & yes with a mock log; the paper's verifier needs a log inclusion proof and a key registry & yes; hashes only & no; service denials are recorded & no & not model specific \\
+Agent Flight Recorder \cite{bindschaedler2026afr} & none per event; ECDSA on the chain anchor & yes with a mock anchor; the paper's verifier reads the chain & no; events are hash-chained, not signed & no; verdicts logged & no & not stated \\
+NovaFabric \cite{ardebili2026novafabric} & operator; collector Ed25519 and tenant ECDSA seal & yes for a sealed capsule with a self-asserted key & yes for the sealed capsule; no for the HMAC record & partial; gates on export and replay & no & yes, capture \\
+Janus \cite{arslan2026janus} & log daemon and participants, Ed25519 & yes; log and one public key & yes; signed log segments & yes; pre-execution and pre-release gates & no & not stated \\
+Lattice & runtime signer over a key set, Ed25519 in DSSE & yes; public key only & yes; signed output hash & yes; invariants, budgets, and policy at run time & yes; deterministic, selected route signed & yes; seven adapters \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -265,14 +302,16 @@ Lattice & runtime signer over a key set, Ed25519 in DSSE & yes; public key only 
 
 Across these families, and to our knowledge, Lattice is the first open SDK that
 combines per-run signed receipts, deterministic routing, run-time policy enforcement,
-and offline replay in one runtime. The provider wrappers and agent frameworks route
-and orchestrate but do not sign; the supply chain systems sign and verify offline but
-know nothing about model runs; and the agent receipt systems in
+and signed output binding in one runtime. The provider wrappers and agent frameworks
+route and orchestrate but do not sign; the supply chain systems sign and verify offline
+but know nothing about model runs; and the agent receipt systems in
 Table~\ref{tab:receipts} sign and verify evidence, with Janus also gating effects
-and replaying decisions, but none of them chooses the model or spans providers, so
-their evidence is never bound to a routing decision. The design dates
-from the project's first public commit on April 21, 2026, and the repository history
-is public.
+and replaying decisions, but none of them chooses the model, so their evidence is never
+bound to a selected route. The receipt design first appears in the repository's
+public history in commit \code{fa6d5a1} of May 11, 2026 \cite{lattice}, before the Sello (June 2026)
+and the Agent Flight Recorder, NovaFabric, and Janus (September 2026) preprints. The
+audience, nonce, and expiry fields, chain verification, and chain closure were added in
+October 2026, after those preprints.
 
 % --- Threat Model and Goals -----------------------------------------------
 \section{Threat Model and Goals}
@@ -305,12 +344,16 @@ must never be embedded in a signed and shareable artifact.
 The runtime targets five goals. First, integrity of the run record: a receipt that
 has been altered must fail verification. Second, non-repudiation through signature:
 a verifier with the public key can confirm which key signed a receipt and whether
-that key is active, retired, or revoked. Third, redaction before signing: personal data matched by a detector, and the
-tripwire message that would otherwise quote it, are reduced to a detector name, a
-length, and a mask before the canonical bytes are produced. The signing key and the
-provider credential are not receipt fields. A free-text field the caller chooses to
-store is the caller's responsibility. Fourth, determinism for replay: a verifier can recompute the output hash
-from the reconstructed run and compare it to the value the receipt commits to. Fifth,
+that key is active, retired, or revoked. Third, redaction before signing: personal
+data matched by a detector, and the tripwire message that would otherwise quote it, are
+reduced to a detector name, a length, and a mask before the canonical bytes are
+produced. The signing key and the provider credential are not receipt fields. A
+free-text field the caller chooses to store is the caller's responsibility. Input and
+output hashes are unsalted SHA-256, so they hide high-entropy values only: anyone who
+holds a receipt can confirm a guessed low-entropy value, such as a social security
+number or a yes or no decision, by hashing candidates. Fourth, determinism for replay: a
+verifier can recompute the hash of the recorded output and compare it to the value the
+receipt commits to. Fifth,
 downgrade resistance: a receipt in the original schema, or below a caller-supplied
 \code{minVersion} floor, is rejected before any cryptographic work. Without that
 floor, a v1.1 receipt still verifies.
@@ -320,16 +363,18 @@ floor, a v1.1 receipt still verifies.
 Several properties are explicitly out of scope. We do not provide confidentiality of
 provider traffic, which is the responsibility of transport security. We do not
 reproduce the live behavior of a remote model, since model providers are
-nondeterministic and outside our trust boundary. Replay reconstructs the recorded run
-and its output hash, not a fresh call to the provider. A signature alone proves
+nondeterministic and outside our trust boundary. Replay checks the recorded output
+against its signed hash; it is not a fresh call to the provider. A signature alone proves
 integrity and attribution, not freshness: binding a receipt to a relying party, a
 nonce, or a validity window requires the optional v1.4 fields and the matching
 verifier options described under verification below, and a verifier that must
 accept a receipt only once keeps its own record of accepted content identifiers.
 Dropping leaf receipts from an open receipt tree leaves a smaller tree that still
-verifies. The chain verifier then returns an advisory unless the caller passes an
-expected count. A crew minted by this revision writes a closing receipt that lists
-member content identifiers, so a dropped leaf fails closed without an out-of-band count. We also
+verifies. The chain verifier then returns a \code{tail-truncation-unchecked} warning
+unless the caller passes an expected count. A crew run closes its tree instead: its root
+declares closure and its last receipt lists the content identifiers of every other
+member, so a dropped leaf or a dropped closer fails verification without an out-of-band
+count under a verifier that enforces closure (Section~\ref{sec:chains}). We also
 do not operate a hosted control plane. Lattice is a runtime SDK, and the receipt is a
 portable artifact that travels with the run rather than a record locked inside a
 service.
@@ -360,7 +405,8 @@ consumes a capability receipt. The subsections that follow walk through each sta
 \caption{The Lattice run lifecycle. A run intent is routed by a deterministic and
 inspectable function, executed through a nine-stage pipeline, checked by terminal
 output invariants, and committed to a signed capability receipt. The receipt is later
-consumed by offline verification and by content-addressed reproduction.}
+consumed by offline verification and by the \code{repro} check of a kept output
+against the signed output hash.}
 \label{fig:arch}
 \end{figure*}
 
@@ -371,9 +417,11 @@ that may be text, JSON, images, audio, documents, or tool results, a map of decl
 \code{outputs} with their schemas, a \code{policy} that expresses privacy, latency,
 provider allow and deny lists, and budget, and an optional \code{contract}. The
 developer does not select a model. The runtime selects one from a capability catalog
-and records the decision. This capability-first shape is what makes a receipt
-meaningful, because the receipt can record the declared intent and the chosen route
-side by side.
+and records the decision in the execution plan. The receipt signs the selected route
+next to hashes of the input artifacts, the output, and the contract. The task text and
+the policy are not signed, so a receipt shows which route served a run and which inputs
+and outputs it bound, not what the run was asked to do. How an artifact reaches the
+model depends on the provider adapter (Section~\ref{sec:parity}).
 
 \subsection{Deterministic and inspectable routing}
 
@@ -397,9 +445,12 @@ rejected candidates, a fallback chain of policy-preserving alternatives, and a
 deduplicated list of typed reasons when no route is possible. The full execution plan
 is stable JSON with a nine-stage pipeline: analysis, transforms, context packing,
 provider packaging, tool execution, execution, validation, tripwire, and persistence.
-Because the decision is a pure function and is recorded in full, the receipt can
-attest to exactly why a model was chosen, and a reviewer can reproduce the decision
-by re-running the function on the same inputs.
+The execution plan returns this decision in full. The receipt signs only the
+selected route, as a provider identifier, a capability identifier, and an attempt
+number, and not the candidates, the scores, or the policy, so it attests to which
+route served the run but not to why that route was chosen. Because the router is a pure
+function, a reviewer who holds the same catalog, request, and policy can reproduce the
+decision by re-running it.
 
 \subsection{Output invariants with terminal semantics}
 
@@ -409,12 +460,54 @@ and \code{matches}, where the last validates against a Standard Schema
 \cite{standardschema}. These invariants are evaluated by a pure kernel,
 \code{evaluateTripwires}, that performs no input or output, reads no clock, and uses
 no randomness, so the same output and the same invariants always yield the same
-result. The kernel aborts on the first violation. The default detector set for
-\code{noPII} contains four detectors: email, United States social security number,
-credit card validated by the Luhn checksum, and United States phone number. The
-kernel scans strings and walks nested objects, arrays, and wildcard paths in a
-deterministic order, so a value buried inside a structured output is not missed.
-When a no personally identifiable information invariant fires, the runtime error
+result. The kernel aborts on the first violation. It scans strings and walks nested
+objects, arrays, and wildcard paths in a deterministic order, so a value buried inside
+a structured output is not missed.
+
+The default \code{noPII} detectors are regular expressions for four formats. An email
+address matches as written, and so do a dashed United States social security number
+(\code{ddd-dd-dddd}) and a separated ten-digit United States phone number. A spaced or
+undashed nine-digit number counts as a social security number only when an SSN cue
+such as \code{ssn} or \code{social security} is the nearest preceding word. A plain
+ten-digit run counts as a phone number only when it is a valid North American number
+that follows a phone cue such as \code{phone} or \code{call}, or a \code{+1} trunk
+prefix. A card number is 13 to 19 digits, optionally grouped by single spaces or
+dashes, that pass the Luhn checksum; runs that start with 0 or 1, and 13-digit runs
+that start with an ISBN-13 prefix, are skipped. A social security, phone, or card
+candidate is also skipped when the nearest preceding word on the same line is an
+identifier label: order, invoice, sku, ref, po, isbn, txn, or one of a few
+abbreviations. A phone number with a trunk prefix is flagged even after a label, and
+labels do not affect email addresses. Ordinary words such as customer,
+account, ticket, or id are not labels. These rules trade recall against precision in
+known ways. A real value right after a label (``ref 123-45-6789'') is missed, and so is
+a bare nine- or ten-digit value without its cue. A value under a telling object key,
+such as \code{\{ssn: "123456789"\}}, is missed because the detectors read string values,
+not field names. In the other direction, about one random long digit run in ten passes
+the Luhn check, so a text that lists $k$ long numeric identifiers is flagged with
+probability near $1-0.9^k$. Names, street addresses, and non-United States formats are
+not detected.
+
+By default \code{mustCite(name)} is a structured check. The output's top-level
+\code{citations} list, or else its \code{evidence} list, must contain the artifact name
+as a string entry or as an object entry whose \code{source} key, or another configured
+key, equals it. When neither top-level list names the artifact, nested
+\code{citations} and \code{evidence} lists are searched as well, unless the invariant
+declares a path to the list. The default never reads prose. Three options extend it.
+With \code{inline}, a bracket or parenthesis group whose content, or one comma- or
+semicolon-separated part of it, equals the name counts when no located list has
+entries; code spans and link text are ignored. With \code{rejectUncited}, a list entry
+that names the artifact is rejected when the prose carries square-bracket citations,
+such as \code{[1]}, \code{[Smith 1999]}, or a list entry's identifier, and none of them
+resolves to the artifact. \code{textPath} limits both scans to one field. Each option
+enters the contract declaration only when set, so an existing contract keeps its hash.
+The check stays syntactic. By default an answer passes when its list names the
+artifact even if its text cites nothing. \code{inline} also accepts a marker in a
+sentence that disowns the source. \code{rejectUncited} reads only square brackets, so a
+parenthetical citation of another work goes unseen, and without \code{textPath} a
+bracketed number in an unrelated string, such as a log line, counts as a citation. No
+option judges whether the cited artifact supports the claim.
+
+When a \code{noPII} invariant fires, the runtime error
 returned to the caller carries the detector name and the matched substring so the
 violation can be debugged, and the receipt redaction policy replaces that substring
 with the detector name, the match length, and a shape mask before anything is signed;
@@ -443,9 +536,14 @@ with a free call.
 
 \subsection{The capability receipt}
 
-The receipt is the central artifact. Its construction enforces a strict ordering that
-is the heart of the security argument. Figure~\ref{fig:pipeline} shows the pipeline,
-and Figure~\ref{fig:envelope} shows the resulting envelope.
+The receipt is the central artifact. Its body records the requested and observed
+model, the selected route, normalized usage, the contract verdict, the contract hash
+(null without a contract), SHA-256 hashes of the input artifacts, the output hash, a
+lineage root over the artifacts, and the redaction manifest, with optional audience,
+nonce, expiry, parent, and chain-closure fields. The task text, the packed prompt, and
+the policy are not part of it. Its construction enforces a strict ordering that is the
+heart of the security argument. Figure~\ref{fig:pipeline} shows the pipeline, and
+Figure~\ref{fig:envelope} shows the resulting envelope.
 
 First, the runtime assembles the raw receipt body from the run record. Second, it
 redacts the body. Redaction rewrites the tripwire evidence for every invariant kind,
@@ -517,7 +615,8 @@ Receipts carry an explicit version. Five versions exist: \code{lattice-receipt/v
 v1.1, which adds the step-marker fields; v1.2, which adds an optional and signed model
 class field recording the training class of the chosen model; v1.3, which adds the
 parent receipt content identifier and the artifact lineage root; and v1.4, which adds
-optional audience, nonce, and expiry fields for freshness binding. New receipts are
+optional audience, nonce, and expiry fields for freshness binding. Two further optional
+v1.4 fields carry chain closure (Section~\ref{sec:chains}). New receipts are
 minted at v1.4 and verifiers accept v1.1 and later. Verification rejects a body whose
 version is the original v1 or is absent, with the error \code{schema-version-too-low},
 and it does so before any cryptographic work. A verifier that depends on a newer
@@ -546,19 +645,27 @@ receipt must be reachable from that root. Those chain failures are a separate
 \code{VerifyChainErrorKind} union (an invalid link, no root, multiple roots, an orphan
 link, a run-identifier mismatch, a duplicate content identifier, a count mismatch, or a
 root mismatch). They are not among the ten \code{VerifyErrorKind} values in
-Table~\ref{tab:verify}.
+Table~\ref{tab:verify}. When the root declares closure, the closing receipt's member
+list must equal the other presented content identifiers, so a dropped or added member
+is a count mismatch and a malformed closer is an invalid link. Two options adjust this:
+\code{requireClosure} fails a chain that declares no closure, and \code{partial}
+verifies a disclosed subset, which must include the closer and be listed by it. A
+successful result carries structured advisories, each a code, a severity of warn or
+info, and a message, for checks the caller left out: for example, an audience on the
+receipt that was not checked, or an open chain verified without an expected count.
+\code{receiptVerifyAdvisories} returns the same records for a single receipt.
 
 \begin{table}[t]
 \centering
 \caption{The ten \code{verifyReceipt} error kinds, in the order they are checked.}
 \label{tab:verify}
 \scriptsize
-\begin{tabular}{@{}l p{0.47\columnwidth}@{}}
+\begin{tabular}{@{}l >{\raggedright\arraybackslash}p{0.40\columnwidth}@{}}
 \toprule
 Error kind & Fires when \\
 \midrule
 \code{envelope-malformed} & the envelope cannot be decoded or has no signatures \\
-\code{version-mismatch} & the body shape or version is unknown \\
+\code{version-mismatch} & the body shape, version, or closure field is unknown or malformed \\
 \code{schema-version-too-low} & the body is v1, has no version, or is below the caller's floor \\
 \code{key-not-found} & the \code{kid} is not in the key set \\
 \code{key-revoked} & the resolved key is in the revoked state \\
@@ -583,7 +690,9 @@ side effects. Materialization can fail with one of three kinds:
 \code{verify-failed}, \code{artifact-load-failed}, and \code{envelope-malformed}. A
 property test asserts that the round trip from \code{createReceipt} through
 \code{materializeReplayEnvelope} through \code{replayOffline} preserves the output
-hash, which is the concrete statement of the determinism goal.
+hash, which is the concrete statement of the determinism goal. \code{replayOffline}
+returns the outputs the caller supplies and calls no model, so replay checks that a kept
+output is the one the receipt signed. It does not re-run the model.
 
 \subsection{The four guarantees and their enforcement}
 
@@ -637,6 +746,7 @@ signs the same message with an independent Ed25519 library and asserts a byte-fo
 match in the test suite. The oracle is never on the production signing path.
 
 \subsection{The seven-provider parity contract}
+\label{sec:parity}
 
 Lattice defines seven logical provider adapters: \code{openai},
 \code{openai-compatible}, \code{anthropic}, \code{gemini}, \code{xai},
@@ -646,12 +756,21 @@ A parity smoke test makes this concrete. As summarized in Table~\ref{tab:parity}
 test iterates all seven adapters against provider-shaped fake responses and asserts a
 uniform adapter shape, string raw outputs, the normalized usage shape, an error on a
 non-success response, propagation of an abort signal into the underlying fetch, a raw
-response pass through, and that the set of adapter identifiers has size seven. The
-parity contract is what lets a receipt mean the same thing regardless of which provider
-served the run.
+response pass through, and that the set of adapter identifiers has size seven. Parity
+gives every adapter the same receipt format and the same verification path. It does not
+make the adapters transmit the same request. The \code{openai},
+\code{openai-compatible}, \code{xai}, \code{openrouter}, and \code{lm-studio} adapters
+share one request builder that sends each artifact as a text part holding JSON. A
+data-URL string is inlined as text, and binary image bytes are dropped, yet the receipt
+still hashes the dropped input. Its input hashes therefore record what the caller
+supplied, not what the provider received. The \code{anthropic} and \code{gemini}
+adapters send native image parts. The adapters also differ in sampling parameters: only
+\code{anthropic} sends a token cap and only \code{gemini} sends a temperature. Across
+adapters a receipt means the same thing about its signed fields, but not about what the
+model saw.
 
-The same provider contract now exposes opt-in native provider features for provider
-only consumers. \code{ProviderRunRequest.nativeTools}, \code{nativeToolChoice}, and
+The same provider contract exposes opt-in native provider features for provider-only
+consumers. \code{ProviderRunRequest.nativeTools}, \code{nativeToolChoice}, and
 \code{nativeStructuredOutput} let an external orchestrator use native tool calling
 and structured output where adapters support it, without changing the default
 \code{ai.run} or agent behavior.
@@ -715,40 +834,69 @@ materializes the replay envelope, replays offline, and diffs the recomputed outp
 hash. The \code{eval} subcommand walks receipt directories or agent snapshots and gates
 determinism, cost, and quality regressions relative to a baseline, with a disk-backed
 judge cache. The \code{receipt diff} subcommand compares signed receipt envelopes and
-reports structural differences. Together these commands turn a receipt from a passive
+reports structural differences, including the chain-closure fields, and
+\code{receipt verify-chain} verifies a receipt tree. Together these commands turn a receipt from a passive
 record into an executable regression and audit gate.
 
 \subsection{Agents and chained receipts}
+\label{sec:chains}
 
 Lattice exposes a runtime agent entry point, \code{ai.runAgent}, that drives a uniform
 tool-use loop across all seven providers, and an opt-in multi-agent crew surface,
-\code{defineAgent} and \code{runAgentCrew}. A crew shares a budget with structural caps
-on total iterations, per-agent iterations, concurrent children, and depth, and it
-coordinates rate limits through a token bucket with sensible defaults. Crucially, each
-child receipt chains to a crew root through a parent receipt content identifier, so a
-multi-agent run produces a verifiable tree of receipts rather than a single opaque
-trace. Each completion receipt commits to that agent's output hash, and
-\code{verifyChain}, exposed in the command-line tool as \code{receipt verify-chain},
-checks every link, the single root, and the parent linkage of the whole tree. An
-optional expected count covers the truncation case noted in the non-goals, and an
-optional expected root identifier detects a replaced root. A helper, \code{evalAgentRun}, gates iterations to goal and cost against a
-baseline. Three runnable examples exercise these surfaces end to end: a multimodal work
-inbox that demonstrates a contract, a signed receipt, a tripwire violation, and a no
-contract match, a single agent loop that emits per-iteration checkpoint receipts, and a
-crew example that demonstrates chained receipts and an evaluation gate.
+\code{defineAgent} and \code{runAgentCrew}. \code{ai.runAgent} returns no receipt. The
+loop does not use the signer passed to \code{createAI}, and with a signer on the agent
+intent it mints per-iteration checkpoint receipts into tracer events only, so a caller
+without a tracer keeps none. A crew shares a budget with structural caps on total
+iterations, per-agent iterations, concurrent children, and depth, and it coordinates
+rate limits through a token bucket with default limits.
+
+With a signer, a crew returns a crew-start root, a completion receipt for the root
+agent and for each child run that completed, and a crew-close receipt, so a crew of
+$N$ agents that each run once returns $N+2$ receipts. The crew-start receipt hashes
+the tree of agent identifiers, not their intents, tools, or policy, and declares
+closure. Each completion receipt chains to the root through a parent receipt content
+identifier and commits to that agent's output hash. The crew-close receipt lists the
+sorted content identifiers of every other member. The crew budget verdict is fixed when
+agent work ends, before the root agent's completion receipt and the crew-close receipt
+are signed, so signing those two receipts cannot push a crew over budget, and the
+crew-close receipt signs a failed verdict when the crew exceeded its budget. The
+crew-start and child completion receipts are signed during the run and count against
+its wall time. A mint failure after the crew-start receipt follows the configured
+signer-error policy: by default the result lists each failed mint and a configured
+tracer receives an event, and the run can instead be set to throw. The closing list names only the receipts that were minted, so
+a missing completion receipt still leaves a verifiable chain, while a missing closer
+leaves the closed chain unverifiable. \code{verifyChain}, exposed in the command-line
+tool as \code{receipt verify-chain}, checks every link, the single root, the parent
+linkage of the whole tree, and the closing list. Verifiers in the 1.6.x releases accept
+closed chains but do not enforce closure. An optional expected count still covers open
+chains, and an optional expected root identifier detects a replaced root. A helper,
+\code{evalAgentRun}, gates iterations to goal and cost against a baseline.
+
+Three runnable examples exercise these surfaces end to end: a support work inbox that
+demonstrates a contract, a signed receipt, a tripwire violation, and a no contract
+match; a single agent loop that mints per-iteration checkpoint receipts into tracer
+events; and a crew example that demonstrates chained receipts and an evaluation gate.
 
 % --- Evaluation -----------------------------------------------------------
 \section{Evaluation}
 
 We evaluate Lattice in two ways. The first is measured: the cost that receipts add to a
-run, the size of a receipt, and whether the verifier rejects every tampered receipt and
-reproduces every replay, all against a mocked provider so that no model behavior enters
-that measurement. The second is assurance by construction: the guarantees are encoded as
-invariants and property tests that fail the build when a guarantee weakens. Output
-quality depends on providers outside our trust boundary. A later subsection records a
-local open-weight model and free hosted models, including Lattice processing time
-separated from provider latency and rate-limit backoff. Those runs are not part of the
-mocked table.
+run, the size of a receipt, whether the verifier rejects every tampered receipt, and
+whether every kept output matches its signed hash, all against a mocked provider so that
+no model behavior enters that measurement. The second is assurance by construction: the
+guarantees are encoded as invariants and property tests that fail the build when a
+guarantee weakens. Output quality depends on providers outside our trust boundary.
+Section~\ref{sec:realworld} records a local open-weight model and wraps the same
+recorded runs with the other record systems. Section~\ref{sec:realworld-broad} adds free
+hosted models (Tables~\ref{tab:rw-models} and~\ref{tab:rw-lattice}, and
+Figures~\ref{fig:rw-overhead-pct}, \ref{fig:rw-latency-dist}, and~\ref{fig:rw-drift}),
+including Lattice processing time separated from provider latency and rate-limit
+backoff. It also reports signed output binding (Figure~\ref{fig:rw-replay}), tamper
+classes across systems (Figure~\ref{fig:rw-tamper-heat}), the capabilities observed on
+these workloads (Figure~\ref{fig:rw-capability}), the \code{noPII} detectors against
+other detectors on public data (Tables~\ref{tab:rw-pii-ai4} and~\ref{tab:rw-pii-gretel}),
+and local wrappers around the same model (Table~\ref{tab:rw-gateways} and
+Figure~\ref{fig:rw-gateway-latency}). Those runs are not part of the mocked table.
 
 \subsection{Measured cost and tamper resistance}
 
@@ -757,6 +905,8 @@ against the built package through its public exports with the in-repo mocked pro
 and no network, and writes every number below to a committed JSON file
 (\code{paper/bench/results.json}) so the table can be regenerated on any machine.
 Table~\ref{tab:bench} reports that run. The Node version and processor are in Appendix~\ref{app:repro}.
+This benchmark is separate from the offline harness in \code{eval/}, which runs its own
+tamper suite.
 
 \begin{table}[t]
 \caption{Measured receipt cost and tamper resistance against a mocked provider.
@@ -771,31 +921,29 @@ Measurement & Result \\
 % bench-table:begin (generated by scripts/render-bench-table.mjs from paper/bench/results.json, commit 4549334)
 Create a receipt: redact, canonicalize, sign & median 0.067 ms, p95 0.095 ms (n=1,000) \\
 Verify a receipt & median 0.126 ms, p95 0.177 ms (n=1,000) \\
-Receipt issuance overhead on a run with a 1 MiB image input & 1.402 ms, median of 40 signed minus 40 unsigned runs \\
+Receipt issuance overhead on a run with a 1 MiB image input & 1.402 ms, median of 40 signed runs minus median of 40 unsigned runs \\
 Envelope size & 993 bytes with no inputs, plus 89 bytes per input hash (signed body 593 bytes, plus 66.875) \\
 Tamper sweep & 3,744 of 3,744 mutations rejected: 72 receipts, 52 mutations each across 14 classes \\
-Offline replay & 350 of 350 runs reproduce the signed output hash \\
+Offline replay: kept output against the signed output hash & 350 of 350 runs match \\
 % bench-table:end
 \bottomrule
 \end{tabular}
 \end{table}
 
-Creating a receipt costs well under a tenth of a millisecond because the body is small
-and Ed25519 signing is fast; verification is slower than signing because it also
-re-canonicalizes the body and checks the ten failure branches in order. With a 1 MiB
-image on the run, issuance adds about half a millisecond, which is the SHA-256 over the
-input bytes for the input hash and the lineage root. A receipt with no inputs is under
-a kilobyte on the wire, and each input adds one 64-character hash. The tamper sweep
-applies 52 mutations to each of 72 signed receipts: single-bit flips at random
-positions in the payload and in the signature, an unknown key identifier, a valid but
-wrong key identifier, a swapped body key identifier, a downgrade to the original schema
-version, a removed version, a dropped output hash, edited audience, nonce, and expiry
-fields, reordered keys in the payload, a base64url payload, and a payload swapped in
-from another valid receipt. Every mutation is rejected by a typed verification failure
-and none makes the verifier throw. The replay check runs 350 runs with distinct
-outputs through the runtime with a signer, materializes each receipt through the
-artifact loader, replays it offline, and compares the recomputed output hash with the
-signed one; all 350 match.
+% bench-prose:begin (generated by scripts/render-bench-table.mjs from paper/bench/results.json, commit 4549334)
+Creating a receipt takes a median of 0.067~ms: the body is small and Ed25519
+signing is fast. Verification takes a median of 0.126~ms; besides the signature, it
+re-canonicalizes the body and checks the ten failure branches in order. With a 1~MiB image
+on the run, the median signed run takes 1.402~ms longer than the median unsigned run.
+The signed path adds SHA-256 hashing of the image bytes, for the input hash and the
+lineage root, and receipt creation. A receipt with no inputs is 993 bytes on the wire, and each
+input hash adds about 89 bytes. The tamper sweep applies 52 mutations to each of
+72 signed receipts: 30 single-bit flips at random positions in the payload, 10 in the signature, an unknown key identifier, a valid but wrong key identifier, a swapped body key identifier, a downgrade to the original schema version, a removed version, a dropped output hash, an edited audience, an edited nonce, an extended expiry, reordered keys in the payload, a base64url payload, and a payload swapped in from another valid receipt.
+Every mutation is rejected by a typed verification failure, and none makes the verifier throw. The replay check runs 350 runs with distinct outputs through the
+runtime with a signer, materializes each receipt through the artifact loader with the
+kept outputs, replays it offline, and compares the recomputed output hash with the signed
+one; all 350 match.
+% bench-prose:end
 
 \subsection{Guarantees also encoded as tests}
 
@@ -814,8 +962,8 @@ decision and the same tripwire result, that every permutation of a near-equal co
 catalog yields the same selected route and fallback chain, and that the no personally
 identifiable information walk reports the same violation regardless of key insertion
 order; the absence of input, output, clock reads, and randomness in these functions is
-verified by construction and by review. Because the decision is recorded in the plan
-and the receipt, a reviewer can reproduce a route by re-running the function.
+verified by construction and by review. Because the decision is recorded in the
+execution plan, a reviewer can reproduce a route by re-running the function.
 
 \textbf{Redact-then-sign.} The ordering is structurally enforced because the
 canonicalization function is only ever called on the output of the redaction function.
@@ -857,14 +1005,17 @@ guarantees from drifting. They do not replace the measured results.
 \section{Discussion}
 
 Signed capability receipts change what is possible after a run. An operator can hand a
-receipt to an auditor who verifies it with a public key and replays it offline, without
-access to the original system and without trusting the operator. A dispute about what a
+receipt and the kept output to an auditor who verifies the receipt with a public key and
+checks the output against it offline, without access to the original system. The check
+shows that the output is the one the key holder signed, not that the key holder reported
+the run honestly. A dispute about what a
 system produced becomes a check against a signed artifact rather than an argument about
 log files. A continuous integration pipeline can use the \code{eval} subcommand to gate
 regressions in cost, in determinism, and in quality across a corpus of receipts, which
-makes a model or prompt change a reviewable event with measurable consequences. Because
-the package itself is published with provenance, the chain of trust extends from the
-source commit through the published tarball to the receipts that the runtime emits.
+makes a model or prompt change a reviewable event with measurable consequences. The
+package itself is published with provenance, so an operator can check that the runtime
+it deploys was built from the published source. A receipt does not record which build
+of the runtime produced it.
 
 The design has also been tested from outside. An independent evaluation harness run
 against release 1.5.1 \cite{latticeissue21} found three gaps: a violated
@@ -872,24 +1023,28 @@ no-personally-identifiable-information invariant copied the matched substring in
 signed evidence while the redaction manifest claimed it had been redacted; receipts
 carried no freshness or audience binding, so a valid receipt could be replayed to a
 different relying party at any later time; and crew receipts formed a tree that no
-verifier checked as a whole. Evidence redaction shipped in the following release
-\cite{latticepr22}: matched personal data is rewritten to a detector name, a length, and a
-mask before signing. Replay binding (audience, nonce, and expiry) and the caller-supplied
+verifier checked as a whole. Release 1.6.0 \cite{latticepr22} added evidence redaction,
+the audience, nonce, and expiry fields, and \code{verifyChain}. Matched personal data is
+rewritten to a detector name, a length, and a mask before signing. An issuer's
+\code{expiresAt} is always enforced, while audience, nonce, maximum age, and the
 schema-version floor remain verifier opt-ins, so an older receipt still verifies.
-\code{lattice verify} prints an advisory when those checks were not requested.
-\code{expiresAt}, when the issuer set it, is enforced. \code{verifyChain} checks every
-link, the single root, and parent reachability. Its failures are a
-\code{VerifyChainErrorKind}, not one of the ten \code{VerifyErrorKind} values.
-Tail truncation of an open chain is a hard failure only when the caller passes an
-expected count. Otherwise the result carries an advisory. Crew runs in this revision
-mint a closing receipt that lists member content identifiers, so a dropped leaf fails
-verification without that count. The commit those measurements were taken on is recorded
-in Appendix~\ref{app:repro} and in \code{eval/results/env.json}.
+\code{verifyChain} checks every link, the single root, and parent reachability, and its
+failures are a \code{VerifyChainErrorKind}, not one of the ten \code{VerifyErrorKind}
+values. An open chain fails on tail truncation only when the caller passes an expected
+count; otherwise the result carries a \code{tail-truncation-unchecked} warning. A crew
+run closes its chain with a receipt that lists every other member, so a dropped leaf
+fails verification without that count, and verifiers in the 1.6.x releases do not
+enforce that closure (Section~\ref{sec:chains}). \code{lattice verify} and
+\code{lattice receipt verify-chain} print \code{WARN} lines for commitments that were
+not checked, such as an audience the caller did not pass or an open chain verified
+without a count, and, unless \code{--quiet} is set, \code{INFO} lines for optional checks
+the receipt does not use. The commit and hardware of each harness run are recorded in
+Appendix~\ref{app:repro} and in \code{eval/results/}.
 
 Three design tensions are worth naming. The first is determinism against model
 nondeterminism. Models are not deterministic, so Lattice does not promise to reproduce a
-live call. It promises to reproduce the recorded run and to bind the inputs to the
-output hash, and it offers a layered determinism check in the evaluation tool for free
+live call. It promises to bind the input-artifact hashes and a kept output to a signed
+record, and it offers a layered determinism check in the evaluation tool for free
 form text. The second is redaction against reproducibility. A receipt that redacts a
 secret cannot reproduce a run that depended on that secret value, so redaction is scoped
 to material that must never be shared, and the redaction manifest makes the omission
@@ -901,33 +1056,67 @@ split because parity is what makes a receipt portable.
 % --- Limitations ----------------------------------------------------------
 \section{Limitations}
 
-Several limitations follow directly from the design. Replay reconstructs the run record
-and the output hash, not a fresh model call, so a receipt is evidence about a past run
-rather than a way to obtain new model behavior. Semantic determinism for free-form text
-relies on a layered judge in the evaluation tool, which is more expensive and less
+Several limitations follow directly from the design. Replay checks a kept output against
+the signed output hash and does not call a model, so a receipt is evidence about a past
+run rather than a way to obtain new model behavior. Semantic determinism for free-form
+text relies on a layered judge in the evaluation tool, which is more expensive and less
 crisp than an exact hash match. The capability registry is a point-in-time snapshot
 refreshed by continuous integration, so a brand new model may be absent until the next
-refresh, although capability negotiation can refine a profile at call time. When a configured signer fails, the runtime does
-not hide the gap: by default the result carries a receipt error field and an event, and
-an operator can instead configure the run to fail. The default personally identifiable
-information detectors are regular expressions over four United States and email formats
-documented in the source; names, addresses, and non-United States formats are not
-detected, and the must-cite invariant checks that a citation is present, not that it
-supports the claim. No replay cache ships with the verifier, so a relying party that
-must accept a receipt only once keeps its own record of accepted content identifiers.
-An open chain warns on tail truncation unless an expected count is passed. A crew
-closing receipt makes a dropped leaf a count mismatch without an out-of-band count. Finally, external audit helpers can sign and
-replay evidence produced elsewhere, but they cannot prove that the external executor
-used the claimed provider unless that executor supplies trustworthy raw envelopes.
-The hosted measurements use free endpoints. They rate-limit, they are not a paid-latency
-sample, and a model that rejects ordinary chat calls is reported as unavailable rather
-than given a latency. Paired provider times are too noisy to treat as the cost of the
-extra prompt tokens Lattice packs.
+refresh, although capability negotiation can refine a profile at call time.
+
+A receipt signs less than a full record of the run. It commits to input-artifact
+hashes, the output hash, the contract hash, and the selected route, but not to the task
+text, the packed prompt, the policy, or the routing candidates and reasons, so two runs
+with different instructions but the same artifacts, output, and token usage produce
+receipts that differ only in identifiers and times. Receipts are signed by the issuing
+runtime, so they show integrity and the signing key, not that the issuer reported the
+run honestly. The hashes are unsalted, so a low-entropy input or output can be
+confirmed from a receipt by guessing. Single-agent runs return no receipt:
+\code{ai.runAgent} sends its checkpoint receipts to a tracer only, and only
+\code{ai.run} and crews return receipts to the caller. The five OpenAI-shaped adapters
+send artifacts as JSON text, drop binary image bytes, and still hash the dropped input,
+so for those adapters an input hash does not show that the model received the input;
+in the hosted vision probe the Lattice arm answered blue for a red image while a direct
+image part answered red (Section~\ref{sec:realworld-broad}). When a configured signer
+fails, the runtime does not hide the gap: by default the result carries a receipt error
+field and an event, and an operator can instead configure the run to fail.
+
+The default personally identifiable information detectors are regular expressions over
+four United States and email formats documented in the source. Names, addresses, and
+non-United States formats are not detected. Identifier labels and type cues trade recall
+against precision: a real number right after a label such as \code{ref}, or a bare
+number without its cue, is missed, and long Luhn-valid identifiers are flagged. On
+public data the social security and phone detectors confuse identifiers of the same
+shape, such as passport numbers, and score far below the synthetic harness
+(Table~\ref{tab:rw-pii-ai4}). Those public-data rows were measured with the detectors
+at commit \code{a8cc091}, which differ from the rules above as
+Section~\ref{sec:realworld} describes. The must-cite invariant is syntactic. By default it reads
+only citation lists, and its prose options check markers, not whether the cited
+artifact supports the claim. On long-form answers it accepted few gold titles
+(Section~\ref{sec:realworld}).
+
+No replay cache ships with the verifier, so a relying party that must accept a receipt
+only once keeps its own record of accepted content identifiers. An open chain warns on
+tail truncation unless an expected count is passed. A crew's closing receipt makes a
+dropped leaf a count mismatch without an out-of-band count, but a verifier from the
+1.6.x releases does not enforce it, and a missing closer leaves the closed chain
+unverifiable. Finally, external audit helpers can sign and replay evidence produced
+elsewhere, but they cannot prove that the external executor used the claimed provider
+unless that executor supplies trustworthy raw envelopes. The hosted measurements use
+free endpoints. They rate-limit, they are not a paid-latency sample, and a model that
+rejects ordinary chat calls is reported as unavailable rather than given a latency.
+Paired provider times are too noisy to treat as the cost of the extra prompt tokens
+Lattice packs.
 
 % --- Future Work ----------------------------------------------------------
 \section{Future Work}
 
-Several extensions build naturally on the receipt primitive. External audit can become
+Several extensions build naturally on the receipt primitive. Receipts can commit to a
+hash of the task, the packed prompt, and the policy, and can use salted or keyed
+commitments for low-entropy values. The OpenAI-shaped adapters can send native image
+parts, or fail a run whose artifact they cannot package, so that an input hash always
+names an input the provider received. \code{ai.runAgent} can return its checkpoint
+receipts and a closing receipt to the caller. External audit can become
 stronger when executors attach provider-side attestations or gateway signed envelopes.
 The run event vocabulary can be exported more broadly through OpenTelemetry
 \cite{opentelemetry} so receipts and traces share a vocabulary across organizations.
@@ -943,17 +1132,19 @@ stack.
 
 Production systems built on large language models need runs that an auditor can verify
 and an operator can reproduce. We presented Lattice, a capability-first runtime in which
-a signed multimodal model run emits a capability receipt that is canonicalized, redacted
-before signing, and signed inside a Dead Simple Signing Envelope, backed by a
-deterministic and inspectable router and by output invariants with terminal semantics. A
-verifier can check a receipt with a public key and replay the run offline, confirming
-that the recomputed output hash matches the signed value. The implementation ships
-publicly with supply-chain provenance, a seven-provider parity contract, a registry of
-332 model profiles, modular adoption paths, a measured sub-millisecond signing and
-verification cost, and a test suite that encodes the guarantees as invariants. By making a signed and replayable receipt a byproduct of every signed run, Lattice turns
-auditability and reproducibility from after-the-fact instrumentation into properties of
-the runtime itself.
-
+a signed model run emits a capability receipt that is canonicalized, redacted before
+signing, and signed inside a Dead Simple Signing Envelope, backed by a deterministic and
+inspectable router and by output invariants with terminal semantics. The receipt binds
+the input-artifact hashes, the output hash, the contract hash, and the selected route; it
+does not record the task text, the policy, or why the route was chosen. A verifier can
+check a receipt with a public key and confirm offline that a kept output hashes to the
+signed value. The implementation ships publicly with supply-chain provenance, a
+seven-provider parity contract over one receipt format, a registry of 332 model profiles,
+modular adoption paths, a measured signing and verification cost
+(Table~\ref{tab:bench}), and a test suite that encodes the guarantees as invariants. By
+making a signed receipt a byproduct of every \code{ai.run} call and crew run that has a
+signer, Lattice turns auditability from after-the-fact instrumentation into a property of the
+runtime itself.
 
 % --- Reproducibility ------------------------------------------------------
 \section{Reproducibility notes}
@@ -965,9 +1156,19 @@ The benchmark in \code{paper/bench/results.json} was produced by \code{scripts/b
 
 The packages \code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli} are published on the public npm registry with an OpenID Connect trusted publisher and with supply-chain provenance attestations in the spirit of SLSA \cite{slsa}. A tagged GitHub release accompanies each publish. The runtime targets Node 24 or newer. Modular subpaths for audit, context, artifacts, routing, tools, eval, and core are also exercised as Node-20-style consumers in the test suite.
 
-The command-line tool returns exit status 0 for success, 1 for a verification or test failure, and 2 for a load or configuration failure. A successful \code{verify} may print \code{WARN} lines on standard error when audience, nonce, expiry, or a version floor were not checked. The process still exits 0.
+The command-line tool returns exit status 0 for success, 1 for a verification or test failure, and 2 for a load or configuration failure. A successful \code{verify} or \code{receipt verify-chain} prints advisory lines on standard error, each with an advisory code: \code{WARN} lines always and \code{INFO} lines unless \code{--quiet} is set. The process still exits 0, so a caller gates on the codes. \code{receipt verify-chain} also accepts \code{--require-closure} and \code{--partial}, and a malformed closing receipt fails with a typed \code{FAIL kind=} line.
 
 The offline evaluation harness lives in \code{eval/}. \code{eval/run-all.sh} rebuilds the packages and writes \code{eval/results/}, including hardware and the git commit. Provider calls in that harness are in-process fakes. No API key is required.
+
+% --- Acknowledgment -------------------------------------------------------
+\section*{Acknowledgment}
+
+The evaluation uses the ai4privacy pii-masking-300k dataset \cite{ai4privacy} under its
+terms for academic, non-commercial use with acknowledgement, the Gretel synthetic PII
+finance dataset \cite{gretelfinance}, and the ASQA dataset \cite{asqa}. The committed
+results hold aggregate scores, not dataset records.
+% TODO(authors): confirm that the ai4privacy non-commercial terms cover this use, given
+% the first author's company affiliation.
 
 % --- References -----------------------------------------------------------
 \bibliographystyle{IEEEtran}

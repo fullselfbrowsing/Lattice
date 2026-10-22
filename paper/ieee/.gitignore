@@ -1,4 +1,5 @@
-# LaTeX build artifacts
+# LaTeX and tectonic build artifacts. The committed main.pdf and the generated
+# rw-*.pdf figures are kept.
 *.aux
 *.log
 *.out
@@ -13,6 +14,7 @@
 *.lof
 *.lot
 *.synctex.gz
+*.xdv
 *.nav
 *.snm
 *.vrb
