@@ -198,10 +198,30 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
   it("does not flag a phone-shaped SKU or part number", () => {
     expect(detector.detect("SKU 123-456-7890").matched).toBe(false);
     expect(detector.detect("SKU: 123-456-7890").matched).toBe(false);
-    expect(detector.detect("part 415-555-0199").matched).toBe(false);
-    expect(detector.detect("Part No. 415-555-0199").matched).toBe(false);
+    expect(detector.detect("pn 415-555-0199").matched).toBe(false);
+    expect(detector.detect("PN: 415-555-0199").matched).toBe(false);
     // A bare 10-digit run after a label has no phone cue either.
     expect(detector.detect("SKU 4155551234").matched).toBe(false);
+  });
+
+  it("flags a phone after the plain word part", () => {
+    // "part" is an English word, not an identifier label ("in part", "part
+    // of"), so only the abbreviation pn suppresses.
+    expect(detector.detect("part 415-555-0199").matched).toBe(true);
+    expect(detector.detect("Part No. 415-555-0199").matched).toBe(true);
+    expect(detector.detect("part 123-456-7890").matched).toBe(true);
+  });
+
+  it("flags a phone with a trunk prefix even right after a label", () => {
+    // The trunk prefix is a phone cue nearer the value than the label. A
+    // number written before the phone can also read as a `1` trunk.
+    expect(detector.detect("Order 1 415 555 0134").matched).toBe(true);
+    expect(detector.detect("Order 1 415-555-0134").matched).toBe(true);
+    expect(detector.detect("Part 1 415-555-0134").matched).toBe(true);
+    expect(detector.detect("SKU +1 415-555-0134").matched).toBe(true);
+    expect(detector.detect("SKU 1-4155551234").matched).toBe(true);
+    const result = detector.detect("Order 1 415-555-0134");
+    if (result.matched) expect(result.substring).toBe("1 415-555-0134");
   });
 
   it("does not flag an ISBN-13 or a plain date", () => {
@@ -290,6 +310,58 @@ describe("credit-card detector — reference numbers", () => {
     if (result.matched) expect(result.substring).toBe("4111111111111111");
     expect(detector.detect("Ref: card 4111111111111111").matched).toBe(true);
   });
+
+  it.each([
+    ["Apt 18 4111 1111 1111 1111", "4111 1111 1111 1111"],
+    ["Seat 18 4111111111111111", "4111111111111111"],
+    ["Ticket 19 3782 822463 10005", "3782 822463 10005"],
+    ["Step 0 4111111111111111", "4111111111111111"],
+    ["Invoice 42 4111 1111 1111 1111", "4111 1111 1111 1111"],
+    ["order 5521 378282246310005", "378282246310005"],
+    ["order 5521 4222222222222", "4222222222222"],
+    ["Room 101 4111 1111 1111 1111", "4111 1111 1111 1111"],
+    ["Ticket 4412 378282246310005", "378282246310005"],
+    ["Card 4111 1111 1111 1111 123", "4111 1111 1111 1111"],
+    ["Card: 4111 1111 1111 1111 12/25", "4111 1111 1111 1111"],
+    ["Apt 18 4111 1111 1111 1111 123", "4111 1111 1111 1111"],
+  ])("flags the card in %j: a short number joined to it does not hide it", (input, expected) => {
+    const result = detector.detect(input);
+    expect(result.matched).toBe(true);
+    if (result.matched) expect(result.substring).toBe(expected);
+  });
+
+  it("checks only card-shaped inner spans, and a label still hides a span right after it", () => {
+    // The spans keep the run's start, so the label still applies.
+    expect(detector.detect("ref 4111 1111 1111 1111 123").matched).toBe(false);
+    expect(detector.detect("order 4111111111111111 12").matched).toBe(false);
+    // 4-4-4-3 and 2-digit groups are not card shapes.
+    expect(detector.detect("Lot 9 4111 1111 1111 111").matched).toBe(false);
+    expect(detector.detect("Scores 12 34 56 78 90 12 34 56 78").matched).toBe(false);
+  });
+
+  it("does not cut a row of same-length groups into card-sized pieces", () => {
+    // The trailing 4-4-4-4 window passes Luhn, but the leading candidate
+    // does not, and a run whose groups all have 4 digits is not cut. The
+    // cost: a 4-digit number joined to a 4-4-4-4 card hides it.
+    expect(detector.detect("2025 5555 5555 5555 4444").matched).toBe(false);
+    expect(detector.detect("Ticket 4412 5555 5555 5555 4444").matched).toBe(false);
+    expect(detector.detect("2025-5555-5555-5555-4444").matched).toBe(false);
+    // The leading candidate of a uniform run is still checked as written.
+    expect(detector.detect("4111 1111 1111 1111 2026").matched).toBe(true);
+    // A 4-digit number before a differently grouped card is dropped.
+    const amex = detector.detect("order 5521 3782 822463 10005");
+    expect(amex.matched).toBe(true);
+    if (amex.matched) expect(amex.substring).toBe("3782 822463 10005");
+  });
+
+  it("flags a list of long ids when any one passes Luhn (documented trade-off)", () => {
+    // Every run is checked and no issuer list is applied, so about one
+    // random 16-digit id in ten trips the detector. The header label is on
+    // an earlier line, so it does not suppress.
+    const ids = "order_id\n2345678901234567\n3456789012345678\n4111111111111111";
+    expect(detector.detect(ids).matched).toBe(true);
+    expect(detector.detect("order_id\n2345678901234567\n3456789012345678").matched).toBe(false);
+  });
 });
 
 function firstMatch(input: string): string | undefined {
@@ -315,6 +387,11 @@ describe("default detectors — identifier labels and cues", () => {
     ["SSN: 123456789", "us-ssn"],
     ["+1 4155551234", "us-phone"],
     ["call 4155551234", "us-phone"],
+    ["for reference 123-45-6789", "us-ssn"],
+    ["Reference: 415-555-0134", "us-phone"],
+    ["My SSN is part 123-45-6789", "us-ssn"],
+    ["part 123-456-7890", "us-phone"],
+    ["reference 4111111111111111", "credit-card"],
   ])("flags %j: only identifier labels suppress, and common words are not labels", (input, expected) => {
     expect(firstMatch(input)).toBe(expected);
   });
@@ -327,6 +404,8 @@ describe("default detectors — identifier labels and cues", () => {
     "isbn 123-45-6789",
     "ISBN 978-0-306-40615-7",
     "PO# 415-555-1234",
+    "ref 123-45-6789",
+    "pn 415-555-0134",
   ])("does not flag %j: a value right after an identifier label is an id", (input) => {
     expect(firstMatch(input)).toBeUndefined();
   });
@@ -378,6 +457,39 @@ describe("default detectors — identifier labels and cues", () => {
   });
 
   it.each([
+    ["phone_number=4155551234", "us-phone"],
+    ["mobile_phone: 4155551234", "us-phone"],
+    ["call me at 4155551234", "us-phone"],
+    ["Call us on 4155551234", "us-phone"],
+    ["mobile no. 4155551234", "us-phone"],
+    ["Her cell number is 4155551234", "us-phone"],
+    ["tel# 4155551234", "us-phone"],
+    ['{"phone":"4155551234"}', "us-phone"],
+    ["Social Security Number: 123456789", "us-ssn"],
+    ["social sec # 123 45 6789", "us-ssn"],
+    ["customer_ssn: 123456789", "us-ssn"],
+    ["SSN number is 123456789", "us-ssn"],
+  ])("flags the bare value in %j: the cue is the nearest word", (input, expected) => {
+    expect(firstMatch(input)).toBe(expected);
+  });
+
+  it.each([
+    "Mobile app build 2024101501 passed QA",
+    "Release notes (mobile) build 2026102201",
+    "call_id=4155551234 status=200",
+    "call duration 2345678901 ns",
+    "Cell B7 holds 2345678901",
+    "Phone model id 2125550199",
+    "Social media reach 123456789 impressions",
+    "social followers: 123456789",
+    "social 123456789",
+    "SSN count 123456789",
+    "call Jane at 4155551234",
+  ])("does not flag the bare value in %j: another word sits between the cue and the value", (input) => {
+    expect(firstMatch(input)).toBeUndefined();
+  });
+
+  it.each([
     ["Order 5521\nThanks! Call 415-555-1234", "us-phone"],
     ["order 5521\nfoo bar. phone 415-555-1234", "us-phone"],
     ["Re: order 5521\nphone 415-555-1234", "us-phone"],
@@ -412,18 +524,36 @@ describe("default detectors — identifier labels and cues", () => {
 describe("email detector — bounded scan", () => {
   const detector = findDetector("email");
 
-  it("stays linear on a long run of word characters with no @", () => {
-    const started = performance.now();
-    expect(detector.detect("1".repeat(128 * 1024)).matched).toBe(false);
-    // The unbounded pattern took seconds at this size; the bounded one
-    // takes a few milliseconds.
-    expect(performance.now() - started).toBeLessThan(1000);
+  it("stays linear on long runs of word characters", () => {
+    const size = 128 * 1024;
+    for (const input of [
+      "1".repeat(size),
+      `${"a".repeat(size)}@`,
+      `a@${"b".repeat(size)}`,
+      "a@b".repeat(size / 3),
+      `${"a".repeat(size / 2)}@${"b".repeat(size / 2)}`,
+    ]) {
+      const started = performance.now();
+      expect(detector.detect(input).matched).toBe(false);
+      // The unanchored pattern took seconds at this size; scanning from each
+      // `@` takes a few milliseconds.
+      expect(performance.now() - started).toBeLessThan(1000);
+    }
   });
 
-  it("still flags an address with an over-long local part", () => {
-    const local = "a".repeat(100);
-    const result = detector.detect(`${local}@example.com`);
+  it("reports the whole address, however long its parts", () => {
+    const longLocal = `${"a".repeat(100)}@example.com`;
+    const longLabel = `x@${"a".repeat(70)}.com`;
+    for (const address of [longLocal, longLabel]) {
+      const result = detector.detect(`mail ${address} now`);
+      expect(result.matched).toBe(true);
+      if (result.matched) expect(result.substring).toBe(address);
+    }
+  });
+
+  it("returns the first address and skips an @ with no domain", () => {
+    const result = detector.detect("@bad, x@nodot then bob@example.org and amy@example.com");
     expect(result.matched).toBe(true);
-    if (result.matched) expect(result.substring).toBe(`${"a".repeat(64)}@example.com`);
+    if (result.matched) expect(result.substring).toBe("bob@example.org");
   });
 });
