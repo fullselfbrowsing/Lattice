@@ -51,18 +51,41 @@ def short_model(model: str) -> str:
 def finished_models() -> list[dict]:
     if not OPEN:
         return []
-    return [row for row in OPEN["models"] if row.get("overhead")]
+    return [row for row in OPEN["models"] if row.get("overhead") or row.get("unavailable")]
+
+
+def quantile(vals: list[float], p: float):
+    ordered = sorted(v for v in vals if v is not None)
+    if not ordered:
+        return None
+    return ordered[min(len(ordered) - 1, int(p * len(ordered)))]
+
+
+def lattice_samples(row: dict) -> list[dict]:
+    return [item for item in row.get("overhead") or [] if item.get("signedOk") and item.get("signedLatticeMs") is not None]
+
+
+def local_lattice_ms() -> list[float]:
+    return [
+        max(0.0, item["signedMs"] - item["signedHttpMs"])
+        for item in LIVE["overhead"]
+        if item.get("signedMs") is not None and item.get("signedHttpMs") is not None
+    ]
 
 
 def overhead_pct() -> None:
     labels = ["ollama\nllama3.2:3b"]
     med, low, high = [], [], []
-    summary = LIVE["overheadSummary"]["signedOutsidePct"]
-    med.append(summary["p50"])
-    low.append(summary["p50"] - summary["min"])
-    high.append(summary["max"] - summary["p50"])
+    local = local_lattice_ms()
+    local_e2e = [item["signedMs"] for item in LIVE["overhead"] if item.get("signedMs")]
+    local_pct = [100.0 * gap / e2e for gap, e2e in zip(local, local_e2e) if e2e]
+    ordered = sorted(local_pct)
+    mid = ordered[len(ordered) // 2]
+    med.append(mid)
+    low.append(mid - ordered[0])
+    high.append(ordered[-1] - mid)
     for row in finished_models():
-        vals = [item["signedOutsidePct"] for item in row["overhead"] if item.get("signedOutsidePct") is not None and item.get("signedOk")]
+        vals = [item["signedLatticePct"] for item in lattice_samples(row)]
         if not vals:
             continue
         ordered = sorted(vals)
@@ -76,8 +99,8 @@ def overhead_pct() -> None:
     ax.bar(x, med, color=COLORS[0], width=0.72)
     ax.errorbar(x, med, yerr=[low, high], fmt="none", ecolor="#222", capsize=3, lw=0.8)
     ax.set_xticks(x, labels, rotation=25, ha="right")
-    ax.set_ylabel("Outside-HTTP time (% of wall)")
-    ax.set_title("Signed Lattice overhead, short prompt (median, whiskers min–max)")
+    ax.set_ylabel("Lattice processing (% of end-to-end)")
+    ax.set_title("Signed Lattice processing, short prompt (median, whiskers min–max)")
     ax.grid(axis="y", lw=0.3)
     save(fig, "rw-overhead-pct")
 
@@ -403,7 +426,7 @@ def openrouter_rows() -> list[str]:
             "Ollama",
             f"{summary['plain']['p50']:.0f}",
             f"{summary['signed']['p50']:.0f}",
-            f"{summary['signedOutsidePct']['p50']:.3f}",
+            f"{quantile(local_lattice_ms(), 0.5):.2f}",
             f"{by_temp[0]['uniqueExact']}/{by_temp[0]['n']}/{by_temp[0]['n']}",
             f"{by_temp[0.7]['uniqueExact']}/{by_temp[0.7]['n']}/{by_temp[0.7]['n']}",
             f"{by_temp[0]['cited']}/{by_temp[0]['n']}, {by_temp[0.7]['cited']}/{by_temp[0.7]['n']}",
@@ -422,7 +445,7 @@ def openrouter_rows() -> list[str]:
             tex(most_common([item.get("signedProvider") for item in signed]) or "---"),
             "---" if not plain else f"{median(plain):.0f}",
             "---" if not signed else f"{median([item['signedMs'] for item in signed]):.0f}",
-            "---" if not signed else f"{median([item['signedOutsidePct'] for item in signed]):.3f}",
+            "---" if not lattice_samples(row) else f"{median([item['signedLatticeMs'] for item in lattice_samples(row)]):.2f}",
             drift_cell(row, 0),
             drift_cell(row, 0.7),
             cited_cell(row),
@@ -450,6 +473,83 @@ def pii_rows(dataset: str) -> list[str]:
     return rows
 
 
+def lattice_prose() -> str:
+    local = local_lattice_ms()
+    local_e2e = [item["signedMs"] for item in LIVE["overhead"] if item.get("signedMs")]
+    local_pct = [100.0 * gap / e2e for gap, e2e in zip(local, local_e2e) if e2e]
+    hosted = []
+    token_meds = []
+    delta_meds = []
+    for row in finished_models():
+        samples = lattice_samples(row)
+        if not samples:
+            continue
+        hosted.append(median([item["signedLatticeMs"] for item in samples]))
+        tokens = [item.get("extraPromptTokens") for item in samples if item.get("extraPromptTokens") is not None]
+        deltas = [item.get("packingProviderDeltaMs") for item in samples if item.get("packingProviderDeltaMs") is not None]
+        if tokens:
+            token_meds.append(median(tokens))
+        if deltas:
+            delta_meds.append(median(deltas))
+    parts = []
+    if local:
+        parts.append(
+            f"On the local Ollama run, the median time outside the HTTP call was {quantile(local, 0.5):.1f}~ms "
+            f"(p95 {quantile(local, 0.95):.1f}~ms, {quantile(local_pct, 0.5):.3f}\\% of that run's signed wall time). "
+            "That localhost call returns the body with the headers, so the gap is processing time."
+        )
+    if hosted:
+        parts.append(
+            f"Across hosted models with a successful signed short prompt, the median Lattice processing time was {min(hosted):.2f}--{max(hosted):.2f}~ms. "
+            "Table~\\ref{tab:rw-lattice} gives the median and p95 in milliseconds and as a percentage of end-to-end time."
+        )
+    if token_meds:
+        parts.append(
+            f"The packed Lattice prompt added {min(token_meds):.0f}--{max(token_meds):.0f} prompt tokens at the median versus the one-line direct prompt. "
+            f"The paired provider-time difference on that longer prompt had medians from {min(delta_meds):.0f} to {max(delta_meds):.0f}~ms. "
+            "A negative value means the packed call returned sooner. The difference changes sign and is often larger than a short extra prefill can explain, because completion length, including reasoning tokens, moves the provider time by seconds. It is reported separately and is not added to Lattice processing time."
+        )
+    return " ".join(parts)
+
+
+def lattice_rows() -> list[str]:
+    local = local_lattice_ms()
+    local_e2e = [item["signedMs"] for item in LIVE["overhead"] if item.get("signedMs")]
+    local_pct = [100.0 * gap / e2e for gap, e2e in zip(local, local_e2e) if e2e]
+    rows = [
+        " & ".join([
+            "llama3.2:3b local",
+            f"{quantile(local, 0.5):.2f}",
+            f"{quantile(local, 0.95):.2f}",
+            f"{quantile(local_pct, 0.5):.3f}",
+            f"{quantile(local_pct, 0.95):.3f}",
+            "---",
+            "---",
+        ]) + r" \\",
+    ]
+    for row in finished_models():
+        samples = lattice_samples(row)
+        if not samples and not row.get("unavailable"):
+            continue
+        if not samples:
+            rows.append(f"\\texttt{{{tex(row['model'])}}} & --- & --- & --- & --- & --- & --- \\\\")
+            continue
+        ms = [item["signedLatticeMs"] for item in samples]
+        pct = [item["signedLatticePct"] for item in samples if item.get("signedLatticePct") is not None]
+        tokens = [item["extraPromptTokens"] for item in samples if item.get("extraPromptTokens") is not None]
+        deltas = [item["packingProviderDeltaMs"] for item in samples if item.get("packingProviderDeltaMs") is not None]
+        rows.append(" & ".join([
+            f"\\texttt{{{tex(row['model'])}}}",
+            f"{quantile(ms, 0.5):.2f}",
+            f"{quantile(ms, 0.95):.2f}",
+            "---" if not pct else f"{quantile(pct, 0.5):.3f}",
+            "---" if not pct else f"{quantile(pct, 0.95):.3f}",
+            "---" if not tokens else f"{quantile(tokens, 0.5):.0f}",
+            "---" if not deltas else f"{quantile(deltas, 0.5):.0f}",
+        ]) + r" \\")
+    return rows
+
+
 def write_fragment() -> None:
     lines = [
         "% Generated by eval/realworld/scripts/12-charts.py. Do not edit.",
@@ -470,48 +570,57 @@ def write_fragment() -> None:
             f"The catalog check found {len(catalog)} of the requested \\texttt{{:free}} ids, and the listed prompt and completion prices were {price_text}. "
             f"Completed model rows: {len(finished_models())}. "
             + (f"The run stopped for {tex(stopped.get('reason'))}. " if stopped.get("reason") else "")
-            + "Upstream HTTP 429 responses were retried with backoff, and that wait was subtracted from wall time. "
-            "A probe with \\texttt{max\\_tokens} 8 returned empty content because reasoning tokens filled the cap. "
-            "The measured arms use the caps recorded in \\texttt{openrouter.json}. "
+            + "Upstream HTTP 429 responses were retried. Pacing sleeps, that backoff, and the HTTP time of a failed attempt are excluded from Lattice time and from the end-to-end denominator. "
+            "Provider time includes waiting for the response headers and reading the body. "
+            "An earlier subtraction stopped at the headers, so the body download was counted as Lattice time. "
+            "Completion tokens are capped at the value recorded in \\texttt{openrouter.json} (8192 in this run). "
+            "Models whose catalog lists a reasoning parameter also receive \\texttt{reasoning.effort=low}. "
+            "A 400 that rejects that field is retried once without it. "
             "Temperature is injected by the fetch wrapper. "
             "Table~\\ref{tab:rw-models} uses the provider string returned on the chat response. "
             "A drift cell is distinct successful answers, successful calls, and attempts. "
             "Replay uses only calls that returned. "
-            "The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned. "
-            "Pacing sleeps and HTTP 429 backoff are subtracted before the outside-HTTP share is computed."
+            "The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
         )
-        gaps = []
-        for row in finished_models():
-            signed = [item for item in row["overhead"] if item.get("signedOk") and item.get("signedMs") is not None and item.get("signedHttpMs") is not None]
-            if not signed:
-                continue
-            gaps.append(median([max(0.0, item["signedMs"] - item["signedHttpMs"]) for item in signed]))
-        if gaps:
-            local_gaps = sorted(
-                max(0.0, item["signedMs"] - item["signedHttpMs"])
-                for item in LIVE["overhead"]
-                if item.get("signedOk", True)
-            )
-            local_med = local_gaps[len(local_gaps) // 2]
-            lines.append(
-                f" Across hosted models that returned a signed short prompt, the median time outside the provider HTTP call was {min(gaps):.0f}--{max(gaps):.0f}~ms. "
-                f"The local Ollama median on the same subtraction is {local_med:.1f}~ms. The hosted share is larger in absolute time as well as in percent."
-            )
+        lines.append(" " + lattice_prose())
         lines.append("")
         lines += table(
-            "Short-prompt latency and the RAG, replay, ticket, and crew checks. Outside-HTTP is the median share of signed wall time. Drift cells are unique successes / successes / attempts. Replay is restricted to calls that returned a receipt. Receipt columns are the single-agent return and the crew return.",
+            "Short-prompt latency and the RAG, replay, ticket, and crew checks. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Replay is restricted to calls that returned a receipt. Receipt columns are the single-agent return and the crew return.",
             "tab:rw-models",
             "@{}l l r r r r r l r l r r@{}",
             [
-                "Model & Provider & Plain ms & Signed ms & Outside \\% & Drift 0 & Drift 0.7 & Cited & Replay & Ticket leak & Agent rcpt & Crew rcpt \\\\",
+                "Model & Provider & Plain ms & Signed ms & Lattice ms & Drift 0 & Drift 0.7 & Cited & Replay & Ticket leak & Agent rcpt & Crew rcpt \\\\",
                 "\\midrule",
                 *openrouter_rows(),
             ],
         )
+        lines += table(
+            "Pure Lattice processing on the signed short prompt. The percentage uses end-to-end time with backoff removed. Extra tokens are Lattice prompt tokens minus the direct prompt tokens. Provider delta is the signed provider time minus the direct provider time, in milliseconds, and is the latency of the longer packed prompt.",
+            "tab:rw-lattice",
+            "@{}l r r r r r r@{}",
+            [
+                "Model & ms p50 & ms p95 & \\% p50 & \\% p95 & Extra tokens & Provider delta \\\\",
+                "\\midrule",
+                *lattice_rows(),
+            ],
+        )
         for row in finished_models():
-            if any("agentic harnesses" in (item.get("error") or "") for item in row.get("overhead") or []):
+            message = row.get("error") or ""
+            if row.get("unavailable") or "403" in message or any("agentic harnesses" in (item.get("error") or "") for item in row.get("overhead") or []):
                 lines.append(
                     f"{ident(row['model'])} is in the public catalog at price 0. Every measured call was rejected with HTTP 403 and the message that the model is only available on agentic harnesses, so this row has no latency sample."
+                )
+        for row in finished_models():
+            for label, block in (("single-agent", row.get("agent")), ("crew", row.get("crew"))):
+                if not block or block.get("ok"):
+                    continue
+                status = block.get("status")
+                if status is None or int(status) < 500:
+                    continue
+                lines.append(
+                    f"{ident(row['model'])} returned HTTP {int(status)} on the {label} call"
+                    + (f" ({tex(block.get('errorMessage'))})" if block.get("errorMessage") else "")
+                    + ". That call is a provider failure, not a receipt or citation result."
                 )
         for row in finished_models():
             samples = row.get("rag") or []
@@ -536,17 +645,26 @@ def write_fragment() -> None:
             reasoning = usage.get("reasoningTokens")
             completion = usage.get("completionTokens")
             capped = reasoning is not None and completion is not None and reasoning >= completion and lattice.get("finishReason") == "length"
+            lattice_answer = (multi.get("latticeAnswer") or "").strip()
+            direct_answer = (multi.get("directAnswer") or "").strip()
+            effort = multi.get("reasoningEffort")
             lines.append(
                 f"On a 16$\\times$16 solid red PNG, {ident(row['model'])} "
-                f"answered red from a direct \\texttt{{image\\_url}} part: {yn(multi.get('directNamesRed'))}. "
-                f"The Lattice image artifact answered red: {yn(multi.get('latticeNamesRed'))}. "
+                f"answered red from a direct \\texttt{{image\\_url}} part: {yn(multi.get('directNamesRed'))}"
+                + (f" (answer {tex(direct_answer)})" if direct_answer else "")
+                + f". The Lattice image artifact answered red: {yn(multi.get('latticeNamesRed'))}"
+                + (f" (answer {tex(lattice_answer)})" if lattice_answer else "")
+                + ". "
                 f"The PNG bytes were present in the Lattice request body: {yn(multi.get('imageMarkerInRequest'))}. "
                 f"The direct response provider was {tex(direct.get('provider') or '---')}."
+                + (f" This vision call set \\texttt{{reasoning.effort={tex(effort)}}}." if effort else "")
                 + (
                     f" The Lattice call stopped for length with {reasoning} reasoning tokens out of {completion} completion tokens, and both answers were empty, so this row is not a color-identification score."
                     if capped else ""
                 )
             )
+            if multi.get("note"):
+                lines.append(tex(multi["note"]))
             lines.append("")
     if PII:
         lines.append(
@@ -633,7 +751,7 @@ def write_fragment() -> None:
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=\\linewidth]{rw-overhead-pct.pdf}",
-        "\\caption{Share of signed end-to-end latency spent outside the provider HTTP call. The bar is the median and the whiskers run from the minimum to the maximum of the successful signed trials.}",
+        "\\caption{Signed Lattice processing time as a percentage of end-to-end time. End-to-end time is Lattice processing plus provider time plus failed-attempt HTTP time. Backoff is excluded. The bar is the median and the whiskers run from the minimum to the maximum. The local bar is wall time minus the localhost HTTP call from the earlier Ollama run.}",
         "\\label{fig:rw-overhead-pct}",
         "\\end{figure}",
         "",

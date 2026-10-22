@@ -1,13 +1,21 @@
 // Real OpenRouter :free runs through Lattice's OpenAI-compatible adapter.
-// The key is read from OPENROUTER_API_KEY only. It is never written to disk.
+// The key is read from the environment or OPENROUTER_KEY_FILE. It is never written to disk.
 import { readFileSync } from "node:fs";
 import { L, RESULTS, makeKeys, receiptBytes, containsMarker, stats, writeJSON, fingerprintArtifactValue } from "./lib.mjs";
 import { resolve } from "node:path";
 import { writeFileSync } from "node:fs";
 
-const KEY = process.env.OPENROUTER_API_KEY?.trim();
+function loadKey() {
+  const fromEnv = process.env.OPENROUTER_API_KEY?.trim();
+  if (fromEnv) return fromEnv;
+  const path = process.env.OPENROUTER_KEY_FILE?.trim();
+  if (!path) return "";
+  return readFileSync(path, "utf8").trim();
+}
+
+const KEY = loadKey();
 if (!KEY) {
-  console.error("OPENROUTER_API_KEY is not set");
+  console.error("OPENROUTER_API_KEY or OPENROUTER_KEY_FILE is required");
   process.exit(1);
 }
 
@@ -42,8 +50,18 @@ const TICKET = [
 ].join(" ");
 const MARKERS = ["jamie.lee@example.com", "415-555-0134", "219-09-9999", "ZWQ-MARKER-9c1e4b"];
 
-const PLAN = { overheadN: 5, driftN: 10, agent: true, crew: true, multimodal: true };
-const state = { nextSlot: 0, intervalMs: 3200, halt: null, backoffMs: 0, events: [] };
+const MAX_TOKENS = Number(process.env.OPENROUTER_MAX_TOKENS ?? 8192);
+const MODEL_FILTER = (process.env.OPENROUTER_MODELS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+const TASKS = new Set((process.env.OPENROUTER_TASKS ?? "overhead,rag,ticket,agent,crew,vision").split(",").map((item) => item.trim()).filter(Boolean));
+const PLAN = {
+  overheadN: Number(process.env.OPENROUTER_OVERHEAD_N ?? 5),
+  driftN: Number(process.env.OPENROUTER_DRIFT_N ?? 10),
+  agent: TASKS.has("agent"),
+  crew: TASKS.has("crew"),
+  multimodal: TASKS.has("vision"),
+};
+const state = { nextSlot: 0, intervalMs: 3500, halt: null, backoffMs: 0, events: [], unavailable: null };
+const reasoningDisabled = new Set();
 
 function scrubText(value) {
   return String(value ?? "").split(KEY).join("[redacted]");
@@ -60,18 +78,49 @@ function save(out) {
     console.error("refusing to write results that still contain the API key");
     process.exit(2);
   }
-  writeFileSync(resolve(RESULTS, "openrouter.json"), text);
+  writeFileSync(resolve(RESULTS, process.env.OPENROUTER_OUT ?? "openrouter.json"), text);
 }
 
 function sleep(ms) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 }
 
-async function pace() {
+function createPhaseClock() {
+  let cursor = performance.now();
+  const acc = { latticeMs: 0, providerMs: 0, retryProviderMs: 0, backoffMs: 0 };
+  return {
+    chargeLattice() {
+      const now = performance.now();
+      acc.latticeMs += now - cursor;
+      cursor = now;
+    },
+    skip(ms) {
+      acc.backoffMs += ms;
+      cursor = performance.now();
+    },
+    noteProvider(ms, retry) {
+      if (retry) acc.retryProviderMs += ms;
+      else acc.providerMs += ms;
+      cursor = performance.now();
+    },
+    snapshot() {
+      return {
+        latticeMs: acc.latticeMs,
+        providerMs: acc.providerMs,
+        retryProviderMs: acc.retryProviderMs,
+        backoffMs: acc.backoffMs,
+      };
+    },
+  };
+}
+
+async function pace(clock) {
+  clock?.chargeLattice();
   const wait = Math.max(0, state.nextSlot - Date.now());
   if (wait > 0) {
     state.backoffMs += wait;
     await sleep(wait);
+    clock?.skip(wait);
   }
   state.nextSlot = Date.now() + state.intervalMs;
 }
@@ -106,7 +155,7 @@ function messageText(body) {
   return "";
 }
 
-async function readMeta(response, requestBody) {
+function metaFrom(response, parsed, requestBody) {
   const headers = {};
   for (const [name, value] of response.headers.entries()) {
     const key = name.toLowerCase();
@@ -116,12 +165,7 @@ async function readMeta(response, requestBody) {
       headers[key] = value.slice(0, 120);
     }
   }
-  let body = null;
-  try {
-    body = await response.clone().json();
-  } catch {
-    body = null;
-  }
+  const body = parsed;
   const err = body?.error;
   const errorMessage = scrubText(typeof err === "string" ? err : err?.message ?? "").slice(0, 300);
   return {
@@ -138,6 +182,14 @@ async function readMeta(response, requestBody) {
   };
 }
 
+function parseBody(buf) {
+  try {
+    return JSON.parse(Buffer.from(buf).toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function limitKind(meta) {
   const message = (meta.errorMessage ?? "").toLowerCase();
   if (meta.status === 402 || message.includes("insufficient") || message.includes("payment")) return "payment";
@@ -146,14 +198,26 @@ function limitKind(meta) {
   return null;
 }
 
-function samplingFetch(temperature, maxTokens, sink) {
+function wantsReasoningRetry(meta, sentReasoning) {
+  if (!sentReasoning || meta.status !== 400) return false;
+  const message = (meta.errorMessage ?? "").toLowerCase();
+  return message.includes("reasoning") || message.includes("unsupported") || message.includes("invalid");
+}
+
+function samplingFetch(temperature, maxTokens, sink, clock, model) {
   return async (url, init = {}) => {
     let body = init.body;
     let promptChars = 0;
+    let sentReasoning = false;
     if (typeof body === "string") {
       const parsed = JSON.parse(body);
       parsed.temperature = temperature;
       parsed.max_tokens = maxTokens;
+      const reasoning = reasoningFor(model);
+      if (reasoning) {
+        parsed.reasoning = reasoning;
+        sentReasoning = true;
+      }
       body = JSON.stringify(parsed);
       promptChars = body.length;
     }
@@ -161,14 +225,57 @@ function samplingFetch(temperature, maxTokens, sink) {
     if (!headers.has("http-referer")) headers.set("HTTP-Referer", "https://github.com/fullselfbrowsing/Lattice");
     if (!headers.has("x-title")) headers.set("X-Title", "Lattice-realworld");
     let attempt = 0;
+    let droppedReasoning = false;
     while (attempt < 6) {
-      await pace();
+      await pace(clock);
       const t0 = performance.now();
-      const response = await fetch(url, { ...init, headers, body, signal: AbortSignal.timeout(180000) });
-      const httpMs = performance.now() - t0;
-      const meta = await readMeta(response, typeof body === "string" ? body : "");
-      sink.push({ httpMs, promptChars, attempt, ...meta, urlHost: "openrouter.ai" });
+      let response;
+      let buf;
+      try {
+        response = await fetch(url, { ...init, headers, body, signal: AbortSignal.timeout(180000) });
+        buf = await response.arrayBuffer();
+      } catch (caught) {
+        const providerMs = performance.now() - t0;
+        clock?.noteProvider(providerMs, true);
+        sink.push({
+          httpMs: providerMs,
+          providerMs,
+          promptChars,
+          attempt,
+          retry: true,
+          status: 0,
+          errorMessage: scrubText(caught?.message ?? caught).slice(0, 300),
+          urlHost: "openrouter.ai",
+        });
+        attempt += 1;
+        if (attempt >= 3) throw caught;
+        const wait = 2000 * attempt;
+        await sleep(wait);
+        clock?.skip(wait);
+        continue;
+      }
+      const providerMs = performance.now() - t0;
+      const parsed = parseBody(buf);
+      const meta = metaFrom(response, parsed, typeof body === "string" ? body : "");
       const kind = limitKind(meta);
+      const serverRetry = kind === "minute" || (response.status >= 500 && attempt < 2);
+      const reasoningRetry = !droppedReasoning && wantsReasoningRetry(meta, sentReasoning);
+      const retry = serverRetry || reasoningRetry;
+      clock?.noteProvider(providerMs, retry);
+      sink.push({ httpMs: providerMs, providerMs, promptChars, attempt, retry, ...meta, urlHost: "openrouter.ai" });
+      if (reasoningRetry) {
+        droppedReasoning = true;
+        reasoningDisabled.add(model);
+        sentReasoning = false;
+        if (typeof body === "string") {
+          const parsedBody = JSON.parse(body);
+          delete parsedBody.reasoning;
+          body = JSON.stringify(parsedBody);
+          promptChars = body.length;
+        }
+        log(`reasoning field rejected for ${model}: ${meta.errorMessage ?? "no message"}; retrying without it`);
+        continue;
+      }
       if (kind === "minute") {
         attempt += 1;
         const retryAfter = Number(meta.headers["retry-after"]);
@@ -178,6 +285,7 @@ function samplingFetch(temperature, maxTokens, sink) {
         state.events.push({ kind: "backoff", waitMs: wait, status: meta.status });
         log(`backoff ${wait}ms status ${meta.status}`);
         await sleep(wait);
+        clock?.skip(wait);
         continue;
       }
       if (kind === "daily" || kind === "payment") state.halt = kind;
@@ -186,22 +294,35 @@ function samplingFetch(temperature, maxTokens, sink) {
         const wait = 2000 * attempt;
         state.backoffMs += wait;
         await sleep(wait);
+        clock?.skip(wait);
         continue;
       }
-      return response;
+      if (response.status === 403) state.unavailable = meta.errorMessage || "HTTP 403";
+      return new Response(buf, { status: response.status, statusText: response.statusText, headers: response.headers });
     }
-    return fetch(url, { ...init, headers, body, signal: AbortSignal.timeout(180000) });
+    throw new Error("OpenRouter retries exhausted");
   };
 }
 
-function makeAI(model, temperature, maxTokens, signer, sink) {
+function reasoningFor(model) {
+  if (!model || reasoningDisabled.has(model)) return null;
+  const params = out.catalog?.[model]?.supportedParameters ?? [];
+  if (params.includes("reasoning") || params.includes("reasoning_effort")) {
+    const cap = Number(process.env.OPENROUTER_REASONING_MAX ?? 0);
+    if (cap > 0) return { max_tokens: cap };
+    return { effort: process.env.OPENROUTER_REASONING_EFFORT?.trim() || "low" };
+  }
+  return null;
+}
+
+function makeAI(model, temperature, maxTokens, signer, sink, clock) {
   return L.createAI({
     providers: [L.createOpenAICompatibleProvider({
       id: "openrouter",
       model,
       baseUrl: BASE,
       apiKey: KEY,
-      fetch: samplingFetch(temperature, maxTokens, sink),
+      fetch: samplingFetch(temperature, maxTokens, sink, clock, model),
     })],
     ...(signer ? { signer } : {}),
   });
@@ -209,19 +330,24 @@ function makeAI(model, temperature, maxTokens, signer, sink) {
 
 async function timeRun(run) {
   const sink = [];
+  const clock = createPhaseClock();
   state.backoffMs = 0;
   const t0 = performance.now();
   let result = null;
   let error = null;
   try {
-    result = await run(sink);
+    result = await run(sink, clock);
   } catch (caught) {
     error = scrubText(caught?.message ?? caught).slice(0, 300);
   }
-  const wallMs = Math.max(0, performance.now() - t0 - state.backoffMs);
-  const httpMs = sink.reduce((sum, call) => sum + (call.httpMs ?? 0), 0);
-  const last = sink.at(-1) ?? null;
-  return { result, error, wallMs, httpMs, sink, last };
+  clock.chargeLattice();
+  const phases = clock.snapshot();
+  const elapsed = performance.now() - t0;
+  const accounted = phases.latticeMs + phases.providerMs + phases.retryProviderMs + phases.backoffMs;
+  const slackMs = elapsed - accounted;
+  const e2eMs = Math.max(0, phases.latticeMs + phases.providerMs + phases.retryProviderMs);
+  const last = [...sink].reverse().find((call) => !call.retry) ?? sink.at(-1) ?? null;
+  return { result, error, wallMs: e2eMs, e2eMs, httpMs: phases.providerMs, phases, slackMs, sink, last };
 }
 
 function callMeta(timed) {
@@ -240,22 +366,32 @@ function callMeta(timed) {
   };
 }
 
+function round3(value) {
+  return +Number(value ?? 0).toFixed(3);
+}
+
 function publicTiming(timed, ok) {
-  const wallMs = +timed.wallMs.toFixed(3);
-  const httpMs = +timed.httpMs.toFixed(3);
+  const e2eMs = timed.e2eMs;
+  const latticeMs = timed.phases.latticeMs;
+  const providerMs = timed.phases.providerMs;
   return {
     ok,
-    wallMs,
-    httpMs,
-    outsideHttpMs: +Math.max(0, wallMs - httpMs).toFixed(3),
-    outsideHttpPct: wallMs > 0 ? +((100 * Math.max(0, wallMs - httpMs)) / wallMs).toFixed(3) : null,
+    wallMs: round3(e2eMs),
+    httpMs: round3(providerMs),
+    e2eMs: round3(e2eMs),
+    latticeMs: round3(latticeMs),
+    latticePct: e2eMs > 0 ? round3((100 * latticeMs) / e2eMs) : null,
+    providerMs: round3(providerMs),
+    retryProviderMs: round3(timed.phases.retryProviderMs),
+    backoffMs: round3(timed.phases.backoffMs),
+    slackMs: round3(timed.slackMs),
     ...callMeta(timed),
   };
 }
 
 async function directChat(model, task, temperature, maxTokens, content) {
-  const timed = await timeRun(async (sink) => {
-    const response = await samplingFetch(temperature, maxTokens, sink)(`${BASE}/chat/completions`, {
+  const timed = await timeRun(async (sink, clock) => {
+    const response = await samplingFetch(temperature, maxTokens, sink, clock, model)(`${BASE}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${KEY}` },
       body: JSON.stringify({
@@ -316,9 +452,12 @@ const out = {
     baseUrl: BASE,
     adapter: "createOpenAICompatibleProvider",
     keyLoaded: true,
-    note: "A probe with max_tokens 8 returned empty content because reasoning tokens consumed the cap (completion 8, reasoning_tokens 9). Measured arms use the max_tokens values in this file. Temperature is injected by the fetch wrapper because the adapter does not send it. Pacing waits are subtracted from wall time.",
-    maxTokens: { overhead: 64, rag: 180, ticket: 160, agent: 200, crew: 160, multimodal: 64 },
+    note: "Lattice time is the runtime work around the provider call: routing, request packing, policy, output checks, redaction, signing, and receipt build. Provider time is the fetch plus the full response body. Pacing sleeps, HTTP 429 backoff, and failed-attempt HTTP time are excluded from Lattice time and from the end-to-end denominator. An earlier header-only subtraction counted body download as Lattice time. max_tokens is 8192. Models that advertise a reasoning parameter also receive reasoning.effort=low; a 400 that rejects that field is retried once without it. Inkling's HTTP 403 on ordinary chat calls is recorded as unavailable.",
+    maxTokens: { overhead: MAX_TOKENS, rag: MAX_TOKENS, ticket: MAX_TOKENS, agent: MAX_TOKENS, crew: MAX_TOKENS, multimodal: MAX_TOKENS },
+    reasoning: { effort: "low" },
+    timing: "latticeMs excludes provider body, retries, and backoff; latticePct = 100 * latticeMs / (latticeMs + providerMs + retryProviderMs)",
     plan: PLAN,
+    tasks: [...TASKS],
   },
   catalog: await catalog(),
   models: [],
@@ -333,7 +472,16 @@ function halted(row) {
   return true;
 }
 
+function unavailable(row) {
+  if (!state.unavailable) return false;
+  row.error = `unavailable: ${state.unavailable}`.slice(0, 400);
+  row.unavailable = true;
+  return true;
+}
+
 for (const model of MODELS) {
+  if (MODEL_FILTER.length > 0 && !MODEL_FILTER.some((item) => model.includes(item))) continue;
+  state.unavailable = null;
   const row = {
     model,
     overhead: [],
@@ -345,6 +493,7 @@ for (const model of MODELS) {
     multimodal: null,
     replay: [],
     error: null,
+    unavailable: false,
   };
   out.models.push(row);
   log(`model ${model}`);
@@ -354,62 +503,84 @@ for (const model of MODELS) {
     continue;
   }
   try {
+    if (TASKS.has("overhead")) {
     for (let i = 0; i < PLAN.overheadN; i += 1) {
-      const plain = await directChat(model, SHORT, 0, 64);
-      if (halted(row)) break;
-      const unsignedSink = [];
-      const unsigned = await timeRun(async (sink) => makeAI(model, 0, 64, null, sink).run({
+      const plain = await directChat(model, SHORT, 0, MAX_TOKENS);
+      if (halted(row) || unavailable(row)) break;
+      const unsigned = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, null, sink, clock).run({
         task: SHORT,
         artifacts: [],
         outputs: { answer: "text" },
       }));
-      unsignedSink.push(...unsigned.sink);
-      if (halted(row)) break;
-      const signed = await timeRun(async (sink) => makeAI(model, 0, 64, keys.signer, sink).run({
+      if (halted(row) || unavailable(row)) break;
+      const signed = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, keys.signer, sink, clock).run({
         task: SHORT,
         artifacts: [],
         outputs: { answer: "text" },
       }));
-      if (halted(row)) break;
+      if (halted(row) || unavailable(row)) break;
+      const plainTokens = plain.usage?.promptTokens ?? null;
+      const signedTokens = signed.last?.usage?.promptTokens ?? null;
+      const plainChars = plain.promptChars ?? 0;
+      const signedChars = signed.sink.filter((call) => !call.retry).reduce((sum, call) => sum + (call.promptChars ?? 0), 0);
       row.overhead.push({
         i,
-        plainMs: plain.httpMs,
+        plainMs: plain.providerMs,
+        plainE2eMs: plain.e2eMs,
         plainOk: plain.ok,
-        plainText: plain.text ?? "",
+        plainText: (plain.text ?? "").slice(0, 160),
         plainProvider: plain.provider,
         plainModel: plain.responseModel,
-        unsignedMs: +unsigned.wallMs.toFixed(3),
-        unsignedHttpMs: +unsigned.httpMs.toFixed(3),
-        unsignedOutsidePct: unsigned.wallMs > 0 ? +((100 * Math.max(0, unsigned.wallMs - unsigned.httpMs)) / unsigned.wallMs).toFixed(3) : null,
+        plainPromptTokens: plainTokens,
+        plainPromptChars: plainChars,
+        plainFinish: plain.finishReason ?? null,
+        unsignedMs: round3(unsigned.e2eMs),
+        unsignedProviderMs: round3(unsigned.phases.providerMs),
+        unsignedLatticeMs: round3(unsigned.phases.latticeMs),
+        unsignedLatticePct: unsigned.e2eMs > 0 ? round3((100 * unsigned.phases.latticeMs) / unsigned.e2eMs) : null,
         unsignedOk: unsigned.result?.ok === true,
-        signedMs: +signed.wallMs.toFixed(3),
-        signedHttpMs: +signed.httpMs.toFixed(3),
-        signedOutsidePct: signed.wallMs > 0 ? +((100 * Math.max(0, signed.wallMs - signed.httpMs)) / signed.wallMs).toFixed(3) : null,
+        signedMs: round3(signed.e2eMs),
+        signedHttpMs: round3(signed.phases.providerMs),
+        signedProviderMs: round3(signed.phases.providerMs),
+        signedLatticeMs: round3(signed.phases.latticeMs),
+        signedLatticePct: signed.e2eMs > 0 ? round3((100 * signed.phases.latticeMs) / signed.e2eMs) : null,
+        signedRetryMs: round3(signed.phases.retryProviderMs),
+        signedBackoffMs: round3(signed.phases.backoffMs),
+        signedSlackMs: round3(signed.slackMs),
         signedOk: signed.result?.ok === true,
+        signedText: signed.result?.ok ? String(signed.result.outputs?.answer ?? "").slice(0, 160) : "",
         signedProvider: signed.last?.provider ?? null,
         signedModel: signed.last?.responseModel ?? null,
         signedGenerationId: signed.last?.generationId ?? null,
-        promptChars: signed.sink.reduce((sum, call) => sum + (call.promptChars ?? 0), 0),
+        signedFinish: signed.last?.finishReason ?? null,
+        promptChars: signedChars,
+        plainPromptCharsDelta: signedChars - plainChars,
+        extraPromptTokens: plainTokens != null && signedTokens != null ? signedTokens - plainTokens : null,
+        packingProviderDeltaMs: plain.providerMs != null && signed.phases?.providerMs != null ? round3(signed.phases.providerMs - plain.providerMs) : null,
         receiptBytes: receiptBytes(signed.result?.receipt),
         usage: signed.last?.usage ?? null,
+        plainUsage: plain.usage ?? null,
         error: signed.error ?? unsigned.error ?? plain.errorMessage ?? null,
       });
-      log(`overhead ${model} ${i} plain ${plain.httpMs?.toFixed?.(0) ?? plain.httpMs} signed ${signed.wallMs.toFixed(0)} provider ${signed.last?.provider}`);
+      log(`overhead ${model} ${i} lattice ${signed.phases.latticeMs.toFixed(2)}ms provider ${signed.phases.providerMs.toFixed(0)} extraTok ${plainTokens != null && signedTokens != null ? signedTokens - plainTokens : "?"} text ${JSON.stringify((signed.result?.outputs?.answer ?? plain.text ?? "").slice(0, 40))} slack ${signed.slackMs.toFixed(1)}`);
+    }
     }
     if (state.halt) { save(out); break; }
+    if (state.unavailable) { save(out); continue; }
 
     const rag0 = [];
     const ragHot = [];
+    if (TASKS.has("rag")) {
     for (const [bucket, temperature] of [[rag0, 0], [ragHot, 0.7]]) {
       for (let i = 0; i < PLAN.driftN; i += 1) {
-        const timed = await timeRun(async (sink) => makeAI(model, temperature, 180, keys.signer, sink).run({
+        const timed = await timeRun(async (sink, clock) => makeAI(model, temperature, MAX_TOKENS, keys.signer, sink, clock).run({
           task: RAG_TASK,
           artifacts: [L.artifact.text(POLICY, { label: "policy-refund" })],
           outputs: { answer: "text" },
           contract: L.contract({ invariants: [L.inv.mustCite("policy-refund")] }),
           policy: { privacy: "standard", maxCostUsd: 1 },
         }));
-        if (halted(row)) break;
+        if (halted(row) || unavailable(row)) break;
         const answer = timed.result?.ok ? String(timed.result.outputs?.answer ?? "") : "";
         bucket.push({
           i,
@@ -422,13 +593,14 @@ for (const model of MODELS) {
         });
         log(`rag ${model} t${temperature} ${i} ok ${timed.result?.ok === true} cited ${answer.includes("policy-refund")}`);
       }
-      if (state.halt) break;
+      if (state.halt || state.unavailable) break;
     }
     row.drift = [driftBlock(rag0, 0), driftBlock(ragHot, 0.7)];
     row.rag = [...rag0, ...ragHot].map(({ receipt, ...rest }) => rest);
+    }
 
-    if (!state.halt) {
-      const timed = await timeRun(async (sink) => makeAI(model, 0, 160, keys.signer, sink).run({
+    if (!state.halt && !state.unavailable && TASKS.has("ticket")) {
+      const timed = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, keys.signer, sink, clock).run({
         task: "Reply in one sentence. Do not repeat phone numbers, emails, or SSNs. Confirm whether a refund can be reviewed.",
         artifacts: [L.artifact.text(TICKET, { label: "ticket", privacy: "sensitive" })],
         outputs: { answer: "text" },
@@ -453,11 +625,11 @@ for (const model of MODELS) {
       }
     }
 
-    if (!state.halt && PLAN.agent) await runAgent(model, row);
-    if (!state.halt && PLAN.crew) await runCrew(model, row);
-    if (!state.halt && model === VISION_MODEL) await runVision(model, row);
+    if (!state.halt && !state.unavailable && PLAN.agent) await runAgent(model, row);
+    if (!state.halt && !state.unavailable && PLAN.crew) await runCrew(model, row);
+    if (!state.halt && !state.unavailable && model === VISION_MODEL && PLAN.multimodal) await runVision(model, row);
 
-    if (!state.halt) {
+    if (!state.halt && !state.unavailable && TASKS.has("rag")) {
       for (const src of [...rag0, ...ragHot]) {
         const replay = { i: src.i, temperature: src.temperature, verified: false, materialized: false, replayOk: false, outputHashMatch: false, alteredDetected: false, error: null };
         try {
@@ -513,9 +685,13 @@ function summarize(report) {
   return report.models.map((row) => ({
     model: row.model,
     overheadN: row.overhead.length,
-    signedOutsidePct: stats(row.overhead.map((item) => item.signedOutsidePct)),
-    signedMs: stats(row.overhead.map((item) => item.signedMs)),
-    plainMs: stats(row.overhead.map((item) => item.plainMs)),
+    signedLatticeMs: stats(row.overhead.filter((item) => item.signedOk).map((item) => item.signedLatticeMs)),
+    signedLatticePct: stats(row.overhead.filter((item) => item.signedOk).map((item) => item.signedLatticePct)),
+    extraPromptTokens: stats(row.overhead.filter((item) => item.signedOk).map((item) => item.extraPromptTokens)),
+    packingProviderDeltaMs: stats(row.overhead.filter((item) => item.signedOk).map((item) => item.packingProviderDeltaMs)),
+    signedMs: stats(row.overhead.filter((item) => item.signedOk).map((item) => item.signedMs)),
+    plainMs: stats(row.overhead.filter((item) => item.plainOk).map((item) => item.plainMs)),
+    unavailable: row.unavailable === true,
     drift: row.drift?.map((item) => ({ temperature: item.temperature, n: item.n, uniqueExact: item.uniqueExact, cited: item.cited, mustCitePassed: item.mustCitePassed })),
     replayOk: row.replay.filter((item) => item.verified && item.outputHashMatch && item.alteredDetected).length,
     replayN: row.replay.length,
@@ -545,7 +721,7 @@ async function runAgent(model, row) {
       return { topic: input.topic, clause: "Refunds are allowed within 30 days. Cite [policy-refund]." };
     },
   });
-  const timed = await timeRun(async (sink) => makeAI(model, 0, 200, null, sink).runAgent({
+  const timed = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, null, sink, clock).runAgent({
     task: "Call lookup_policy with topic refunds, then answer in one sentence citing [policy-refund].",
     tools: [lookup],
     signer: keys.signer,
@@ -582,7 +758,7 @@ async function runCrew(model, row) {
     childAgents: [researcher],
     summaryReturnSchema: accept,
   });
-  const timed = await timeRun(async (sink) => makeAI(model, 0, 160, null, sink).runAgentCrew({
+  const timed = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, null, sink, clock).runAgentCrew({
     root,
     hosts: { childHost: L.createNoopAgentHost() },
     signer: keys.signer,
@@ -605,13 +781,13 @@ async function runCrew(model, row) {
 
 async function runVision(model, row) {
   const prompt = "The attached image is one solid color. Reply with exactly one of these words: red, green, or blue.";
-  const lattice = await timeRun(async (sink) => makeAI(model, 0, 64, keys.signer, sink).run({
+  const lattice = await timeRun(async (sink, clock) => makeAI(model, 0, MAX_TOKENS, keys.signer, sink, clock).run({
     task: prompt,
     artifacts: [L.artifact.image(DATA_URL, { mediaType: "image/png", label: "square" })],
     outputs: { answer: "text" },
   }));
   if (halted(row)) return;
-  const direct = await directChat(model, prompt, 0, 64, [
+  const direct = await directChat(model, prompt, 0, MAX_TOKENS, [
     { type: "text", text: prompt },
     { type: "image_url", image_url: { url: DATA_URL } },
   ]);

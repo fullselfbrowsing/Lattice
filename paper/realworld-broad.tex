@@ -5,38 +5,61 @@
 
 The record-system matrix in Table~\ref{tab:rw-matrix} is unchanged. This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine.
 
-Lattice's OpenAI-compatible adapter called \path{https://openrouter.ai/api/v1}. The catalog check found 8 of the requested \texttt{:free} ids, and the listed prompt and completion prices were 0. Completed model rows: 8. Upstream HTTP 429 responses were retried with backoff, and that wait was subtracted from wall time. A probe with \texttt{max\_tokens} 8 returned empty content because reasoning tokens filled the cap. The measured arms use the caps recorded in \texttt{openrouter.json}. Temperature is injected by the fetch wrapper. Table~\ref{tab:rw-models} uses the provider string returned on the chat response. A drift cell is distinct successful answers, successful calls, and attempts. Replay uses only calls that returned. The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned. Pacing sleeps and HTTP 429 backoff are subtracted before the outside-HTTP share is computed.
- Across hosted models that returned a signed short prompt, the median time outside the provider HTTP call was 113--1675~ms. The local Ollama median on the same subtraction is 2.4~ms. The hosted share is larger in absolute time as well as in percent.
+Lattice's OpenAI-compatible adapter called \path{https://openrouter.ai/api/v1}. The catalog check found 8 of the requested \texttt{:free} ids, and the listed prompt and completion prices were 0. Completed model rows: 8. Upstream HTTP 429 responses were retried. Pacing sleeps, that backoff, and the HTTP time of a failed attempt are excluded from Lattice time and from the end-to-end denominator. Provider time includes waiting for the response headers and reading the body. An earlier subtraction stopped at the headers, so the body download was counted as Lattice time. Completion tokens are capped at the value recorded in \texttt{openrouter.json} (8192 in this run). Models whose catalog lists a reasoning parameter also receive \texttt{reasoning.effort=low}. A 400 that rejects that field is retried once without it. Temperature is injected by the fetch wrapper. Table~\ref{tab:rw-models} uses the provider string returned on the chat response. A drift cell is distinct successful answers, successful calls, and attempts. Replay uses only calls that returned. The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned.
+ On the local Ollama run, the median time outside the HTTP call was 2.4~ms (p95 15.0~ms, 0.439\% of that run's signed wall time). That localhost call returns the body with the headers, so the gap is processing time. Across hosted models with a successful signed short prompt, the median Lattice processing time was 1.10--1.69~ms. Table~\ref{tab:rw-lattice} gives the median and p95 in milliseconds and as a percentage of end-to-end time. The packed Lattice prompt added 61--83 prompt tokens at the median versus the one-line direct prompt. The paired provider-time difference on that longer prompt had medians from -2398 to 3352~ms. A negative value means the packed call returned sooner. The difference changes sign and is often larger than a short extra prefill can explain, because completion length, including reasoning tokens, moves the provider time by seconds. It is reported separately and is not added to Lattice processing time.
 
 \begin{table*}[t]
 \centering
-\caption{Short-prompt latency and the RAG, replay, ticket, and crew checks. Outside-HTTP is the median share of signed wall time. Drift cells are unique successes / successes / attempts. Replay is restricted to calls that returned a receipt. Receipt columns are the single-agent return and the crew return.}
+\caption{Short-prompt latency and the RAG, replay, ticket, and crew checks. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Replay is restricted to calls that returned a receipt. Receipt columns are the single-agent return and the crew return.}
 \label{tab:rw-models}
 \footnotesize
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}l l r r r r r l r l r r@{}}
 \toprule
-Model & Provider & Plain ms & Signed ms & Outside \% & Drift 0 & Drift 0.7 & Cited & Replay & Ticket leak & Agent rcpt & Crew rcpt \\
+Model & Provider & Plain ms & Signed ms & Lattice ms & Drift 0 & Drift 0.7 & Cited & Replay & Ticket leak & Agent rcpt & Crew rcpt \\
 \midrule
-llama3.2:3b local & Ollama & 278 & 559 & 0.439 & 1/3/3 & 1/3/3 & 3/3, 3/3 & 6/6 & no & 0 & 4 \\
-\texttt{minimax/minimax-m3.1-flash:free} & Minimax & 798 & 864 & 11.771 & 4/10/10 & 2/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 4 \\
-\texttt{xingchen-agi/xing4.0-29b-a4b:free} & Phala & 8074 & 13553 & 21.515 & 2/2/10 & 3/3/10 & 2/2, 3/3 & 5/5 & call failed & 0 & 3 \\
-\texttt{nvidia/nemotron-3.5-super-vl:free} & Nvidia & 348 & 1306 & 76.638 & 1/10/10 & 2/9/10 & 10/10, 9/9 & 19/19 & no & 0 & 4 \\
-\texttt{nvidia/nemotron-3.5-lightning:free} & Nvidia & 168 & 797 & 81.236 & 0/0/10 & 0/0/10 & ---, --- & 0/0 & no & 0 & 3 \\
-\texttt{dots-studio/dots-3-note-preview:free} & AtlasCloud & 509 & 1582 & 59.060 & 0/0/10 & 0/0/10 & ---, --- & 0/0 & no & 0 & 3 \\
-\texttt{liquid/lfm-2.5-2.6b:free} & Liquid & 335 & 1025 & 67.694 & 2/3/10 & 0/0/10 & 3/3, --- & 3/3 & no & 0 & 3 \\
-\texttt{thinkingmachines/inkling-small:free} & --- & --- & --- & --- & 0/0/10 & 0/0/10 & ---, --- & 0/0 & call failed & fail & fail \\
-\texttt{poolside/laguna-s-2.1:free} & Poolside & 942 & 1464 & 16.156 & 1/10/10 & 3/8/10 & 10/10, 8/8 & 18/18 & no & 0 & 3 \\
+llama3.2:3b local & Ollama & 278 & 559 & 2.45 & 1/3/3 & 1/3/3 & 3/3, 3/3 & 6/6 & no & 0 & 4 \\
+\texttt{minimax/minimax-m3.1-flash:free} & Minimax & 3677 & 1489 & 1.69 & 3/10/10 & 1/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 4 \\
+\texttt{xingchen-agi/xing4.0-29b-a4b:free} & Phala & 3124 & 9820 & 1.21 & 4/8/10 & 3/3/10 & 8/8, 3/3 & 11/11 & no & 0 & 3 \\
+\texttt{nvidia/nemotron-3.5-super-vl:free} & Nvidia & 675 & 845 & 1.20 & 1/10/10 & 2/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 4 \\
+\texttt{nvidia/nemotron-3.5-lightning:free} & Nvidia & 1319 & 2701 & 1.10 & 4/10/10 & 6/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 3 \\
+\texttt{dots-studio/dots-3-note-preview:free} & AtlasCloud & 1145 & 1275 & 1.50 & 2/10/10 & 3/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 4 \\
+\texttt{liquid/lfm-2.5-2.6b:free} & Liquid & 4179 & 4649 & 1.65 & 3/10/10 & 2/10/10 & 10/10, 10/10 & 20/20 & no & fail & fail \\
+\texttt{thinkingmachines/inkling-small:free} & --- & --- & --- & --- & --- & --- & ---, --- & --- & --- & --- & --- \\
+\texttt{poolside/laguna-s-2.1:free} & Poolside & 715 & 1413 & 1.56 & 1/10/10 & 4/10/10 & 10/10, 10/10 & 20/20 & no & 0 & 4 \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Pure Lattice processing on the signed short prompt. The percentage uses end-to-end time with backoff removed. Extra tokens are Lattice prompt tokens minus the direct prompt tokens. Provider delta is the signed provider time minus the direct provider time, in milliseconds, and is the latency of the longer packed prompt.}
+\label{tab:rw-lattice}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}l r r r r r r@{}}
+\toprule
+Model & ms p50 & ms p95 & \% p50 & \% p95 & Extra tokens & Provider delta \\
+\midrule
+llama3.2:3b local & 2.45 & 14.96 & 0.439 & 2.469 & --- & --- \\
+\texttt{minimax/minimax-m3.1-flash:free} & 1.69 & 3.66 & 0.218 & 0.327 & 63 & -2398 \\
+\texttt{xingchen-agi/xing4.0-29b-a4b:free} & 1.21 & 3.50 & 0.019 & 0.019 & 83 & 3352 \\
+\texttt{nvidia/nemotron-3.5-super-vl:free} & 1.20 & 2.03 & 0.138 & 0.260 & 80 & 169 \\
+\texttt{nvidia/nemotron-3.5-lightning:free} & 1.10 & 1.96 & 0.053 & 0.082 & 82 & 1703 \\
+\texttt{dots-studio/dots-3-note-preview:free} & 1.50 & 1.90 & 0.123 & 0.141 & 74 & 59 \\
+\texttt{liquid/lfm-2.5-2.6b:free} & 1.65 & 4.09 & 0.035 & 0.076 & 61 & 1005 \\
+\texttt{thinkingmachines/inkling-small:free} & --- & --- & --- & --- & --- & --- \\
+\texttt{poolside/laguna-s-2.1:free} & 1.56 & 4.01 & 0.142 & 0.266 & 76 & 318 \\
 \bottomrule
 \end{tabular}}
 \end{table*}
 
 \path{thinkingmachines/inkling-small:free} is in the public catalog at price 0. Every measured call was rejected with HTTP 403 and the message that the model is only available on agentic harnesses, so this row has no latency sample.
-\path{nvidia/nemotron-3.5-lightning:free}: 18 of 20 RAG calls stopped because the completion cap was reached, and 18 of those responses reported reasoning tokens. An empty answer then fails \texttt{mustCite}. That is the cap, not a separate citation model.
-\path{dots-studio/dots-3-note-preview:free}: 20 of 20 RAG calls stopped because the completion cap was reached, and 20 of those responses reported reasoning tokens. An empty answer then fails \texttt{mustCite}. That is the cap, not a separate citation model.
-\path{liquid/lfm-2.5-2.6b:free}: 16 of 20 RAG calls stopped because the completion cap was reached, and 16 of those responses reported reasoning tokens. An empty answer then fails \texttt{mustCite}. That is the cap, not a separate citation model.
+\path{liquid/lfm-2.5-2.6b:free} returned HTTP 504 on the single-agent call (Provider returned error). That call is a provider failure, not a receipt or citation result.
+\path{liquid/lfm-2.5-2.6b:free} returned HTTP 504 on the crew call (Provider returned error). That call is a provider failure, not a receipt or citation result.
 
-On a 16$\times$16 solid red PNG, \path{nvidia/nemotron-3.5-super-vl:free} answered red from a direct \texttt{image\_url} part: no. The Lattice image artifact answered red: no. The PNG bytes were present in the Lattice request body: yes. The direct response provider was Nvidia. The Lattice call stopped for length with 64 reasoning tokens out of 64 completion tokens, and both answers were empty, so this row is not a color-identification score.
+On a 16$\times$16 solid red PNG, \path{nvidia/nemotron-3.5-super-vl:free} answered red from a direct \texttt{image\_url} part: yes (answer red). The Lattice image artifact answered red: no (answer blue). The PNG bytes were present in the Lattice request body: yes. The direct response provider was Nvidia. This vision call set \texttt{reasoning.effort=none}.
+The text arms use reasoning.effort=low. On this vision call, effort low and effort minimal each spent 8192 completion tokens on reasoning and returned empty content. This recorded call sets reasoning.effort=none. Lattice inlines the PNG in the text JSON. The direct arm sends an image\_url part.
 
 Document-level precision, recall, and F1 use the harness overlap rule: a document is a true positive when any predicted span of that type overlaps a gold span. An undefined F1 means there were no positive predictions, or no gold documents and no false positives. spaCy \texttt{en\_core\_web\_sm} emits none of the four labels, so its precision and F1 are undefined and its recall is zero wherever a gold span exists. Figure~\ref{fig:rw-pii-f1} omits those undefined bars.
 
@@ -107,7 +130,7 @@ On ASQA dev (n=948), a case-sensitive Wikipedia title substring matches 525 long
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{rw-overhead-pct.pdf}
-\caption{Share of signed end-to-end latency spent outside the provider HTTP call. The bar is the median and the whiskers run from the minimum to the maximum of the successful signed trials.}
+\caption{Signed Lattice processing time as a percentage of end-to-end time. End-to-end time is Lattice processing plus provider time plus failed-attempt HTTP time. Backoff is excluded. The bar is the median and the whiskers run from the minimum to the maximum. The local bar is wall time minus the localhost HTTP call from the earlier Ollama run.}
 \label{fig:rw-overhead-pct}
 \end{figure}
 

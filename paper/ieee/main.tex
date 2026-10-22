@@ -743,10 +743,12 @@ crew example that demonstrates chained receipts and an evaluation gate.
 We evaluate Lattice in two ways. The first is measured: the cost that receipts add to a
 run, the size of a receipt, and whether the verifier rejects every tampered receipt and
 reproduces every replay, all against a mocked provider so that no model behavior enters
-the measurement. The second is assurance by construction: the guarantees are encoded as
-invariants and property tests that fail the build when a guarantee weakens. We do not
-measure model output quality, which depends on providers outside our trust boundary.
-A later subsection records a local open-weight model; those runs are not part of the mocked table.
+that measurement. The second is assurance by construction: the guarantees are encoded as
+invariants and property tests that fail the build when a guarantee weakens. Output
+quality depends on providers outside our trust boundary. A later subsection records a
+local open-weight model and free hosted models, including Lattice processing time
+separated from provider latency and rate-limit backoff. Those runs are not part of the
+mocked table.
 
 \subsection{Measured cost and tamper resistance}
 
@@ -917,6 +919,10 @@ An open chain warns on tail truncation unless an expected count is passed. A cre
 closing receipt makes a dropped leaf a count mismatch without an out-of-band count. Finally, external audit helpers can sign and
 replay evidence produced elsewhere, but they cannot prove that the external executor
 used the claimed provider unless that executor supplies trustworthy raw envelopes.
+The hosted measurements use free endpoints. They rate-limit, they are not a paid-latency
+sample, and a model that rejects ordinary chat calls is reported as unavailable rather
+than given a latency. Paired provider times are too noisy to treat as the cost of the
+extra prompt tokens Lattice packs.
 
 % --- Future Work ----------------------------------------------------------
 \section{Future Work}

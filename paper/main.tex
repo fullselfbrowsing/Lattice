@@ -293,7 +293,7 @@ We placed marker secrets in the task, an input artifact, the provider credential
 
 \subsection{Adoption cost (DR5)}
 
-Table~\ref{tab:overhead} and Figure~\ref{fig:overhead} report latency over \OverheadTrials{} trials after warm-up, against a mocked provider. Signing added \SignDeltaSmallMs{}~ms at the median for a 1~KB text input and \SignDeltaImageMs{}~ms for a 1~MB image (signed run minus unsigned run). Verification of the small-text receipt was \VerifySmallMs{}~ms at the median. The receipt grows with the number of input hashes rather than with payload size (Table~\ref{tab:size}). Linked receipts and chain verification scale with depth (Table~\ref{tab:chain}, Figure~\ref{fig:chain}). Because the provider was a zero-latency fake, these figures are the runtime's own cost, not a share of a hosted model's latency. We did not measure real provider latency.
+Table~\ref{tab:overhead} and Figure~\ref{fig:overhead} report latency over \OverheadTrials{} trials after warm-up, against a mocked provider. Signing added \SignDeltaSmallMs{}~ms at the median for a 1~KB text input and \SignDeltaImageMs{}~ms for a 1~MB image (signed run minus unsigned run). Verification of the small-text receipt was \VerifySmallMs{}~ms at the median. The receipt grows with the number of input hashes rather than with payload size (Table~\ref{tab:size}). Linked receipts and chain verification scale with depth (Table~\ref{tab:chain}, Figure~\ref{fig:chain}). Because the provider was a zero-latency fake, these figures are the runtime's own cost. The live section below measures that processing time again on a local model and on hosted models, with provider latency and rate-limit waits kept on separate clocks.
 
 \begin{figure}[t]
 \centering
@@ -342,7 +342,7 @@ For developers, the design principles suggest a pattern: configure signing once,
 
 The evaluation has several limitations, which are also tracked publicly \citep{latticeissue21}.
 \begin{itemize}
-\item \emph{Mocked providers.} All provider calls were simulated, so overhead relative to real latency, live replay drift, and provider-specific behavior were not measured.
+\item \emph{Mocked and live providers.} The controlled tables use a simulated provider. A later section runs a local model and free hosted models. The hosted sample is a free tier: it rate-limits, it does not represent paid latency, and one catalogued model rejects ordinary chat calls. Provider-time differences between a packed prompt and a one-line prompt are too noisy to attribute to the extra tokens.
 \item \emph{Replay binding is opt-in.} Audience, nonce, and a raised version floor are not required for verification. A receipt with no \code{expiresAt} does not expire unless the caller passes \code{maxAgeMs}. There is no replay cache. Advisories warn. They do not reject.
 \item \emph{Open chains can still be tail-truncated.} Without \code{expectedCount} or a closing member list, truncation is an advisory. Crews minted by this revision do write that list.
 \item \emph{Signer failure is visible, not fail-closed by default.} If the signer throws, the run still succeeds and the result carries \code{receiptError} unless the caller selects throw-on-signer-error. A run with no signer emits no receipt.
