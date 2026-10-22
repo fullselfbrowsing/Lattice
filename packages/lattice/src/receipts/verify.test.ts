@@ -1239,6 +1239,13 @@ describe("verify.ts — receiptVerifyAdvisories", () => {
     expect(note("lattice-receipt/v1.1")?.message).toContain("effective floor lattice-receipt/v1.1");
     expect(note("lattice-receipt/v1")?.message).toContain("effective floor lattice-receipt/v1.1");
     expect(note("lattice-receipt/v1.2")?.message).toContain("effective floor lattice-receipt/v1.2");
+    // The advice matches what the caller did: pass minVersion, or raise it.
+    expect(note()?.message).toContain("pass minVersion to require a newer schema");
+    expect(note("lattice-receipt/v1.2")?.message).toContain(
+      "raise minVersion above lattice-receipt/v1.2",
+    );
+    expect(note("lattice-receipt/v1.2")?.message).not.toContain("pass minVersion");
+    expect(note("lattice-receipt/v1")?.message).toContain("raise minVersion above lattice-receipt/v1.1");
     // A floor above the receipt would have rejected it, so there is nothing to note.
     expect(note("lattice-receipt/v1.3")).toBeUndefined();
     expect(

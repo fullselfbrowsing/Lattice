@@ -120,7 +120,8 @@ const diffCommand = defineCommand({
  *   exit 0 — `OK root=<cid> links=<count>` on stdout, then zero or more
  *            stderr advisory lines from `VerifyChainOk.advisories`:
  *              `WARN <code>: <message>` always printed (an unchecked
- *                audience or nonce binding, or tail-truncation-unchecked)
+ *                audience or nonce binding, tail-truncation-unchecked, or
+ *                closure-partial)
  *              `INFO <code>: <message>` omitted under --quiet
  *            Advisories never change the exit code.
  *   exit 1 — `FAIL kind=<VerifyChainErrorKind> reason=<message>[ cid=<cid>]` on stderr.
@@ -135,7 +136,8 @@ const diffCommand = defineCommand({
  * `WARN tail-truncation-unchecked` line. `--require-closure` turns a chain
  * without closure into `FAIL kind=count-mismatch`. `--partial` verifies a
  * disclosed subset of a closed chain: the crew-close receipt must be in
- * `dir` and must list every other receipt there. `--root-cid` detects a
+ * `dir` and must list every other receipt there, and listed receipts that
+ * are not in `dir` print as `WARN closure-partial`. `--root-cid` detects a
  * replaced root, not a missing leaf.
  */
 export interface RunReceiptVerifyChainArgs extends VerifyOptionArgs {
@@ -291,7 +293,7 @@ const verifyChainCommand = defineCommand({
     partial: {
       type: "boolean",
       description:
-        "Verify a disclosed subset of a closed chain; the crew-close receipt must be present.",
+        "Verify a disclosed subset of a closed chain; the crew-close receipt must be present, and unpresented members print as WARN closure-partial.",
     },
     quiet: {
       type: "boolean",

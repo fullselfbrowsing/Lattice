@@ -300,7 +300,7 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
     expect(bag.stderr[0]).toMatch(/^FAIL kind=count-mismatch reason=.*dropped/u);
   });
 
-  it("--partial accepts a disclosed subset that keeps the closer and prints INFO closure-partial", async () => {
+  it("--partial accepts a disclosed subset that keeps the closer and prints WARN closure-partial, even under --quiet", async () => {
     const fixture = await makeClosedChainFixture(3);
     await writeFixture(fixture, {
       "0-root.json": fixture.root,
@@ -312,7 +312,7 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
     await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath, partial: true }, partial.deps);
     expect(partial.bag.exitCode).toBe(0);
     expect(partial.bag.stdout[0]).toMatch(/ links=3$/u);
-    expect(partial.bag.stderr).toContainEqual(expect.stringMatching(/^INFO closure-partial: .*2 member/u));
+    expect(partial.bag.stderr).toContainEqual(expect.stringMatching(/^WARN closure-partial: .*2 member/u));
 
     const quiet = captureDeps();
     await runReceiptVerifyChain(
@@ -320,7 +320,7 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
       quiet.deps,
     );
     expect(quiet.bag.exitCode).toBe(0);
-    expect(quiet.bag.stderr).toEqual([]);
+    expect(quiet.bag.stderr).toEqual([expect.stringMatching(/^WARN closure-partial: .*2 member/u)]);
   });
 
   it("--require-closure fails a chain that declares no closure", async () => {

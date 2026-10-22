@@ -465,6 +465,40 @@ describe("verifyChain — chain closure", () => {
     if (!twice.ok) expect(twice.error.message).toContain("found 2");
   });
 
+  it("rejects chainClosure declared below the root, even with every member present", async () => {
+    const { signer, keySet } = await makeSigner();
+    // root (no closure) -> k1 (declares closure) -> k2, plus a closer that
+    // lists everything. Dropping k1 and the closer together would leave an
+    // unclosed chain, so the declaration itself must be on the root.
+    const root = await createReceipt(minimalInput({ stepName: "root" }), signer);
+    const rootCid = await receiptCid(root);
+    const k1Plain = await createReceipt(
+      minimalInput({ parentReceiptCid: rootCid, stepName: "k1" }),
+      signer,
+    );
+    const k1 = await resignWith(k1Plain, signer, "chainClosure", "member-cids");
+    const k1Cid = await receiptCid(k1);
+    const k2 = await createReceipt(minimalInput({ parentReceiptCid: k1Cid, stepName: "k2" }), signer);
+    const closer = await createReceipt(
+      minimalInput({
+        parentReceiptCid: rootCid,
+        stepName: "close",
+        chainMemberCids: [rootCid, k1Cid, await receiptCid(k2)].sort(),
+      }),
+      signer,
+    );
+
+    for (const options of [{}, { partial: true }]) {
+      const result = await verifyChain([root, k1, k2, closer], keySet, options);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe("count-mismatch");
+        expect(result.error.cid).toBe(k1Cid);
+        expect(result.error.message).toContain("not the root");
+      }
+    }
+  });
+
   it("requireClosure rejects a tree with no closure and accepts a closed one", async () => {
     const { signer, keySet } = await makeSigner();
     const open = await mintTree(signer, 2);
@@ -492,7 +526,7 @@ describe("verifyChain — chain closure", () => {
     expect(closedResult).toMatchObject({ ok: true, count: 4 });
   });
 
-  it("partial verifies a disclosed subset that includes the closer, with a closure-partial advisory", async () => {
+  it("partial verifies a disclosed subset that includes the closer, with a closure-partial warning", async () => {
     const { signer, keySet } = await makeSigner();
     const { root, children, closer } = await mintClosedTree(signer, 3);
     const subset = [root, children[1]!, closer];
@@ -505,7 +539,7 @@ describe("verifyChain — chain closure", () => {
     expect(partial).toMatchObject({ ok: true, count: 3 });
     if (partial.ok) {
       expect(partial.advisories).toContainEqual(
-        expect.objectContaining({ code: "closure-partial", severity: "info" }),
+        expect.objectContaining({ code: "closure-partial", severity: "warn" }),
       );
       const note = partial.advisories?.find((entry) => entry.code === "closure-partial");
       expect(note?.message).toContain("2 member(s)");

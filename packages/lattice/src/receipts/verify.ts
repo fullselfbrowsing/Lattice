@@ -381,6 +381,8 @@ export async function verifyReceipt(
  *   info  version-below-current: the receipt predates the current schema
  *         and the effective floor, max(`minVersion`, v1.1), admitted it.
  *         Passing `minVersion` equal to the v1.1 floor does not silence it.
+ *         The message says to pass `minVersion`, or to raise it when one
+ *         was passed.
  *
  * `expiresAt`, when the issuer set it, is enforced inside `verifyReceipt`
  * and produces no advisory. Messages never contain the nonce value. Pure;
@@ -435,10 +437,15 @@ export function receiptVerifyAdvisories(
   const floor = Math.max(receiptVersionOrdinal(options.minVersion), baseline);
   const bodyOrdinal = receiptVersionOrdinal(body.version);
   if (floor <= bodyOrdinal && bodyOrdinal < receiptVersionOrdinal(CURRENT_RECEIPT_VERSION)) {
+    const floorName = RECEIPT_VERSIONS[floor] ?? MIN_ACCEPTED_RECEIPT_VERSION;
+    const advice =
+      options.minVersion === undefined
+        ? "pass minVersion to require a newer schema"
+        : `raise minVersion above ${floorName} to require a newer schema`;
     notes.push({
       code: "version-below-current",
       severity: "info",
-      message: `receipt is ${String(body.version)}, older than ${CURRENT_RECEIPT_VERSION}, and the effective floor ${RECEIPT_VERSIONS[floor] ?? MIN_ACCEPTED_RECEIPT_VERSION} accepted it; pass minVersion to require a newer schema`,
+      message: `receipt is ${String(body.version)}, older than ${CURRENT_RECEIPT_VERSION}, and the effective floor ${floorName} accepted it; ${advice}`,
     });
   }
   return notes;

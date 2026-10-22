@@ -58,8 +58,11 @@ async function safeCid(envelope: ReceiptEnvelope): Promise<string | undefined> {
  * whose `chainMemberCids` lists every other member (crew runs do this).
  * With closure declared, exactly one closing receipt must be present and
  * its list must equal the other presented CIDs, so a dropped or added
- * member fails. `partial: true` relaxes that to "every presented receipt is
- * listed" for selective disclosure; the closer is still required.
+ * member fails. Only the root may declare closure; a declaration on any
+ * other receipt fails. `partial: true` relaxes the list check to "every
+ * presented receipt is listed" for selective disclosure; the closer is
+ * still required, and unpresented members are reported as a
+ * `closure-partial` warning.
  * `requireClosure: true` rejects a chain that declares no closure at all.
  * Without either commitment a chain still verifies, and the result carries
  * a `tail-truncation-unchecked` advisory. `expectedRootCid` detects a
@@ -268,6 +271,18 @@ function checkChainClosure(
   nodes: readonly ChainNode[],
   mode: { readonly requireClosure: boolean; readonly partial: boolean },
 ): ClosureCheck {
+  // Only the root may declare closure. A declaration further down could be
+  // dropped together with its closer, leaving an unclosed chain that
+  // verifies, so it fails even when every member is present.
+  const misplaced = nodes.find(
+    (node) => node.body.chainClosure !== undefined && node.body.parentReceiptCid !== undefined,
+  );
+  if (misplaced !== undefined) {
+    return countMismatch(
+      misplaced.cid,
+      `receipt ${misplaced.cid} declares chainClosure but is not the root; only the root receipt may declare closure`,
+    );
+  }
   const declared = nodes.some((node) => node.body.chainClosure === "member-cids");
   const listed = nodes.filter((node) => node.body.chainMemberCids !== undefined);
   if (!declared && listed.length === 0) {
@@ -348,7 +363,7 @@ function chainAdvisories(
   if (input.unpresented !== undefined && input.unpresented > 0) {
     notes.push({
       code: "closure-partial",
-      severity: "info",
+      severity: "warn",
       message: `partial verification: ${input.unpresented} member(s) listed by the closing receipt were not presented and were not checked`,
     });
   }

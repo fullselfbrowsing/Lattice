@@ -16,7 +16,6 @@
  */
 
 import type { ArtifactRef } from "../../artifacts/artifact.js";
-import { STEP_TRANSITION_EVENT_NAME } from "../../contract/checkpoint.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
@@ -51,6 +50,7 @@ import {
   type ValidatedCrewPolicy,
   validateCrewPolicy,
 } from "./crew-policy.js";
+import { reportCrewMintFailure } from "./receipt-failure.js";
 import {
   createRateLimitGroup,
   type RateLimitGroup,
@@ -99,8 +99,8 @@ export interface CrewResult {
    * `chainMemberCids` lists all the others. A crew of N agents that all
    * succeeded returns N + 2 receipts, so pass `receipts.length`, not an
    * agent count, as `expectedCount`. Empty when no signer is configured.
-   * When a mint failed, that receipt is absent and `receiptError` (root
-   * agent and crew-close) or a tracer event (children) reports it.
+   * When a mint failed under `onSignerError: "flag"`, that receipt is
+   * absent and `receiptError` names it.
    */
   readonly receipts: ReadonlyArray<ReceiptEnvelope>;
   readonly crewRootCid?: string;
@@ -111,10 +111,16 @@ export interface CrewResult {
   readonly runId: string;
   /**
    * Set when `LatticeConfig.receipts.onSignerError` is `"flag"` (the
-   * default) and the root agent's completion receipt or the crew-close
-   * receipt could not be minted. The crew's work is still returned.
-   * Without the crew-close receipt `verifyChain` rejects `receipts`,
-   * because the crew-start receipt declares `chainClosure`.
+   * default) and any receipt after crew-start could not be minted: a child
+   * agent's completion receipt, the root agent's completion receipt, or the
+   * crew-close receipt. `message` names every failed mint, in mint order,
+   * joined by "; ". The crew's work is still returned.
+   *
+   * Check this before treating `receipts` as the whole crew. The crew-close
+   * receipt lists only the receipts that were minted, so a chain missing a
+   * child's or the root agent's completion receipt still verifies. Without
+   * the crew-close receipt `verifyChain` rejects `receipts`, because the
+   * crew-start receipt declares `chainClosure`.
    */
   readonly receiptError?: ReceiptError;
 }
@@ -147,11 +153,15 @@ export async function runAgentCrew(
   const accounting = new Map<string, AgentAccounting>();
   const receipts: ReceiptEnvelope[] = [];
   const receiptCidsByAgent = new Map<string, string[]>();
+  const onSignerError = config.receipts?.onSignerError ?? "flag";
+  // Detail lines for every receipt that failed to mint under "flag".
+  const mintFailures: string[] = [];
 
   const crewRoot = await maybeMintCrewRoot({
     runId,
     root: options.root,
     ...(options.signer !== undefined ? { signer: options.signer } : {}),
+    ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
   });
   if (crewRoot !== undefined) {
     receipts.push(crewRoot.envelope);
@@ -195,6 +205,9 @@ export async function runAgentCrew(
     mintedReceipts(envelope) {
       receipts.push(envelope);
     },
+    receiptMintFailed(detail) {
+      mintFailures.push(detail);
+    },
     config,
     ...(crewRoot !== undefined ? { crewRootCid: crewRoot.cid } : {}),
     ...(options.signer !== undefined ? { signer: options.signer } : {}),
@@ -217,6 +230,8 @@ export async function runAgentCrew(
   });
   // The crew's work ends here. Receipt signing below can be slow (remote or
   // KMS signers) and must not count against the crew's wall-time budget.
+  // Child completion and checkpoint receipts were signed inside the loop
+  // and already count.
   const workEndedAt = Date.now();
   recordUsage(options.root.id, parentResult.usage);
   recordAgentResult(options.root.id, parentResult);
@@ -233,9 +248,8 @@ export async function runAgentCrew(
     ? buildCrewBudgetFailure(parentResult)
     : parentResult;
 
-  let receiptError: ReceiptError | undefined;
   if (options.signer !== undefined && crewRoot !== undefined) {
-    receiptError = await mintClosingReceipts({
+    await mintClosingReceipts({
       runId,
       rootId: options.root.id,
       signer: options.signer,
@@ -243,10 +257,15 @@ export async function runAgentCrew(
       parentResult,
       crewSucceeded: result.kind === "success",
       receipts,
-      onSignerError: config.receipts?.onSignerError ?? "flag",
+      mintFailures,
+      onSignerError,
       ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
     });
   }
+  const receiptError: ReceiptError | undefined =
+    mintFailures.length > 0
+      ? { kind: "signer-failed", message: mintFailures.join("; ") }
+      : undefined;
 
   await populateReceiptCidIndex(receipts, receiptCidsByAgent);
 
@@ -266,11 +285,11 @@ export async function runAgentCrew(
  * Mint the root agent's completion receipt, then the crew-close receipt,
  * appending each to `receipts`. Both run after the crew's work, so a signer
  * failure discards the finished crew only when the caller asked for that:
- * `onSignerError: "throw"` raises ReceiptSigningError. Under `"flag"` each
- * failure is recorded on the tracer, the way the dispatcher reports child
- * mint failures, and returned as a ReceiptError. The closer is still
- * attempted after a parent failure; it then lists only the receipts that
- * exist, so the chain stays verifiable.
+ * `onSignerError: "throw"` raises ReceiptSigningError. Every failure is
+ * recorded on the tracer, and under `"flag"` its detail is appended to
+ * `mintFailures`, the same way the dispatcher reports child mint failures.
+ * The closer is still attempted after a parent failure; it then lists only
+ * the receipts that exist, so the chain stays verifiable.
  */
 async function mintClosingReceipts(input: {
   readonly runId: string;
@@ -280,22 +299,21 @@ async function mintClosingReceipts(input: {
   readonly parentResult: AgentResult;
   readonly crewSucceeded: boolean;
   readonly receipts: ReceiptEnvelope[];
+  readonly mintFailures: string[];
   readonly onSignerError: ReceiptSignerErrorMode;
   readonly tracer?: TracerLike;
-}): Promise<ReceiptError | undefined> {
-  const failures: string[] = [];
+}): Promise<void> {
   const recordFailure = (stepName: string, error: unknown, consequence: string): void => {
-    const message = error instanceof Error ? error.message : String(error);
-    const detail = `${stepName} receipt was not minted: ${message}${consequence}`;
-    if (input.onSignerError === "throw") {
-      throw new ReceiptSigningError(input.runId, detail, { cause: error });
-    }
-    input.tracer?.event?.(STEP_TRANSITION_EVENT_NAME, {
-      runId: input.runId,
-      stepName,
-      mintError: message,
-    });
-    failures.push(detail);
+    input.mintFailures.push(
+      reportCrewMintFailure({
+        runId: input.runId,
+        stepName,
+        error,
+        consequence,
+        onSignerError: input.onSignerError,
+        ...(input.tracer !== undefined ? { tracer: input.tracer } : {}),
+      }),
+    );
   };
 
   const parent = input.parentResult;
@@ -313,7 +331,11 @@ async function mintClosingReceipts(input: {
       }),
     );
   } catch (error) {
-    recordFailure(`crew-agent-completion:${input.rootId}`, error, "");
+    recordFailure(
+      `crew-agent-completion:${input.rootId}`,
+      error,
+      "; crew-close lists only the receipts that were minted, so the chain still verifies without this agent's completion receipt",
+    );
   }
 
   try {
@@ -338,10 +360,6 @@ async function mintClosingReceipts(input: {
       "; the crew-start receipt declares chainClosure, so verifyChain rejects these receipts without it",
     );
   }
-
-  return failures.length > 0
-    ? { kind: "signer-failed", message: failures.join("; ") }
-    : undefined;
 }
 
 function entryFor(
@@ -529,12 +547,39 @@ function composeSharedPrefix(root: AgentSpec): string {
   return composeCrewCachePrefix(firstChild?.tools ?? root.tools);
 }
 
+/**
+ * Mint the crew-start receipt. A failure here throws ReceiptSigningError
+ * whatever `onSignerError` says: no agent has run, so no work is lost, and
+ * without a root no other crew receipt could chain to anything.
+ */
 async function maybeMintCrewRoot(input: {
   readonly runId: string;
   readonly root: AgentSpec;
   readonly signer?: ReceiptSigner;
+  readonly tracer?: TracerLike;
 }): Promise<{ readonly envelope: ReceiptEnvelope; readonly cid: string } | undefined> {
   if (input.signer === undefined) return undefined;
+  try {
+    return await mintCrewStart(input.runId, input.root, input.signer);
+  } catch (error) {
+    // "flag" here only records the tracer event and builds the detail line.
+    const detail = reportCrewMintFailure({
+      runId: input.runId,
+      stepName: `crew-start:${input.root.id}`,
+      error,
+      consequence: "; no agent ran",
+      onSignerError: "flag",
+      ...(input.tracer !== undefined ? { tracer: input.tracer } : {}),
+    });
+    throw new ReceiptSigningError(input.runId, detail, { cause: error });
+  }
+}
+
+async function mintCrewStart(
+  runId: string,
+  root: AgentSpec,
+  signer: ReceiptSigner,
+): Promise<{ readonly envelope: ReceiptEnvelope; readonly cid: string }> {
   // The root is minted BEFORE any agent runs so children have a chain
   // anchor (dispatcher.ts Pitfall 2). Its output hash commits to the crew's
   // agent id tree, the root and every descendant nested as declared, which
@@ -544,11 +589,11 @@ async function maybeMintCrewRoot(input: {
   // finishes, which is what makes a dropped leaf fail.
   const outputHash = await hashOutputForReceipt({
     kind: "crew-start",
-    agents: crewAgentTree(input.root),
+    agents: crewAgentTree(root),
   });
   const envelope = await createReceipt(
     {
-      runId: input.runId,
+      runId,
       model: { requested: "lattice-crew/root", observed: null },
       route: {
         providerId: "lattice-crew",
@@ -561,9 +606,9 @@ async function maybeMintCrewRoot(input: {
       inputHashes: [],
       outputHash,
       chainClosure: "member-cids",
-      stepName: `crew-start:${input.root.id}`,
+      stepName: `crew-start:${root.id}`,
     },
-    input.signer,
+    signer,
   );
   return { envelope, cid: await receiptCid(envelope) };
 }

@@ -221,14 +221,15 @@ export interface VerifyOptions {
  *                                     `expectedNonce` was not passed
  *   warn  "tail-truncation-unchecked" a chain with no `chainClosure` was
  *                                     verified without `expectedCount`
+ *   warn  "closure-partial"           `partial` verified a subset of the
+ *                                     members the closing receipt lists;
+ *                                     the rest were not checked
  *   info  "audience-absent"           the receipt has no audience
  *   info  "nonce-absent"              the receipt has no nonce
  *   info  "expiry-absent"             no `expiresAt` and no `maxAgeMs`
  *   info  "version-below-current"     the receipt predates the current
  *                                     schema and the effective floor,
  *                                     max(`minVersion`, v1.1), accepted it
- *   info  "closure-partial"           `partial` verified a subset of the
- *                                     members the closing receipt lists
  */
 export type VerifyAdvisoryCode =
   | "audience-unchecked"
@@ -242,8 +243,9 @@ export type VerifyAdvisoryCode =
 
 /**
  * `"warn"`: something the receipt or chain commits to was not checked, so a
- * replay or truncation would verify the same way. `"info"`: an optional
- * check that the receipt does not use, or a caller choice worth recording.
+ * replay or truncation would verify the same way. This includes members a
+ * `partial` verification did not see, even though the caller chose the
+ * subset. `"info"`: an optional check that the receipt does not use.
  */
 export type VerifyAdvisorySeverity = "warn" | "info";
 
@@ -259,7 +261,8 @@ export interface VerifyAdvisory {
  * `count-mismatch` covers every failure of a chain's size commitment, not
  * only a wrong `expectedCount`: the closing receipt's `chainMemberCids`
  * disagree with the presented set, the closing receipt is missing or
- * repeated, a receipt lists members while none declares `chainClosure`, or
+ * repeated, a receipt lists members while none declares `chainClosure`, a
+ * receipt other than the root declares `chainClosure`, or
  * `requireClosure` found no declaration. The message says which. A closure
  * field of the wrong type fails earlier, as `link-invalid` with cause
  * `version-mismatch`.
@@ -300,7 +303,7 @@ export interface VerifyChainOptions extends VerifyOptions {
    * Verify a disclosed subset of a closed chain. The closing receipt must
    * still be present, and every other presented receipt must be listed in
    * its `chainMemberCids`; listed members that are not presented are
-   * allowed and reported as a `closure-partial` advisory. The subset must
+   * allowed and reported as a `closure-partial` warning. The subset must
    * still form one tree under the root. No effect on a chain that does not
    * declare `chainClosure`.
    */

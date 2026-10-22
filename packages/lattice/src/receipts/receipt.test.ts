@@ -825,6 +825,11 @@ describe("createReceipt — chain-closure fields", () => {
     ["an uppercase-hex member", { chainMemberCids: [`sha256:${"A".repeat(64)}`] }, /chainMemberCids\[0\]/u],
     ["a duplicate member", { chainMemberCids: [cidA, cidA] }, /more than once/u],
     ["an unsorted list", { chainMemberCids: [cidB, cidA] }, /must be sorted/u],
+    [
+      "chainClosure on a non-root receipt",
+      { chainClosure: "member-cids", parentReceiptCid: cidA },
+      /chainClosure is only valid on a root receipt/u,
+    ],
   ])("refuses to issue a receipt with %s", async (_label, overrides, pattern) => {
     const { signer } = await makeSigner();
     const input = { ...minimalInput(), ...overrides } as unknown as CreateReceiptInput;

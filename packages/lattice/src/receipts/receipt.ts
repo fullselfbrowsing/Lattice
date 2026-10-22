@@ -49,7 +49,8 @@ export interface CreateReceiptInput {
   readonly audience?: string;
   readonly nonce?: string;
   readonly expiresAt?: string;
-  // Chain closure. Set `chainClosure` on a tree's root; list every other
+  // Chain closure. Set `chainClosure` on a tree's root (createReceipt
+  // rejects it together with `parentReceiptCid`); list every other
   // member's receiptCid in `chainMemberCids` on one closing receipt,
   // sorted and unique (crew runs do this; see verifyChain).
   readonly chainClosure?: "member-cids";
@@ -112,10 +113,16 @@ const RECEIPT_CID_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 function assertChainClosure(
   chainClosure: unknown,
   chainMemberCids: unknown,
+  parentReceiptCid: unknown,
 ): void {
   if (chainClosure !== undefined && chainClosure !== "member-cids") {
     throw new TypeError(
       `createReceipt: chainClosure must be "member-cids", got ${JSON.stringify(chainClosure) ?? String(chainClosure)}`,
+    );
+  }
+  if (chainClosure !== undefined && parentReceiptCid !== undefined) {
+    throw new TypeError(
+      "createReceipt: chainClosure is only valid on a root receipt; omit parentReceiptCid or chainClosure",
     );
   }
   if (chainMemberCids === undefined) return;
@@ -151,7 +158,7 @@ export async function createReceipt(
   // verifier's timezone, so refuse to issue one (caller error, not a verdict).
   assertInstant("issuedAt", input.issuedAt);
   assertInstant("expiresAt", input.expiresAt);
-  assertChainClosure(input.chainClosure, input.chainMemberCids);
+  assertChainClosure(input.chainClosure, input.chainMemberCids, input.parentReceiptCid);
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
   // Always emit the current schema. Older minted versions (v1.1 to v1.3)

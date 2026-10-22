@@ -512,7 +512,7 @@ describe("runAgentCrew — crew-close verdict and timing", () => {
     expect(await verifyChain(result.receipts, keySet)).toMatchObject({ ok: true });
   });
 
-  it("does not count receipt signing against the crew wall-time budget", async () => {
+  it("does not count post-work receipt signing (root completion, crew-close) against the crew wall-time budget", async () => {
     const { signer: inner } = await makeSignerPair();
     let offsetMs = 0;
     const realNow = Date.now.bind(Date);
@@ -677,5 +677,136 @@ describe("runAgentCrew — receipt signer failures after the crew's work", () =>
     );
     await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
     await expect(run).rejects.toThrow(/remote signer 503/u);
+  });
+});
+
+describe("runAgentCrew — child completion and crew-start signer failures", () => {
+  const isAlpha = (step: string): boolean => step === "crew-agent-completion:alpha";
+
+  function twoChildCrew() {
+    const root = makeRoot([makeChild("alpha"), makeChild("beta")]);
+    const scripted = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}',
+        "alpha summary",
+        '{"tool_calls":[{"id":"b","name":"beta","args":{"task":"B"}}]}',
+        "beta summary",
+        "final",
+      ],
+      [],
+    );
+    return { root, ...scripted };
+  }
+
+  it.each([
+    ["the default", undefined],
+    ["explicit flag", "flag" as const],
+  ])("under %s mode, keeps the work and names the missing child receipt in receiptError", async (_label, mode) => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const events: Array<Record<string, unknown> | undefined> = [];
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, isAlpha),
+        tracer: {
+          kind: "tracer",
+          event(_name, attributes) {
+            events.push(attributes);
+          },
+        },
+      },
+      { providers: [provider], ...(mode !== undefined ? { receipts: { onSignerError: mode } } : {}) },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    expect(result.receiptError?.message).toContain(
+      "crew-agent-completion:alpha receipt was not minted: remote signer 503",
+    );
+    expect(result.receiptError?.message).toContain("still verifies without");
+    expect(Object.isFrozen(result.receiptError)).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ stepName: "crew-agent-completion:alpha", mintError: expect.any(String) }),
+    );
+    const steps = result.receipts.map((envelope) => decodeReceiptBody(envelope.payload).stepName);
+    expect(steps).toEqual(["crew-start:lead", "crew-agent-completion:lead", "crew-close:lead"]);
+    expect(result.perAgent.find((entry) => entry.id === "alpha")?.receiptCids).toEqual([]);
+    // The closer lists only what was minted, so the chain verifies without
+    // alpha's receipt. receiptError is what tells the caller it is missing.
+    expect(await verifyChain(result.receipts, keySet, { requireClosure: true })).toMatchObject({
+      ok: true,
+      count: 3,
+    });
+  });
+
+  it("names every failed mint in mint order: children first, then the closer", async () => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = twoChildCrew();
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(
+          signer,
+          (step) =>
+            step === "crew-agent-completion:alpha" ||
+            step === "crew-agent-completion:beta" ||
+            step.startsWith("crew-close:"),
+        ),
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    const message = result.receiptError?.message ?? "";
+    const order = [
+      "crew-agent-completion:alpha receipt",
+      "crew-agent-completion:beta receipt",
+      "crew-close:lead receipt",
+    ].map((needle) => message.indexOf(needle));
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("rejects with ReceiptSigningError at the failed child mint under onSignerError: throw", async () => {
+    const { signer } = await makeSignerPair();
+    const root = makeRoot([makeChild("alpha")]);
+    const { provider, tasks } = makeScriptedProvider(
+      ['{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}', "alpha summary", "final"],
+      [],
+    );
+    const run = runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, isAlpha) },
+      { providers: [provider], receipts: { onSignerError: "throw" } },
+    );
+
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/crew-agent-completion:alpha receipt was not minted: remote signer 503/u);
+    // The crew stops at the failed mint: the root agent's final turn never runs.
+    expect(tasks).toHaveLength(2);
+  });
+
+  it.each([
+    ["the default", undefined],
+    ["flag", "flag" as const],
+    ["throw", "throw" as const],
+  ])("throws ReceiptSigningError before any agent runs when crew-start fails under %s mode", async (_label, mode) => {
+    const { signer } = await makeSignerPair();
+    const root = makeRoot([makeChild("alpha")]);
+    const { provider, tasks } = makeScriptedProvider(["final"], []);
+    const run = runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, (step) => step.startsWith("crew-start:")),
+      },
+      { providers: [provider], ...(mode !== undefined ? { receipts: { onSignerError: mode } } : {}) },
+    );
+
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran/u);
+    expect(tasks).toHaveLength(0);
   });
 });
