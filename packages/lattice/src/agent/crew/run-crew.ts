@@ -93,14 +93,17 @@ export interface CrewResult {
   /** Total iterations across every recorded agent. */
   readonly totalIterations: number;
   /**
-   * Every receipt the crew minted, in mint order: the crew-start root, a
-   * completion receipt for each child agent that succeeded, the root
-   * agent's completion receipt, and a final crew-close receipt whose
-   * `chainMemberCids` lists all the others. A crew of N agents that all
-   * succeeded returns N + 2 receipts, so pass `receipts.length`, not an
-   * agent count, as `expectedCount`. Empty when no signer is configured.
-   * When a mint failed under `onSignerError: "flag"`, that receipt is
-   * absent and `receiptError` names it.
+   * The crew's chain receipts, in mint order: the crew-start root, a
+   * completion receipt for each child run that succeeded, the root agent's
+   * completion receipt, and a final crew-close receipt whose
+   * `chainMemberCids` lists all the others. When each of N agents runs once
+   * and every child run succeeds, that is N + 2 receipts. A child that
+   * never runs, or whose run fails, gets no completion receipt, and a child
+   * that succeeds twice gets two, so pass `receipts.length`, not an agent
+   * count, as `expectedCount`. Empty when no signer is configured.
+   * Per-iteration checkpoint receipts are not included. When a mint failed
+   * under `onSignerError: "flag"`, that receipt is absent and
+   * `receiptError` names it.
    */
   readonly receipts: ReadonlyArray<ReceiptEnvelope>;
   readonly crewRootCid?: string;

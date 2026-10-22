@@ -48,13 +48,15 @@
  * word on an earlier line or in an earlier sentence never counts. Words
  * are runs of ASCII letters and digits, so `call_id` reads as `call id`.
  *   - Identifier labels: order, orders, ord, invoice, inv, sku, ref, po,
- *     isbn, pn, and txn. A candidate of any type is skipped when the
- *     nearest word before it is one of these, with only whitespace and the
- *     connectors `:`, `#`, `=`, `no.` (or `no`), `number`, and `is` between
- *     them. So "Order No. 123-45-6789" is skipped, while "Order 5521,
- *     415-555-1234", "Customer SSN 123-45-6789", and "for reference
- *     123-45-6789" are flagged. A phone with a trunk prefix ("SKU +1 415 555
- *     0134") is flagged even right after a label.
+ *     isbn, pn, and txn. The us-ssn, credit-card, and us-phone detectors
+ *     skip a candidate when the nearest word before it is one of these,
+ *     with only whitespace and the connectors `:`, `#`, `=`, `no.` (or
+ *     `no`), `number`, and `is` between them. The email detector never
+ *     checks labels, so "Order: alice@example.com" is flagged. "Order No.
+ *     123-45-6789" is skipped, while "Order 5521, 415-555-1234", "Customer
+ *     SSN 123-45-6789", and "for reference 123-45-6789" are flagged. A phone
+ *     with a `+1` or `1` trunk prefix ("SKU +1 415 555 0134") is flagged
+ *     even right after a label.
  *   - Positive cues: `ssn`, `ss#`, and `social security` (or `social sec`)
  *     for an SSN; `phone`, `tel`, `call`, `mobile`, `cell`, and `fax` for a
  *     phone. A bare form needs the cue as the nearest word, with only
