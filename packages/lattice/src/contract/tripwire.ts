@@ -354,8 +354,14 @@ function locateCitationsAtPath(output: unknown, path: string): CitationList | un
   return Array.isArray(value) ? { value, path } : undefined;
 }
 
+interface ProseExclusions {
+  readonly root: boolean;
+  readonly containers: ReadonlySet<object>;
+  readonly properties: ReadonlyMap<object, ReadonlySet<string>>;
+}
+
 interface ProseWalk {
-  readonly excluded: ReadonlySet<object>;
+  readonly excluded: ProseExclusions;
   readonly visited: Map<object, number>;
   /** Called for each prose string; returning true stops the walk. */
   readonly visit: (text: string, frames: readonly PathFrame[]) => boolean;
@@ -383,7 +389,13 @@ function scanProse(
     visit,
     truncated: false,
   };
-  const root = decl.textPath === undefined ? output : resolvePath(output, decl.textPath);
+  const root = resolvePath(output, decl.textPath ?? "", {
+    skip: (value, location) =>
+      walk.excluded.root ||
+      (typeof value === "object" && value !== null && walk.excluded.containers.has(value)) ||
+      (location !== undefined &&
+        walk.excluded.properties.get(location.parent)?.has(location.key) === true),
+  });
   const stopped = walkProse(root, walk, [], 0);
   return { stopped, truncated: walk.truncated };
 }
@@ -394,28 +406,43 @@ function proseLocation(decl: MustCiteInvariant, frames: readonly PathFrame[]): s
 }
 
 /**
- * Objects the prose walk skips, by identity, because they are the declared
- * citations location: the value at `decl.path` and, when it is an array, its
- * object entries (a `[*]` path materializes a fresh array whose entries are
- * the real containers).
+ * Exclude the original locations selected by the citation path, including
+ * primitive fields projected into fresh wildcard arrays. Container identities
+ * also remain excluded through aliases, including object entries of a selected
+ * array. String equality is never used: equal text elsewhere is still prose.
  */
-function declaredSubtree(output: unknown, decl: MustCiteInvariant): ReadonlySet<object> {
-  const excluded = new Set<object>();
+function declaredSubtree(output: unknown, decl: MustCiteInvariant): ProseExclusions {
+  const containers = new Set<object>();
+  const properties = new Map<object, Set<string>>();
+  const excluded = { root: false, containers, properties };
   if (decl.path === undefined) return excluded;
-  const declared = resolvePath(output, decl.path);
-  if (typeof declared !== "object" || declared === null) return excluded;
-  excluded.add(declared);
-  if (Array.isArray(declared)) {
-    for (const entry of declared) {
-      if (typeof entry === "object" && entry !== null) excluded.add(entry);
-    }
-  }
+  resolvePath(output, decl.path, {
+    visit: (value, location) => {
+      if (location === undefined) {
+        excluded.root = true;
+      } else {
+        let keys = properties.get(location.parent);
+        if (keys === undefined) {
+          keys = new Set<string>();
+          properties.set(location.parent, keys);
+        }
+        keys.add(location.key);
+      }
+      if (typeof value !== "object" || value === null) return;
+      containers.add(value);
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (typeof entry === "object" && entry !== null) containers.add(entry);
+        }
+      }
+    },
+  });
   return excluded;
 }
 
 function walkProse(value: unknown, walk: ProseWalk, frames: PathFrame[], depth: number): boolean {
   if (typeof value === "string") return walk.visit(value, frames);
-  if (typeof value !== "object" || value === null || walk.excluded.has(value)) return false;
+  if (typeof value !== "object" || value === null || walk.excluded.containers.has(value)) return false;
   if (depth >= MAX_MUST_CITE_WALK_DEPTH) {
     walk.truncated = true;
     return false;
@@ -426,6 +453,7 @@ function walkProse(value: unknown, walk: ProseWalk, frames: PathFrame[], depth: 
 
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
+      if (walk.excluded.properties.get(value)?.has(String(index)) === true) continue;
       frames.push({ kind: "index", index });
       const stopped = walkProse(entry, walk, frames, depth + 1);
       frames.pop();
@@ -436,7 +464,9 @@ function walkProse(value: unknown, walk: ProseWalk, frames: PathFrame[], depth: 
   if (!isPlainObject(value)) return false;
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record).sort()) {
-    if (CITATION_CONTAINER_KEYS.has(key)) continue;
+    if (CITATION_CONTAINER_KEYS.has(key) || walk.excluded.properties.get(value)?.has(key) === true) {
+      continue;
+    }
     frames.push({ kind: "key", key });
     const stopped = walkProse(record[key], walk, frames, depth + 1);
     frames.pop();
@@ -952,10 +982,22 @@ async function evaluateMatches(
  * chains could allocate O(N^k). Accepted for v1.1 — provider responses
  * are bounded by output token caps.
  */
-function resolvePath(value: unknown, path: string): unknown {
-  if (path === "") return value;
+function resolvePath(value: unknown, path: string, traversal?: PathTraversal): unknown {
   const tokens = tokenize(path);
-  return walk(value, tokens, 0);
+  return walk(value, tokens, 0, traversal);
+}
+
+/** A location in the original output, before any wildcard array is created. */
+interface PathLocation {
+  readonly parent: object;
+  readonly key: string;
+}
+
+interface PathTraversal {
+  /** Observe each resolved endpoint at its original location. */
+  readonly visit?: (value: unknown, location: PathLocation | undefined) => void;
+  /** Prune a source location before resolving further or projecting its value. */
+  readonly skip?: (value: unknown, location: PathLocation | undefined) => boolean;
 }
 
 type Token =
@@ -1013,22 +1055,37 @@ function tokenize(path: string): readonly Token[] {
   return tokens;
 }
 
-function walk(value: unknown, tokens: readonly Token[], cursor: number): unknown {
-  if (cursor >= tokens.length) return value;
+function walk(
+  value: unknown,
+  tokens: readonly Token[],
+  cursor: number,
+  traversal?: PathTraversal,
+  location?: PathLocation,
+): unknown {
+  if (traversal?.skip?.(value, location) === true) return undefined;
+  if (cursor >= tokens.length) {
+    traversal?.visit?.(value, location);
+    return value;
+  }
   if (value === undefined || value === null) return undefined;
   const token = tokens[cursor]!;
   if (token.type === "key") {
     if (typeof value !== "object") return undefined;
     const next = (value as Record<string, unknown>)[token.name];
-    return walk(next, tokens, cursor + 1);
+    return walk(next, tokens, cursor + 1, traversal, { parent: value, key: token.name });
   }
   if (token.type === "index") {
     if (!Array.isArray(value)) return undefined;
-    return walk(value[token.index], tokens, cursor + 1);
+    return walk(value[token.index], tokens, cursor + 1, traversal, {
+      parent: value,
+      key: String(token.index),
+    });
   }
   // wildcard
   if (!Array.isArray(value)) return undefined;
-  return value.map((entry) => walk(entry, tokens, cursor + 1));
+  return value.map((entry, index) =>
+    walk(entry, tokens, cursor + 1, traversal, { parent: value, key: String(index) }),
+  );
 }
 
 /**

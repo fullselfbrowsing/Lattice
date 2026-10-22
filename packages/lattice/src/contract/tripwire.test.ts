@@ -887,6 +887,124 @@ describe("must-cite path scoping", () => {
     inv.__resetCounterForTests();
   });
 
+  it.each([
+    ["competing prose", "Per [Smith 1999].", ["doc-a", "[doc-a]"], false],
+    ["marker-free prose", "Refund approved.", ["doc-a", "[Smith 1999]"], true],
+  ] as const)("wildcard citation strings match real-array behavior with %s", async (_label, answer, refs, ok) => {
+    for (const [path, fields] of [
+      ["refs", { refs }],
+      ["refs[*]", { refs }],
+      ["answers[*].source", { answers: refs.map((source) => ({ source })) }],
+    ] as const) {
+      const result = await evaluateTripwires({ answer, ...fields }, [
+        inv.mustCite("doc-a", { path, rejectUncited: true }),
+      ]);
+      expect(result.ok).toBe(ok);
+      if (!ok) {
+        expectViolation(result);
+        expect(result.evidence.path).toBe(path);
+        expect(result.evidence.observed).toEqual(refs);
+        expect(result.evidence.message).toContain('[Smith 1999] at "answer"');
+      }
+    }
+  });
+
+  it.each([
+    ["[doc-a]", true],
+    ["[Smith 1999]", false],
+  ] as const)("a sibling string equal to citation metadata is still prose: %s", async (marker, ok) => {
+    const output = {
+      answer: "Per [Smith 1999].",
+      answers: [{ source: "doc-a" }, { source: marker, text: marker }],
+    };
+    const result = await evaluateTripwires(output, [
+      inv.mustCite("doc-a", { path: "answers[*].source", rejectUncited: true }),
+    ]);
+    expect(result.ok).toBe(ok);
+  });
+
+  it.each([
+    "answers",
+    "answers[*]",
+    "answers[*].source",
+    "answers[1]",
+    "answers[1].source",
+  ])("textPath %s still excludes selected citation strings", async (textPath) => {
+    const result = await evaluateTripwires(
+      { answers: [{ source: "doc-a" }, { source: "[Smith 1999]" }] },
+      [inv.mustCite("doc-a", { path: "answers[*].source", textPath, rejectUncited: true })],
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it.each(["answers", "answers[*]", "answers[*].text"])(
+    "textPath %s scans sibling prose without being rescued by citation strings",
+    async (textPath) => {
+      const result = await evaluateTripwires(
+        { answers: [{ source: "doc-a", text: "Fine." }, { source: "[doc-a]", text: "Per [Smith 1999]." }] },
+        [inv.mustCite("doc-a", { path: "answers[*].source", textPath, rejectUncited: true })],
+      );
+      expectViolation(result);
+      expect(result.evidence.message).toContain('[Smith 1999] at "answers[1].text"');
+    },
+  );
+
+  it.each(["refs", "refs[*]"])("a textPath below citation path %s still excludes its strings", async (path) => {
+    expect(await evaluateTripwires(
+      { refs: ["doc-a", "[Smith 1999]"] },
+      [inv.mustCite("doc-a", { path, textPath: "refs[1]", rejectUncited: true })],
+    )).toEqual({ ok: true });
+  });
+
+  it("nested textPath wildcards preserve the locations of unselected equal strings", async () => {
+    const result = await evaluateTripwires(
+      { groups: [
+        { answers: [{ source: "doc-a" }, { source: "[Smith 1999]" }] },
+        { answers: [{ source: "[Smith 1999]" }] },
+      ] },
+      [inv.mustCite("doc-a", {
+        path: "groups[0].answers[*].source",
+        textPath: "groups[*].answers[*].source",
+        rejectUncited: true,
+      })],
+    );
+    expectViolation(result);
+    expect(result.evidence.message).toContain('[Smith 1999] at "groups[1].answers[0].source"');
+  });
+
+  it("wildcard object citations stay excluded while sibling prose is read", async () => {
+    const output = {
+      answers: [
+        { ref: { source: "doc-a", note: "[doc-a]" }, text: "Per [Smith 1999]." },
+        { ref: { source: "other", note: "[Smith 1999]" }, text: "Fine." },
+      ],
+    };
+    expectViolation(await evaluateTripwires(output, [
+      inv.mustCite("doc-a", { path: "answers[*].ref", rejectUncited: true }),
+    ]));
+    expect(await evaluateTripwires(output, [
+      inv.mustCite("doc-a", { path: "answers[*].ref", textPath: "answers[1].ref.note", rejectUncited: true }),
+    ])).toEqual({ ok: true });
+  });
+
+  it("citation objects remain excluded through aliases and scoped text paths", async () => {
+    const reference = { source: "doc-a", note: "[Smith 1999]" };
+    const output = { refs: [reference], alias: reference };
+    for (const options of [{}, { textPath: "alias.note" }]) {
+      expect(await evaluateTripwires(output, [
+        inv.mustCite("doc-a", { path: "refs", rejectUncited: true, ...options }),
+      ])).toEqual({ ok: true });
+    }
+  });
+
+  it("inline excludes a selected string without hiding equal prose elsewhere", async () => {
+    const options = { path: "metadata.source", inline: true };
+    const metadata = { source: "[doc-a]" };
+    expectViolation(await evaluateTripwires({ metadata }, [inv.mustCite("doc-a", options)]));
+    expect(await evaluateTripwires({ metadata, answer: "[doc-a]" }, [inv.mustCite("doc-a", options)]))
+      .toEqual({ ok: true });
+  });
+
   it("brackets inside the declared list's entries are not prose", async () => {
     const titled = {
       answer: "Refund in 5 days.",
