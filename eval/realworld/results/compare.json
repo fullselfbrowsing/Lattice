@@ -143,19 +143,29 @@
     {
       "tool": "cosign",
       "measured": true,
-      "mode": "local key pair, sign-blob. Fulcio and Rekor were not used.",
+      "mode": "local key pair, sign-blob with cosign's default transparency-log upload. Fulcio was not used. The run uploaded a hashedrekord entry to the public Rekor log (rekor.sigstore.dev), so the 4916 ms wrap time includes that round trip, and verify-blob checked the log online.",
       "version": "v2.5.3",
       "gitCommit": "488ef8ceed5ab5d77379e9077a124a0d0df41d06",
       "ms": 4916.32889199991,
       "bytes": 1319,
-      "offlineVerify": true,
+      "tlogUpload": true,
+      "verifyOk": true,
+      "offlineVerify": null,
       "byteEditDetected": true,
       "replay": false,
       "leak": true,
       "routing": false,
       "policy": false,
       "loc": 12,
-      "keyless": false
+      "keyless": false,
+      "rekor": {
+        "url": "https://rekor.sigstore.dev",
+        "kind": "hashedrekord",
+        "logIndex": 3359395843,
+        "integratedTime": "2026-10-21T17:05:01Z",
+        "artifactSha256": "bfa5616074f2f51c67ea6d366466335b52f62c70bfb9463da9cd8ad746798019"
+      },
+      "correction": "Recorded after the run. sign-blob was called without --tlog-upload=false, so cosign v2.5.3 uploaded to the public Rekor log (--yes only skips the confirmation prompt), and verify-blob was called without --insecure-ignore-tlog, so verification was online. offlineVerify is null because no offline verification was run; verifyOk is the recorded verify-blob result. scripts/04-compare.py now passes both flags."
     },
     {
       "tool": "in-toto",
@@ -294,9 +304,9 @@
       "reason": "The TypeScript SDK was measured against MockTransparencyLog. The public transparency log was not used."
     },
     {
-      "tool": "cosign keyless / Rekor",
+      "tool": "cosign keyless (Fulcio)",
       "measured": false,
-      "reason": "Local key sign-blob was measured. Fulcio and Rekor were not contacted."
+      "reason": "Keyless signing with a Fulcio certificate was not measured. The local-key sign-blob run used cosign's default transparency-log upload, so it did contact the public Rekor log; its wrap time includes that round trip and its verification was online."
     }
   ]
 }

@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
-import { L, writeJSON } from "./lib.mjs";
+import { execFileSync } from "node:child_process";
+import { L, ROOT, writeJSON } from "./lib.mjs";
 
 const CACHE = process.env.REALWORLD_CACHE ?? "/tmp/realworld-data";
 const meta = JSON.parse(readFileSync(`${CACHE}/dataset-meta.json`, "utf8"));
@@ -24,9 +25,18 @@ const TYPE_MAP = {
   social_security_number: "us-ssn",
   social_security: "us-ssn",
   credit_card: "credit-card",
+  credit_card_number: "credit-card",
   creditcard: "credit-card",
   card_number: "credit-card",
 };
+
+function gitHead() {
+  try {
+    return execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return null;
+  }
+}
 
 function overlaps(start, end, spans) {
   return spans.some((span) => start < span.end && end > span.start);
@@ -224,6 +234,7 @@ for await (const raw of lines(`${CACHE}/english_openpii_8k.jsonl`)) {
 }
 
 const report = {
+  lattice: { version: L.latticeVersion ?? null, commit: gitHead() },
   datasets: meta,
   unit: "One prediction per document per detector. The detector returns a single match. A match is a true positive when that substring overlaps a gold span of the mapped type. A gold document with no overlapping match is a false negative. A match that overlaps no gold span of that type is a false positive.",
   inScopeMap: ["EMAIL/email -> email", "SOCIALNUMBER/ssn -> us-ssn", "TEL/phone -> us-phone", "credit card labels -> credit-card"],

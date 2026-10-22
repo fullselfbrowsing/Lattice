@@ -1000,7 +1000,7 @@
     {
       "measured": false,
       "status": "from docs, not measured",
-      "reason": "ImportError: cannot import name 'DetectPII' from 'guardrails.hub' (/home/ubuntu/.local/lib/python3.12/site-packages/guardrails/hub/__init__.py)",
+      "reason": "ImportError: cannot import name 'DetectPII' from 'guardrails.hub'",
       "docs": "Guardrails AI validators can reject a string that contains PII. The hub package guardrails/detect_pii was not installed in this environment.",
       "tool": "guardrails-detect-pii"
     },

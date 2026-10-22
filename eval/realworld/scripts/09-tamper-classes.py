@@ -12,13 +12,15 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 PAYLOADS = json.loads((RESULTS / "payloads.json").read_text())
 RUNS = PAYLOADS["runs"]
-NODE = "/home/ubuntu/.nvm/versions/node/v24.22.1/bin/node"
+NODE = os.environ.get("NODE_BIN") or shutil.which("node")
+CMP_DIR = Path(os.environ.get("CMP_DIR", ROOT / ".cache" / "cmp"))
 
 
 def record(tool: str, results: dict, note: str = "") -> dict:
@@ -103,7 +105,7 @@ def _parses(text: str) -> bool:
 
 
 def hmac() -> dict:
-    spec = importlib.util.spec_from_file_location("nova_signing", "/tmp/cmp/novafabric/src/novafabric/events/signing.py")
+    spec = importlib.util.spec_from_file_location("nova_signing", CMP_DIR / "novafabric" / "src" / "novafabric" / "events" / "signing.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     secret = b"eval-secret-32-bytes-minimum!!"
@@ -124,6 +126,8 @@ def hmac() -> dict:
 
 
 def lattice() -> dict:
+    if not NODE:
+        return {"tool": "lattice-receipt", "measured": False, "reason": "node not found; set NODE_BIN or put node on PATH"}
     env = os.environ.copy()
     env["PATH"] = str(Path(NODE).parent) + os.pathsep + env["PATH"]
     proc = subprocess.run([NODE, str(ROOT / "scripts" / "09-lattice-mutations.mjs")], cwd=ROOT.parents[1], text=True, capture_output=True, env=env)
@@ -134,8 +138,7 @@ def lattice() -> dict:
 
 
 def afr() -> dict:
-    import sys
-    sys.path.insert(0, "/tmp/cmp/agent-flight-recorder")
+    sys.path.insert(0, str(CMP_DIR / "agent-flight-recorder"))
     from afr.anchoring import MockAnchor
     from afr.recorder import FlightRecorder, RecorderConfig
     from afr.verifier import Verifier

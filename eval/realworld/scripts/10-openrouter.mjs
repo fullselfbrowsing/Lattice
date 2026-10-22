@@ -345,7 +345,9 @@ async function timeRun(run) {
   const elapsed = performance.now() - t0;
   const accounted = phases.latticeMs + phases.providerMs + phases.retryProviderMs + phases.backoffMs;
   const slackMs = elapsed - accounted;
-  const e2eMs = Math.max(0, phases.latticeMs + phases.providerMs + phases.retryProviderMs);
+  // End-to-end time is Lattice work plus the HTTP time of the attempt that
+  // returned. Retried attempts, backoff, pacing, and slack are excluded.
+  const e2eMs = Math.max(0, phases.latticeMs + phases.providerMs);
   const last = [...sink].reverse().find((call) => !call.retry) ?? sink.at(-1) ?? null;
   return { result, error, wallMs: e2eMs, e2eMs, httpMs: phases.providerMs, phases, slackMs, sink, last };
 }
@@ -413,13 +415,15 @@ function norm(value) {
 
 function driftBlock(rows, temperature) {
   const answers = rows.map((row) => row.answer ?? "");
+  // Failed calls carry an empty answer. Drift is measured over successes only.
+  const good = rows.filter((row) => row.ok).map((row) => row.answer ?? "");
   return {
     temperature,
     n: rows.length,
-    ok: rows.filter((row) => row.ok).length,
-    exactMatch: answers.length > 0 && answers.every((answer) => answer === answers[0]),
-    normalizedMatch: answers.length > 0 && answers.every((answer) => norm(answer) === norm(answers[0])),
-    uniqueExact: new Set(answers).size,
+    ok: good.length,
+    exactMatch: good.length > 0 && good.every((answer) => answer === good[0]),
+    normalizedMatch: good.length > 0 && good.every((answer) => norm(answer) === norm(good[0])),
+    uniqueExact: new Set(good).size,
     cited: rows.filter((row) => row.cited).length,
     mustCitePassed: rows.filter((row) => row.mustCitePassed).length,
     answers,
@@ -452,10 +456,10 @@ const out = {
     baseUrl: BASE,
     adapter: "createOpenAICompatibleProvider",
     keyLoaded: true,
-    note: "Lattice time is the runtime work around the provider call: routing, request packing, policy, output checks, redaction, signing, and receipt build. Provider time is the fetch plus the full response body. Pacing sleeps, HTTP 429 backoff, and failed-attempt HTTP time are excluded from Lattice time and from the end-to-end denominator. An earlier header-only subtraction counted body download as Lattice time. max_tokens is 8192. Models that advertise a reasoning parameter also receive reasoning.effort=low; a 400 that rejects that field is retried once without it. Inkling's HTTP 403 on ordinary chat calls is recorded as unavailable.",
+    note: "Lattice time is the runtime work around the provider call: routing, request packing, policy, output checks, redaction, signing, and receipt build. Provider time is the fetch plus the full response body. Pacing sleeps, HTTP 429 backoff, and failed-attempt HTTP time are excluded from Lattice time and from the end-to-end denominator. The adapter sends no temperature, max_tokens, or reasoning field; the fetch wrapper adds them. max_tokens is 8192. Models that advertise a reasoning parameter also receive reasoning.effort=low; a 400 that rejects that field is retried once without it. Inkling's HTTP 403 on ordinary chat calls is recorded as unavailable.",
     maxTokens: { overhead: MAX_TOKENS, rag: MAX_TOKENS, ticket: MAX_TOKENS, agent: MAX_TOKENS, crew: MAX_TOKENS, multimodal: MAX_TOKENS },
     reasoning: { effort: "low" },
-    timing: "latticeMs excludes provider body, retries, and backoff; latticePct = 100 * latticeMs / (latticeMs + providerMs + retryProviderMs)",
+    timing: "latticeMs excludes provider body, retries, and backoff; e2eMs = latticeMs + providerMs; latticePct = 100 * latticeMs / e2eMs. retryProviderMs, backoffMs, and slackMs are recorded separately.",
     plan: PLAN,
     tasks: [...TASKS],
   },

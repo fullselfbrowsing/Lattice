@@ -3,9 +3,11 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { L, RESULTS, makeKeys, containsMarker, writeJSON } from "./lib.mjs";
+import { L, ROOT, RESULTS, makeKeys, containsMarker, writeJSON } from "./lib.mjs";
 
-const SELLO = process.env.SELLO_SRC ?? "/tmp/cmp/sello/sdks/typescript/src";
+// Comparison checkouts live in CMP_DIR (see fetch-competitors.sh).
+const CMP_DIR = process.env.CMP_DIR ?? resolve(ROOT, ".cache", "cmp");
+const SELLO = process.env.SELLO_SRC ?? resolve(CMP_DIR, "sello", "sdks", "typescript", "src");
 const payloads = JSON.parse(readFileSync(resolve(RESULTS, "payloads.json"), "utf8"));
 const markers = payloads.markers ?? [];
 

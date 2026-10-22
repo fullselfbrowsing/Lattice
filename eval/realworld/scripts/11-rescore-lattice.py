@@ -1,19 +1,21 @@
 """Replace the Lattice block in pii-tools.json using every substring occurrence.
 
-The long PII process may have scored the first match only. This pass reads
-lattice-spans-all.jsonl and leaves the other tools untouched. It also records
-NeMo Guardrails as documentation-only when that row is missing.
+Re-scores Lattice without re-running the other detectors. It reads the span
+file that 06-lattice-spans.mjs writes (LATTICE_SPANS, default
+$REALWORLD_CACHE/lattice-spans.jsonl) and leaves the other tools untouched. It
+also records NeMo Guardrails as documentation-only when that row is missing.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
-CACHE = Path("/tmp/realworld-data")
-SPANS = CACHE / "lattice-spans-all.jsonl"
+CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
+SPANS = Path(os.environ.get("LATTICE_SPANS", CACHE / "lattice-spans.jsonl"))
 
 
 def load_pii():
@@ -51,6 +53,7 @@ def main() -> None:
             "gretel": {**module.score(gretel, preds["gretel"]), "latencyMs": module.latency_summary(times["gretel"])},
         },
         "note": "Every occurrence of the single substring returned by detect(), the same locate() rule as 02-score.mjs.",
+        "meta": module.lattice_meta(),
     }
     prior = json.loads((RESULTS / "datasets.json").read_text())
     checks = []

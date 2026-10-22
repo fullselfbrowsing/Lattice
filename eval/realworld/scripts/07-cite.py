@@ -5,14 +5,16 @@ The optional NLI stage is a local cross-encoder over the gold knowledge text.
 """
 from __future__ import annotations
 
+import importlib.metadata
 import json
+import os
 import re
 import time
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
-CACHE = Path("/tmp/realworld-data")
+CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
 RESULTS = Path(__file__).resolve().parents[1] / "results"
 BRACKET = re.compile(r"\[([^\]\n]{1,120})\]")
 
@@ -100,9 +102,15 @@ def run_nli(rows: list[dict]) -> dict:
             entailed += 1
         if index and index % 100 == 0:
             print("nli", index, flush=True)
+    try:
+        transformers_version = importlib.metadata.version("transformers")
+    except importlib.metadata.PackageNotFoundError:
+        transformers_version = None
     return {
         "measured": True,
         "model": model_id,
+        "modelRevision": getattr(clf.model.config, "_commit_hash", None),
+        "transformers": transformers_version,
         "n": len(rows),
         "scored": sum(labels.values()) - labels.get("empty", 0),
         "entailed": entailed,

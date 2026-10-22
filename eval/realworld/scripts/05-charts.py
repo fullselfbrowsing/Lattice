@@ -1,4 +1,9 @@
-"""Publication figures and the LaTeX fragment. Every number is read from JSON."""
+"""Publication figures and the LaTeX fragment. Every number is read from JSON.
+
+Figures and fragments are written to results/. The PDFs and the .tex files are
+copied into paper/ and paper/ieee/ so each paper builds on its own; the PNGs stay
+in results/.
+"""
 from __future__ import annotations
 
 import json
@@ -30,11 +35,34 @@ plt.rcParams.update({
     "axes.spines.right": False,
 })
 BLUE, ORANGE, GREEN, VERMILLION, SKY = "#0072B2", "#E69F00", "#009E73", "#D55E00", "#56B4E9"
+# No timestamps or version strings in the files, so a rerun on the same inputs
+# writes the same bytes.
+SAVE_METADATA = {"pdf": {"CreationDate": None}, "png": {"Software": None}}
+# Records that carry a key-based signature. A bare hash chain, a shared-secret
+# HMAC, and an AFR archive anchored only to MockAnchor do not count.
+SIGNED = {
+    "Lattice receipt": True,
+    "JSON log": False,
+    "Hash chain": False,
+    "OTel GenAI spans": False,
+    "Agent Flight Recorder": False,
+    "AFR disclosure": False,
+    "NovaFabric HMAC": False,
+    "NovaFabric capsule": True,
+    "cosign sign-blob": True,
+    "in-toto link": True,
+    "Sello receipt": True,
+    "Janus evidence log": True,
+}
+# datasets.json from the recorded run does not name the Lattice commit. The
+# noPII detectors it measured are the ones at this commit; later commits changed
+# them, so the fragment says so.
+LEGACY_DETECTOR_COMMIT = "a8cc091"
 
 
 def save(fig, name: str) -> None:
     for ext in ("pdf", "png"):
-        fig.savefig(RESULTS / f"{name}.{ext}", bbox_inches="tight", dpi=200)
+        fig.savefig(RESULTS / f"{name}.{ext}", bbox_inches="tight", dpi=200, metadata=SAVE_METADATA[ext])
     plt.close(fig)
 
 
@@ -91,8 +119,13 @@ def bytes_chart() -> None:
     fig, ax = plt.subplots(figsize=(6.4, 3.2))
     names = [r[0] for r in rows]
     vals = [r[1] for r in rows]
-    colors = [BLUE if r[0] == "Lattice" else "#4D4D4D" for r in rows]
+    colors = [ORANGE if r[2] else BLUE for r in rows]
     ax.barh(names[::-1], vals[::-1], color=colors[::-1])
+    from matplotlib.patches import Patch
+    ax.legend(
+        handles=[Patch(color=ORANGE, label="keeps the plaintext transcript"), Patch(color=BLUE, label="digests or ciphertext only")],
+        frameon=False, loc="lower right", fontsize=7,
+    )
     ax.set_xlabel("Artifact bytes")
     ax.set_title("Bytes stored for the recorded runs")
     ax.grid(axis="x", lw=0.3)
@@ -108,23 +141,42 @@ def tool_by_name() -> dict:
     return found
 
 
-def byte_rows() -> list[tuple[str, int]]:
+def byte_rows() -> list[tuple[str, int, bool]]:
+    """Name, stored bytes, and whether the stored record contains the planted markers."""
     tools = tool_by_name()
-    lattice_bytes = NODE["lattice"]["bytes"]
+    afr = tools["agent-flight-recorder"]
     return [
-        ("Lattice", lattice_bytes),
-        ("JSON log", tools["json-log"]["bytes"]),
-        ("Hash chain", tools["hash-chain"]["bytes"]),
-        ("OTel spans", tools["opentelemetry-genai"]["bytes"]),
-        ("AFR", tools["agent-flight-recorder"]["bytes"]),
-        ("AFR disclosure", tools["agent-flight-recorder"]["disclosure"]["bytes"]),
-        ("Nova HMAC", tools["novafabric-hmac"]["bytes"]),
-        ("Nova capsule", tools["novafabric-capture"]["bytes"]),
-        ("cosign blob", tools["cosign"]["bytes"]),
-        ("in-toto link", tools["in-toto"]["bytes"]),
-        ("Sello", NODE["sello"]["bytes"]),
-        ("Janus log", tools["janus"]["bytes"]),
+        ("Lattice", NODE["lattice"]["bytes"], NODE["lattice"]["leak"]),
+        ("JSON log", tools["json-log"]["bytes"], tools["json-log"]["leak"]),
+        ("Hash chain", tools["hash-chain"]["bytes"], tools["hash-chain"]["leak"]),
+        ("OTel spans", tools["opentelemetry-genai"]["bytes"], tools["opentelemetry-genai"]["leak"]),
+        ("AFR", afr["bytes"], afr["leak"]),
+        ("AFR disclosure", afr["disclosure"]["bytes"], afr["disclosure"]["leak"]),
+        ("Nova HMAC", tools["novafabric-hmac"]["bytes"], tools["novafabric-hmac"]["leak"]),
+        ("Nova capsule", tools["novafabric-capture"]["bytes"], tools["novafabric-capture"]["leak"]),
+        ("cosign blob", tools["cosign"]["bytes"], tools["cosign"]["leak"]),
+        ("in-toto link", tools["in-toto"]["bytes"], tools["in-toto"]["leakInLinkMetadata"]),
+        ("Sello", NODE["sello"]["bytes"], NODE["sello"]["leak"]),
+        ("Janus log", tools["janus"]["bytes"], tools["janus"]["leak"]),
     ]
+
+
+PROSE_NAMES = {
+    "JSON log": "the JSON log",
+    "Hash chain": "the hash chain",
+    "Nova HMAC": "the NovaFabric HMAC record",
+    "Nova capsule": "the NovaFabric capsule",
+    "cosign blob": "cosign",
+    "in-toto link": "in-toto",
+    "Janus log": "Janus",
+}
+WORDS = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+
+
+def series(names: list[str]) -> str:
+    if len(names) <= 2:
+        return " and ".join(names)
+    return ", ".join(names[:-1]) + ", and " + names[-1]
 
 
 def yn(value) -> str:
@@ -135,38 +187,89 @@ def yn(value) -> str:
     return "---"
 
 
-def matrix_rows() -> list[list[str]]:
+def binding(name: str, edit_detected) -> str:
+    """Signed output binding: the record is signed and its own verifier rejected a byte edit."""
+    if edit_detected is None:
+        return "---"
+    return "yes" if SIGNED[name] and edit_detected else "no"
+
+
+def verify_cell(row: dict) -> str:
+    # A verify-blob that consulted the transparency log is not an offline check.
+    if row.get("tlogUpload") and row.get("verifyOk"):
+        return "online"
+    return yn(row.get("offlineVerify"))
+
+
+def measured_rows() -> list[tuple[str, str, str, str, str, object, str, object]]:
+    """System, status, wrap ms, bytes, verify cell, byte-edit result, key assumption, leak."""
     tools = tool_by_name()
     afr = tools["agent-flight-recorder"]
     lattice = NODE["lattice"]
     sello = NODE["sello"]
     nova = tools["novafabric-capture"]
+    cosign = tools["cosign"]
+    return [
+        ("Lattice receipt", "measured", f3(lattice["ms"]), str(lattice["bytes"]), yn(lattice["verifyOk"]), lattice["byteFlipRejected"], "other key rejected" if lattice["resignOtherKeyRejected"] else "other key accepted", lattice["leak"]),
+        ("JSON log", "baseline", f3(tools["json-log"]["ms"]), str(tools["json-log"]["bytes"]), yn(tools["json-log"]["offlineVerify"]), tools["json-log"]["byteEditDetected"], "---", tools["json-log"]["leak"]),
+        ("Hash chain", "baseline", f3(tools["hash-chain"]["ms"]), str(tools["hash-chain"]["bytes"]), yn(tools["hash-chain"]["offlineVerify"]), tools["hash-chain"]["byteEditDetected"], "rebuild accepted" if tools["hash-chain"]["rebuildAccepted"] else "rebuild rejected", tools["hash-chain"]["leak"]),
+        ("OTel GenAI spans", "measured", f3(tools["opentelemetry-genai"]["ms"]), str(tools["opentelemetry-genai"]["bytes"]), yn(tools["opentelemetry-genai"]["offlineVerify"]), tools["opentelemetry-genai"]["byteEditDetected"], "---", tools["opentelemetry-genai"]["leak"]),
+        ("Agent Flight Recorder", "measured", f3(afr["ms"]), str(afr["bytes"]), yn(afr["offlineVerify"]), afr["byteEditDetected"], "mock anchor only", afr["leak"]),
+        ("AFR disclosure", "measured", f3(afr["disclosure"]["ms"]), str(afr["disclosure"]["bytes"]), yn(afr["disclosure"]["chainOk"]), afr["disclosure"]["byteFlipLoadFailed"], "mock anchor only", afr["disclosure"]["leak"]),
+        ("NovaFabric HMAC", "measured", f3(tools["novafabric-hmac"]["ms"]), str(tools["novafabric-hmac"]["bytes"]), yn(tools["novafabric-hmac"]["offlineVerify"]), tools["novafabric-hmac"]["byteEditDetected"], "shared secret re-signs" if tools["novafabric-hmac"]["resignWithSharedSecretAccepted"] else "shared secret", tools["novafabric-hmac"]["leak"]),
+        ("NovaFabric capsule", "measured", f3(nova["ms"]), str(nova["bytes"]), yn(nova["offlineVerify"]), nova["byteEditDetected"], "self-asserted key", nova["leak"]),
+        ("cosign sign-blob", "measured", f3(cosign["ms"]), str(cosign["bytes"]), verify_cell(cosign), cosign["byteEditDetected"], "local key, Rekor upload" if cosign.get("tlogUpload") else "local key, no Rekor", cosign["leak"]),
+        ("in-toto link", "measured", f3(tools["in-toto"]["ms"]), str(tools["in-toto"]["bytes"]), yn(tools["in-toto"]["offlineVerify"]), tools["in-toto"]["byteEditDetected"], "functionary key", tools["in-toto"]["leakInLinkMetadata"]),
+        ("Sello receipt", "measured", f3(sello["ms"]), str(sello["bytes"]), yn(sello["verifyOk"]), sello["tamperDetected"], "mock log", sello["leak"]),
+        ("Janus evidence log", "measured", str(tools["janus"]["ms"]), str(tools["janus"]["bytes"]), yn(tools["janus"]["offlineVerify"]), tools["janus"]["byteEditDetected"], "writer key", tools["janus"]["leak"]),
+    ]
+
+
+def matrix_rows() -> list[list[str]]:
     rows = [
-        ["Lattice receipt", "measured", f3(lattice["ms"]), str(lattice["bytes"]), "yes", "yes", "other key rejected", "no", "yes"],
-        ["JSON log", "baseline", f3(tools["json-log"]["ms"]), str(tools["json-log"]["bytes"]), "no", "no", "---", "yes", "no"],
-        ["Hash chain", "baseline", f3(tools["hash-chain"]["ms"]), str(tools["hash-chain"]["bytes"]), "yes", "yes", "rebuild accepted", "yes", "no"],
-        ["OTel GenAI spans", "measured", f3(tools["opentelemetry-genai"]["ms"]), str(tools["opentelemetry-genai"]["bytes"]), "no", "no", "---", "yes", "no"],
-        ["Agent Flight Recorder", "measured", f3(afr["ms"]), str(afr["bytes"]), "yes", "yes", "mock anchor only", "yes", "no"],
-        ["AFR disclosure", "measured", f3(afr["disclosure"]["ms"]), str(afr["disclosure"]["bytes"]), "yes", "yes", "mock anchor only", "no", "no"],
-        ["NovaFabric HMAC", "measured", f3(tools["novafabric-hmac"]["ms"]), str(tools["novafabric-hmac"]["bytes"]), "yes", yn(tools["novafabric-hmac"]["byteEditDetected"]), "shared secret re-signs", "yes", "no"],
-        ["NovaFabric capsule", "measured", f3(nova["ms"]), str(nova["bytes"]), yn(nova["offlineVerify"]), yn(nova["byteEditDetected"]), "self-asserted key", yn(nova["leak"]), "no"],
-        ["cosign sign-blob", "measured", f3(tools["cosign"]["ms"]), str(tools["cosign"]["bytes"]), yn(tools["cosign"]["offlineVerify"]), yn(tools["cosign"]["byteEditDetected"]), "local key, no Rekor", yn(tools["cosign"]["leak"]), "no"],
-        ["in-toto link", "measured", f3(tools["in-toto"]["ms"]), str(tools["in-toto"]["bytes"]), yn(tools["in-toto"]["offlineVerify"]), yn(tools["in-toto"]["byteEditDetected"]), "functionary key", yn(tools["in-toto"]["leakInLinkMetadata"]), "no"],
-        ["Sello receipt", "measured", f3(sello["ms"]), str(sello["bytes"]), yn(sello["verifyOk"]), yn(sello["tamperDetected"]), "mock log", yn(sello["leak"]), "no"],
-        ["Janus evidence log", "measured", str(tools["janus"]["ms"]), str(tools["janus"]["bytes"]), yn(tools["janus"]["offlineVerify"]), yn(tools["janus"]["byteEditDetected"]), "writer key", yn(tools["janus"]["leak"]), "no"],
+        [name, status, ms, size, verify, yn(edit), key, yn(leak), binding(name, edit)]
+        for name, status, ms, size, verify, edit, key, leak in measured_rows()
+    ]
+    rows += [
         ["TrustTrack", "paper only", "---", "---", "---", "---", "---", "---", "---"],
         ["Langfuse", "not run", "---", "---", "---", "---", "---", "---", "---"],
     ]
     return rows
 
 
+BYTE_NAMES = {
+    "Lattice receipt": "Lattice",
+    "Agent Flight Recorder": "AFR",
+    "NovaFabric capsule": "the NovaFabric capsule",
+    "cosign sign-blob": "cosign",
+    "in-toto link": "in-toto",
+    "Sello receipt": "Sello",
+    "Janus evidence log": "Janus",
+}
+
+
+def bound_systems() -> list[str]:
+    return [BYTE_NAMES.get(row[0], row[0]) for row in measured_rows() if binding(row[0], row[5]) == "yes"]
+
+
 def write_matrix() -> None:
-    header = ["System", "Status", "Wrap ms", "Bytes", "Offline verify", "Byte edit detected", "Key assumption", "PII in artifact", "Replay of output"]
+    header = ["System", "Status", "Wrap ms", "Bytes", "Offline verify", "Byte edit detected", "Key assumption", "PII in artifact", "Signed output binding"]
+    caption = (
+        "Same recorded Ollama runs, wrapped by each system that ran. Wrap time excludes model generation. "
+        "Wrap ms is one cold run per system, not a warmed median, and the scopes differ: Lattice and Sello are in-process JavaScript calls summed over three records, "
+        "cosign and the NovaFabric capsule are one CLI invocation each, including process start and key loading, "
+        "Janus reports whole milliseconds from its own timer, and the JSON log time is serialization only. "
+        "PII in artifact reflects what the harness gave each system; where it is yes, the byte count includes the plaintext transcript. "
+        "Signed output binding is yes when the record is signed and the system's own verifier rejected a byte edit. "
+        "TrustTrack and Langfuse were not executed."
+    )
+    if tool_by_name()["cosign"].get("tlogUpload"):
+        caption += " The cosign run uploaded to the public Rekor log and verified online."
     lines = [
         "% Generated by eval/realworld/scripts/05-charts.py. Do not edit.",
         "\\begin{table*}[t]",
         "\\centering",
-        "\\caption{Same recorded Ollama runs, wrapped by each system that ran. Wrap time excludes model generation. TrustTrack and Langfuse were not executed.}",
+        f"\\caption{{{caption}}}",
         "\\label{tab:rw-matrix}",
         "\\footnotesize",
         "\\resizebox{\\textwidth}{!}{%",
@@ -202,19 +305,46 @@ def write_fragment() -> None:
     phone_fp = DATA["ai4privacy"]["falsePositiveOverlap"]["us-phone"]
     digest12 = env["modelDigest"].removeprefix("sha256:")[:12]
     quant = env["modelQuantization"].replace("_", "\\_")
+    revs = {name: DATA["datasets"][name]["revision"][:12] for name in ("ai4privacy", "gretel", "asqa")}
+    cosign = tools["cosign"]
+    lattice_rows = NODE["lattice"]["rows"]
+    sello_rows = NODE["sello"]["rows"]
+    plain_kept = [PROSE_NAMES.get(name, name) for name, _size, leak in byte_rows() if leak]
+    digest_only = [PROSE_NAMES.get(name, name) for name, _size, leak in byte_rows() if not leak]
+    detector_commit = (DATA.get("lattice") or {}).get("commit")
+    if detector_commit:
+        detector_note = f"These dataset rows were measured with the \\texttt{{noPII}} detectors at commit \\texttt{{{detector_commit[:7]}}}."
+    else:
+        detector_note = (
+            f"These dataset rows were measured with the \\texttt{{noPII}} detectors at commit \\texttt{{{LEGACY_DETECTOR_COMMIT}}} and were not re-run. "
+            "The released detectors differ: an identifier label suppresses a match only when it is the nearest token, and bare 9-digit, spaced, and 10-digit numbers need a type-specific cue such as SSN or phone. "
+            "The artificial evaluation covers the released detectors."
+        )
+    if cosign.get("tlogUpload"):
+        cosign_text = (
+            f"cosign \\texttt{{sign-blob}} \\citep{{cosign}} with a local key and no Fulcio certificate detects a byte edit and signs the plaintext log. "
+            f"That run kept cosign's default transparency-log upload, so it wrote an entry to the public Rekor log. Its {cosign['ms']:,.0f}~ms wrap time includes that round trip, and \\texttt{{verify-blob}} checked the log online."
+        )
+    else:
+        cosign_text = (
+            f"cosign \\texttt{{sign-blob}} \\citep{{cosign}} with a local key, the transparency-log upload disabled, and no Fulcio certificate detects a byte edit and signs the plaintext log."
+        )
     text = f"""% Generated by eval/realworld/scripts/05-charts.py from eval/realworld/results. Do not edit.
+\\providecommand{{\\citep}}[1]{{\\cite{{#1}}}}
 \\subsection{{Local open-weight runs and other record systems}}
 \\label{{sec:realworld}}
 
-The artificial evaluation mocks the provider. This subsection does not. Ollama {env['ollama'].split()[-1]} served \\texttt{{{env['model']}}} (Llama 3.2, {env['modelParameters']}, {quant}, digest \\texttt{{{digest12}}}, {env['modelSize'].replace(' ', '~')}) on the same host as the other measurements (Node {env['node']}, {env['cores']}~vCPU, {env['totalMemGB']}~GB RAM, no GPU). Lattice called it through the OpenAI-compatible adapter with no API key. The adapter does not send temperature or a token cap; a fetch wrapper added both, and that fact is part of the record. No vision model was loaded. No hosted provider key was present.
+The artificial evaluation mocks the provider. This subsection does not. Ollama {env['ollama'].split()[-1]} served \\texttt{{{env['model']}}} (Llama 3.2, {env['modelParameters']}, {quant}, digest \\texttt{{{digest12}}}, {env['modelSize'].replace(' ', '~')}) on the same host as the other measurements (Node {env['node']}, {env['cores']}~vCPU, {env['totalMemGB']}~GB RAM, no GPU). Lattice called it through the OpenAI-compatible adapter with no API key and an explicit base URL ending in \\texttt{{/v1}}. \\texttt{{createOpenAIProvider}}, whose default base URL builds a chat URL without \\texttt{{/v1}}, was not exercised. The adapter does not send temperature or a token cap, so a fetch wrapper added both to every request. The Lattice numbers are therefore for a request the adapter does not build on its own. No vision model was loaded. No hosted provider key was present.
 
 On the one-line prompt ``Reply with the single word pong,'' temperature 0, five paired trials, the median plain HTTP call was {o['plain']['p50']:.0f}~ms. A signed Lattice run of the same task was {o['signed']['p50']:.0f}~ms and an unsigned Lattice run was {o['unsigned']['p50']:.0f}~ms (Figure~\\ref{{fig:rw-latency}}). The first plain call, {o['plain']['max']:.0f}~ms, is a cold start and pulls the mean up; the median does not. The signed median is lower than the unsigned median. That gap is generation noise, not a claim that signing is faster. What is stable is the time spent outside the provider HTTP call: {o['signedOutsidePct']['p50']:.3f}\\% of end-to-end latency at the signed median (minimum {o['signedOutsidePct']['min']:.3f}\\%, maximum {o['signedOutsidePct']['max']:.3f}\\%). The Lattice prompt body was {prompt_chars} characters against a one-line plain prompt, so most of the extra wall time is a larger prefill, not the signature. The short signed receipt was {o['receiptEnvelope']['p50']:.0f}~bytes.
 
-A refund-policy question with a \\texttt{{mustCite}} invariant passed on all three temperature-0 runs and all three temperature-0.7 runs. Each temperature produced one identical answer across its three trials (n=3). The two temperatures did not produce the same sentence. All {replay_n} signed receipts verified, replayed offline, matched the output hash, and a one-character edit was detected ({replay_ok}/{replay_n}). A synthetic support ticket containing an email, a US phone number, and a dashed SSN was flagged by those three detectors. The model's answer contained none of them, the \\texttt{{noPII}} invariant passed, and the signed receipt did not contain the planted strings. A two-step agent called \\texttt{{lookup\\_policy}} once and answered; the returned agent object carried no receipt. A two-agent crew completed in {crew['totalIterations']} iterations with {crew['receiptCount']} receipts.
+A refund-policy question with a \\texttt{{mustCite}} invariant passed on all three temperature-0 runs and all three temperature-0.7 runs. Each temperature produced one identical answer across its three trials (n=3). The two temperatures did not produce the same sentence. All {replay_n} signed receipts verified. For each, the signed output hash matched the kept answer and changed after a one-character edit ({replay_ok}/{replay_n}). This checks the output binding, not a re-run: \\texttt{{replayOffline}} returns the outputs the caller supplies. A synthetic support ticket containing an email, a US phone number, and a dashed SSN was flagged by those three detectors. The model's answer contained none of them, the \\texttt{{noPII}} invariant passed, and the signed receipt did not contain the planted strings. A two-step agent called \\texttt{{lookup\\_policy}} once and answered; the returned agent object carried no receipt. A two-agent crew completed in {crew['totalIterations']} iterations with {crew['receiptCount']} receipts.
 
-On the public sets the same detectors are weaker than on the synthetic harness, and the gap is the result (Figure~\\ref{{fig:rw-pii}}). ai4privacy/pii-masking-300k English validation (revision \\texttt{{c8c77895a005}}, 7,946 documents; academic, non-commercial, no redistribution) gives email precision {ai4['email']['precision']:.3f} and recall {ai4['email']['recall']:.3f} ({ai4['email']['goldDocs']} documents with a gold email). US SSN precision is {ai4['us-ssn']['precision']:.3f} and recall {ai4['us-ssn']['recall']:.3f}. US phone precision is {ai4['us-phone']['precision']:.3f} and recall {ai4['us-phone']['recall']:.3f}. Of the SSN false positives, {ssn_fp['PASSPORT']:,} overlap a passport span: a 9-digit passport is the same shape as an SSN, and the detector cannot tell them apart. Of the phone false positives, {phone_fp['SOCIALNUMBER']:,} overlap a social-security span. There is no gold credit-card span in this file; the card detector fired on {ai4['credit-card']['fp']} documents anyway. Among {ssn['goldUsShaped']:,} US-shaped SSN spans, the single match the API returns overlaps {ssn['overlappedByTheOneMatch']:,}. It misses {ssn['missedBecauseMatchWasElsewhere']:,} because that one match fell on a different number earlier in the document, and {ssn['noMatch']:,} because it matched nothing. Gretel English finance test (Apache-2.0, revision \\texttt{{7b844d167385}}, {DATA['datasets']['gretel']['rows']:,} rows) is the same pattern at smaller n: email recall {DATA['gretel_english_test']['types']['email']['recall']:.3f}, SSN precision {DATA['gretel_english_test']['types']['us-ssn']['precision']:.3f}. ASQA dev (Apache-2.0, revision \\texttt{{084060f16b46}}, {asqa['n']} answers) is a loss for \\texttt{{mustCite}}. A gold Wikipedia title occurs as a substring in {asqa['titleSubstring']} answers, but the invariant accepts at least one gold title in {asqa['mustCiteAnyGold']}. Only {asqa['withBracket']} answers use a square-bracket citation. The check is syntactic. It does not score whether a citation supports the claim.
+The public sets are harder than the synthetic harness, and the gap is the result (Figure~\\ref{{fig:rw-pii}}). ai4privacy/pii-masking-300k \\citep{{ai4privacy}} English validation (revision \\texttt{{{revs['ai4privacy']}}}, {DATA['ai4privacy']['docs']:,} documents; academic, non-commercial, no redistribution) gives email precision {ai4['email']['precision']:.3f} and recall {ai4['email']['recall']:.3f} ({ai4['email']['goldDocs']} documents with a gold email). US SSN precision is {ai4['us-ssn']['precision']:.3f} and recall {ai4['us-ssn']['recall']:.3f}. US phone precision is {ai4['us-phone']['precision']:.3f} and recall {ai4['us-phone']['recall']:.3f}. Of the SSN false positives, {ssn_fp['PASSPORT']:,} overlap a passport span: a 9-digit passport is the same shape as an SSN, and the detector cannot tell them apart. Of the phone false positives, {phone_fp['SOCIALNUMBER']:,} overlap a social-security span. There is no gold credit-card span in this file; the card detector fired on {ai4['credit-card']['fp']} documents anyway. Among {ssn['goldUsShaped']:,} US-shaped SSN spans, the single match the API returns overlaps {ssn['overlappedByTheOneMatch']:,}. It misses {ssn['missedBecauseMatchWasElsewhere']:,} because that one match fell on a different number earlier in the document, and {ssn['noMatch']:,} because it matched nothing. Gretel English finance test \\citep{{gretelfinance}} (Apache-2.0, revision \\texttt{{{revs['gretel']}}}, {DATA['datasets']['gretel']['rows']:,} rows) is the same pattern at smaller n: email recall {DATA['gretel_english_test']['types']['email']['recall']:.3f}, SSN precision {DATA['gretel_english_test']['types']['us-ssn']['precision']:.3f}. ASQA dev \\citep{{asqa}} (Apache-2.0, revision \\texttt{{{revs['asqa']}}}, {asqa['n']} answers) is a loss for \\texttt{{mustCite}}. A gold Wikipedia title occurs as a substring in {asqa['titleSubstring']} answers, but the invariant accepts at least one gold title in {asqa['mustCiteAnyGold']}. Only {asqa['withBracket']} answers use a square-bracket citation. The check is syntactic. It does not score whether a citation supports the claim. {detector_note}
 
-Table~\\ref{{tab:rw-matrix}} wraps the same recorded request and response bytes. Lattice's receipt and Sello's encrypted receipt (mock transparency log, not the public log) omit the planted strings. An AFR log with disclosure encryption also omits them; the default AFR log contains them. Janus's local evidence appender stores the payload in the clear and the byte edit fails \\texttt{{verify.SegmentDir}}. A sealed NovaFabric capsule (self-asserted ECDSA key, no RFC~3161 timestamp) fails \\texttt{{nova verify}} after a newline is appended to stdout, and the capsule contains the planted text. \\texttt{{nova validate}} on that edited capsule still exits 0. cosign \\texttt{{sign-blob}} with a local key, not Fulcio or Rekor, detects a byte edit and signs the plaintext log. in-toto's DSSE link detects a byte edit and does not embed the plaintext. A hash chain detects an edit that leaves the stored hashes untouched and accepts a rebuilt chain, because nothing outside the file anchors the head. NovaFabric's HMAC record has the same shape with a shared secret: an edit fails, and a re-sign with that secret passes. OpenTelemetry GenAI spans and a plain JSON log have no integrity check; both store the transcript. TrustTrack has no implementation we could run. Langfuse was not started: this host has no Docker daemon. Figure~\\ref{{fig:rw-bytes}} is the byte column.
+Table~\\ref{{tab:rw-matrix}} wraps the same recorded request and response bytes. Lattice's receipt and Sello's encrypted receipt (mock transparency log, not the public log) omit the planted strings. An AFR log with disclosure encryption also omits them; the default AFR log contains them. Janus's local evidence appender stores the payload in the clear and the byte edit fails \\texttt{{verify.SegmentDir}}. A sealed NovaFabric capsule (self-asserted ECDSA key, no RFC~3161 timestamp) fails \\texttt{{nova verify}} after a newline is appended to stdout, and the capsule contains the planted text. \\texttt{{nova validate}} on that edited capsule still exits 0. {cosign_text} in-toto's DSSE link \\citep{{intoto}} detects a byte edit and does not embed the plaintext. A hash chain detects an edit that leaves the stored hashes untouched and accepts a rebuilt chain, because nothing outside the file anchors the head. NovaFabric's HMAC record has the same shape with a shared secret: an edit fails, and a re-sign with that secret passes. OpenTelemetry GenAI spans and a plain JSON log have no integrity check; both store the transcript. TrustTrack has no implementation we could run. Langfuse was not started: this host has no Docker daemon. {series(bound_systems())} sign the record and reject a byte edit; Table~\\ref{{tab:rw-matrix}} lists that as signed output binding.
+
+The wrap times are single cold samples with different scopes, so they order the systems only roughly. The Lattice total of {NODE['lattice']['ms']:.3f}~ms is {WORDS.get(len(lattice_rows), len(lattice_rows))} \\texttt{{createReceipt}} calls, and the first call is {lattice_rows[0]['ms']:.3f}~ms of it; Sello's first call is {sello_rows[0]['ms']:.3f} of its {NODE['sello']['ms']:.3f}~ms. The byte column mixes scopes too (Figure~\\ref{{fig:rw-bytes}}): {series(plain_kept)} keep the plaintext transcript, while {series(digest_only)} keep only digests or ciphertext.
 
 \\begin{{figure}}[t]
 \\centering
@@ -226,14 +356,14 @@ Table~\\ref{{tab:rw-matrix}} wraps the same recorded request and response bytes.
 \\begin{{figure}}[t]
 \\centering
 \\includegraphics[width=\\linewidth]{{rw-pii.pdf}}
-\\caption{{Document-level precision and recall of the default \\texttt{{noPII}} detectors on ai4privacy English validation. US SSN and US phone lose to identifier types that share their shape.}}
+\\caption{{Document-level precision and recall of the default \\texttt{{noPII}} detectors at commit \\texttt{{{(detector_commit or LEGACY_DETECTOR_COMMIT)[:7]}}} on ai4privacy English validation. US SSN and US phone lose to identifier types that share their shape.}}
 \\label{{fig:rw-pii}}
 \\end{{figure}}
 
 \\begin{{figure}}[t]
 \\centering
 \\includegraphics[width=0.92\\linewidth]{{rw-bytes.pdf}}
-\\caption{{Bytes retained for the recorded runs. The NovaFabric bar is one sealed capsule, not three hash receipts. AFR disclosure is the encrypted archive.}}
+\\caption{{Bytes retained for the recorded runs. Orange records keep the plaintext transcript; blue records keep only digests or ciphertext. The NovaFabric bar is one sealed capsule, not three hash receipts. AFR disclosure is the encrypted archive. The cosign bar is the blob, the signature, and the public key.}}
 \\label{{fig:rw-bytes}}
 \\end{{figure}}
 
@@ -250,12 +380,13 @@ def main() -> None:
     bytes_chart()
     write_matrix()
     write_fragment()
+    # PDFs and fragments only. The papers do not include the PNGs.
     for dest in (PAPER, PAPER / "ieee"):
-        for name in ("rw-latency.pdf", "rw-latency.png", "rw-pii.pdf", "rw-pii.png", "rw-bytes.pdf", "rw-bytes.png"):
+        for name in ("rw-latency.pdf", "rw-pii.pdf", "rw-bytes.pdf"):
             shutil.copy(RESULTS / name, dest / name)
         shutil.copy(RESULTS / "realworld.tex", dest / "realworld.tex")
         shutil.copy(RESULTS / "feature-matrix.tex", dest / "realworld-matrix.tex")
-    print("charts", list(RESULTS.glob("rw-*")))
+    print("charts", sorted(path.name for path in RESULTS.glob("rw-*")))
 
 
 if __name__ == "__main__":

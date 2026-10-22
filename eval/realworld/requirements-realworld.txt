@@ -1,0 +1,44 @@
+# Python packages for eval/realworld. Exact pins are versions recorded in
+# results/*.json or used to render the committed figures. ">=" lines are lower
+# bounds: the recorded run did not store that package's version. The scripts
+# now record installed versions in their output.
+# Recorded runtime: Python 3.12, Node v24.22.1, Ollama 0.40.7 serving
+# llama3.2:3b (digest a80c4f17acd5).
+
+# 02-prepare.py, 07-cite.py
+pyarrow>=14
+huggingface_hub>=0.23
+
+# 04-compare.py
+in-toto==3.1.0
+securesystemslib[crypto]>=1.0
+opentelemetry-sdk>=1.25
+
+# 06-pii-tools.py, 06-llm-guard-only.py
+presidio-analyzer>=2.2
+spacy==3.8.16
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+gliner>=0.2
+llm-guard>=0.3
+transformers>=4.40
+torch>=2.2
+
+# 08-gateways.py
+litellm>=1.40
+langchain-core>=0.2
+langchain-openai>=0.1
+traceloop-sdk>=0.30
+
+# 05-charts.py, 12-charts.py
+matplotlib==3.11.2
+numpy==2.5.4
+
+# Not on PyPI here, or not Python:
+#   AFR is imported from its checkout in $CMP_DIR; install that checkout's own
+#     dependencies (it imports web3).
+#   nova CLI: novafabric 0.105.0, from the NovaFabric checkout.
+#   cosign v2.5.3, gitCommit 488ef8ceed5ab5d77379e9077a124a0d0df41d06.
+#   Portkey gateway 1.15.2 (Node), listening on 127.0.0.1:8787.
+#   Go toolchain go1.26.8 for the Janus shim.
+#   LLM Guard recognizer Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 at
+#     revision 9ea992753ab2686be4a8f64605ccc7be197ad794.

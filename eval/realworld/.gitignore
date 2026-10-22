@@ -7,3 +7,4 @@ scripts/__pycache__/
 **/*.key
 .env
 .env.*
+.cache/

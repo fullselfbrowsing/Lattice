@@ -6,9 +6,11 @@ resumes from the span file.
 """
 from __future__ import annotations
 
+import importlib.metadata
 import importlib.util
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -16,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
-CACHE = Path("/tmp/realworld-data")
+CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
 SPANS = CACHE / "llm-guard-spans.jsonl"
 BATCH = 250
 WINDOW = 1500
@@ -134,6 +136,9 @@ def finish() -> None:
             if row.get("error"):
                 errors += 1
     meta = {
+        "version": module.pkg_version("llm-guard"),
+        "transformers": module.pkg_version("transformers"),
+        "torch": module.pkg_version("torch"),
         "recognizer": "Isotonic/deberta-v3-base_finetuned_ai4privacy_v2",
         "revision": "9ea992753ab2686be4a8f64605ccc7be197ad794",
         "threshold": 0.5,

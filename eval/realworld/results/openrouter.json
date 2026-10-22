@@ -9947,5 +9947,6 @@
       "crewReceipts": 4,
       "multimodal": null
     }
-  ]
+  ],
+  "correction": "Recorded after the run. The stored e2eMs, signedMs, latticePct, and signedLatticePct fields add retryProviderMs (HTTP time of retried attempts) to the end-to-end time. scripts/12-charts.py recomputes end-to-end time as latticeMs + providerMs and the percentage as 100 * latticeMs / (latticeMs + providerMs) from the per-trial rows; only the Xingchen rows and one Liquid row carried retry time. drift[].uniqueExact, exactMatch, normalizedMatch, and the summary drift counts include the empty answers of failed calls; scripts/12-charts.py counts distinct answers among successful rag rows only. scripts/10-openrouter.mjs now writes both fields that way."
 }

@@ -6,6 +6,7 @@ start are recorded as not measured.
 """
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import os
 import shutil
@@ -25,6 +26,13 @@ PAYLOADS = json.loads((RESULTS / "payloads.json").read_text())
 MARKERS = PAYLOADS.get("markers") or []
 RUNS = PAYLOADS["runs"]
 SHORT = "Reply with the single word pong."
+
+
+def pkg_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
 
 def leaks(raw: str | bytes) -> bool:
@@ -106,7 +114,7 @@ def litellm_tool() -> dict:
     return {
         "tool": "litellm",
         "measured": True,
-        "version": getattr(litellm, "__version__", None),
+        "version": pkg_version("litellm"),
         "mode": "in-process completion and Router against local Ollama. No proxy process.",
         "latencyMs": stats(samples),
         "bytes": len(raw),
@@ -114,7 +122,6 @@ def litellm_tool() -> dict:
         "offlineVerify": False,
         "byteEditDetected": False,
         "editedStillParses": True,
-        "replay": False,
         "routingSame": len(set(choices)) == 1,
         "routingUnique": len(set(choices)),
         "routingN": len(choices),
@@ -155,12 +162,13 @@ def langchain_tool() -> dict:
         "tool": "langchain-callback",
         "measured": True,
         "mode": "Local LangChain callback. Not LangSmith cloud.",
+        "version": pkg_version("langchain-core"),
+        "langchainOpenai": pkg_version("langchain-openai"),
         "latencyMs": stats(samples),
         "bytes": len(raw),
         "leak": leaks(raw),
         "offlineVerify": False,
         "byteEditDetected": False,
-        "replay": False,
         "routing": False,
         "policy": False,
     }
@@ -203,13 +211,13 @@ def openllmetry_tool() -> dict:
         "tool": "openllmetry",
         "measured": True,
         "mode": "traceloop-sdk in-process spans around LiteLLM. No collector.",
+        "version": pkg_version("traceloop-sdk"),
         "latencyMs": stats(samples),
         "bytes": len(raw),
         "spanCount": len(spans),
         "leak": leaks(raw),
         "offlineVerify": False,
         "byteEditDetected": False,
-        "replay": False,
         "routing": False,
         "policy": False,
     }
@@ -258,7 +266,7 @@ def portkey_tool() -> dict:
     return {
         "tool": "portkey-gateway",
         "measured": True,
-        "version": "1.15.2",
+        "version": os.environ.get("PORTKEY_VERSION", "1.15.2"),
         "mode": "Local node server on 127.0.0.1:8787, provider ollama, custom host 127.0.0.1:11434. No Portkey cloud.",
         "latencyMs": stats(samples),
         "bytes": len(stored),
@@ -266,7 +274,6 @@ def portkey_tool() -> dict:
         "logApiError": log_error,
         "offlineVerify": False,
         "byteEditDetected": False,
-        "replay": False,
         "routing": False,
         "policy": False,
         "note": "The response body contains the model output. GET /v1/logs did not return a stored log on this build.",

@@ -308,5 +308,6 @@
     "overlappedByTheOneMatch": 663,
     "missedBecauseMatchWasElsewhere": 370,
     "noMatch": 37
-  }
+  },
+  "correction": "Recorded after the run. 02-score.mjs had no credit_card_number entry in TYPE_MAP, so gretel_english_test and gretel_in_scope_shapes report credit-card with 0 gold documents and precision 0. pii-tools.json maps that label and is the source for the published Gretel card scores. These rows were scored with the noPII detectors at commit a8cc091 (the detector source is unchanged from 040abd8, where this file was recorded)."
 }

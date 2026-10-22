@@ -1,18 +1,27 @@
 """Score PII detectors on the cached public sets.
 
 Texts are not written into the repository. Lattice spans come from
-06-lattice-spans.mjs. Other tools are imported only when installed.
+06-lattice-spans.mjs, which this script re-runs unless REUSE_LATTICE_SPANS=1.
+Other tools are imported only when installed. PII_SKIP_LLM_GUARD=1 leaves LLM
+Guard to 06-llm-guard-only.py, which windows long documents.
 """
 from __future__ import annotations
 
+import importlib.metadata
 import json
+import os
+import re
+import shutil
 import statistics
 import subprocess
 import time
 from pathlib import Path
 
-CACHE = Path("/tmp/realworld-data")
-RESULTS = Path(__file__).resolve().parents[1] / "results"
+ROOT = Path(__file__).resolve().parents[1]
+CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
+RESULTS = ROOT / "results"
+SPANS = Path(os.environ.get("LATTICE_SPANS", CACHE / "lattice-spans.jsonl"))
+NODE_BIN = os.environ.get("NODE_BIN") or shutil.which("node") or "node"
 TYPES = ("email", "us-ssn", "us-phone", "credit-card")
 TYPE_MAP = {
     "EMAIL": "email",
@@ -43,6 +52,21 @@ TYPE_MAP = {
 
 def mapped(label: str) -> str | None:
     return TYPE_MAP.get(label) or TYPE_MAP.get(label.lower())
+
+
+def pkg_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def lattice_meta() -> dict:
+    try:
+        commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        commit = None
+    return {"commit": commit}
 
 
 def load_gold(path: Path, adapt) -> list[dict]:
@@ -150,12 +174,12 @@ def presidio_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict
         ])
         if index and index % 1000 == 0:
             print("presidio", index, flush=True)
-    import presidio_analyzer
     import spacy
     return preds, times, {
-        "version": getattr(presidio_analyzer, "__version__", None),
+        "version": pkg_version("presidio-analyzer"),
         "spacy": spacy.__version__,
         "spacyModel": "en_core_web_sm",
+        "spacyModelVersion": pkg_version("en_core_web_sm"),
         "entitiesRequested": entities,
         "note": "Pattern and spaCy recognizers for the four in-scope Presidio entities.",
     }
@@ -180,7 +204,7 @@ def spacy_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict]:
     return preds, times, {
         "version": spacy.__version__,
         "model": "en_core_web_sm",
-        "modelVersion": "3.8.0",
+        "modelVersion": pkg_version("en_core_web_sm"),
         "labelCounts": labels,
         "note": "Default NER labels. None of PERSON, ORG, GPE, DATE, or CARDINAL are mapped onto email, US SSN, US phone, or credit card.",
     }
@@ -189,7 +213,8 @@ def spacy_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict]:
 def gliner_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict]:
     from gliner import GLiNER
     model_id = "urchade/gliner_small-v2.1"
-    model = GLiNER.from_pretrained(model_id)
+    revision = os.environ.get("GLINER_REVISION") or None
+    model = GLiNER.from_pretrained(model_id, revision=revision) if revision else GLiNER.from_pretrained(model_id)
     labels = ["email", "social security number", "phone number", "credit card number"]
     label_map = {
         "email": "email",
@@ -209,13 +234,20 @@ def gliner_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict]:
         ])
         if index and index % 250 == 0:
             print("gliner", index, flush=True)
-    return preds, times, {"model": model_id, "threshold": 0.5, "labels": labels}
+    return preds, times, {
+        "model": model_id,
+        "revision": revision,
+        "threshold": 0.5,
+        "labels": labels,
+        "version": pkg_version("gliner"),
+        "transformers": pkg_version("transformers"),
+        "torch": pkg_version("torch"),
+    }
 
 
 def llm_guard_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dict]:
     from llm_guard.input_scanners import Anonymize
     from llm_guard.vault import Vault
-    import llm_guard
     scanner = Anonymize(Vault(), use_onnx=False)
     preds, times = [], []
     for index, doc in enumerate(docs):
@@ -235,7 +267,8 @@ def llm_guard_tool(docs: list[dict]) -> tuple[list[list[dict]], list[float], dic
         if index and index % 250 == 0:
             print("llm-guard", index, flush=True)
     return preds, times, {
-        "version": getattr(llm_guard, "__version__", None),
+        "version": pkg_version("llm-guard"),
+        "transformers": pkg_version("transformers"),
         "recognizer": "Isotonic/deberta-v3-base_finetuned_ai4privacy_v2",
         "revision": "9ea992753ab2686be4a8f64605ccc7be197ad794",
         "entityTypes": list(scanner._entity_types),
@@ -259,19 +292,25 @@ def guardrails_status() -> dict:
         from guardrails.hub import DetectPII  # noqa: F401
         return {"measured": False, "reason": "DetectPII imported unexpectedly without a hub install; not scored."}
     except Exception as exc:
+        # Drop the absolute site-packages path from the import error.
+        reason = re.sub(r" \(/[^)]*\)", "", f"{type(exc).__name__}: {exc}")
         return {
             "tool": "guardrails-detect-pii",
             "measured": False,
             "status": "from docs, not measured",
-            "reason": f"{type(exc).__name__}: {exc}"[:400],
+            "version": pkg_version("guardrails-ai"),
+            "reason": reason[:400],
             "docs": "Guardrails AI validators can reject a string that contains PII. The hub package guardrails/detect_pii was not installed in this environment.",
         }
 
 
 def main() -> None:
-    spans_path = CACHE / "lattice-spans.jsonl"
-    if not spans_path.exists():
-        subprocess.check_call(["node", str(Path(__file__).with_name("06-lattice-spans.mjs"))])
+    spans_path = SPANS
+    if os.environ.get("REUSE_LATTICE_SPANS") != "1" or not spans_path.exists():
+        env = os.environ.copy()
+        env["REALWORLD_CACHE"] = str(CACHE)
+        env["LATTICE_SPANS"] = str(spans_path)
+        subprocess.check_call([NODE_BIN, str(Path(__file__).with_name("06-lattice-spans.mjs"))], env=env)
     ai4 = load_gold(CACHE / "english_openpii_8k.jsonl", lambda raw: (
         raw["source_text"],
         [{"label": span["label"], "start": span["start"], "end": span["end"]} for span in raw.get("privacy_mask") or []],
@@ -297,6 +336,7 @@ def main() -> None:
             "gretel": {**score(gretel, lattice_preds["gretel"]), "latencyMs": latency_summary(lattice_ms["gretel"])},
         },
         "note": "Every occurrence of the single substring returned by detect(), the same locate() rule as 02-score.mjs.",
+        "meta": lattice_meta(),
     }]
     prior = json.loads((RESULTS / "datasets.json").read_text())
     prior_email = prior["ai4privacy"]["types"]["email"]
@@ -310,8 +350,9 @@ def main() -> None:
         ("presidio", presidio_tool),
         ("spacy-en_core_web_sm", spacy_tool),
         ("gliner-small", gliner_tool),
-        ("llm-guard-anonymize", llm_guard_tool),
     ]
+    if os.environ.get("PII_SKIP_LLM_GUARD") != "1":
+        runners.append(("llm-guard-anonymize", llm_guard_tool))
     named = {"ai4privacy": ai4, "gretel": gretel}
     for name, runner in runners:
         print("run", name, flush=True)
@@ -341,7 +382,7 @@ def main() -> None:
 
 def base_report(tools: list[dict]) -> dict:
     return {
-        "unit": "Document-level matches the Lattice harness: one document is a true positive when any predicted span of that type overlaps a gold span. Span-level counts each predicted span and each missed gold span. Lattice emits at most one span per type.",
+        "unit": "Document-level matches the Lattice harness: one document is a true positive when any predicted span of that type overlaps a gold span. Span-level counts each predicted span and each missed gold span. Lattice counts every occurrence of the one substring detect() returns.",
         "datasets": {
             "ai4privacy": "ai4privacy/pii-masking-300k English validation, revision c8c77895a005822682b66ab547fc0422579bc1d3, 7946 docs, academic/non-commercial, no redistribution",
             "gretel": "gretelai/synthetic_pii_finance_multilingual English test, revision 7b844d16738527a04264f50214cb426a4cea0897, Apache-2.0, 2891 docs",

@@ -7,10 +7,13 @@ with measured=false and the error string.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
+import platform
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -22,9 +25,21 @@ PAYLOADS = json.loads((RESULTS / "payloads.json").read_text())
 MARKERS = PAYLOADS.get("markers") or []
 RUNS = PAYLOADS["runs"]
 CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
+# Comparison checkouts. fetch-competitors.sh clones them here at the commits
+# recorded in results/compare.json.
+CMP_DIR = Path(os.environ.get("CMP_DIR", ROOT / ".cache" / "cmp"))
 PATH = os.environ["PATH"]
 if str(Path.home() / ".local/bin") not in PATH:
     os.environ["PATH"] = str(Path.home() / ".local/bin") + os.pathsep + PATH
+NODE_BIN = os.environ.get("NODE_BIN") or shutil.which("node")
+COSIGN_BIN = os.environ.get("COSIGN_BIN") or shutil.which("cosign")
+
+
+def pkg_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
 
 def blob() -> bytes:
@@ -97,7 +112,6 @@ def hash_chain() -> dict:
         "rebuildAccepted": True,
         "rebuildHeadDiffers": rebuilt_prev != records[-1]["hash"],
         "externalAnchor": False,
-        "replay": False,
         "leak": leaks(raw),
         "routing": False,
         "policy": False,
@@ -122,7 +136,6 @@ def json_log() -> dict:
         "byteEditDetected": False,
         "note": "A plain JSON file has no integrity check. An edit still parses.",
         "editedStillParses": True,
-        "replay": False,
         "leak": leaks(raw),
         "routing": False,
         "policy": False,
@@ -161,11 +174,11 @@ def otel() -> dict:
         "tool": "opentelemetry-genai",
         "measured": True,
         "kind": "OpenTelemetry SDK in-process span export, no collector",
+        "version": pkg_version("opentelemetry-sdk"),
         "ms": ms,
         "bytes": len(raw),
         "offlineVerify": False,
         "byteEditDetected": False,
-        "replay": False,
         "leak": leaks(raw),
         "routing": False,
         "policy": False,
@@ -175,8 +188,7 @@ def otel() -> dict:
 
 
 def afr() -> dict:
-    import sys
-    sys.path.insert(0, "/tmp/cmp/agent-flight-recorder")
+    sys.path.insert(0, str(CMP_DIR / "agent-flight-recorder"))
     from afr.anchoring import MockAnchor
     from afr.recorder import FlightRecorder, RecorderConfig
     from afr.verifier import Verifier
@@ -234,12 +246,11 @@ def afr() -> dict:
     return {
         "tool": "agent-flight-recorder",
         "measured": True,
-        "commit": git_head("/tmp/cmp/agent-flight-recorder"),
+        "commit": git_head(str(CMP_DIR / "agent-flight-recorder")),
         "plain": plain,
         "disclosure": hidden,
         "offlineVerify": plain["chainOk"],
         "byteEditDetected": plain["byteFlipLoadFailed"],
-        "replay": False,
         "leak": plain["leak"],
         "leakWithDisclosure": hidden["leak"],
         "routing": False,
@@ -255,7 +266,7 @@ def nova_hmac() -> dict:
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "nova_signing",
-        "/tmp/cmp/novafabric/src/novafabric/events/signing.py",
+        str(CMP_DIR / "novafabric" / "src" / "novafabric" / "events" / "signing.py"),
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -277,14 +288,13 @@ def nova_hmac() -> dict:
     return {
         "tool": "novafabric-hmac",
         "measured": True,
-        "commit": git_head("/tmp/cmp/novafabric"),
+        "commit": git_head(str(CMP_DIR / "novafabric")),
         "version": "events/signing.py HMAC-SHA256, not a sealed capsule",
         "ms": ms,
         "bytes": len(raw),
         "offlineVerify": ok,
         "byteEditDetected": detected,
         "resignWithSharedSecretAccepted": attacker_accepted,
-        "replay": False,
         "leak": leaks(raw),
         "routing": False,
         "policy": False,
@@ -343,7 +353,7 @@ def nova_capture() -> dict:
         "tool": "novafabric-capture",
         "measured": True,
         "version": subprocess.check_output(["nova", "--version"], text=True).strip(),
-        "commit": git_head("/tmp/cmp/novafabric"),
+        "commit": git_head(str(CMP_DIR / "novafabric")),
         "mode": "nova seal init (self-asserted ECDSA P-256, no RFC 3161) then nova capture python3",
         "ms": ms,
         "bytes": dir_size(cap),
@@ -351,7 +361,6 @@ def nova_capture() -> dict:
         "byteEditDetected": tamper_verify.returncode != 0,
         "validateAfterEdit": tamper_validate.returncode,
         "leak": leaks(b"".join(p.read_bytes() for p in cap.rglob("*") if p.is_file())),
-        "replay": False,
         "routing": False,
         "policy": False,
         "loc": 4,
@@ -360,8 +369,20 @@ def nova_capture() -> dict:
     }
 
 
+def cosign_version(binary: str, env: dict) -> dict:
+    try:
+        raw = subprocess.check_output([binary, "version", "--json"], text=True, env=env)
+        info = json.loads(raw)
+        return {"version": info.get("gitVersion"), "gitCommit": info.get("gitCommit")}
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
+        raw = subprocess.check_output([binary, "version"], text=True, env=env)
+        return {"version": raw.splitlines()[-1][:200], "gitCommit": None}
+
+
 def cosign() -> dict:
-    binary = CACHE / "cosign"
+    if not COSIGN_BIN:
+        return {"tool": "cosign", "measured": False, "error": "cosign not found; set COSIGN_BIN or put cosign on PATH"}
+    binary = COSIGN_BIN
     work = ART / "cosign"
     if work.exists():
         shutil.rmtree(work)
@@ -371,7 +392,7 @@ def cosign() -> dict:
     env = os.environ.copy()
     env["COSIGN_PASSWORD"] = ""
     gen = subprocess.run(
-        [str(binary), "generate-key-pair"],
+        [binary, "generate-key-pair"],
         cwd=work,
         env=env,
         text=True,
@@ -381,8 +402,10 @@ def cosign() -> dict:
         return {"tool": "cosign", "measured": False, "error": (gen.stderr or gen.stdout)[-500:]}
     t0 = time.perf_counter()
     sig = work / "log.sig"
+    # --tlog-upload=false keeps the run local. Without it, sign-blob uploads an
+    # entry to the public Rekor log and --yes only skips the consent prompt.
     sign = subprocess.run(
-        [str(binary), "sign-blob", "--key", "cosign.key", "--output-signature", str(sig), "--yes", str(target)],
+        [binary, "sign-blob", "--key", "cosign.key", "--tlog-upload=false", "--output-signature", str(sig), "--yes", str(target)],
         cwd=work,
         env=env,
         text=True,
@@ -392,7 +415,7 @@ def cosign() -> dict:
     if sign.returncode != 0:
         return {"tool": "cosign", "measured": False, "error": (sign.stderr or sign.stdout)[-500:], "generate": gen.returncode}
     verify = subprocess.run(
-        [str(binary), "verify-blob", "--key", "cosign.pub", "--signature", str(sig), str(target)],
+        [binary, "verify-blob", "--key", "cosign.pub", "--insecure-ignore-tlog", "--signature", str(sig), str(target)],
         cwd=work,
         env=env,
         text=True,
@@ -403,7 +426,7 @@ def cosign() -> dict:
     raw[-1] ^= 0x1
     flipped.write_bytes(raw)
     bad = subprocess.run(
-        [str(binary), "verify-blob", "--key", "cosign.pub", "--signature", str(sig), str(flipped)],
+        [binary, "verify-blob", "--key", "cosign.pub", "--insecure-ignore-tlog", "--signature", str(sig), str(flipped)],
         cwd=work,
         env=env,
         text=True,
@@ -412,13 +435,14 @@ def cosign() -> dict:
     return {
         "tool": "cosign",
         "measured": True,
-        "mode": "local key pair, sign-blob. Fulcio and Rekor were not used.",
-        "version": subprocess.check_output([str(binary), "version"], text=True, env=env).splitlines()[-1][:200],
+        "mode": "local key pair, sign-blob --tlog-upload=false, verify-blob --insecure-ignore-tlog. Fulcio and Rekor were not contacted.",
+        **cosign_version(binary, env),
         "ms": ms,
         "bytes": target.stat().st_size + sig.stat().st_size + (work / "cosign.pub").stat().st_size,
+        "tlogUpload": False,
+        "verifyOk": verify.returncode == 0,
         "offlineVerify": verify.returncode == 0,
         "byteEditDetected": bad.returncode != 0,
-        "replay": False,
         "leak": leaks(target.read_bytes()) or leaks(sig.read_bytes()),
         "routing": False,
         "policy": False,
@@ -481,13 +505,14 @@ def intoto() -> dict:
         "tool": "in-toto",
         "measured": True,
         "mode": "in_toto_run DSSE link, ed25519 functionary, no layout inspection",
+        "version": pkg_version("in-toto"),
+        "securesystemslib": pkg_version("securesystemslib"),
         "ms": ms,
         "bytes": len(raw),
         "linkFiles": [p.name for p in link_files],
         "offlineVerify": signature_ok,
         "verifyError": intoto_verify_error,
         "byteEditDetected": flipped_verified is False,
-        "replay": False,
         "leak": leaks(raw) or leaks(product.read_text()),
         "leakInLinkMetadata": leaks(raw),
         "routing": False,
@@ -498,14 +523,20 @@ def intoto() -> dict:
 
 
 def janus() -> dict:
-    src = Path("/tmp/cmp/janus")
+    src = CMP_DIR / "janus"
     harness = ROOT / "integrations" / "janus"
     env = os.environ.copy()
-    env["GOTOOLCHAIN"] = "go1.26.8"
+    env["GOTOOLCHAIN"] = os.environ.get("GOTOOLCHAIN", "go1.26.8")
+    # go.mod and go.sum are gitignored. Create them, point the module at the
+    # local checkout, and let `go mod tidy` record the dependency hashes.
     if not (harness / "go.mod").exists():
         subprocess.run(["go", "mod", "init", "lattice-eval-janus"], cwd=harness, env=env, check=True, capture_output=True)
         subprocess.run(["go", "mod", "edit", "-require=github.com/mustafarslan/janus@v0.0.0"], cwd=harness, env=env, check=True)
-        subprocess.run(["go", "mod", "edit", f"-replace=github.com/mustafarslan/janus={src}"], cwd=harness, env=env, check=True)
+    subprocess.run(["go", "mod", "edit", f"-replace=github.com/mustafarslan/janus={src}"], cwd=harness, env=env, check=True)
+    tidy = subprocess.run(["go", "mod", "tidy"], cwd=harness, env=env, text=True, capture_output=True)
+    if tidy.returncode != 0:
+        return {"tool": "janus", "measured": False, "error": (tidy.stderr or tidy.stdout)[-800:], "commit": git_head(str(src))}
+    go_version = subprocess.run(["go", "version"], cwd=harness, env=env, text=True, capture_output=True).stdout.strip()
     binary = harness / "janus-wrap"
     build = subprocess.run(["go", "build", "-o", str(binary), "."], cwd=harness, env=env, text=True, capture_output=True)
     if build.returncode != 0:
@@ -549,7 +580,7 @@ def janus() -> dict:
         "measured": True,
         "commit": git_head(str(src)),
         "mode": "local evidence.Appender + verify.SegmentDir. Not the orchestrator, WORM store, or gate.",
-        "go": "go1.26.8 via GOTOOLCHAIN (system go is 1.22.2)",
+        "go": go_version,
         "append": info,
         "ms": info.get("ms"),
         "bytes": dir_size(work / "log"),
@@ -557,7 +588,6 @@ def janus() -> dict:
         "verifyStdout": (verify.stdout or "")[:500],
         "byteEditDetected": bad.returncode != 0,
         "leak": dir_leaks(work / "log"),
-        "replay": False,
         "routing": False,
         "policy": False,
         "loc": 70,
@@ -575,10 +605,12 @@ def main() -> None:
         print(row.get("tool") or fn.__name__, "measured" if row.get("measured") else row.get("error", "")[:180])
     # Node wrappers (Lattice receipt + Sello).
     env = os.environ.copy()
-    env["PATH"] = "/home/ubuntu/.nvm/versions/node/v24.22.1/bin:" + env["PATH"]
-    env["SELLO_COMMIT"] = git_head("/tmp/cmp/sello") or ""
+    if NODE_BIN:
+        env["PATH"] = str(Path(NODE_BIN).parent) + os.pathsep + env["PATH"]
+    env["CMP_DIR"] = str(CMP_DIR)
+    env["SELLO_COMMIT"] = git_head(str(CMP_DIR / "sello")) or ""
     node = subprocess.run(
-        ["node", "--experimental-strip-types", str(ROOT / "scripts" / "03-wrap.mjs")],
+        [NODE_BIN or "node", "--experimental-strip-types", str(ROOT / "scripts" / "03-wrap.mjs")],
         cwd=ROOT.parent.parent,
         env=env,
         text=True,
@@ -615,9 +647,15 @@ def main() -> None:
             {
                 "tool": "cosign keyless / Rekor",
                 "measured": False,
-                "reason": "Local key sign-blob was measured. Fulcio and Rekor were not contacted.",
+                "reason": "Local key sign-blob was measured with the transparency-log upload disabled. Fulcio and Rekor were not contacted.",
             },
         ],
+        "env": {
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "node": subprocess.run([NODE_BIN, "--version"], text=True, capture_output=True).stdout.strip() if NODE_BIN else None,
+            "packages": {name: pkg_version(name) for name in ("opentelemetry-sdk", "in-toto", "securesystemslib")},
+        },
     }
     (RESULTS / "compare.json").write_text(json.dumps(report, indent=2, default=str))
     print("COMPARE_DONE")

@@ -36,7 +36,7 @@ export async function makeKeys(kid = "realworld-k1") {
 
 // The OpenAI-compatible adapter does not send temperature or max_tokens.
 // This wrapper adds them on the wire so the direct arm and the Lattice arm
-// sample the same way. The added fields are recorded in env.json.
+// sample the same way. live.json records that note.
 export function samplingFetch(temperature, maxTokens, sink) {
   return async (url, init = {}) => {
     let body = init.body;

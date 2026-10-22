@@ -1,4 +1,11 @@
-"""Figures for the broadened real-world comparison. Numbers come from JSON."""
+"""Figures for the broadened real-world comparison. Numbers come from JSON.
+
+Hosted end-to-end time is recomputed from the per-trial phase times in
+openrouter.json as Lattice processing plus the provider time of the attempt that
+returned. Retried attempts, backoff, pacing, and slack are excluded. The PDFs and
+realworld-broad.tex are copied into paper/ and paper/ieee/; the PNGs stay in
+results/.
+"""
 from __future__ import annotations
 
 import json
@@ -34,12 +41,22 @@ plt.rcParams.update({
     "axes.spines.right": False,
 })
 COLORS = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#000000"]
+# No timestamps or version strings in the files, so a rerun on the same inputs
+# writes the same bytes.
+SAVE_METADATA = {"pdf": {"CreationDate": None}, "png": {"Software": None}}
+# pii-tools.json from the recorded run does not name the Lattice commit. The
+# noPII detectors it measured are the ones at this commit.
+LEGACY_DETECTOR_COMMIT = "a8cc091"
+FIGURES = (
+    "rw-overhead-pct", "rw-latency-dist", "rw-replay", "rw-drift",
+    "rw-pii-f1", "rw-pii-latency", "rw-tamper-heat", "rw-capability", "rw-gateway-latency",
+)
 
 
 def save(fig, name: str) -> None:
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(RESULTS / f"{name}.{ext}", bbox_inches="tight", dpi=200)
+        fig.savefig(RESULTS / f"{name}.{ext}", bbox_inches="tight", dpi=200, metadata=SAVE_METADATA[ext])
     plt.close(fig)
 
 
@@ -65,6 +82,16 @@ def lattice_samples(row: dict) -> list[dict]:
     return [item for item in row.get("overhead") or [] if item.get("signedOk") and item.get("signedLatticeMs") is not None]
 
 
+def hosted_e2e(item: dict) -> float:
+    """Lattice processing plus the provider time of the attempt that returned."""
+    return item["signedLatticeMs"] + item["signedProviderMs"]
+
+
+def hosted_pct(item: dict) -> float | None:
+    total = hosted_e2e(item)
+    return 100.0 * item["signedLatticeMs"] / total if total > 0 else None
+
+
 def local_lattice_ms() -> list[float]:
     return [
         max(0.0, item["signedMs"] - item["signedHttpMs"])
@@ -85,7 +112,8 @@ def overhead_pct() -> None:
     low.append(mid - ordered[0])
     high.append(ordered[-1] - mid)
     for row in finished_models():
-        vals = [item["signedLatticePct"] for item in lattice_samples(row)]
+        vals = [hosted_pct(item) for item in lattice_samples(row)]
+        vals = [value for value in vals if value is not None]
         if not vals:
             continue
         ordered = sorted(vals)
@@ -108,7 +136,7 @@ def overhead_pct() -> None:
 def latency_dist() -> None:
     series = [("ollama", [item["signedMs"] for item in LIVE["overhead"]])]
     for row in finished_models():
-        vals = [item["signedMs"] for item in row["overhead"] if item.get("signedOk")]
+        vals = [hosted_e2e(item) for item in lattice_samples(row)]
         if vals:
             series.append((short_model(row["model"]), vals))
     fig, ax = plt.subplots(figsize=(7.2, 3.2))
@@ -151,8 +179,8 @@ def replay_chart() -> None:
         ax.text(i, (a / b if b else 0) + 0.02, f"{a}/{b}", ha="center", fontsize=7)
     ax.set_ylim(0, 1.15)
     ax.set_xticks(x, labels, rotation=25, ha="right")
-    ax.set_ylabel("Replay, verify, and edit detection")
-    ax.set_title("Signed RAG receipts")
+    ax.set_ylabel("Verified, hash bound, edit detected")
+    ax.set_title("Signed output binding of RAG receipts")
     ax.grid(axis="y", lw=0.3)
     save(fig, "rw-replay")
 
@@ -275,26 +303,70 @@ def tamper_heatmap() -> None:
     save(fig, "rw-tamper-heat")
 
 
-def capability_heatmap() -> None:
-    # 1 yes, 0 no, nan not measured on these workloads. Routing for LiteLLM is
-    # the identical-backend check in gateways.json. Other cells follow the
-    # recorded wraps, not the vendor's documentation.
-    labels = ["Sign", "Offline\nverify", "Replay", "Policy", "No PII\nin artifact", "Multi-agent\nreceipts", "Routing"]
-    systems = {
-        "Lattice": [1, 1, 1, 1, 1, 1, np.nan],
-        "JSON log": [0, 0, 0, 0, 0, 0, np.nan],
-        "Hash chain": [0, 1, 0, 0, 0, 0, np.nan],
-        "OTel / OpenLLMetry": [0, 0, 0, 0, 0, 0, np.nan],
-        "AFR plain": [0, 1, 0, 0, 0, 0, np.nan],
-        "AFR disclosure": [0, 1, 0, 0, 1, 0, np.nan],
-        "Sello": [1, 1, 0, 0, 1, 0, np.nan],
-        "cosign": [1, 1, 0, 0, 0, 0, np.nan],
-        "in-toto": [1, 1, 0, 0, 1, 0, np.nan],
-        "Nova HMAC": [0, 1, 0, 0, 0, 0, np.nan],
-        "LiteLLM log": [0, 0, 0, 0, 0, 0, 1],
-        "LangChain callback": [0, 0, 0, 0, 0, 0, np.nan],
-        "Portkey local": [0, 0, 0, 0, np.nan, 0, np.nan],
+def compare_tool(name: str) -> dict:
+    return next((row for row in COMPARE["tools"] if row.get("tool") == name), {})
+
+
+def gate_tool(name: str) -> dict:
+    return next((row for row in (GATE or {}).get("tools") or [] if row.get("tool") == name), {})
+
+
+def all_of(*values):
+    """True or False when every value is known, else None."""
+    if any(value is None for value in values):
+        return None
+    return all(values)
+
+
+def flag(value) -> float:
+    return np.nan if value is None else (1.0 if value else 0.0)
+
+
+def capability_systems() -> dict[str, list[float]]:
+    """Rows of the capability heatmap: 1 yes, 0 no, nan not measured here.
+
+    Sign, Policy, No PII, Multi-agent receipts, and Routing follow the recorded
+    wraps, not vendor documentation. Routing for LiteLLM is the identical-backend
+    check in gateways.json. Offline verify and Signed output binding are read
+    from compare.json and gateways.json. Binding is yes when the record is signed
+    and the system's own verifier rejected a byte edit of the stored record.
+    """
+    lattice = COMPARE["node"]["lattice"]
+    sello = COMPARE["node"]["sello"]
+    afr = compare_tool("agent-flight-recorder")
+    cosign = compare_tool("cosign")
+    measured = {
+        # name: (sign, offline verify, byte edit rejected, policy, no PII, multi-agent receipts, routing)
+        "Lattice": (1, lattice.get("verifyOk"), lattice.get("byteFlipRejected"), 1, 1, 1, np.nan),
+        "JSON log": (0, compare_tool("json-log").get("offlineVerify"), compare_tool("json-log").get("byteEditDetected"), 0, 0, 0, np.nan),
+        "Hash chain": (0, compare_tool("hash-chain").get("offlineVerify"), compare_tool("hash-chain").get("byteEditDetected"), 0, 0, 0, np.nan),
+        "OTel / OpenLLMetry": (
+            0,
+            all_of(compare_tool("opentelemetry-genai").get("offlineVerify"), gate_tool("openllmetry").get("offlineVerify")),
+            all_of(compare_tool("opentelemetry-genai").get("byteEditDetected"), gate_tool("openllmetry").get("byteEditDetected")),
+            0, 0, 0, np.nan,
+        ),
+        "AFR plain": (0, afr.get("offlineVerify"), afr.get("byteEditDetected"), 0, 0, 0, np.nan),
+        "AFR disclosure": (0, (afr.get("disclosure") or {}).get("chainOk"), (afr.get("disclosure") or {}).get("byteFlipLoadFailed"), 0, 1, 0, np.nan),
+        "Sello": (1, sello.get("verifyOk"), sello.get("tamperDetected"), 0, 1, 0, np.nan),
+        # A verify-blob that consulted the Rekor log is not an offline check.
+        "cosign": (1, None if cosign.get("tlogUpload") else cosign.get("offlineVerify"), cosign.get("byteEditDetected"), 0, 0, 0, np.nan),
+        "in-toto": (1, compare_tool("in-toto").get("offlineVerify"), compare_tool("in-toto").get("byteEditDetected"), 0, 1, 0, np.nan),
+        "Nova HMAC": (0, compare_tool("novafabric-hmac").get("offlineVerify"), compare_tool("novafabric-hmac").get("byteEditDetected"), 0, 0, 0, np.nan),
+        "LiteLLM log": (0, gate_tool("litellm").get("offlineVerify"), gate_tool("litellm").get("byteEditDetected"), 0, 0, 0, 1),
+        "LangChain callback": (0, gate_tool("langchain-callback").get("offlineVerify"), gate_tool("langchain-callback").get("byteEditDetected"), 0, 0, 0, np.nan),
+        "Portkey local": (0, gate_tool("portkey-gateway").get("offlineVerify"), gate_tool("portkey-gateway").get("byteEditDetected"), 0, np.nan, 0, np.nan),
     }
+    systems = {}
+    for name, (sign, offline, edit, policy, no_pii, multi, routing) in measured.items():
+        bound = None if edit is None else bool(sign and edit)
+        systems[name] = [sign, flag(offline), flag(bound), policy, no_pii, multi, routing]
+    return systems
+
+
+def capability_heatmap() -> None:
+    labels = ["Sign", "Offline\nverify", "Signed\noutput\nbinding", "Policy", "No PII\nin artifact", "Multi-agent\nreceipts", "Routing"]
+    systems = capability_systems()
     data = np.array(list(systems.values()), dtype=float)
     fig, ax = plt.subplots(figsize=(7.4, 4.6))
     cmap = plt.matplotlib.colors.ListedColormap(["#D55E00", "#009E73"])
@@ -319,10 +391,18 @@ def gateway_latency() -> None:
         lat = tool.get("latencyMs") or {}
         if lat.get("p50") is None:
             continue
-        rows.append((tool["tool"], lat["p50"]))
+        rows.append((tool["tool"], lat["p50"], lat.get("min", lat["p50"]), lat.get("max", lat["p50"])))
+    rows = rows[::-1]
     fig, ax = plt.subplots(figsize=(6.4, 3.0))
-    ax.barh([name for name, _ in rows][::-1], [value for _, value in rows][::-1], color=COLORS[0])
-    ax.set_xlabel("Median short-prompt latency (ms), n=5 except OpenLLMetry n=3")
+    y = np.arange(len(rows))
+    ax.barh(y, [row[1] for row in rows], color=COLORS[0])
+    ax.errorbar(
+        [row[1] for row in rows], y,
+        xerr=[[row[1] - row[2] for row in rows], [row[3] - row[1] for row in rows]],
+        fmt="none", ecolor="#222", capsize=3, lw=0.8,
+    )
+    ax.set_yticks(y, [row[0] for row in rows])
+    ax.set_xlabel("Short-prompt latency (ms): median, whiskers min-max; n=5 except OpenLLMetry n=3")
     ax.set_title("Local Ollama through each wrapper")
     ax.grid(axis="x", lw=0.3)
     save(fig, "rw-gateway-latency")
@@ -444,7 +524,7 @@ def openrouter_rows() -> list[str]:
             f"\\texttt{{{tex(row['model'])}}}",
             tex(most_common([item.get("signedProvider") for item in signed]) or "---"),
             "---" if not plain else f"{median(plain):.0f}",
-            "---" if not signed else f"{median([item['signedMs'] for item in signed]):.0f}",
+            "---" if not lattice_samples(row) else f"{median([hosted_e2e(item) for item in lattice_samples(row)]):.0f}",
             "---" if not lattice_samples(row) else f"{median([item['signedLatticeMs'] for item in lattice_samples(row)]):.2f}",
             drift_cell(row, 0),
             drift_cell(row, 0.7),
@@ -478,6 +558,7 @@ def lattice_prose() -> str:
     local_e2e = [item["signedMs"] for item in LIVE["overhead"] if item.get("signedMs")]
     local_pct = [100.0 * gap / e2e for gap, e2e in zip(local, local_e2e) if e2e]
     hosted = []
+    hosted_pcts = []
     token_meds = []
     delta_meds = []
     for row in finished_models():
@@ -485,6 +566,7 @@ def lattice_prose() -> str:
         if not samples:
             continue
         hosted.append(median([item["signedLatticeMs"] for item in samples]))
+        hosted_pcts.append(median([hosted_pct(item) for item in samples]))
         tokens = [item.get("extraPromptTokens") for item in samples if item.get("extraPromptTokens") is not None]
         deltas = [item.get("packingProviderDeltaMs") for item in samples if item.get("packingProviderDeltaMs") is not None]
         if tokens:
@@ -500,8 +582,11 @@ def lattice_prose() -> str:
         )
     if hosted:
         parts.append(
-            f"Across hosted models with a successful signed short prompt, the median Lattice processing time was {min(hosted):.2f}--{max(hosted):.2f}~ms. "
-            "Table~\\ref{tab:rw-lattice} gives the median and p95 in milliseconds and as a percentage of end-to-end time."
+            f"Across hosted models with a successful signed short prompt, the median Lattice processing time was {min(hosted):.2f}--{max(hosted):.2f}~ms, "
+            f"or {min(hosted_pcts):.3f}--{max(hosted_pcts):.3f}\\% of end-to-end time. "
+            "Table~\\ref{tab:rw-lattice} gives the median and p95 in milliseconds and as a percentage. "
+            "The percentages are recomputed from the per-trial phase times; the \\texttt{signedLatticePct} field stored in \\texttt{openrouter.json} also counts the HTTP time of retried attempts. "
+            "Lattice time includes \\texttt{createAI()} construction and the fetch wrapper's JSON handling, so it is an upper bound."
         )
     if token_meds:
         parts.append(
@@ -535,7 +620,7 @@ def lattice_rows() -> list[str]:
             rows.append(f"\\texttt{{{tex(row['model'])}}} & --- & --- & --- & --- & --- & --- \\\\")
             continue
         ms = [item["signedLatticeMs"] for item in samples]
-        pct = [item["signedLatticePct"] for item in samples if item.get("signedLatticePct") is not None]
+        pct = [value for value in (hosted_pct(item) for item in samples) if value is not None]
         tokens = [item["extraPromptTokens"] for item in samples if item.get("extraPromptTokens") is not None]
         deltas = [item["packingProviderDeltaMs"] for item in samples if item.get("packingProviderDeltaMs") is not None]
         rows.append(" & ".join([
@@ -550,14 +635,65 @@ def lattice_rows() -> list[str]:
     return rows
 
 
+def detector_commit() -> str:
+    lattice = next((tool for tool in (PII or {}).get("tools") or [] if tool.get("tool") == "lattice-noPII"), {})
+    commit = (lattice.get("meta") or {}).get("commit")
+    return (commit or LEGACY_DETECTOR_COMMIT)[:7]
+
+
+def pii_tool(name: str) -> dict:
+    return next((tool for tool in (PII or {}).get("tools") or [] if tool.get("tool") == name and tool.get("measured")), {})
+
+
+def pii_caveats() -> str:
+    gliner = (pii_tool("gliner-small").get("meta") or {})
+    guard = (pii_tool("llm-guard-anonymize").get("meta") or {})
+    presidio = (pii_tool("presidio").get("meta") or {})
+    parts = [
+        "The rule is not symmetric across tools. For each type, Lattice contributes every occurrence of the one substring \\texttt{detect()} returns, while the other tools contribute every span they emit. "
+        "When Lattice's one match falls on a different number, the document is a false positive and a false negative for Lattice, while a multi-span tool can still score it from another span.",
+    ]
+    if gliner:
+        parts.append(
+            f"GLiNER \\citep{{gliner}} is the general {ident(gliner.get('model'))} model, not a PII fine-tune, and its processor truncated each document to 384 tokens"
+            + (
+                f", while LLM Guard \\citep{{llmguard}} scanned {guard['windowChars']:,}-character windows with {guard['overlapChars']} characters of overlap."
+                if guard.get("windowChars") else "."
+            )
+        )
+    if guard:
+        parts.append(
+            f"LLM Guard ran its default Anonymize scanner with recognizer {ident(guard.get('recognizer'))}, which was fine-tuned on ai4privacy, so its ai4privacy scores can be optimistic."
+            + (
+                f" A single process was OOM-killed on long inputs, so each batch of {guard['batch']} documents ran in its own process with a fresh Vault."
+                if guard.get("batch") else ""
+            )
+            + " Raw SSN labels are mapped when the NER map returns them unchanged."
+        )
+    if presidio:
+        model = tex(presidio.get("spacyModel") or "en_core_web_sm")
+        parts.append(
+            f"Presidio \\citep{{presidio}} used its pattern and spaCy \\citep{{spacy}} recognizers for its four in-scope entities, with \\texttt{{{model}}} rather than its default \\texttt{{en\\_core\\_web\\_lg}}."
+        )
+    parts.append(
+        "Lattice is an in-process JavaScript regex and the other detectors are Python pipelines, so Figure~\\ref{fig:rw-pii-latency} compares runtimes as well as detectors."
+    )
+    parts.append(
+        f"The Lattice rows were measured with the detectors at commit \\texttt{{{detector_commit()}}}"
+        + ("; Section~\\ref{sec:realworld} describes how the released detectors differ." if detector_commit() == LEGACY_DETECTOR_COMMIT else ".")
+    )
+    return " ".join(parts)
+
+
 def write_fragment() -> None:
     lines = [
         "% Generated by eval/realworld/scripts/12-charts.py. Do not edit.",
+        "\\providecommand{\\citep}[1]{\\cite{#1}}",
         "\\subsection{Broader comparison}",
         "\\label{sec:realworld-broad}",
         "\\emergencystretch=8em",
         "",
-        "The record-system matrix in Table~\\ref{tab:rw-matrix} is unchanged. This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine.",
+        "This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine.",
         "",
     ]
     if OPEN:
@@ -565,37 +701,38 @@ def write_fragment() -> None:
         prices = {(str(row.get("promptPrice")), str(row.get("completionPrice"))) for row in catalog}
         price_text = "0" if prices and prices <= {("0", "0"), ("0.0", "0.0")} else tex(sorted(prices))
         stopped = OPEN.get("stopped") or {}
+        max_tokens = (OPEN.get("env") or {}).get("maxTokens", {}).get("overhead")
         lines.append(
             f"Lattice's OpenAI-compatible adapter called {ident('https://openrouter.ai/api/v1')}. "
             f"The catalog check found {len(catalog)} of the requested \\texttt{{:free}} ids, and the listed prompt and completion prices were {price_text}. "
             f"Completed model rows: {len(finished_models())}. "
             + (f"The run stopped for {tex(stopped.get('reason'))}. " if stopped.get("reason") else "")
-            + "Upstream HTTP 429 responses were retried. Pacing sleeps, that backoff, and the HTTP time of a failed attempt are excluded from Lattice time and from the end-to-end denominator. "
+            + "Upstream HTTP 429 responses were retried. Pacing sleeps, that backoff, and the HTTP time of a failed attempt are excluded from Lattice time and from end-to-end time, so end-to-end time is Lattice processing plus the provider time of the attempt that returned. "
             "Provider time includes waiting for the response headers and reading the body. "
-            "An earlier subtraction stopped at the headers, so the body download was counted as Lattice time. "
-            "Completion tokens are capped at the value recorded in \\texttt{openrouter.json} (8192 in this run). "
-            "Models whose catalog lists a reasoning parameter also receive \\texttt{reasoning.effort=low}. "
+            + (f"Completion tokens are capped at {max_tokens}. " if max_tokens else "")
+            + "The adapter sends no temperature, \\texttt{max\\_tokens}, or reasoning field. "
+            "A fetch wrapper adds temperature and the token cap to every request, and adds \\texttt{reasoning.effort=low} for models whose catalog lists a reasoning parameter. "
             "A 400 that rejects that field is retried once without it. "
-            "Temperature is injected by the fetch wrapper. "
+            "The Lattice rows therefore describe requests the adapter does not build on its own. "
             "Table~\\ref{tab:rw-models} uses the provider string returned on the chat response. "
             "A drift cell is distinct successful answers, successful calls, and attempts. "
-            "Replay uses only calls that returned. "
-            "The local row is the earlier Ollama run (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
+            "Output binding uses only calls that returned a receipt. "
+            "The local row is the Ollama run in Section~\\ref{sec:realworld} (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
         )
         lines.append(" " + lattice_prose())
         lines.append("")
         lines += table(
-            "Short-prompt latency and the RAG, replay, ticket, and crew checks. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Replay is restricted to calls that returned a receipt. Receipt columns are the single-agent return and the crew return.",
+            "Short-prompt latency and the RAG, output-binding, ticket, and crew checks. Signed ms is the median of Lattice processing plus the provider time of the attempt that returned. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Output binding counts receipts that verified and whose signed output hash matched the kept answer and changed after a one-character edit, among calls that returned a receipt. Receipt columns are the single-agent return and the crew return.",
             "tab:rw-models",
             "@{}l l r r r r r l r l r r@{}",
             [
-                "Model & Provider & Plain ms & Signed ms & Lattice ms & Drift 0 & Drift 0.7 & Cited & Replay & Ticket leak & Agent rcpt & Crew rcpt \\\\",
+                "Model & Provider & Plain ms & Signed ms & Lattice ms & Drift 0 & Drift 0.7 & Cited & Output binding & Ticket leak & Agent rcpt & Crew rcpt \\\\",
                 "\\midrule",
                 *openrouter_rows(),
             ],
         )
         lines += table(
-            "Pure Lattice processing on the signed short prompt. The percentage uses end-to-end time with backoff removed. Extra tokens are Lattice prompt tokens minus the direct prompt tokens. Provider delta is the signed provider time minus the direct provider time, in milliseconds, and is the latency of the longer packed prompt.",
+            "Pure Lattice processing on the signed short prompt. The percentage is Lattice ms over Lattice ms plus the provider time of the attempt that returned; retried attempts, backoff, and pacing are excluded. Extra tokens are Lattice prompt tokens minus the direct prompt tokens. Provider delta is the signed provider time minus the direct provider time, in milliseconds, and is the latency of the longer packed prompt.",
             "tab:rw-lattice",
             "@{}l r r r r r r@{}",
             [
@@ -665,6 +802,11 @@ def write_fragment() -> None:
             )
             if multi.get("note"):
                 lines.append(tex(multi["note"]))
+            lines.append(
+                "Lattice's OpenAI-compatible request builder, which the openai, xai, openrouter, and lm-studio adapters share, sends each artifact as a text part holding JSON and never emits an image part. "
+                "A data-URL string is inlined as text and binary bytes are dropped, so the model received no image part"
+                + (f", and the Lattice arm answered {tex(lattice_answer)} for a red PNG." if lattice_answer and not multi.get("latticeNamesRed") else ".")
+            )
             lines.append("")
     if PII:
         lines.append(
@@ -674,8 +816,10 @@ def write_fragment() -> None:
             "Figure~\\ref{fig:rw-pii-f1} omits those undefined bars."
         )
         lines.append("")
+        lines.append(pii_caveats())
+        lines.append("")
         lines += table(
-            "ai4privacy English validation, document level. Latency is the median milliseconds per document.",
+            f"ai4privacy English validation \\citep{{ai4privacy}}, document level. Latency is the median milliseconds per document. Lattice rows use the detectors at commit \\texttt{{{detector_commit()}}}.",
             "tab:rw-pii-ai4",
             "@{}l rrr rrr rrr rrr r@{}",
             [
@@ -686,7 +830,7 @@ def write_fragment() -> None:
             ],
         )
         lines += table(
-            "Gretel English finance test, same document-level rule. Gold credit-card spans in this file use the label \\texttt{credit\\_card\\_number}.",
+            f"Gretel English finance test \\citep{{gretelfinance}}, same document-level rule. Gold credit-card spans in this file use the label \\texttt{{credit\\_card\\_number}}. Lattice rows use the detectors at commit \\texttt{{{detector_commit()}}}.",
             "tab:rw-pii-gretel",
             "@{}l rrr rrr rrr rrr r@{}",
             [
@@ -696,21 +840,19 @@ def write_fragment() -> None:
                 *pii_rows("gretel"),
             ],
         )
+        # Notes for presidio, spaCy, GLiNER, and LLM Guard are in pii_caveats().
+        covered = {"presidio", "spacy-en_core_web_sm", "gliner-small", "llm-guard-anonymize"}
         for tool in PII["tools"]:
             meta = tool.get("meta") or {}
-            if meta.get("note"):
+            if meta.get("note") and tool.get("tool") not in covered:
                 lines.append(f"{tex(tool['tool'])}: {tex(meta['note'])}")
-            if tool.get("tool") == "gliner-small" and tool.get("measured"):
-                lines.append(
-                    "GLiNER's processor truncated documents longer than 384 tokens during this scoring run."
-                )
         for item in PII.get("not_measured") or []:
             reason = item.get("reason") or ""
             reason = reason.split(" (/", 1)[0]
             lines.append(
                 f"{tex(item.get('tool') or 'unmeasured')} is {tex(item.get('status') or 'not measured')}: {tex(reason)}"
             )
-        if PII.get("not_measured") or any((tool.get("meta") or {}).get("note") for tool in PII["tools"]):
+        if PII.get("not_measured"):
             lines.append("")
         lines += [
             "\\begin{figure}[t]",
@@ -723,14 +865,14 @@ def write_fragment() -> None:
             "\\begin{figure}[t]",
             "\\centering",
             "\\includegraphics[width=0.86\\linewidth]{rw-pii-latency.pdf}",
-            "\\caption{Median detector time per ai4privacy document. The axis is logarithmic.}",
+            "\\caption{Median detector time per ai4privacy document. The axis is logarithmic. Lattice runs in-process in JavaScript; the other detectors are Python pipelines.}",
             "\\label{fig:rw-pii-latency}",
             "\\end{figure}",
             "",
         ]
     if CITE:
         lines.append(
-            f"On ASQA dev (n={CITE['n']}), a case-sensitive Wikipedia title substring matches {CITE['titleSubstringCaseSensitive']} long answers and a case-insensitive substring matches {CITE['titleSubstringCaseInsensitive']}. "
+            f"On ASQA dev \\citep{{asqa}} (n={CITE['n']}), a case-sensitive Wikipedia title substring matches {CITE['titleSubstringCaseSensitive']} long answers and a case-insensitive substring matches {CITE['titleSubstringCaseInsensitive']}. "
             f"Square-bracket citations appear in {CITE['answersWithSquareBracket']} answers and overlap a gold title in {CITE['bracketOverlapsGoldTitle']}. "
             f"\\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. These three checks are different predicates."
         )
@@ -751,14 +893,14 @@ def write_fragment() -> None:
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=\\linewidth]{rw-overhead-pct.pdf}",
-        "\\caption{Signed Lattice processing time as a percentage of end-to-end time. End-to-end time is Lattice processing plus provider time plus failed-attempt HTTP time. Backoff is excluded. The bar is the median and the whiskers run from the minimum to the maximum. The local bar is wall time minus the localhost HTTP call from the earlier Ollama run.}",
+        "\\caption{Signed Lattice processing time as a percentage of end-to-end time, where end-to-end time is Lattice processing plus the provider time of the attempt that returned. Retried attempts, backoff, and pacing are excluded. The bar is the median and the whiskers run from the minimum to the maximum. The local bar is wall time minus the localhost HTTP call in the Ollama run of Section~\\ref{sec:realworld}.}",
         "\\label{fig:rw-overhead-pct}",
         "\\end{figure}",
         "",
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=\\linewidth]{rw-latency-dist.pdf}",
-        "\\caption{Signed short-prompt latency. Ollama is five trials. Each hosted row is the successful signed trials.}",
+        "\\caption{Signed short-prompt latency. Ollama is five trials. Each hosted row is the successful signed trials, as Lattice processing plus the provider time of the attempt that returned.}",
         "\\label{fig:rw-latency-dist}",
         "\\end{figure}",
         "",
@@ -772,7 +914,7 @@ def write_fragment() -> None:
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=0.9\\linewidth]{rw-replay.pdf}",
-        "\\caption{Receipts from calls that returned. Each counted receipt verified, replayed offline, matched the output hash, and detected a one-character edit. Rate-limited calls with no receipt are left out of the denominator.}",
+        "\\caption{Signed output binding on receipts from calls that returned. A receipt counts when it verified, its signed output hash matched the kept answer, and a one-character edit of that answer changed the hash. \\texttt{replayOffline} returns the outputs the caller supplies, so this is a hash-binding check, not a re-run of the model. Rate-limited calls with no receipt are left out of the denominator.}",
         "\\label{fig:rw-replay}",
         "\\end{figure}",
         "",
@@ -787,79 +929,93 @@ def write_fragment() -> None:
             "\\end{figure}",
             "",
         ]
+    cosign = compare_tool("cosign")
     lines += [
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=\\linewidth]{rw-capability.pdf}",
-        "\\caption{Capabilities observed on these workloads. Gray is not measured here. LiteLLM routing is eight calls across two identical local deployments, which returned one route. Lattice routing is gray because each live call used one configured provider. Portkey's stored-log endpoint returned HTTP 500, so the PII cell is gray. LiteLLM's callback log stored the prompt text. The single-agent Lattice return carried no receipt; the crew return did.}",
+        "\\caption{Capabilities observed on these workloads. Gray is not measured here. "
+        "Signed output binding is yes when the system signs the record and its own verifier rejected a byte edit of the stored record; for Lattice the signed output hash is checked by re-hashing the kept answer. "
+        + ("cosign's offline-verify cell is gray because the measured \\texttt{verify-blob} checked the Rekor log online. " if cosign.get("tlogUpload") else "")
+        + "LiteLLM routing is eight calls across two identical local deployments, which returned one route. Lattice routing is gray because each live call used one configured provider. Portkey's stored-log endpoint returned HTTP 500, so the PII cell is gray. LiteLLM's callback log stored the prompt text. The single-agent Lattice return carried no receipt; the crew return did.}",
         "\\label{fig:rw-capability}",
         "\\end{figure}",
         "",
     ]
     if GATE:
-        header = "System & Status & n & p50 ms & Bytes & Markers in capture & Offline verify & Replay \\\\"
+        header = "System & Status & n & p50 ms & min--max ms & Bytes & Markers in capture & Offline verify & Signed output binding \\\\"
         body = ["\\midrule"]
+        measured_n = []
         for tool in GATE["tools"]:
             lat = tool.get("latencyMs") or {}
             if tool.get("measured"):
+                if lat.get("n") is not None:
+                    measured_n.append(lat["n"])
                 markers = yn(tool.get("leak"))
                 if tool.get("requestTextStored"):
                     markers = "prompt stored"
                 elif tool.get("logApiError"):
                     markers = "log unread"
+                edit = tool.get("byteEditDetected")
                 body.append(" & ".join([
                     tex(tool["tool"]),
                     "measured",
                     str(lat.get("n") if lat.get("n") is not None else "---"),
                     fmt(lat.get("p50"), 1),
+                    "---" if lat.get("min") is None else f"{lat['min']:.0f}--{lat['max']:.0f}",
                     "---" if tool.get("bytes") is None else str(tool.get("bytes")),
                     markers,
                     yn(tool.get("offlineVerify")),
-                    yn(tool.get("replay")),
+                    # None of these logs is signed, so a detected edit would still not be a signed binding.
+                    "---" if edit is None else "no",
                 ]) + r" \\")
             else:
                 body.append(" & ".join([
                     tex(tool["tool"]),
                     tex(tool.get("status") or "not measured"),
-                    "---", "---", "---", "---", "---", "---",
+                    "---", "---", "---", "---", "---", "---", "---",
                 ]) + r" \\")
+        litellm = gate_tool("litellm")
         lines.append(
-            "LiteLLM here is an in-process client, not a proxy process. Its router sent eight short prompts to two identical Ollama deployments and returned "
+            "LiteLLM \\citep{litellm} here is an in-process client, not a proxy process. Its router sent eight short prompts to two identical Ollama deployments and returned "
             + (
-                f"{next(tool for tool in GATE['tools'] if tool.get('tool') == 'litellm').get('routingUnique')} distinct route across {next(tool for tool in GATE['tools'] if tool.get('tool') == 'litellm').get('routingN')} calls. "
-                if any(tool.get("tool") == "litellm" for tool in GATE.get("tools") or []) else "the route recorded in \\texttt{gateways.json}. "
+                f"{litellm.get('routingUnique')} distinct route across {litellm.get('routingN')} calls. "
+                if litellm else "the route recorded in \\texttt{gateways.json}. "
             )
-            + "That is a weak determinism check. Helicone and Langfuse were not started."
+            + "That is a weak determinism check. "
+            "The other wrappers are a LangChain callback handler \\citep{langchain}, OpenLLMetry's in-process spans \\citep{openllmetry}, and a local Portkey gateway \\citep{portkey}. "
+            "Helicone and Langfuse were not started."
+        )
+        lines.append(
+            f" The latency rows are small samples (n={min(measured_n)}--{max(measured_n)} per arm). Each wrapper ran its calls in its own block, not interleaved with the direct arm, against \\texttt{{{tex(GATE.get('model') or 'the local model')}}} on a CPU-only host. "
+            "The min--max ranges overlap, so the p50 order reflects generation noise, not wrapper overhead."
+            if measured_n else ""
         )
         lines.append("")
         lines += table(
-            "Local wrappers around Ollama. Marker detection scans the captured log or span. Portkey's log route failed, so that row does not show what a stored log would contain.",
+            "Local wrappers around Ollama. Marker detection scans the captured log or span. Portkey's log route failed, so that row does not show what a stored log would contain. None of these logs is signed.",
             "tab:rw-gateways",
-            "@{}l l r r r l l l@{}",
+            "@{}l l r r r r l l l@{}",
             [header, *body],
         )
         lines += [
             "\\begin{figure}[t]",
             "\\centering",
             "\\includegraphics[width=0.86\\linewidth]{rw-gateway-latency.pdf}",
-            "\\caption{Median short-prompt latency through each local wrapper. OpenLLMetry used n=3. The other measured rows used n=5.}",
+            "\\caption{Short-prompt latency through each local wrapper: median, with whiskers from the minimum to the maximum. OpenLLMetry used n=3. The other measured rows used n=5. The arms ran one after another on a CPU-only host, so the order is not a ranking of wrapper overhead.}",
             "\\label{fig:rw-gateway-latency}",
             "\\end{figure}",
             "",
         ]
     text = "\n".join(lines) + "\n"
     (RESULTS / "realworld-broad.tex").write_text(text)
+    # PDFs and the fragment only. The papers do not include the PNGs.
     for dest in (PAPER, PAPER / "ieee"):
-        for name in (
-            "rw-overhead-pct", "rw-latency-dist", "rw-replay", "rw-drift",
-            "rw-pii-f1", "rw-pii-latency", "rw-tamper-heat", "rw-capability", "rw-gateway-latency",
-        ):
-            for ext in ("pdf", "png"):
-                src = RESULTS / f"{name}.{ext}"
-                if src.exists():
-                    shutil.copy(src, dest / src.name)
-        if (RESULTS / "realworld-broad.tex").exists():
-            shutil.copy(RESULTS / "realworld-broad.tex", dest / "realworld-broad.tex")
+        for name in FIGURES:
+            src = RESULTS / f"{name}.pdf"
+            if src.exists():
+                shutil.copy(src, dest / src.name)
+        shutil.copy(RESULTS / "realworld-broad.tex", dest / "realworld-broad.tex")
 
 
 def main() -> None:
