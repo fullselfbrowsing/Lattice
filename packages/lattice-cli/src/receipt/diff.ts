@@ -48,6 +48,8 @@ interface ReceiptProjection {
     readonly audience: unknown;
     readonly nonce: unknown;
     readonly expiresAt: unknown;
+    readonly chainClosure: unknown;
+    readonly chainMemberCids: unknown;
   };
   readonly model: {
     readonly requested: unknown;
@@ -297,6 +299,8 @@ function projectReceipt(
       audience: b.audience ?? null,
       nonce: b.nonce ?? null,
       expiresAt: b.expiresAt ?? null,
+      chainClosure: b.chainClosure ?? null,
+      chainMemberCids: b.chainMemberCids ?? null,
     },
     model: {
       requested: body.model?.requested ?? null,
@@ -382,6 +386,18 @@ function compareProjection(
   pushDifference(differences, "receipt.audience", left.receipt.audience, right.receipt.audience);
   pushDifference(differences, "receipt.nonce", left.receipt.nonce, right.receipt.nonce);
   pushDifference(differences, "receipt.expiresAt", left.receipt.expiresAt, right.receipt.expiresAt);
+  pushDifference(
+    differences,
+    "receipt.chainClosure",
+    left.receipt.chainClosure,
+    right.receipt.chainClosure,
+  );
+  pushDifference(
+    differences,
+    "receipt.chainMemberCids",
+    left.receipt.chainMemberCids,
+    right.receipt.chainMemberCids,
+  );
   pushDifference(differences, "model.requested", left.model.requested, right.model.requested);
   pushDifference(differences, "model.observed", left.model.observed, right.model.observed);
   pushDifference(differences, "route.providerId", left.route.providerId, right.route.providerId);

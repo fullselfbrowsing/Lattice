@@ -1,0 +1,18 @@
+{
+  "tests": {
+    "lattice": [
+      1596,
+      0,
+      1596,
+      443
+    ],
+    "cli": [
+      190,
+      0,
+      190,
+      39
+    ]
+  },
+  "format": "[passed, failed, total, suites]",
+  "environment": "env-functional.json"
+}

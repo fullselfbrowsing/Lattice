@@ -1,0 +1,83 @@
+[
+  {
+    "depth": 1,
+    "totalBytes": 1023,
+    "bytesPerLink": 1023,
+    "buildP50ms": "0.202",
+    "buildP95ms": "0.708",
+    "verifyAllP50ms": "0.303",
+    "verifyAllP95ms": "0.924"
+  },
+  {
+    "depth": 2,
+    "totalBytes": 2170,
+    "bytesPerLink": 1085,
+    "buildP50ms": "0.268",
+    "buildP95ms": "0.685",
+    "verifyAllP50ms": "0.449",
+    "verifyAllP95ms": "0.725"
+  },
+  {
+    "depth": 4,
+    "totalBytes": 4464,
+    "bytesPerLink": 1116,
+    "buildP50ms": "0.526",
+    "buildP95ms": "0.984",
+    "verifyAllP50ms": "0.888",
+    "verifyAllP95ms": "1.220"
+  },
+  {
+    "depth": 8,
+    "totalBytes": 9052,
+    "bytesPerLink": 1132,
+    "buildP50ms": "1.076",
+    "buildP95ms": "1.350",
+    "verifyAllP50ms": "1.688",
+    "verifyAllP95ms": "2.024"
+  },
+  {
+    "depth": 16,
+    "totalBytes": 18228,
+    "bytesPerLink": 1139,
+    "buildP50ms": "1.996",
+    "buildP95ms": "2.459",
+    "verifyAllP50ms": "3.312",
+    "verifyAllP95ms": "4.069"
+  },
+  {
+    "depth": 32,
+    "totalBytes": 36580,
+    "bytesPerLink": 1143,
+    "buildP50ms": "3.889",
+    "buildP95ms": "5.844",
+    "verifyAllP50ms": "6.266",
+    "verifyAllP95ms": "7.982"
+  },
+  {
+    "depth": 64,
+    "totalBytes": 73284,
+    "bytesPerLink": 1145,
+    "buildP50ms": "7.595",
+    "buildP95ms": "8.431",
+    "verifyAllP50ms": "12.599",
+    "verifyAllP95ms": "13.352"
+  },
+  {
+    "depth": 128,
+    "totalBytes": 146692,
+    "bytesPerLink": 1146,
+    "buildP50ms": "14.913",
+    "buildP95ms": "20.007",
+    "verifyAllP50ms": "25.074",
+    "verifyAllP95ms": "32.507"
+  },
+  {
+    "depth": 256,
+    "totalBytes": 293508,
+    "bytesPerLink": 1147,
+    "buildP50ms": "30.116",
+    "buildP95ms": "40.906",
+    "verifyAllP50ms": "49.059",
+    "verifyAllP95ms": "57.309"
+  }
+]

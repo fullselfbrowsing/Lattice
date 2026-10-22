@@ -5,7 +5,8 @@ import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { receiptCid } from "./cid.js";
 import { PAYLOAD_TYPE, base64Decode } from "./envelope.js";
 import { createMemoryKeySet } from "./keyset.js";
-import type { TripwireEvidence } from "../contract/tripwire.js";
+import { inv, type InvariantDeclaration } from "../contract/invariants.js";
+import { evaluateTripwires, type TripwireEvidence } from "../contract/tripwire.js";
 
 import {
   DEFAULT_REDACTION_POLICY_ID,
@@ -283,6 +284,65 @@ describe("receipt.ts — signed bytes never contain the matched value (issue #21
       const body = decodeBody(env.payload);
       expect(body.redactions.map((entry) => entry.reason)).toEqual(testCase.reasons);
       expect(body.redactions.every((entry) => entry.path.startsWith("tripwireEvidence."))).toBe(true);
+    });
+  }
+});
+
+describe("receipt.ts — must-cite evidence signs only developer-owned values", () => {
+  // The nested fallback finds lists under model-produced keys (a z.record or
+  // loose-object output). Their dotted location must never reach the signed
+  // body, neither as `path` nor through the templated message.
+  const cases: ReadonlyArray<{
+    readonly label: string;
+    readonly output: unknown;
+    readonly declaration: () => InvariantDeclaration;
+    readonly leaked: readonly string[];
+  }> = [
+    {
+      label: "a missing citation under a model-produced key",
+      output: { sections: { "Jane Roe SSN 123-45-6789": { text: "Refund denied.", citations: ["other-doc"] } } },
+      declaration: () => inv.mustCite("policy-refund"),
+      leaked: ["Jane Roe", "123-45-6789", "sections"],
+    },
+    {
+      label: "a rejectUncited failure in a list under a model-produced key",
+      output: {
+        sections: { "patient jane.roe@example.com": { text: "Refund per [Smith 1999].", citations: ["policy-refund"] } },
+      },
+      declaration: () => inv.mustCite("policy-refund", { rejectUncited: true }),
+      leaked: ["jane.roe", "example.com", "Smith 1999", "sections"],
+    },
+    {
+      label: "a list inside an array of answers",
+      output: { answers: [{ text: "x", evidence: ["other-doc"] }] },
+      declaration: () => inv.mustCite("policy-refund"),
+      leaked: ["answers", "[0]"],
+    },
+  ];
+
+  for (const testCase of cases) {
+    it(`${testCase.label}: the signed body carries the default key only`, async () => {
+      const tripwire = await evaluateTripwires(testCase.output, [testCase.declaration()]);
+      expect(tripwire.ok).toBe(false);
+      if (tripwire.ok) return;
+      const key = tripwire.evidence.path;
+      expect(["citations", "evidence"]).toContain(key);
+
+      const { signer } = await makeSigner();
+      const env = await createReceipt(
+        minimalInput({ contractVerdict: "tripwire-violated", tripwireEvidence: tripwire.evidence }),
+        signer,
+      );
+      const rawJson = new TextDecoder().decode(base64Decode(env.payload));
+      for (const fragment of testCase.leaked) expect(rawJson).not.toContain(fragment);
+      const body = decodeBody(env.payload);
+      expect(body.tripwireEvidence).toEqual({
+        invariantId: tripwire.evidence.invariantId,
+        kind: "must-cite",
+        path: key,
+        observed: { valueType: "array" },
+        message: `must-cite: no matching citation at "${key}".`,
+      });
     });
   }
 });
@@ -738,5 +798,42 @@ describe("createReceipt — timestamps must carry an explicit UTC offset (review
     const body = decodeBody(env.payload);
     expect(body.issuedAt).toBe(issuedAt);
     expect(body.expiresAt).toBe(expiresAt);
+  });
+});
+
+describe("createReceipt — chain-closure fields", () => {
+  const cidA = `sha256:${"a".repeat(64)}`;
+  const cidB = `sha256:${"b".repeat(64)}`;
+
+  it("embeds chainClosure and a sorted chainMemberCids list", async () => {
+    const { signer } = await makeSigner();
+    const root = await createReceipt(minimalInput({ chainClosure: "member-cids" }), signer);
+    expect(decodeBody(root.payload).chainClosure).toBe("member-cids");
+    const closer = await createReceipt(minimalInput({ chainMemberCids: [cidA, cidB] }), signer);
+    expect(decodeBody(closer.payload).chainMemberCids).toEqual([cidA, cidB]);
+    const empty = await createReceipt(minimalInput({ chainMemberCids: [] }), signer);
+    expect(decodeBody(empty.payload).chainMemberCids).toEqual([]);
+  });
+
+  it.each([
+    ["an unknown chainClosure mode", { chainClosure: "merkle-v2" }, /chainClosure must be "member-cids"/u],
+    ["a boolean chainClosure", { chainClosure: true }, /chainClosure must be "member-cids"/u],
+    ["a string chainMemberCids", { chainMemberCids: cidA }, /must be an array/u],
+    ["a null chainMemberCids", { chainMemberCids: null }, /must be an array/u],
+    ["a non-string member", { chainMemberCids: [cidA, 7] }, /chainMemberCids\[1\]/u],
+    ["a member that is not a sha256 CID", { chainMemberCids: ["sha256:abc"] }, /chainMemberCids\[0\]/u],
+    ["an uppercase-hex member", { chainMemberCids: [`sha256:${"A".repeat(64)}`] }, /chainMemberCids\[0\]/u],
+    ["a duplicate member", { chainMemberCids: [cidA, cidA] }, /more than once/u],
+    ["an unsorted list", { chainMemberCids: [cidB, cidA] }, /must be sorted/u],
+    [
+      "chainClosure on a non-root receipt",
+      { chainClosure: "member-cids", parentReceiptCid: cidA },
+      /chainClosure is only valid on a root receipt/u,
+    ],
+  ])("refuses to issue a receipt with %s", async (_label, overrides, pattern) => {
+    const { signer } = await makeSigner();
+    const input = { ...minimalInput(), ...overrides } as unknown as CreateReceiptInput;
+    await expect(createReceipt(input, signer)).rejects.toThrow(TypeError);
+    await expect(createReceipt(input, signer)).rejects.toThrow(pattern);
   });
 });

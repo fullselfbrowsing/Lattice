@@ -86,6 +86,22 @@ export interface CapabilityReceiptBody {
   readonly nonce?: string;
   /** ISO 8601 UTC instant after which every verifier rejects the receipt. */
   readonly expiresAt?: string;
+  /**
+   * When `"member-cids"`, `verifyChain` requires exactly one other receipt
+   * whose `chainMemberCids` lists every remaining member. Crew-start
+   * receipts set this so a dropped leaf fails closed. Absent on older
+   * receipts; those still need `expectedCount`. Any other value fails
+   * `verifyReceipt` with `version-mismatch`. Added without a schema-version
+   * bump; see receipts/schema-version.ts for what older verifiers do.
+   */
+  readonly chainClosure?: "member-cids";
+  /**
+   * CIDs (`sha256:<hex>`) of every other receipt in the tree, sorted and
+   * unique. Present only on the closing receipt of a chain that declared
+   * `chainClosure`. Anything other than an array of strings fails
+   * `verifyReceipt` with `version-mismatch`.
+   */
+  readonly chainMemberCids?: readonly string[];
   readonly usage: ReceiptUsageCanonical;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
@@ -194,6 +210,63 @@ export interface VerifyOptions {
   readonly maxAgeMs?: number;
 }
 
+/**
+ * Stable identifiers for `receiptVerifyAdvisories` and
+ * `VerifyChainOk.advisories`. Gate on `code` and `severity`, never on the
+ * message text.
+ *
+ *   warn  "audience-unchecked"        the receipt names an audience but
+ *                                     `expectedAudience` was not passed
+ *   warn  "nonce-unchecked"           the receipt carries a nonce but
+ *                                     `expectedNonce` was not passed
+ *   warn  "tail-truncation-unchecked" a chain with no `chainClosure` was
+ *                                     verified without `expectedCount`
+ *   warn  "closure-partial"           `partial` verified a subset of the
+ *                                     members the closing receipt lists;
+ *                                     the rest were not checked
+ *   info  "audience-absent"           the receipt has no audience
+ *   info  "nonce-absent"              the receipt has no nonce
+ *   info  "expiry-absent"             no `expiresAt` and no `maxAgeMs`
+ *   info  "version-below-current"     the receipt predates the current
+ *                                     schema and the effective floor,
+ *                                     max(`minVersion`, v1.1), accepted it
+ */
+export type VerifyAdvisoryCode =
+  | "audience-unchecked"
+  | "nonce-unchecked"
+  | "tail-truncation-unchecked"
+  | "audience-absent"
+  | "nonce-absent"
+  | "expiry-absent"
+  | "version-below-current"
+  | "closure-partial";
+
+/**
+ * `"warn"`: something the receipt or chain commits to was not checked, so a
+ * replay or truncation would verify the same way. This includes members a
+ * `partial` verification did not see, even though the caller chose the
+ * subset. `"info"`: an optional check that the receipt does not use.
+ */
+export type VerifyAdvisorySeverity = "warn" | "info";
+
+/** One note about a check that verification left to the caller. */
+export interface VerifyAdvisory {
+  readonly code: VerifyAdvisoryCode;
+  readonly severity: VerifyAdvisorySeverity;
+  /** Human-readable detail. Never contains a nonce value. */
+  readonly message: string;
+}
+
+/**
+ * `count-mismatch` covers every failure of a chain's size commitment, not
+ * only a wrong `expectedCount`: the closing receipt's `chainMemberCids`
+ * disagree with the presented set, the closing receipt is missing or
+ * repeated, a receipt lists members while none declares `chainClosure`, a
+ * receipt other than the root declares `chainClosure`, or
+ * `requireClosure` found no declaration. The message says which. A closure
+ * field of the wrong type fails earlier, as `link-invalid` with cause
+ * `version-mismatch`.
+ */
 export type VerifyChainErrorKind =
   | "link-invalid"
   | "no-root"
@@ -220,6 +293,21 @@ export interface VerifyChainOptions extends VerifyOptions {
   readonly expectedCount?: number;
   /** Out-of-band commitment to the root receipt's CID. */
   readonly expectedRootCid?: string;
+  /**
+   * Fail with `count-mismatch` unless some receipt declares
+   * `chainClosure`. Off by default so chains minted before closure existed,
+   * and trees that never set it, keep verifying.
+   */
+  readonly requireClosure?: boolean;
+  /**
+   * Verify a disclosed subset of a closed chain. The closing receipt must
+   * still be present, and every other presented receipt must be listed in
+   * its `chainMemberCids`; listed members that are not presented are
+   * allowed and reported as a `closure-partial` warning. The subset must
+   * still form one tree under the root. No effect on a chain that does not
+   * declare `chainClosure`.
+   */
+  readonly partial?: boolean;
 }
 
 export interface VerifyChainOk {
@@ -230,6 +318,12 @@ export interface VerifyChainOk {
   readonly depth: number;
   /** CIDs in input order. */
   readonly cids: readonly string[];
+  /**
+   * Checks verification left to the caller, deduplicated across receipts:
+   * every `receiptVerifyAdvisories` entry for each link, plus
+   * `tail-truncation-unchecked` and `closure-partial`. Omitted when empty.
+   */
+  readonly advisories?: readonly VerifyAdvisory[];
 }
 
 export interface VerifyChainFail {

@@ -1,0 +1,74 @@
+{
+  "lattice": {
+    "measured": true,
+    "locNote": "createReceipt over sha256 of the recorded request and response",
+    "rows": [
+      {
+        "id": "rag",
+        "ms": 5.584,
+        "bytes": 1062,
+        "verifyOk": true,
+        "byteFlipRejected": true,
+        "resignOtherKeyRejected": true,
+        "leak": false
+      },
+      {
+        "id": "support-ticket",
+        "ms": 0.173,
+        "bytes": 1078,
+        "verifyOk": true,
+        "byteFlipRejected": true,
+        "resignOtherKeyRejected": true,
+        "leak": false
+      },
+      {
+        "id": "sequential",
+        "ms": 0.166,
+        "bytes": 1070,
+        "verifyOk": true,
+        "byteFlipRejected": true,
+        "resignOtherKeyRejected": true,
+        "leak": false
+      }
+    ],
+    "verifyOk": true,
+    "byteFlipRejected": true,
+    "resignOtherKeyRejected": true,
+    "leak": false,
+    "bytes": 3210,
+    "ms": 5.923
+  },
+  "sello": {
+    "measured": true,
+    "mode": "typescript SDK createReceiptFromJwsToken + MockTransparencyLog (not the public transparency log)",
+    "commit": "943c3d2bf00e92cae27199fccf8cddff9f54f78c",
+    "verifyOk": true,
+    "validBeforeTamper": 3,
+    "rejectedBeforeTamper": 0,
+    "rejectedAfterTamper": 1,
+    "tamperDetected": true,
+    "leak": false,
+    "bytes": 1359,
+    "ms": 9.336,
+    "rows": [
+      {
+        "id": "rag",
+        "ms": 7.259,
+        "bytes": 447,
+        "leak": false
+      },
+      {
+        "id": "support-ticket",
+        "ms": 1.192,
+        "bytes": 458,
+        "leak": false
+      },
+      {
+        "id": "sequential",
+        "ms": 0.885,
+        "bytes": 454,
+        "leak": false
+      }
+    ]
+  }
+}

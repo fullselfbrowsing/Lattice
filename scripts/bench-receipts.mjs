@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Receipt cost and tamper-resistance benchmark backing the paper's
- * "Measured cost and tamper resistance" table (paper/main.tex).
+ * "Measured cost and tamper resistance" table (paper/ieee/main.tex).
  *
  * Runs against the BUILT package (packages/lattice/dist) through public
  * exports only, with the in-repo mocked provider and no network. Every

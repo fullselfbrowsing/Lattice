@@ -3,9 +3,12 @@
  *
  * The agent surface is intentionally distinct from the v1.0 single-shot
  * runtime (`RunIntent` / `RunResult`). The agent loop wraps multiple
- * provider iterations, dispatches tool calls between them, and threads
- * v1.1 capability receipts through Phase 16's `createCheckpointHook` when
- * a signer is configured.
+ * provider iterations and dispatches tool calls between them. With a
+ * signer on the intent, Phase 16's `createCheckpointHook` mints a
+ * per-iteration checkpoint receipt and emits it only as a `step.transition`
+ * tracer event (`metadata.envelope`). `ai.runAgent` returns no receipt on
+ * its result; a caller without a tracer keeps none. `ai.run` and
+ * `runAgentCrew` return receipts.
  *
  * Composition surfaces (all optional on `AgentIntent`):
  *   - `pipeline?` — Phase 15 `HookPipeline`; if absent, runtime creates a default.
@@ -73,6 +76,10 @@ export interface IterationRecord {
     readonly resultHash: string;
   }>;
   readonly deniedReason?: string;
+  /**
+   * Not set by the agent loop. Checkpoint receipts minted under a signer go
+   * only to `step.transition` tracer events (`metadata.envelope`).
+   */
   readonly receipt?: ReceiptEnvelope;
 }
 
@@ -119,9 +126,9 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
  * answer and (when `outputs` is declared) the final answer validates.
  *
  * `iterations[]` records every iteration that ran — including the one that
- * produced the final answer. `receipt` is the outermost receipt minted at
- * loop close when `signer` is configured (separate from per-iteration
- * receipts on `iterations[i].receipt`).
+ * produced the final answer. `receipt` is not set: the loop mints no receipt
+ * at loop close, and with a `signer` its per-iteration checkpoint receipts go
+ * only to `step.transition` tracer events, not to `iterations[i].receipt`.
  */
 export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContractMap> {
   readonly kind: "success";
@@ -160,6 +167,7 @@ export interface AgentFailure {
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly reason?: string;
   readonly cause?: unknown;
+  /** Not set by the agent loop; see `AgentSuccess`. */
   readonly receipt?: ReceiptEnvelope;
 }
 

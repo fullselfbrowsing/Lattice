@@ -1,0 +1,31 @@
+{
+  "dataset": "din0s/asqa dev, revision 084060f16b46f3165318f760b2339208b19a0bde, Apache-2.0",
+  "n": 948,
+  "mustCiteAnyGold": 7,
+  "mustCiteNote": "Copied from datasets.json. The invariant is syntactic and case-sensitive.",
+  "titleSubstringCaseSensitive": 525,
+  "titleSubstringCaseInsensitive": 605,
+  "answersWithSquareBracket": 2,
+  "bracketOverlapsGoldTitle": 0,
+  "knowledgeChars": {
+    "n": 948,
+    "mean": 267.0611814345992,
+    "max": 3101
+  },
+  "nli": {
+    "measured": true,
+    "model": "typeform/distilbert-base-uncased-mnli",
+    "n": 948,
+    "scored": 696,
+    "entailed": 296,
+    "labels": {
+      "empty": 252,
+      "NEUTRAL": 211,
+      "CONTRADICTION": 189,
+      "ENTAILMENT": 296
+    },
+    "latencyMsP50": 819.9604000001273,
+    "loadS": 544.1128310680006,
+    "note": "Premise is the gold ASQA knowledge text truncated to 1800 characters. Hypothesis is the long answer. This is support, not a citation-string check."
+  }
+}

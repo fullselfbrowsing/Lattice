@@ -146,19 +146,33 @@ describe("runAgentCrew public integration", () => {
     ]);
     expect(result.totalIterations).toBe(5);
     expect(result.crewRootCid).toMatch(/^sha256:[a-f0-9]{64}$/u);
-    expect(result.receipts).toHaveLength(4);
+    expect(result.receipts).toHaveLength(5);
     for (const envelope of result.receipts) {
       expect(await verifyReceipt(envelope, keySet)).toMatchObject({ ok: true });
     }
     for (const body of result.receipts.map(decodeReceipt).slice(1)) {
       expect(body.parentReceiptCid).toBe(result.crewRootCid);
     }
-    // A real crew's receipt set verifies as one tree with no options.
+    // A real crew's receipt set verifies as one tree with no options: three
+    // agents plus the crew-start and crew-close receipts.
+    expect(result.receiptError).toBeUndefined();
     expect(await verifyChain(result.receipts, keySet)).toMatchObject({
       ok: true,
       rootCid: result.crewRootCid,
-      count: 4,
+      count: result.perAgent.length + 2,
       depth: 1,
+    });
+    // Closure is declared, so a verifier that insists on it accepts the
+    // set, and dropping one agent's receipt fails without expectedCount.
+    expect(await verifyChain(result.receipts, keySet, { requireClosure: true })).toMatchObject({
+      ok: true,
+    });
+    const withoutBeta = result.receipts.filter(
+      (envelope) => decodeReceipt(envelope).stepName !== "crew-agent-completion:beta",
+    );
+    expect(await verifyChain(withoutBeta, keySet)).toMatchObject({
+      ok: false,
+      error: { kind: "count-mismatch" },
     });
   });
 

@@ -28,6 +28,7 @@ import {
   getStructuredOutputContract,
   getToolUseContract,
   realtimeStepName,
+  receiptVerifyAdvisories,
   sanitizeRunEventAttributes,
   stripChatTemplateArtifacts,
   stripOpenRouterVariant,
@@ -152,6 +153,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "permissionGuardRegisterOptions",
   "realtimeStepName",
   "receiptCid",
+  "receiptVerifyAdvisories",
   "redactArtifactRef",
   "redactPlan",
   "redactReplayEnvelope",
@@ -762,8 +764,9 @@ describe("Phase 37 public surface", () => {
 });
 
 describe("issue #21 public surface additions", () => {
-  it("exports verifyChain and the ordered RECEIPT_VERSIONS list", () => {
+  it("exports verifyChain, receiptVerifyAdvisories, and the ordered RECEIPT_VERSIONS list", () => {
     expect(typeof verifyChain).toBe("function");
+    expect(typeof receiptVerifyAdvisories).toBe("function");
     expect(RECEIPT_VERSIONS.at(-1)).toBe("lattice-receipt/v1.4");
     expect(RECEIPT_VERSIONS[0]).toBe("lattice-receipt/v1");
     expect(Object.isFrozen(RECEIPT_VERSIONS)).toBe(true);

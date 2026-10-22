@@ -36,14 +36,16 @@
  * minted by the 39-06 orchestrator BEFORE children run — Pitfall 2),
  * using synthetic route identifiers (checkpoint.ts DEFAULT_ROUTE
  * precedent). Per-iteration checkpoint receipts remain UNCHANGED (no
- * parentReceiptCid).
+ * parentReceiptCid). A failed child completion mint follows
+ * `config.receipts.onSignerError`: "throw" raises ReceiptSigningError and
+ * ends the crew; "flag" (the default) keeps the child's work, emits a
+ * tracer event, and reports the failure through `receiptMintFailed`.
  */
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import type { ArtifactRef } from "../../artifacts/artifact.js";
 import { isArtifactRef, toArtifactRef } from "../../artifacts/artifact.js";
-import { STEP_TRANSITION_EVENT_NAME } from "../../contract/checkpoint.js";
 import type { BudgetInvariant } from "../../contract/contract.js";
 import { validateSchemaOutput } from "../../outputs/validate.js";
 import type {
@@ -80,6 +82,7 @@ import type {
 
 import type { AgentSpec } from "./agent-spec.js";
 import type { ValidatedCrewPolicy } from "./crew-policy.js";
+import { reportCrewMintFailure } from "./receipt-failure.js";
 
 /**
  * Context handed to `createCrewDispatcher` by the crew orchestrator
@@ -126,6 +129,13 @@ export interface CrewDispatchContext {
   readonly sharedPrefix: string;
   /** Collects per-agent completion envelopes for the CrewResult. */
   readonly mintedReceipts: (envelope: ReceiptEnvelope) => void;
+  /**
+   * Called when a child completion receipt could not be minted and
+   * `config.receipts.onSignerError` is "flag", with a one-line detail.
+   * runAgentCrew collects these into `CrewResult.receiptError`. Under
+   * "throw" the dispatch rejects with ReceiptSigningError instead.
+   */
+  readonly receiptMintFailed?: (detail: string) => void;
   /** Provider config the child loops execute against (createAI config). */
   readonly config: LatticeConfig;
   /** Optional crew-level tracer threaded into child loops. */
@@ -346,8 +356,8 @@ function createDispatcherNode(
     }
 
     // (d) Receipt minting at the seam (D-02): child completion receipt
-    // chained to the crew root. Best-effort (checkpoint.ts D-07 precedent) —
-    // a mint failure never destroys the child's completed work.
+    // chained to the crew root. A mint failure follows
+    // config.receipts.onSignerError (see reportCrewMintFailure).
     const receipts: string[] = [];
     const childArtifacts = extractArtifacts(childResult);
     if (ctx.signer !== undefined) {
@@ -386,14 +396,21 @@ function createDispatcherNode(
         ctx.mintedReceipts(envelope);
         receipts.push(await receiptCid(envelope));
       } catch (error) {
-        // Best-effort: the summary simply carries no completion CID, but the
-        // gap is no longer silent (issue #21 F5). Record it on the tracer the
-        // same way checkpoint.ts reports mint errors.
-        ctx.tracer?.event?.(STEP_TRANSITION_EVENT_NAME, {
+        // "throw" rejects here and ends the crew. Under "flag" the summary
+        // carries no completion CID, and the gap is reported on the tracer
+        // and in CrewResult.receiptError. The crew-close receipt lists only
+        // the receipts that exist, so the chain would verify without this
+        // one; receiptError is the only signal that it is missing.
+        const detail = reportCrewMintFailure({
           runId: shared.runId,
           stepName: `crew-agent-completion:${childSpec.id}`,
-          mintError: error instanceof Error ? error.message : String(error),
+          error,
+          consequence:
+            "; crew-close lists only the receipts that were minted, so the chain still verifies without this agent's completion receipt",
+          onSignerError: ctx.config.receipts?.onSignerError ?? "flag",
+          ...(ctx.tracer !== undefined ? { tracer: ctx.tracer } : {}),
         });
+        ctx.receiptMintFailed?.(detail);
       }
     }
 

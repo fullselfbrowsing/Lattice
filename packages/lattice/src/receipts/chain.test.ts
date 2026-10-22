@@ -240,16 +240,67 @@ describe("verifyChain — structural failures", () => {
 });
 
 describe("verifyChain — out-of-band commitments", () => {
-  it("documents the limitation: a dropped leaf still verifies without expectedCount", async () => {
+  it("warns that a dropped leaf is unchecked without expectedCount, and expectedCount catches it", async () => {
     const { signer, keySet } = await makeSigner();
     const { root, children } = await mintTree(signer, 3);
     const truncated = [root, children[0]!, children[1]!];
     const silent = await verifyChain(truncated, keySet);
     expect(silent.ok).toBe(true);
+    if (silent.ok) {
+      expect(silent.advisories).toContainEqual(
+        expect.objectContaining({ code: "tail-truncation-unchecked", severity: "warn" }),
+      );
+    }
 
     const caught = await verifyChain(truncated, keySet, { expectedCount: 4 });
     expect(caught.ok).toBe(false);
     if (!caught.ok) expect(caught.error.kind).toBe("count-mismatch");
+  });
+
+  it("rejects a dropped leaf when the root declares chainClosure", async () => {
+    const { signer, keySet } = await makeSigner();
+    const root = await createReceipt(
+      minimalInput({ stepName: "crew-start:lead", chainClosure: "member-cids" }),
+      signer,
+    );
+    const rootCid = await receiptCid(root);
+    const children: ReceiptEnvelope[] = [];
+    for (let i = 0; i < 2; i += 1) {
+      children.push(
+        await createReceipt(
+          minimalInput({ parentReceiptCid: rootCid, stepName: `child-${i}` }),
+          signer,
+        ),
+      );
+    }
+    const memberCids = [rootCid, ...(await Promise.all(children.map((child) => receiptCid(child))))].sort();
+    const closer = await createReceipt(
+      minimalInput({
+        parentReceiptCid: rootCid,
+        stepName: "crew-close:lead",
+        chainMemberCids: memberCids,
+        outputHash: "c".repeat(64),
+      }),
+      signer,
+    );
+    const full = [root, ...children, closer];
+    const closed = await verifyChain(full, keySet);
+    expect(closed.ok).toBe(true);
+    if (closed.ok) {
+      expect(closed.advisories?.map((note) => note.code)).not.toContain(
+        "tail-truncation-unchecked",
+      );
+    }
+
+    const truncated = [root, children[0]!, closer];
+    const dropped = await verifyChain(truncated, keySet);
+    expect(dropped.ok).toBe(false);
+    if (!dropped.ok) expect(dropped.error.kind).toBe("count-mismatch");
+
+    const withoutCloser = [root, ...children];
+    const open = await verifyChain(withoutCloser, keySet);
+    expect(open.ok).toBe(false);
+    if (!open.ok) expect(open.error.message).toContain("chainMemberCids");
   });
 
   it("rejects a replaced root via expectedRootCid", async () => {
@@ -262,6 +313,318 @@ describe("verifyChain — out-of-band commitments", () => {
     });
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.error.kind).toBe("root-mismatch");
+  });
+});
+
+/** A closed crew-style tree: root declares chainClosure, closer lists the rest. */
+async function mintClosedTree(
+  signer: ReceiptSigner,
+  childCount: number,
+): Promise<{
+  root: ReceiptEnvelope;
+  rootCid: string;
+  children: ReceiptEnvelope[];
+  closer: ReceiptEnvelope;
+}> {
+  const root = await createReceipt(
+    minimalInput({ stepName: "crew-start:lead", chainClosure: "member-cids" }),
+    signer,
+  );
+  const rootCid = await receiptCid(root);
+  const children: ReceiptEnvelope[] = [];
+  for (let i = 0; i < childCount; i += 1) {
+    children.push(
+      await createReceipt(
+        minimalInput({ parentReceiptCid: rootCid, stepName: `child-${i}` }),
+        signer,
+      ),
+    );
+  }
+  const memberCids = [rootCid, ...(await Promise.all(children.map((child) => receiptCid(child))))].sort();
+  const closer = await createReceipt(
+    minimalInput({
+      parentReceiptCid: rootCid,
+      stepName: "crew-close:lead",
+      chainMemberCids: memberCids,
+    }),
+    signer,
+  );
+  return { root, rootCid, children, closer };
+}
+
+function decodeBody(envelope: ReceiptEnvelope): CapabilityReceiptBody {
+  return JSON.parse(atob(envelope.payload)) as CapabilityReceiptBody;
+}
+
+/** Re-sign `envelope`'s body with one field replaced, bypassing createReceipt. */
+async function resignWith(
+  envelope: ReceiptEnvelope,
+  signer: ReceiptSigner,
+  field: string,
+  value: unknown,
+): Promise<ReceiptEnvelope> {
+  const body = { ...decodeBody(envelope), [field]: value };
+  return signBody(body as unknown as CapabilityReceiptBody, signer);
+}
+
+describe("verifyChain — chain closure", () => {
+  it.each([
+    ["a string", "sha256:abc"],
+    ["an object", { a: 1 }],
+    ["a number", 7],
+    ["null", null],
+    ["an array of numbers", [1, 2]],
+    ["an empty string", ""],
+  ])("returns link-invalid (version-mismatch), not a throw, when chainMemberCids is %s", async (_label, value) => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children, closer } = await mintClosedTree(signer, 1);
+    const malformed = await resignWith(closer, signer, "chainMemberCids", value);
+    const result = await verifyChain([root, ...children, malformed], keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("link-invalid");
+      expect(result.error.cause?.kind).toBe("version-mismatch");
+    }
+  });
+
+  it.each([
+    ["an unknown mode", "merkle-v2"],
+    ["a boolean", true],
+  ])("fails closed when chainClosure is %s", async (_label, value) => {
+    const { signer, keySet } = await makeSigner();
+    const plainRoot = await createReceipt(minimalInput({ stepName: "crew-start:lead" }), signer);
+    const unknownRoot = await resignWith(plainRoot, signer, "chainClosure", value);
+    const child = await createReceipt(
+      minimalInput({ parentReceiptCid: await receiptCid(unknownRoot), stepName: "child" }),
+      signer,
+    );
+    const result = await verifyChain([unknownRoot, child], keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("link-invalid");
+      expect(result.error.cause?.kind).toBe("version-mismatch");
+    }
+  });
+
+  it("rejects an added member that the closer does not list, naming it", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, rootCid, children, closer } = await mintClosedTree(signer, 1);
+    const extra = await createReceipt(
+      minimalInput({ parentReceiptCid: rootCid, stepName: "late-child" }),
+      signer,
+    );
+    const result = await verifyChain([root, ...children, closer, extra], keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("count-mismatch");
+      expect(result.error.cid).toBe(await receiptCid(extra));
+    }
+  });
+
+  it("rejects a closer that lists a member twice", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, rootCid, children, closer } = await mintClosedTree(signer, 1);
+    const doubled = await resignWith(closer, signer, "chainMemberCids", [rootCid, rootCid]);
+    const result = await verifyChain([root, ...children, doubled], keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("count-mismatch");
+      expect(result.error.message).toContain("more than once");
+    }
+  });
+
+  it("rejects chainMemberCids when no receipt declares chainClosure, and two closers", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, rootCid, children } = await mintTree(signer, 1);
+    const memberCids = [rootCid, await receiptCid(children[0]!)].sort();
+    const closer = await createReceipt(
+      minimalInput({ parentReceiptCid: rootCid, stepName: "close", chainMemberCids: memberCids }),
+      signer,
+    );
+    const undeclared = await verifyChain([root, ...children, closer], keySet);
+    expect(undeclared.ok).toBe(false);
+    if (!undeclared.ok) {
+      expect(undeclared.error.kind).toBe("count-mismatch");
+      expect(undeclared.error.message).toContain("no receipt declared chainClosure");
+    }
+
+    const closed = await mintClosedTree(signer, 1);
+    const secondCloser = await createReceipt(
+      minimalInput({
+        parentReceiptCid: closed.rootCid,
+        stepName: "crew-close:again",
+        chainMemberCids: [closed.rootCid],
+      }),
+      signer,
+    );
+    const twice = await verifyChain(
+      [closed.root, ...closed.children, closed.closer, secondCloser],
+      keySet,
+    );
+    expect(twice.ok).toBe(false);
+    if (!twice.ok) expect(twice.error.message).toContain("found 2");
+  });
+
+  it("rejects chainClosure declared below the root, even with every member present", async () => {
+    const { signer, keySet } = await makeSigner();
+    // root (no closure) -> k1 (declares closure) -> k2, plus a closer that
+    // lists everything. Dropping k1 and the closer together would leave an
+    // unclosed chain, so the declaration itself must be on the root.
+    const root = await createReceipt(minimalInput({ stepName: "root" }), signer);
+    const rootCid = await receiptCid(root);
+    const k1Plain = await createReceipt(
+      minimalInput({ parentReceiptCid: rootCid, stepName: "k1" }),
+      signer,
+    );
+    const k1 = await resignWith(k1Plain, signer, "chainClosure", "member-cids");
+    const k1Cid = await receiptCid(k1);
+    const k2 = await createReceipt(minimalInput({ parentReceiptCid: k1Cid, stepName: "k2" }), signer);
+    const closer = await createReceipt(
+      minimalInput({
+        parentReceiptCid: rootCid,
+        stepName: "close",
+        chainMemberCids: [rootCid, k1Cid, await receiptCid(k2)].sort(),
+      }),
+      signer,
+    );
+
+    for (const options of [{}, { partial: true }]) {
+      const result = await verifyChain([root, k1, k2, closer], keySet, options);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe("count-mismatch");
+        expect(result.error.cid).toBe(k1Cid);
+        expect(result.error.message).toContain("not the root");
+      }
+    }
+  });
+
+  it("requireClosure rejects a tree with no closure and accepts a closed one", async () => {
+    const { signer, keySet } = await makeSigner();
+    const open = await mintTree(signer, 2);
+    const openResult = await verifyChain([open.root, ...open.children], keySet, {
+      requireClosure: true,
+    });
+    expect(openResult.ok).toBe(false);
+    if (!openResult.ok) {
+      expect(openResult.error.kind).toBe("count-mismatch");
+      expect(openResult.error.message).toContain("requireClosure");
+    }
+    // expectedCount does not stand in for closure when closure is required.
+    const counted = await verifyChain([open.root, ...open.children], keySet, {
+      requireClosure: true,
+      expectedCount: 3,
+    });
+    expect(counted.ok).toBe(false);
+
+    const closed = await mintClosedTree(signer, 2);
+    const closedResult = await verifyChain(
+      [closed.root, ...closed.children, closed.closer],
+      keySet,
+      { requireClosure: true },
+    );
+    expect(closedResult).toMatchObject({ ok: true, count: 4 });
+  });
+
+  it("partial verifies a disclosed subset that includes the closer, with a closure-partial warning", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children, closer } = await mintClosedTree(signer, 3);
+    const subset = [root, children[1]!, closer];
+
+    const strict = await verifyChain(subset, keySet);
+    expect(strict.ok).toBe(false);
+    if (!strict.ok) expect(strict.error.kind).toBe("count-mismatch");
+
+    const partial = await verifyChain(subset, keySet, { partial: true });
+    expect(partial).toMatchObject({ ok: true, count: 3 });
+    if (partial.ok) {
+      expect(partial.advisories).toContainEqual(
+        expect.objectContaining({ code: "closure-partial", severity: "warn" }),
+      );
+      const note = partial.advisories?.find((entry) => entry.code === "closure-partial");
+      expect(note?.message).toContain("2 member(s)");
+      expect(partial.advisories?.map((entry) => entry.code)).not.toContain(
+        "tail-truncation-unchecked",
+      );
+    }
+
+    const everything = await verifyChain([root, ...children, closer], keySet, { partial: true });
+    expect(everything.ok).toBe(true);
+    if (everything.ok) {
+      expect(everything.advisories?.map((entry) => entry.code)).not.toContain("closure-partial");
+    }
+  });
+
+  it("partial still requires the closer and still rejects an unlisted receipt", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, rootCid, children, closer } = await mintClosedTree(signer, 2);
+
+    const noCloser = await verifyChain([root, children[0]!], keySet, { partial: true });
+    expect(noCloser.ok).toBe(false);
+    if (!noCloser.ok) expect(noCloser.error.kind).toBe("count-mismatch");
+
+    const stranger = await createReceipt(
+      minimalInput({ parentReceiptCid: rootCid, stepName: "stranger" }),
+      signer,
+    );
+    const added = await verifyChain([root, children[0]!, closer, stranger], keySet, {
+      partial: true,
+    });
+    expect(added.ok).toBe(false);
+    if (!added.ok) expect(added.error.cid).toBe(await receiptCid(stranger));
+  });
+
+  it("partial has no effect on a chain without closure", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children } = await mintTree(signer, 2);
+    const result = await verifyChain([root, children[0]!], keySet, { partial: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.advisories?.map((entry) => entry.code)).toContain(
+        "tail-truncation-unchecked",
+      );
+    }
+  });
+});
+
+describe("verifyChain — advisories", () => {
+  it("deduplicates per-receipt advisories across links", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children } = await mintTree(signer, 3);
+    const result = await verifyChain([root, ...children], keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const codes = result.advisories?.map((entry) => entry.code) ?? [];
+      expect(codes.filter((code) => code === "audience-absent")).toHaveLength(1);
+      expect(new Set(codes).size).toBe(codes.length);
+    }
+  });
+
+  it("warns when every link is bound to an audience and nonce the caller did not check", async () => {
+    const { signer, keySet } = await makeSigner();
+    const { root, children } = await mintTree(signer, 1, { audience: "svc-a", nonce: "n-secret" });
+    const result = await verifyChain([root, ...children], keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const warns = result.advisories?.filter((entry) => entry.severity === "warn") ?? [];
+      expect(warns.map((entry) => entry.code).sort()).toEqual([
+        "audience-unchecked",
+        "nonce-unchecked",
+        "tail-truncation-unchecked",
+      ]);
+      for (const entry of result.advisories ?? []) {
+        expect(entry.message).not.toContain("n-secret");
+      }
+    }
+    const checked = await verifyChain([root, ...children], keySet, {
+      expectedAudience: "svc-a",
+      expectedNonce: "n-secret",
+      expectedCount: 2,
+    });
+    expect(checked.ok).toBe(true);
+    if (checked.ok) {
+      expect(checked.advisories?.filter((entry) => entry.severity === "warn") ?? []).toEqual([]);
+    }
   });
 });
 
