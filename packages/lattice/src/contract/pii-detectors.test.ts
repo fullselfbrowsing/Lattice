@@ -184,8 +184,8 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
     if (result.matched) expect(result.substring).toBe(expected);
   });
 
-  it("matches a plain 10-digit run and still skips an 11-digit run", () => {
-    expect(detector.detect("4155551234").matched).toBe(true);
+  it("matches a plain 10-digit run only after a phone cue or trunk prefix, and still skips an 11-digit run", () => {
+    expect(detector.detect("4155551234").matched).toBe(false);
     expect(detector.detect("call 4155551234").matched).toBe(true);
     expect(detector.detect("14155551234").matched).toBe(false);
     // E.164 is unseparated and stays out of scope; a bare `1` glued to the
@@ -195,10 +195,13 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
     expect(detector.detect("1415-555-1234").matched).toBe(false);
   });
 
-  it("does not flag a phone-shaped SKU or a 10-digit part number", () => {
+  it("does not flag a phone-shaped SKU or part number", () => {
     expect(detector.detect("SKU 123-456-7890").matched).toBe(false);
-    expect(detector.detect("SKU 1234567890").matched).toBe(false);
+    expect(detector.detect("SKU: 123-456-7890").matched).toBe(false);
     expect(detector.detect("part 415-555-0199").matched).toBe(false);
+    expect(detector.detect("Part No. 415-555-0199").matched).toBe(false);
+    // A bare 10-digit run after a label has no phone cue either.
+    expect(detector.detect("SKU 4155551234").matched).toBe(false);
   });
 
   it("does not flag an ISBN-13 or a plain date", () => {
@@ -210,13 +213,22 @@ describe("us-phone detector — broadened forms (issue #21 F8)", () => {
 describe("us-ssn detector — undashed and spaced forms", () => {
   const detector = findDetector("us-ssn");
 
-  it("matches an undashed 9-digit SSN and a spaced 3-2-4 SSN", () => {
+  it("matches an undashed 9-digit SSN and a spaced 3-2-4 SSN after an SSN cue", () => {
     const bare = detector.detect("SSN 123456789 on file");
     expect(bare.matched).toBe(true);
     if (bare.matched) expect(bare.substring).toBe("123456789");
-    const spaced = detector.detect("123 45 6789");
+    const spaced = detector.detect("SSN 123 45 6789");
     expect(spaced.matched).toBe(true);
     if (spaced.matched) expect(spaced.substring).toBe("123 45 6789");
+    expect(detector.detect("SSN: 123456789").matched).toBe(true);
+    expect(detector.detect("Social Security No. 123456789").matched).toBe(true);
+    expect(detector.detect("ss# 123 45 6789").matched).toBe(true);
+  });
+
+  it("does not flag the spaced or undashed form without an SSN cue", () => {
+    expect(detector.detect("123 45 6789").matched).toBe(false);
+    expect(detector.detect("123456789").matched).toBe(false);
+    expect(detector.detect("Call 123456789").matched).toBe(false);
   });
 
   it("does not flag an SSN-shaped order id, dashed or undashed", () => {
@@ -224,6 +236,10 @@ describe("us-ssn detector — undashed and spaced forms", () => {
     expect(detector.detect("order 123-45-6789").matched).toBe(false);
     expect(detector.detect("invoice 123-45-6789").matched).toBe(false);
     expect(detector.detect("ref 123456789").matched).toBe(false);
+    expect(detector.detect("Order No. 123-45-6789").matched).toBe(false);
+    expect(detector.detect("Order: 123-45-6789").matched).toBe(false);
+    expect(detector.detect("order number is 123-45-6789").matched).toBe(false);
+    expect(detector.detect("isbn 123-45-6789").matched).toBe(false);
   });
 
   it("does not treat a 16-digit reference as an SSN", () => {
@@ -244,5 +260,170 @@ describe("credit-card detector — reference numbers", () => {
 
   it("still flags a Luhn-valid Visa number that is not an identifier", () => {
     expect(detector.detect("Card: 4111111111111111 end").matched).toBe(true);
+  });
+
+  it.each([
+    ["UnionPay", "6200000000000005"],
+    ["UnionPay 62 (19-digit range)", "6250941006528599"],
+    ["Maestro 67", "6759649826438453"],
+    ["Maestro 6304", "6304000000000000"],
+    ["Mir 2200", "2200307418529635"],
+    ["Diners 309", "30930741852968"],
+    ["Diners 39", "39307418529636"],
+  ])("flags a Luhn-valid %s card: the issuer prefix is not allowlisted", (_label, pan) => {
+    const result = detector.detect(`Card: ${pan} end`);
+    expect(result.matched).toBe(true);
+    if (result.matched) expect(result.substring).toBe(pan);
+  });
+
+  it("skips Luhn-valid runs that start with 0 or 1 or are a 13-digit ISBN", () => {
+    // Each of these passes Luhn, so only the run-shape rule drops it.
+    expect(detector.detect("ts 1729555200008").matched).toBe(false);
+    expect(detector.detect("id 0000000000000000").matched).toBe(false);
+    expect(detector.detect("9780306406156").matched).toBe(false);
+    expect(detector.detect("9791234567894").matched).toBe(false);
+  });
+
+  it("checks every candidate, and a label hides only the value right after it", () => {
+    const result = detector.detect("ref 1234567890123456 card 4111111111111111");
+    expect(result.matched).toBe(true);
+    if (result.matched) expect(result.substring).toBe("4111111111111111");
+    expect(detector.detect("Ref: card 4111111111111111").matched).toBe(true);
+  });
+});
+
+function firstMatch(input: string): string | undefined {
+  for (const detector of defaultPiiDetectors) {
+    if (detector.detect(input).matched) return detector.name;
+  }
+  return undefined;
+}
+
+describe("default detectors — identifier labels and cues", () => {
+  it.each([
+    ["Customer SSN 123-45-6789", "us-ssn"],
+    ["account ssn 123-45-6789", "us-ssn"],
+    ["Account 123-45-6789", "us-ssn"],
+    ["Patient ID 123-45-6789", "us-ssn"],
+    ["Tax ID 123-45-6789", "us-ssn"],
+    ["my id is 123-45-6789", "us-ssn"],
+    ["SSN/ID 123-45-6789", "us-ssn"],
+    ["Customer phone 415-555-1234", "us-phone"],
+    ["Ticket #881 opened by 415-555-1234", "us-phone"],
+    ["Thanks a lot 415-555-1234", "us-phone"],
+    ["customer card 4111111111111111", "credit-card"],
+    ["SSN: 123456789", "us-ssn"],
+    ["+1 4155551234", "us-phone"],
+    ["call 4155551234", "us-phone"],
+  ])("flags %j: only identifier labels suppress, and common words are not labels", (input, expected) => {
+    expect(firstMatch(input)).toBe(expected);
+  });
+
+  it.each([
+    "order 123-45-6789",
+    "Order No. 123-45-6789",
+    "SKU 123-456-7890",
+    "ref 4111111111111111",
+    "isbn 123-45-6789",
+    "ISBN 978-0-306-40615-7",
+    "PO# 415-555-1234",
+  ])("does not flag %j: a value right after an identifier label is an id", (input) => {
+    expect(firstMatch(input)).toBeUndefined();
+  });
+
+  it.each([
+    "created at 1729555200",
+    "Last login: 1729555200",
+    "104857600 bytes",
+    "Revenue was 123456789 dollars",
+    "512 64 4096",
+    "021000021",
+    "routing 021000021",
+    "3.1415926535",
+    "probability 0.123456789",
+    "ISBN-10 0306406152",
+    "Build 2024101501 passed",
+    '{"event":"login","ts":1729555200}',
+    "Please call us about order 123-45-6789",
+  ])("does not flag %j: bare numbers need a cue, and a label nearer than the cue wins", (input) => {
+    expect(firstMatch(input)).toBeUndefined();
+  });
+
+  it("a plain 10-digit phone must be NANP-valid and not the tail of a decimal", () => {
+    const phone = findDetector("us-phone");
+    expect(phone.detect("call 1729555200").matched).toBe(false);
+    expect(phone.detect("call 0306406152").matched).toBe(false);
+    expect(phone.detect("call 3.4155551234").matched).toBe(false);
+    expect(phone.detect("phone: 4155551234").matched).toBe(true);
+    expect(phone.detect("Tel. 4155551234").matched).toBe(true);
+    const prefixed = phone.detect("reach me at +1 4155551234");
+    expect(prefixed.matched).toBe(true);
+    if (prefixed.matched) expect(prefixed.substring).toBe("+1 4155551234");
+    expect(phone.detect("1-4155551234").matched).toBe(true);
+  });
+
+  it("a label suppresses only as the nearest token; numbers between them break the link", () => {
+    expect(firstMatch("Order 5521, 415-555-1234, 123-45-6789")).toBe("us-ssn");
+    expect(findDetector("us-phone").detect("Order 5521, 415-555-1234").matched).toBe(true);
+    expect(firstMatch("order 5521 5522 5523 call 415-555-1234")).toBe("us-phone");
+    expect(firstMatch("Order 5521 — call 415-555-1234")).toBe("us-phone");
+    expect(firstMatch("order #5521 / 415-555-1234")).toBe("us-phone");
+  });
+
+  it("a positive cue counts only when it comes after every label", () => {
+    const ssn = findDetector("us-ssn");
+    expect(ssn.detect("SSN for order 123456789").matched).toBe(false);
+    expect(ssn.detect("order 5521 SSN 123456789").matched).toBe(true);
+    expect(findDetector("us-phone").detect("order=5521&phone=4155551234").matched).toBe(true);
+  });
+
+  it.each([
+    ["Order 5521\nThanks! Call 415-555-1234", "us-phone"],
+    ["order 5521\nfoo bar. phone 415-555-1234", "us-phone"],
+    ["Re: order 5521\nphone 415-555-1234", "us-phone"],
+    ["Order 5521\n123-45-6789", "us-ssn"],
+    ["order_id,phone\n5521,415-555-1234", "us-phone"],
+    ["customer,ssn\nJane Doe,123-45-6789", "us-ssn"],
+    ["| Order | Phone |\n|---|---|\n| 5521 | 415-555-1234 |", "us-phone"],
+    ["| Customer | SSN |\n|---|---|\n| Jane | 123-45-6789 |", "us-ssn"],
+    ["customer: Jane\naccount 123-45-6789", "us-ssn"],
+  ])("flags %j: a label on an earlier line or in a header does not reach the value", (input, expected) => {
+    expect(firstMatch(input)).toBe(expected);
+  });
+
+  it("a line break or a sentence end also cuts a positive cue off", () => {
+    expect(findDetector("us-ssn").detect("ssn,name\n123456789,Jane").matched).toBe(false);
+    expect(findDetector("us-phone").detect("Please call us. 4155551234 is the order").matched).toBe(false);
+    expect(findDetector("us-phone").detect("Call us; 4155551234").matched).toBe(false);
+  });
+
+  it("looks back at most 48 characters", () => {
+    const ssn = findDetector("us-ssn");
+    // "order" ends 43 spaces before the value: the label starts 48 back.
+    expect(ssn.detect(`order${" ".repeat(43)}123-45-6789`).matched).toBe(false);
+    // One more space pushes the label's first letter out, and a cut-off
+    // word is not a token.
+    expect(ssn.detect(`order${" ".repeat(44)}123-45-6789`).matched).toBe(true);
+    expect(ssn.detect(`SSN${" ".repeat(45)}123456789`).matched).toBe(true);
+    expect(ssn.detect(`SSN${" ".repeat(46)}123456789`).matched).toBe(false);
+  });
+});
+
+describe("email detector — bounded scan", () => {
+  const detector = findDetector("email");
+
+  it("stays linear on a long run of word characters with no @", () => {
+    const started = performance.now();
+    expect(detector.detect("1".repeat(128 * 1024)).matched).toBe(false);
+    // The unbounded pattern took seconds at this size; the bounded one
+    // takes a few milliseconds.
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it("still flags an address with an over-long local part", () => {
+    const local = "a".repeat(100);
+    const result = detector.detect(`${local}@example.com`);
+    expect(result.matched).toBe(true);
+    if (result.matched) expect(result.substring).toBe(`${"a".repeat(64)}@example.com`);
   });
 });

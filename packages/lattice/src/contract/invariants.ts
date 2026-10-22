@@ -13,19 +13,23 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
  */
 
 /**
- * `must-cite` checks that a citation naming `artifactName` is present.
- * A structured entry in the located citations array counts, and so does an
- * inline marker in the output text (`[name]` or `(name)`). A structured
- * entry does NOT count when the prose cites a different work in square
- * brackets and never cites this one: that entry is a fabricated citation.
- * The check still does not judge whether the cited artifact supports the
- * claim.
+ * `must-cite` checks that a citation entry naming `artifactName` is PRESENT
+ * in a located citations array. It does NOT verify that the cited artifact
+ * supports the claim.
  *
- * With every optional field absent the check reproduces the original
- * behavior: search top-level `citations` then `evidence`, compare string
+ * With every optional field absent the check is the original structured
+ * match: search top-level `citations` then `evidence`, compare string
  * entries directly and object entries by their `source` key,
- * case-sensitively. Because the optional fields are only present when set,
- * existing contracts hash identically.
+ * case-sensitively. One fallback extends it: when the top-level list is
+ * missing or does not name the artifact, `citations` and `evidence` arrays
+ * nested deeper in the output (for example `{ answer: { text, citations } }`
+ * or `{ sections: [{ text, citations }] }`) are searched too, so an output
+ * that passed before still passes. The output's prose is read only when
+ * `inline` or `rejectUncited` is set.
+ *
+ * Optional fields are only present on the declaration when set, and
+ * `inline` and `rejectUncited` only when `true`, so contracts that do not
+ * use them hash identically to before.
  */
 export interface MustCiteInvariant {
   readonly id: string;
@@ -34,13 +38,46 @@ export interface MustCiteInvariant {
   /**
    * resolvePath expression locating the citations array (for example
    * `result.refs`). Must resolve to the array holding the entries; `[*]`
-   * results are not flattened.
+   * results are not flattened. A declared path disables the nested
+   * fallback, and the prose scans skip its subtree.
    */
   readonly path?: string;
   /** Object keys compared against `artifactName`. Default `["source"]`. */
   readonly keys?: readonly string[];
-  /** Compare with `toLowerCase()` on both sides. Default false. */
+  /**
+   * Compare with `toLowerCase()` on both sides, for list entries and prose
+   * markers alike. Default false.
+   */
   readonly caseInsensitive?: boolean;
+  /**
+   * Also pass on an inline marker when no located citations list has any
+   * entries: a `[...]` or `(...)` group in any output string whose content,
+   * or one of its `;`/`,`-separated parts, equals `artifactName` after
+   * trimming and dropping a `p. 4` or `§3` locator. `[doc-a]`,
+   * `(doc-a, p. 4)`, and `[doc-a; doc-b]` cite `doc-a`; `[doc-a.v2]` and
+   * `(not doc-a)` do not. Code spans and markdown link text are ignored. The
+   * match is syntactic, so a sentence that disowns `(doc-a)` still counts.
+   * A non-empty list that omits the artifact still fails. Default false.
+   */
+  readonly inline?: boolean;
+  /**
+   * Fail a list entry that names the artifact when the output's text
+   * carries citation markers and none of them cites the artifact. Only these
+   * square-bracket forms are markers:
+   *   - numbers and ranges from 1 to 999 (`[1]`, `[1, 2]`, `[2-4]`), resolved
+   *     to the entry whose `label`, `marker`, or `id` is that number, else to
+   *     the entry at that 1-based position. A number past the end of the
+   *     list cites something else.
+   *   - author-year references (`[Smith 1999]`, `[Smith et al., 2001]`).
+   *   - a bracket equal to `artifactName` or to a list entry's identifier.
+   * Links, footnotes, `[x]`, `[sic]`, `[INFO]`, `arr[0]`, timestamps, code
+   * spans, and parentheses are ignored. The scan reads every string except
+   * those below `citations`/`evidence` keys and the `path` subtree, in
+   * sorted key order, down to 32 levels; if it reaches that depth anywhere
+   * the verdict is unknown and the entry is not rejected. The runtime error
+   * names the first competing marker and where it was found. Default false.
+   */
+  readonly rejectUncited?: boolean;
 }
 
 export interface FieldFromTableInvariant {
@@ -78,6 +115,8 @@ export interface MustCiteOptions extends InvariantOptions {
   readonly path?: string;
   readonly keys?: readonly string[];
   readonly caseInsensitive?: boolean;
+  readonly inline?: boolean;
+  readonly rejectUncited?: boolean;
 }
 
 let counter = 0;
@@ -104,7 +143,14 @@ function nextId(kind: string, options?: InvariantOptions): string {
  * T-08-05 in the 08-01-PLAN threat register).
  */
 export const inv = {
+  /**
+   * Throws `TypeError` when `artifactName` is empty or only whitespace,
+   * because no citation can meaningfully name it.
+   */
   mustCite(artifactName: string, options?: MustCiteOptions): MustCiteInvariant {
+    if (typeof artifactName !== "string" || artifactName.trim() === "") {
+      throw new TypeError("inv.mustCite: artifactName must not be empty.");
+    }
     return Object.freeze({
       id: nextId("must-cite", options),
       kind: "must-cite" as const,
@@ -116,6 +162,9 @@ export const inv = {
       ...(options?.caseInsensitive !== undefined
         ? { caseInsensitive: options.caseInsensitive }
         : {}),
+      // The opt-in flags appear only when true, so `false` hashes like unset.
+      ...(options?.inline === true ? { inline: true } : {}),
+      ...(options?.rejectUncited === true ? { rejectUncited: true } : {}),
     });
   },
   fieldFromTable(

@@ -6,6 +6,7 @@ import {
   createAI,
   createLocalArtifactStore,
   createMemoryArtifactStore,
+  inv,
   output,
   type ArtifactFingerprint,
   type ArtifactInput,
@@ -20,6 +21,9 @@ import {
   type ArtifactStore,
   type ArtifactTransformDescriptor,
   type ArtifactTransformKind,
+  type InvariantDeclaration,
+  type MustCiteInvariant,
+  type MustCiteOptions,
   type RunResult,
   type StorageLike,
   type StoredArtifactEnvelope,
@@ -141,4 +145,19 @@ test("source public API exposes artifact lifecycle and store types", async () =>
     ref,
   } satisfies StoredArtifactEnvelope;
   expectTypeOf(envelope.ref).toEqualTypeOf<ArtifactRef>();
+});
+
+test("source public API types the must-cite opt-in flags", () => {
+  const options = {
+    path: "result.refs",
+    keys: ["artifactId"],
+    caseInsensitive: true,
+    inline: true,
+    rejectUncited: true,
+  } satisfies MustCiteOptions;
+  const decl = inv.mustCite("policy-refund", options);
+  expectTypeOf(decl).toEqualTypeOf<MustCiteInvariant>();
+  expectTypeOf(decl.inline).toEqualTypeOf<boolean | undefined>();
+  expectTypeOf(decl.rejectUncited).toEqualTypeOf<boolean | undefined>();
+  assertType<InvariantDeclaration>(decl);
 });
