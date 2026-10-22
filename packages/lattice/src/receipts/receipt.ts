@@ -49,6 +49,9 @@ export interface CreateReceiptInput {
   readonly audience?: string;
   readonly nonce?: string;
   readonly expiresAt?: string;
+  // Chain closure. Set `chainClosure` on a tree's root; list every other
+  // member's receiptCid in `chainMemberCids` on one closing receipt,
+  // sorted and unique (crew runs do this; see verifyChain).
   readonly chainClosure?: "member-cids";
   readonly chainMemberCids?: readonly string[];
   readonly usage: Usage;
@@ -99,6 +102,44 @@ function assertInstant(field: "issuedAt" | "expiresAt", value: string | undefine
   }
 }
 
+const RECEIPT_CID_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+
+/**
+ * Reject closure fields a verifier would refuse, so a JS caller passing the
+ * wrong shape gets a TypeError at issuance instead of a signed receipt that
+ * fails every chain check later.
+ */
+function assertChainClosure(
+  chainClosure: unknown,
+  chainMemberCids: unknown,
+): void {
+  if (chainClosure !== undefined && chainClosure !== "member-cids") {
+    throw new TypeError(
+      `createReceipt: chainClosure must be "member-cids", got ${JSON.stringify(chainClosure) ?? String(chainClosure)}`,
+    );
+  }
+  if (chainMemberCids === undefined) return;
+  if (!Array.isArray(chainMemberCids)) {
+    throw new TypeError(
+      "createReceipt: chainMemberCids must be an array of sha256:<hex> receipt CIDs",
+    );
+  }
+  for (const [index, cid] of chainMemberCids.entries()) {
+    if (typeof cid !== "string" || !RECEIPT_CID_PATTERN.test(cid)) {
+      throw new TypeError(
+        `createReceipt: chainMemberCids[${index}] must be a sha256:<64 lowercase hex> receipt CID, got ${JSON.stringify(cid) ?? String(cid)}`,
+      );
+    }
+    const previous: unknown = chainMemberCids[index - 1];
+    if (typeof previous === "string" && previous === cid) {
+      throw new TypeError(`createReceipt: chainMemberCids lists ${cid} more than once`);
+    }
+    if (typeof previous === "string" && previous > cid) {
+      throw new TypeError("createReceipt: chainMemberCids must be sorted");
+    }
+  }
+}
+
 export async function createReceipt(
   input: CreateReceiptInput,
   signer: ReceiptSigner,
@@ -110,6 +151,7 @@ export async function createReceipt(
   // verifier's timezone, so refuse to issue one (caller error, not a verdict).
   assertInstant("issuedAt", input.issuedAt);
   assertInstant("expiresAt", input.expiresAt);
+  assertChainClosure(input.chainClosure, input.chainMemberCids);
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
   // Always emit the current schema. Older minted versions (v1.1 to v1.3)

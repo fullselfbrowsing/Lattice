@@ -25,9 +25,14 @@ export type ReceiptSignerErrorMode = "flag" | "throw";
 
 export interface ReceiptsConfig {
   /**
-   * Applies to `ai.run` only. `runAgent` and `runAgentCrew` do not go
-   * through `normalizeConfig` for their signer and keep their own behavior
-   * (the crew orchestrator throws; the dispatcher records a tracer event).
+   * Applies to `ai.run` and to the receipts `runAgentCrew` mints after the
+   * crew's work: the root agent's completion receipt and the crew-close
+   * receipt. Under "flag" the crew returns `CrewResult.receiptError` and a
+   * tracer `step.transition` event; under "throw" it rejects with
+   * `ReceiptSigningError`. A failure minting the crew-start receipt still
+   * throws, since no work has run yet, and child completion receipts stay
+   * best-effort (the dispatcher records a tracer event). `runAgent` does not
+   * read this setting.
    */
   readonly onSignerError?: ReceiptSignerErrorMode;
 }

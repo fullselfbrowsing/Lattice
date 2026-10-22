@@ -740,3 +740,35 @@ describe("createReceipt — timestamps must carry an explicit UTC offset (review
     expect(body.expiresAt).toBe(expiresAt);
   });
 });
+
+describe("createReceipt — chain-closure fields", () => {
+  const cidA = `sha256:${"a".repeat(64)}`;
+  const cidB = `sha256:${"b".repeat(64)}`;
+
+  it("embeds chainClosure and a sorted chainMemberCids list", async () => {
+    const { signer } = await makeSigner();
+    const root = await createReceipt(minimalInput({ chainClosure: "member-cids" }), signer);
+    expect(decodeBody(root.payload).chainClosure).toBe("member-cids");
+    const closer = await createReceipt(minimalInput({ chainMemberCids: [cidA, cidB] }), signer);
+    expect(decodeBody(closer.payload).chainMemberCids).toEqual([cidA, cidB]);
+    const empty = await createReceipt(minimalInput({ chainMemberCids: [] }), signer);
+    expect(decodeBody(empty.payload).chainMemberCids).toEqual([]);
+  });
+
+  it.each([
+    ["an unknown chainClosure mode", { chainClosure: "merkle-v2" }, /chainClosure must be "member-cids"/u],
+    ["a boolean chainClosure", { chainClosure: true }, /chainClosure must be "member-cids"/u],
+    ["a string chainMemberCids", { chainMemberCids: cidA }, /must be an array/u],
+    ["a null chainMemberCids", { chainMemberCids: null }, /must be an array/u],
+    ["a non-string member", { chainMemberCids: [cidA, 7] }, /chainMemberCids\[1\]/u],
+    ["a member that is not a sha256 CID", { chainMemberCids: ["sha256:abc"] }, /chainMemberCids\[0\]/u],
+    ["an uppercase-hex member", { chainMemberCids: [`sha256:${"A".repeat(64)}`] }, /chainMemberCids\[0\]/u],
+    ["a duplicate member", { chainMemberCids: [cidA, cidA] }, /more than once/u],
+    ["an unsorted list", { chainMemberCids: [cidB, cidA] }, /must be sorted/u],
+  ])("refuses to issue a receipt with %s", async (_label, overrides, pattern) => {
+    const { signer } = await makeSigner();
+    const input = { ...minimalInput(), ...overrides } as unknown as CreateReceiptInput;
+    await expect(createReceipt(input, signer)).rejects.toThrow(TypeError);
+    await expect(createReceipt(input, signer)).rejects.toThrow(pattern);
+  });
+});

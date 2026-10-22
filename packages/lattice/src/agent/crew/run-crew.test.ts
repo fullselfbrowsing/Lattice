@@ -10,9 +10,10 @@ import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../../receipts/sign.js";
-import type { CapabilityReceiptBody } from "../../receipts/types.js";
+import type { CapabilityReceiptBody, ReceiptSigner } from "../../receipts/types.js";
 import { verifyChain } from "../../receipts/chain.js";
 import { verifyReceipt } from "../../receipts/verify.js";
+import { ReceiptSigningError } from "../../results/errors.js";
 import { createAI } from "../../runtime/create-ai.js";
 import { createNoopAgentHost } from "../host.js";
 
@@ -416,21 +417,26 @@ describe("runAgentCrew — signed receipt chain", () => {
     });
     expect(chain).toMatchObject({ ok: true, rootCid: result.crewRootCid, count: result.receipts.length });
 
-    // The crew-start receipt commits to the crew plan (root id and child
-    // ids) rather than a null output hash. Agent completion receipts still
-    // commit to each agent's output.
+    // The crew-start receipt commits to the crew's agent id tree rather
+    // than a null output hash. Agent completion receipts still commit to
+    // each agent's output.
     expect(bodies[0]?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
     expect(bodies[0]?.outputHash).toBe(
       await hashOutputForReceipt({
         kind: "crew-start",
-        rootId: "lead",
-        childIds: ["researcher"],
+        agents: { id: "lead", children: [{ id: "researcher", children: [] }] },
       }),
     );
     expect(bodies[0]?.chainClosure).toBe("member-cids");
     expect(bodies[0]?.inputHashes).toEqual([]);
     const closeBody = bodies.find((body) => body.stepName === "crew-close:lead");
     expect(closeBody?.chainMemberCids?.length).toBe(result.receipts.length - 1);
+    expect(closeBody?.contractVerdict).toBe("success");
+    expect(result.receipts).toHaveLength(4);
+    expect(result.receiptError).toBeUndefined();
+    expect(await verifyChain(result.receipts, keySet, { requireClosure: true })).toMatchObject({
+      ok: true,
+    });
     const leadBody = bodies.find((body) => body.stepName === "crew-agent-completion:lead");
     expect(leadBody).toBeDefined();
     if (result.result.kind === "success") {
@@ -440,5 +446,236 @@ describe("runAgentCrew — signed receipt chain", () => {
       (body) => body.stepName === "crew-agent-completion:researcher",
     );
     expect(researcherBody?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+  });
+});
+
+/** stepName of the receipt whose PAE bytes are being signed. */
+function signedStepName(pae: Uint8Array): string | undefined {
+  const text = new TextDecoder().decode(pae);
+  const payload = text.slice(text.lastIndexOf(" ") + 1);
+  return decodeReceiptBody(payload).stepName;
+}
+
+async function makeSignerPair(kid = "crew-close-test"): Promise<{
+  readonly signer: ReceiptSigner;
+  readonly keySet: ReturnType<typeof createMemoryKeySet>;
+}> {
+  const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+  return {
+    signer: createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk }),
+    keySet: createMemoryKeySet([{ kid, publicKeyJwk, state: "active" }]),
+  };
+}
+
+/** Wrap `inner` so signing a receipt whose stepName matches `failOn` throws. */
+function failingSigner(inner: ReceiptSigner, failOn: (step: string) => boolean): ReceiptSigner {
+  return {
+    kid: inner.kid,
+    publicKeyJwk: inner.publicKeyJwk,
+    async sign(bytes) {
+      const step = signedStepName(bytes) ?? "";
+      if (failOn(step)) throw new Error(`remote signer 503 on ${step}`);
+      return inner.sign(bytes);
+    },
+  };
+}
+
+function oneChildCrew(usage: Usage = { promptTokens: 1, completionTokens: 1, costUsd: null }) {
+  const root = makeRoot([makeChild("alpha")]);
+  const { provider } = makeScriptedProvider(
+    ['{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}', "alpha summary", "final"],
+    [usage, usage, usage],
+  );
+  return { root, provider };
+}
+
+describe("runAgentCrew — crew-close verdict and timing", () => {
+  it("signs the crew-close receipt execution-failed when the crew budget is exceeded", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew({ promptTokens: 1, completionTokens: 1, costUsd: 1 });
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer,
+        policy: { budget: { maxCostUsd: 1.5 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("crew-budget-exceeded");
+    const close = result.receipts
+      .map((envelope) => decodeReceiptBody(envelope.payload))
+      .find((body) => body.stepName === "crew-close:lead");
+    expect(close?.contractVerdict).toBe("execution-failed");
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({ ok: true });
+  });
+
+  it("does not count receipt signing against the crew wall-time budget", async () => {
+    const { signer: inner } = await makeSignerPair();
+    let offsetMs = 0;
+    const realNow = Date.now.bind(Date);
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => realNow() + offsetMs);
+    // A slow remote signer: each post-work mint takes "10 s" on the mocked clock.
+    const slow: ReceiptSigner = {
+      kid: inner.kid,
+      publicKeyJwk: inner.publicKeyJwk,
+      async sign(bytes) {
+        const step = signedStepName(bytes) ?? "";
+        if (step === "crew-agent-completion:lead" || step.startsWith("crew-close:")) {
+          offsetMs += 10_000;
+        }
+        return inner.sign(bytes);
+      },
+    };
+    try {
+      const { root, provider } = oneChildCrew();
+      const result = await runAgentCrew(
+        {
+          root,
+          hosts: { childHost: createNoopAgentHost() },
+          signer: slow,
+          policy: { budget: { maxWallTimeMs: 5_000 } },
+        },
+        { providers: [provider] },
+      );
+      expect(offsetMs).toBe(20_000);
+      expect(result.result.kind).toBe("success");
+      const close = result.receipts
+        .map((envelope) => decodeReceiptBody(envelope.payload))
+        .find((body) => body.stepName === "crew-close:lead");
+      expect(close?.contractVerdict).toBe("success");
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("commits the crew-start hash to every descendant id, not only direct children", async () => {
+    const { signer } = await makeSignerPair();
+    async function startHash(leafId: string): Promise<string | null | undefined> {
+      const leaf = makeChild(leafId);
+      const mid = defineAgent({
+        id: "mid",
+        intent: "Delegate to the leaf.",
+        tools: [],
+        childAgents: [leaf],
+        summaryReturnSchema: makeSchema(),
+      });
+      const { provider } = makeScriptedProvider(
+        [
+          '{"tool_calls":[{"id":"a","name":"mid","args":{"task":"M"}}]}',
+          `{"tool_calls":[{"id":"b","name":"${leafId}","args":{"task":"L"}}]}`,
+          "leaf summary",
+          "mid summary",
+          "final",
+        ],
+        [],
+      );
+      const result = await runAgentCrew(
+        { root: makeRoot([mid]), hosts: { childHost: createNoopAgentHost() }, signer, policy: { maxDepth: 3 } },
+        { providers: [provider] },
+      );
+      return decodeReceiptBody(result.receipts[0]!.payload).outputHash;
+    }
+
+    const withLeaf = await startHash("leaf");
+    expect(withLeaf).toBe(
+      await hashOutputForReceipt({
+        kind: "crew-start",
+        agents: {
+          id: "lead",
+          children: [{ id: "mid", children: [{ id: "leaf", children: [] }] }],
+        },
+      }),
+    );
+    expect(await startHash("other-leaf")).not.toBe(withLeaf);
+  });
+});
+
+describe("runAgentCrew — receipt signer failures after the crew's work", () => {
+  const isParent = (step: string): boolean => step === "crew-agent-completion:lead";
+  const isClose = (step: string): boolean => step.startsWith("crew-close:");
+
+  it("flags a failed root completion mint, still closes the chain, and keeps the result", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }> = [];
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, isParent),
+        tracer: {
+          kind: "tracer",
+          event(name, attributes) {
+            events.push({ name, ...(attributes !== undefined ? { attributes } : {}) });
+          },
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    expect(result.receiptError?.message).toContain("crew-agent-completion:lead");
+    expect(Object.isFrozen(result.receiptError)).toBe(true);
+    const steps = result.receipts.map((envelope) => decodeReceiptBody(envelope.payload).stepName);
+    expect(steps).toEqual(["crew-start:lead", "crew-agent-completion:alpha", "crew-close:lead"]);
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({ ok: true, count: 3 });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        name: "step.transition",
+        attributes: expect.objectContaining({ stepName: "crew-agent-completion:lead" }),
+      }),
+    );
+  });
+
+  it("flags a failed crew-close mint and says the chain cannot verify without it", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const result = await runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, isClose) },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.message).toContain("crew-close:lead");
+    expect(result.receiptError?.message).toContain("chainClosure");
+    expect(result.receipts).toHaveLength(3);
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({
+      ok: false,
+      error: { kind: "count-mismatch" },
+    });
+  });
+
+  it("reports both failures in one receiptError when every post-work mint fails", async () => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, (step) => isParent(step) || isClose(step)),
+      },
+      { providers: [provider] },
+    );
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.message).toContain("crew-agent-completion:lead");
+    expect(result.receiptError?.message).toContain("crew-close:lead");
+  });
+
+  it.each([
+    ["root completion", isParent],
+    ["crew-close", isClose],
+  ])("throws ReceiptSigningError for a failed %s mint under onSignerError: throw", async (_label, failOn) => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const run = runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, failOn) },
+      { providers: [provider], receipts: { onSignerError: "throw" } },
+    );
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/remote signer 503/u);
   });
 });

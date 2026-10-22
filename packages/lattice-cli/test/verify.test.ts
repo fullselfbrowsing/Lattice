@@ -113,11 +113,20 @@ describe("lattice verify handler — runVerify(args, deps)", () => {
     await runVerify({ receipt: receiptPath, key: keysetPath }, deps);
 
     expect(bag.exitCode).toBe(0);
-    expect(bag.stderr.length).toBeGreaterThan(0);
-    expect(bag.stderr.every((line) => line.startsWith("WARN "))).toBe(true);
-    expect(bag.stderr.some((line) => line.includes("audience"))).toBe(true);
+    // A default ai.run receipt carries no bindings: INFO lines only, no WARN.
+    expect(bag.stderr.map((line) => line.split(":")[0]).sort()).toEqual([
+      "INFO audience-absent",
+      "INFO expiry-absent",
+      "INFO nonce-absent",
+    ]);
     expect(bag.stdout).toHaveLength(1);
     expect(bag.stdout[0]).toMatch(/^OK kid=ok-kid-1 verdict=success$/);
+
+    const quiet = captureDeps();
+    await runVerify({ receipt: receiptPath, key: keysetPath, quiet: true }, quiet.deps);
+    expect(quiet.bag.exitCode).toBe(0);
+    expect(quiet.bag.stderr).toEqual([]);
+    expect(quiet.bag.stdout).toEqual(bag.stdout);
   });
 
   it("Test 2 (signature-invalid FAIL): exit 1 with FAIL kind=signature-invalid", async () => {
@@ -385,6 +394,31 @@ describe("lattice verify handler — VerifyOptions flags (issue #21)", () => {
     await runVerify({ receipt: receiptPath, key: keysetPath, maxAgeMs: Number.NaN }, invalid.deps);
     expect(invalid.bag.exitCode).toBe(2);
     expect(invalid.bag.stderr[0]).toMatch(/^FAIL kind=invalid-argument reason=--max-age-ms/);
+  });
+
+  it("prints WARN for an audience and nonce the receipt carries but the flags did not check, even under --quiet", async () => {
+    await mintAndWrite({ audience: "bank-A", nonce: "nonce-secret-9", expiresAt: "2999-01-01T00:00:00Z" });
+
+    for (const quiet of [false, true]) {
+      const { deps, bag } = captureDeps();
+      await runVerify({ receipt: receiptPath, key: keysetPath, quiet }, deps);
+      expect(bag.exitCode).toBe(0);
+      expect(bag.stdout[0]).toMatch(/^OK kid=verify-opts-key verdict=success$/);
+      expect(bag.stderr.map((line) => line.split(":")[0]).sort()).toEqual([
+        "WARN audience-unchecked",
+        "WARN nonce-unchecked",
+      ]);
+      expect(bag.stderr.join("\n")).toContain("bank-A");
+      expect(bag.stderr.join("\n")).not.toContain("nonce-secret-9");
+    }
+
+    const checked = captureDeps();
+    await runVerify(
+      { receipt: receiptPath, key: keysetPath, audience: "bank-A", nonce: "nonce-secret-9" },
+      checked.deps,
+    );
+    expect(checked.bag.exitCode).toBe(0);
+    expect(checked.bag.stderr).toEqual([]);
   });
 
   it("a receipt carrying a past expiresAt fails even with no flags", async () => {

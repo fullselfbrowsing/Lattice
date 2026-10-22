@@ -11,6 +11,15 @@ import type { ReceiptVersion } from "./types.js";
  *   - v1.2  modelClass training-class tag
  *   - v1.3  parentReceiptCid chain link and lineageMerkleRoot
  *   - v1.4  optional audience, nonce, expiresAt binding fields
+ *
+ * No bump for chainClosure / chainMemberCids. Those optional fields were
+ * added to v1.4 so @full-self-browsing/lattice 1.6.x verifiers keep
+ * accepting crew receipts that carry them; a bump would make every one of
+ * those verifiers return version-mismatch. The cost is that a 1.6.x
+ * verifier canonicalizes the fields generically and ignores them, so it
+ * does not enforce closure: a dropped crew leaf still verifies there. Only
+ * verifiers from the release that added the fields (1.7.0) enforce it, and
+ * `requireClosure` is how a relying party insists on it.
  */
 export const RECEIPT_VERSIONS: readonly ReceiptVersion[] = Object.freeze([
   "lattice-receipt/v1",

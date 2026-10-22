@@ -91,6 +91,74 @@ async function makeChainFixture(childCount = 2, kid = "chain-cli-key"): Promise<
   return { signer, publicKeyJwk, kid, root, rootCid, children };
 }
 
+interface ClosedChainFixture extends ChainFixture {
+  readonly closer: ReceiptEnvelope;
+}
+
+/** A crew-shaped closed tree: the root declares chainClosure, the closer lists the rest. */
+async function makeClosedChainFixture(childCount = 2): Promise<ClosedChainFixture> {
+  const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+  const kid = "chain-cli-closed";
+  const signer = createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk });
+  const root = await createReceipt(
+    minimalInput({ stepName: "crew-start:lead", chainClosure: "member-cids" }),
+    signer,
+  );
+  const rootCid = await receiptCid(root);
+  const children: ReceiptEnvelope[] = [];
+  for (let i = 0; i < childCount; i += 1) {
+    children.push(
+      await createReceipt(
+        minimalInput({ parentReceiptCid: rootCid, stepName: `crew-agent-completion:c${i}` }),
+        signer,
+      ),
+    );
+  }
+  const memberCids = [rootCid, ...(await Promise.all(children.map((c) => receiptCid(c))))].sort();
+  const closer = await createReceipt(
+    minimalInput({
+      parentReceiptCid: rootCid,
+      stepName: "crew-close:lead",
+      chainMemberCids: memberCids,
+    }),
+    signer,
+  );
+  return { signer, publicKeyJwk, kid, root, rootCid, children, closer };
+}
+
+/** RFC 8785 for the ASCII-only, integer-only bodies these fixtures produce. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Re-sign an envelope with one body field replaced. createReceipt refuses
+ * malformed closure fields, so a buggy or hostile issuer is simulated here.
+ */
+async function resignWith(
+  env: ReceiptEnvelope,
+  signer: ReceiptSigner,
+  field: string,
+  value: unknown,
+): Promise<ReceiptEnvelope> {
+  const body = {
+    ...(JSON.parse(Buffer.from(env.payload, "base64").toString("utf8")) as Record<string, unknown>),
+    [field]: value,
+  };
+  const payload = Buffer.from(canonicalJson(body), "utf8").toString("base64");
+  const type = env.payloadType;
+  const pae = new TextEncoder().encode(`DSSEv1 ${type.length} ${type} ${payload.length} ${payload}`);
+  const sig = Buffer.from(await signer.sign(pae)).toString("base64");
+  return { payloadType: type, payload, signatures: [{ keyid: signer.kid, sig }] };
+}
+
 function flipSignature(env: ReceiptEnvelope): ReceiptEnvelope {
   const first = env.signatures[0]!;
   const sig = (first.sig.startsWith("A") ? "B" : "A") + first.sig.slice(1);
@@ -142,8 +210,10 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
     await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath }, deps);
 
     expect(bag.exitCode).toBe(0);
-    expect(bag.stderr.every((line) => line.startsWith("WARN "))).toBe(true);
-    expect(bag.stderr.some((line) => line.includes("tail truncation"))).toBe(true);
+    expect(bag.stderr.filter((line) => line.startsWith("WARN "))).toEqual([
+      expect.stringMatching(/^WARN tail-truncation-unchecked: /u),
+    ]);
+    expect(bag.stderr.every((line) => /^(WARN|INFO) [a-z-]+: /u.test(line))).toBe(true);
     expect(bag.stdout).toHaveLength(1);
     expect(bag.stdout[0]).toMatch(/^OK root=sha256:[0-9a-f]{64} links=3$/);
     expect(bag.stdout[0]).toContain(fixture.rootCid);
@@ -186,6 +256,115 @@ describe("lattice receipt verify-chain handler — runReceiptVerifyChain(args, d
     );
     expect(caught.bag.exitCode).toBe(1);
     expect(caught.bag.stderr[0]).toMatch(/^FAIL kind=count-mismatch reason=/);
+  });
+
+  it("verifies a closed chain with no tail-truncation WARN, and --quiet leaves stderr empty", async () => {
+    const fixture = await makeClosedChainFixture(2);
+    await writeFixture(fixture, {
+      "0-root.json": fixture.root,
+      "1-c0.json": fixture.children[0]!,
+      "2-c1.json": fixture.children[1]!,
+      "3-close.json": fixture.closer,
+    });
+
+    const loud = captureDeps();
+    await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath }, loud.deps);
+    expect(loud.bag.exitCode).toBe(0);
+    expect(loud.bag.stdout[0]).toMatch(/^OK root=sha256:[0-9a-f]{64} links=4$/);
+    expect(loud.bag.stderr.filter((line) => line.startsWith("WARN "))).toEqual([]);
+    expect(loud.bag.stderr.length).toBeGreaterThan(0);
+    expect(loud.bag.stderr.every((line) => line.startsWith("INFO "))).toBe(true);
+
+    const quiet = captureDeps();
+    await runReceiptVerifyChain(
+      { dir: receiptsDir, key: keysetPath, requireClosure: true, quiet: true },
+      quiet.deps,
+    );
+    expect(quiet.bag.exitCode).toBe(0);
+    expect(quiet.bag.stderr).toEqual([]);
+  });
+
+  it("rejects a truncated closed chain without --expect-count", async () => {
+    const fixture = await makeClosedChainFixture(2);
+    await writeFixture(fixture, {
+      "0-root.json": fixture.root,
+      "1-c0.json": fixture.children[0]!,
+      "3-close.json": fixture.closer,
+    });
+
+    const { deps, bag } = captureDeps();
+    await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath }, deps);
+    expect(bag.exitCode).toBe(1);
+    expect(bag.stdout).toEqual([]);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(/^FAIL kind=count-mismatch reason=.*dropped/u);
+  });
+
+  it("--partial accepts a disclosed subset that keeps the closer and prints INFO closure-partial", async () => {
+    const fixture = await makeClosedChainFixture(3);
+    await writeFixture(fixture, {
+      "0-root.json": fixture.root,
+      "1-c0.json": fixture.children[0]!,
+      "3-close.json": fixture.closer,
+    });
+
+    const partial = captureDeps();
+    await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath, partial: true }, partial.deps);
+    expect(partial.bag.exitCode).toBe(0);
+    expect(partial.bag.stdout[0]).toMatch(/ links=3$/u);
+    expect(partial.bag.stderr).toContainEqual(expect.stringMatching(/^INFO closure-partial: .*2 member/u));
+
+    const quiet = captureDeps();
+    await runReceiptVerifyChain(
+      { dir: receiptsDir, key: keysetPath, partial: true, quiet: true },
+      quiet.deps,
+    );
+    expect(quiet.bag.exitCode).toBe(0);
+    expect(quiet.bag.stderr).toEqual([]);
+  });
+
+  it("--require-closure fails a chain that declares no closure", async () => {
+    const fixture = await makeChainFixture(2);
+    await writeFixture(fixture, {
+      "root.json": fixture.root,
+      "c1.json": fixture.children[0]!,
+      "c2.json": fixture.children[1]!,
+    });
+
+    const { deps, bag } = captureDeps();
+    await runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath, requireClosure: true }, deps);
+    expect(bag.exitCode).toBe(1);
+    expect(bag.stderr[0]).toMatch(/^FAIL kind=count-mismatch reason=requireClosure/u);
+  });
+
+  it.each([
+    ["chainMemberCids", "sha256:abc"],
+    ["chainMemberCids", null],
+    ["chainMemberCids", { a: 1 }],
+    ["chainClosure", "merkle-v2"],
+  ])("prints a typed FAIL line, not a stack trace, for a closer whose %s is %j", async (field, value) => {
+    const fixture = await makeClosedChainFixture(1);
+    const malformed =
+      field === "chainClosure"
+        ? await resignWith(fixture.root, fixture.signer, field, value)
+        : await resignWith(fixture.closer, fixture.signer, field, value);
+    await writeFixture(fixture, {
+      "0-root.json": field === "chainClosure" ? malformed : fixture.root,
+      "1-c0.json": fixture.children[0]!,
+      "3-close.json": field === "chainClosure" ? fixture.closer : malformed,
+    });
+
+    const { deps, bag } = captureDeps();
+    await expect(
+      runReceiptVerifyChain({ dir: receiptsDir, key: keysetPath }, deps),
+    ).resolves.toBeUndefined();
+    expect(bag.exitCode).toBe(1);
+    expect(bag.stdout).toEqual([]);
+    expect(bag.stderr).toHaveLength(1);
+    expect(bag.stderr[0]).toMatch(
+      /^FAIL kind=link-invalid reason=receipt\[\d\] failed verification: version-mismatch: /u,
+    );
+    expect(bag.stderr[0]).not.toContain("TypeError");
   });
 
   it("rejects a wrong --run-id with run-id-mismatch", async () => {

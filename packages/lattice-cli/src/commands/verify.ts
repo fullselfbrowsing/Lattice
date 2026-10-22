@@ -1,13 +1,22 @@
 /**
  * `lattice verify <receipt-path> [--key <keyset-path>] [--min-version <v>]
- *                 [--audience <aud>] [--nonce <nonce>] [--max-age-ms <ms>]`
+ *                 [--audience <aud>] [--nonce <nonce>] [--max-age-ms <ms>]
+ *                 [--quiet]`
  *
  * Offline integrity check for a signed capability receipt. Reads the
  * receipt JSON, loads the keyset JSON file (default `~/.lattice/keyset.json`),
  * and runs `verifyReceipt` from the lattice public surface.
  *
  * Output contract (CONTEXT.md exit-code matrix):
- *   exit 0 — success    : single stdout line `OK kid=<kid> verdict=<contractVerdict>`
+ *   exit 0 — success    : single stdout line `OK kid=<kid> verdict=<contractVerdict>`,
+ *                         then zero or more stderr advisory lines from
+ *                         `receiptVerifyAdvisories`:
+ *                           `WARN <code>: <message>` always printed; the receipt
+ *                             carries an audience or nonce that was not checked
+ *                           `INFO <code>: <message>` omitted under --quiet; an
+ *                             optional binding the receipt does not use
+ *                         `<code>` is a VerifyAdvisoryCode. Advisories never
+ *                         change the exit code; gate on the WARN codes instead.
  *   exit 1 — verify FAIL: single stderr line `FAIL kind=<VerifyErrorKind> reason=<message>`
  *                         VerifyErrorKind now includes `audience-mismatch`,
  *                         `nonce-mismatch`, and `receipt-expired`.
@@ -20,6 +29,7 @@
  *   --audience      the receipt's `audience` must equal this value
  *   --nonce         the receipt's `nonce` must equal this value
  *   --max-age-ms    reject when `issuedAt + max-age-ms` is in the past
+ *   --quiet         suppress INFO advisory lines (WARN lines still print)
  * A receipt carrying `expiresAt` is always checked against the clock.
  *
  * Redaction discipline (CLI-05): the success line ONLY surfaces fields
@@ -46,7 +56,11 @@ import {
   isKeysetLoadError,
   loadKeySetFromPath,
 } from "../io/keyset-loader.js";
-import { buildVerifyOptions, type VerifyOptionArgs } from "../receipt/verify-options.js";
+import {
+  advisoryLines,
+  buildVerifyOptions,
+  type VerifyOptionArgs,
+} from "../receipt/verify-options.js";
 
 const PAYLOAD_TYPE = "application/vnd.lattice.receipt+json" as const;
 
@@ -76,6 +90,8 @@ function isReceiptEnvelopeShape(value: unknown): value is ReceiptEnvelope {
 export interface RunVerifyArgs extends VerifyOptionArgs {
   readonly receipt: string;
   readonly key?: string;
+  /** Suppress INFO advisory lines. WARN lines always print. */
+  readonly quiet?: boolean;
 }
 
 /**
@@ -138,8 +154,9 @@ export async function runVerify(
   const result = await verifyReceipt(envelope, keySet, built.options);
   if (result.ok) {
     deps.stdout(`OK kid=${result.body.kid} verdict=${result.body.contractVerdict}`);
-    for (const note of receiptVerifyAdvisories(result.body, built.options)) {
-      deps.stderr(`WARN ${note}`);
+    const advisories = receiptVerifyAdvisories(result.body, built.options);
+    for (const line of advisoryLines(advisories, args.quiet === true)) {
+      deps.stderr(line);
     }
     deps.exit(0);
     return;
@@ -183,6 +200,10 @@ export default defineCommand({
       description:
         "Reject receipts whose issuedAt is older than this many milliseconds.",
     },
+    quiet: {
+      type: "boolean",
+      description: "Suppress INFO advisory lines on stderr. WARN lines still print.",
+    },
   },
   async run({ args }) {
     // exactOptionalPropertyTypes: spread conditionally so citty's
@@ -197,6 +218,7 @@ export default defineCommand({
       ...(args["max-age-ms"] !== undefined
         ? { maxAgeMs: Number(args["max-age-ms"]) }
         : {}),
+      ...(args.quiet === true ? { quiet: true } : {}),
     };
     await runVerify(callArgs);
   },

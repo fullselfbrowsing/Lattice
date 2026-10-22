@@ -6,10 +6,13 @@ import {
   createExternalExecutionAudit,
   createMemoryKeySet,
   createNobleEd25519Signer,
+  receiptVerifyAdvisories,
   verifyChain,
+  type CapabilityReceiptBody,
   type ExternalExecutionAuditInput,
   type KeySet,
   type ReceiptEnvelope,
+  type VerifyAdvisory,
   type VerifyChainResult,
 } from "@full-self-browsing/lattice/audit";
 import {
@@ -178,3 +181,5 @@ void externalAuditInput;
 expectType<Promise<VerifyChainResult>>(
   verifyChain([] as readonly ReceiptEnvelope[], createMemoryKeySet([])),
 );
+declare const auditBody: CapabilityReceiptBody;
+expectType<readonly VerifyAdvisory[]>(receiptVerifyAdvisories(auditBody));

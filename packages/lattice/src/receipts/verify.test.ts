@@ -20,9 +20,10 @@ import type {
   KeyState,
   ReceiptEnvelope,
   ReceiptSigner,
+  VerifyAdvisory,
   VerifyFail,
 } from "./types.js";
-import { verifyReceipt } from "./verify.js";
+import { receiptVerifyAdvisories, verifyReceipt } from "./verify.js";
 
 async function makeSigner(
   kid = "test-key-1",
@@ -1145,5 +1146,118 @@ describe("verify.ts — maxAgeMs validation (review follow-up)", () => {
     const later = await verifyReceipt(env, keySet, { now: "2026-01-01T00:00:00.001Z", maxAgeMs: 0 });
     expect(later.ok).toBe(false);
     if (!later.ok) expect(later.error.kind).toBe("receipt-expired");
+  });
+});
+
+describe("verify.ts — chain-closure field shape", () => {
+  it.each([
+    ["chainClosure", "merkle-v2"],
+    ["chainClosure", true],
+    ["chainMemberCids", "sha256:abc"],
+    ["chainMemberCids", { a: 1 }],
+    ["chainMemberCids", null],
+    ["chainMemberCids", [1, 2]],
+  ])("rejects a signed body whose %s is %j as version-mismatch", async (field, value) => {
+    const { signer, publicKeyJwk } = await makeSigner("shape");
+    const keySet = createMemoryKeySet([entryWith("shape", publicKeyJwk, "active")]);
+    const body = { ...bodyForVersion("lattice-receipt/v1.4", "shape"), [field]: value };
+    const env = await signBody(body as unknown as CapabilityReceiptBody, signer);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("version-mismatch");
+      expect(result.error.message).toContain(field);
+    }
+  });
+
+  it("accepts the well-formed fields", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("shape");
+    const keySet = createMemoryKeySet([entryWith("shape", publicKeyJwk, "active")]);
+    const env = await signBody(
+      bodyForVersion("lattice-receipt/v1.4", "shape", {
+        chainClosure: "member-cids",
+        chainMemberCids: [`sha256:${"a".repeat(64)}`],
+      }),
+      signer,
+    );
+    expect((await verifyReceipt(env, keySet)).ok).toBe(true);
+  });
+});
+
+describe("verify.ts — receiptVerifyAdvisories", () => {
+  const codes = (notes: readonly VerifyAdvisory[]): string[] =>
+    notes.map((note) => `${note.severity}:${note.code}`).sort();
+
+  it("reports absent bindings as info on an unbound receipt", () => {
+    const body = bodyForVersion("lattice-receipt/v1.4", "adv");
+    expect(codes(receiptVerifyAdvisories(body))).toEqual([
+      "info:audience-absent",
+      "info:expiry-absent",
+      "info:nonce-absent",
+    ]);
+  });
+
+  it("warns when the receipt is bound to an audience or nonce the verifier did not check", () => {
+    const body = bodyForVersion("lattice-receipt/v1.4", "adv", {
+      audience: "bank-A",
+      nonce: "nonce-secret-123",
+      expiresAt: "2099-01-01T00:00:00Z",
+    });
+    const notes = receiptVerifyAdvisories(body, {});
+    expect(codes(notes)).toEqual(["warn:audience-unchecked", "warn:nonce-unchecked"]);
+    expect(notes.find((note) => note.code === "audience-unchecked")?.message).toContain("bank-A");
+    for (const note of notes) {
+      expect(note.message).not.toContain("nonce-secret-123");
+    }
+  });
+
+  it("reports nothing once the bindings are checked and the receipt expires", () => {
+    const body = bodyForVersion("lattice-receipt/v1.4", "adv", {
+      audience: "bank-A",
+      nonce: "n",
+      expiresAt: "2099-01-01T00:00:00Z",
+    });
+    expect(receiptVerifyAdvisories(body, { expectedAudience: "bank-A", expectedNonce: "n" })).toEqual([]);
+  });
+
+  it("treats maxAgeMs as an expiry", () => {
+    const body = bodyForVersion("lattice-receipt/v1.4", "adv");
+    expect(codes(receiptVerifyAdvisories(body, { maxAgeMs: 60_000 }))).not.toContain(
+      "info:expiry-absent",
+    );
+  });
+
+  it("judges version-below-current on the effective floor, not on whether minVersion was passed", () => {
+    const body = bodyForVersion("lattice-receipt/v1.2", "adv");
+    const note = (minVersion?: CapabilityReceiptBody["version"]) =>
+      receiptVerifyAdvisories(body, minVersion !== undefined ? { minVersion } : {}).find(
+        (entry) => entry.code === "version-below-current",
+      );
+    expect(note()?.severity).toBe("info");
+    expect(note()?.message).toContain("effective floor lattice-receipt/v1.1");
+    // minVersion at or below the CRYPTO-01 floor does not move it.
+    expect(note("lattice-receipt/v1.1")?.message).toContain("effective floor lattice-receipt/v1.1");
+    expect(note("lattice-receipt/v1")?.message).toContain("effective floor lattice-receipt/v1.1");
+    expect(note("lattice-receipt/v1.2")?.message).toContain("effective floor lattice-receipt/v1.2");
+    // A floor above the receipt would have rejected it, so there is nothing to note.
+    expect(note("lattice-receipt/v1.3")).toBeUndefined();
+    expect(
+      receiptVerifyAdvisories(bodyForVersion("lattice-receipt/v1.4", "adv")).map((entry) => entry.code),
+    ).not.toContain("version-below-current");
+  });
+
+  it("matches what verifyReceipt accepted for a bound receipt", async () => {
+    const { signer, publicKeyJwk } = await makeSigner("adv");
+    const keySet = createMemoryKeySet([entryWith("adv", publicKeyJwk, "active")]);
+    const env = await createReceipt(minimalInput({ audience: "bank-A" }), signer);
+    const result = await verifyReceipt(env, keySet);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(codes(receiptVerifyAdvisories(result.body))).toEqual([
+        "info:expiry-absent",
+        "info:nonce-absent",
+        "warn:audience-unchecked",
+      ]);
+    }
   });
 });

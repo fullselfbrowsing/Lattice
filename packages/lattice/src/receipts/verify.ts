@@ -20,6 +20,7 @@ import type {
   KeySet,
   ReceiptEnvelope,
   ReceiptVersion,
+  VerifyAdvisory,
   VerifyError,
   VerifyOptions,
   VerifyResult,
@@ -126,7 +127,28 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (v.audience !== undefined && typeof v.audience !== "string") return undefined;
   if (v.nonce !== undefined && typeof v.nonce !== "string") return undefined;
   if (v.expiresAt !== undefined && typeof v.expiresAt !== "string") return undefined;
+  if (closureFieldProblem(v) !== undefined) return undefined;
   return v as unknown as CapabilityReceiptBody;
+}
+
+/**
+ * Chain-closure fields are optional, but when present they must have the
+ * shape verifyChain relies on. An unknown closure mode is not something this
+ * verifier can enforce, so it fails closed instead of reading as "no
+ * closure". Returns the problem for the version-mismatch message.
+ */
+function closureFieldProblem(v: Record<string, unknown>): string | undefined {
+  if (v.chainClosure !== undefined && v.chainClosure !== "member-cids") {
+    return 'chainClosure must be "member-cids"';
+  }
+  if (
+    v.chainMemberCids !== undefined &&
+    (!Array.isArray(v.chainMemberCids) ||
+      !v.chainMemberCids.every((cid) => typeof cid === "string"))
+  ) {
+    return "chainMemberCids must be an array of CID strings";
+  }
+  return undefined;
 }
 
 /**
@@ -142,7 +164,8 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
  *   1. decodeEnvelope throws OR signatures[] empty
  *      OR payload is not canonical base64                      -> envelope-malformed
  *   2. payload bytes are not valid JSON                         -> envelope-malformed
- *   3. body shape check fails OR version unknown literal        -> version-mismatch
+ *   3. body shape check fails OR version unknown literal
+ *      OR chainClosure / chainMemberCids malformed              -> version-mismatch
  *   4. body.version undefined OR ordinal below floor            -> schema-version-too-low
  *      (floor = max(options.minVersion, v1.1); CRYPTO-01)
  *   5. keySet.lookup(keyid) === undefined                       -> key-not-found
@@ -210,9 +233,13 @@ export async function verifyReceipt(
   // Step 3: structural body check + version literal check.
   const body = asReceiptBody(parsed);
   if (body === undefined) {
+    const closure =
+      typeof parsed === "object" && parsed !== null
+        ? closureFieldProblem(parsed as Record<string, unknown>)
+        : undefined;
     return fail(
       "version-mismatch",
-      `receipt body is not a ${acceptedVersions(receiptVersionOrdinal(MIN_ACCEPTED_RECEIPT_VERSION)).join(", ")} shape`,
+      `receipt body is not a ${acceptedVersions(receiptVersionOrdinal(MIN_ACCEPTED_RECEIPT_VERSION)).join(", ")} shape${closure !== undefined ? `: ${closure}` : ""}`,
     );
   }
 
@@ -341,39 +368,78 @@ export async function verifyReceipt(
 }
 
 /**
- * Advisories for a receipt that verified. Binding checks stay opt-in so a
- * receipt minted before audience, nonce, or expiry existed still verifies.
- * Callers that need those guarantees pass `expectedAudience`,
- * `expectedNonce`, `maxAgeMs`, or `minVersion`. `expiresAt`, when the
- * issuer set it, is already enforced inside `verifyReceipt`.
+ * Advisories for a receipt that verified with `options`. Binding checks stay
+ * opt-in so a receipt minted before audience, nonce, or expiry existed still
+ * verifies; this reports what that left unchecked.
+ *
+ *   warn  audience-unchecked / nonce-unchecked: the receipt is bound to an
+ *         audience or nonce, but the matching expectation was not passed,
+ *         so the binding was never compared. A replay to another relying
+ *         party verifies the same way.
+ *   info  audience-absent / nonce-absent / expiry-absent: the receipt does
+ *         not use that binding (and, for expiry, `maxAgeMs` was not passed).
+ *   info  version-below-current: the receipt predates the current schema
+ *         and the effective floor, max(`minVersion`, v1.1), admitted it.
+ *         Passing `minVersion` equal to the v1.1 floor does not silence it.
+ *
+ * `expiresAt`, when the issuer set it, is enforced inside `verifyReceipt`
+ * and produces no advisory. Messages never contain the nonce value. Pure;
+ * an unknown `minVersion` here is read as the baseline rather than thrown,
+ * because `verifyReceipt` already rejected it.
  */
 export function receiptVerifyAdvisories(
   body: CapabilityReceiptBody,
   options: VerifyOptions = {},
-): readonly string[] {
-  const notes: string[] = [];
-  if (options.expectedAudience === undefined && body.audience === undefined) {
-    notes.push(
-      "audience binding is opt-in and this receipt has no audience; pass expectedAudience to reject a replay to another relying party",
-    );
+): readonly VerifyAdvisory[] {
+  const notes: VerifyAdvisory[] = [];
+  if (body.audience !== undefined && options.expectedAudience === undefined) {
+    notes.push({
+      code: "audience-unchecked",
+      severity: "warn",
+      message: `receipt is bound to audience "${String(body.audience)}" but expectedAudience was not passed, so the binding was not checked`,
+    });
+  } else if (body.audience === undefined && options.expectedAudience === undefined) {
+    notes.push({
+      code: "audience-absent",
+      severity: "info",
+      message:
+        "receipt has no audience, so any relying party accepts it; pass expectedAudience to require one",
+    });
   }
-  if (options.expectedNonce === undefined && body.nonce === undefined) {
-    notes.push(
-      "nonce binding is opt-in and this receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay",
-    );
+  if (body.nonce !== undefined && options.expectedNonce === undefined) {
+    notes.push({
+      code: "nonce-unchecked",
+      severity: "warn",
+      message:
+        "receipt carries a nonce but expectedNonce was not passed, so the binding was not checked",
+    });
+  } else if (body.nonce === undefined && options.expectedNonce === undefined) {
+    notes.push({
+      code: "nonce-absent",
+      severity: "info",
+      message:
+        "receipt has no nonce; pass expectedNonce and record accepted receiptCid values to reject a replay",
+    });
   }
   if (body.expiresAt === undefined && options.maxAgeMs === undefined) {
-    notes.push(
-      "this receipt has no expiresAt and maxAgeMs was not passed, so it does not expire",
-    );
+    notes.push({
+      code: "expiry-absent",
+      severity: "info",
+      message: "receipt has no expiresAt and maxAgeMs was not passed, so it does not expire",
+    });
   }
-  if (
-    options.minVersion === undefined &&
-    receiptVersionOrdinal(body.version) < receiptVersionOrdinal(CURRENT_RECEIPT_VERSION)
-  ) {
-    notes.push(
-      `minVersion was not passed; the floor stays ${MIN_ACCEPTED_RECEIPT_VERSION} and this receipt is ${body.version}`,
-    );
+  // Judge the floor the verifier actually applied, not whether minVersion
+  // was passed: minVersion below or equal to the CRYPTO-01 baseline leaves
+  // the floor where it was.
+  const baseline = receiptVersionOrdinal(MIN_ACCEPTED_RECEIPT_VERSION);
+  const floor = Math.max(receiptVersionOrdinal(options.minVersion), baseline);
+  const bodyOrdinal = receiptVersionOrdinal(body.version);
+  if (floor <= bodyOrdinal && bodyOrdinal < receiptVersionOrdinal(CURRENT_RECEIPT_VERSION)) {
+    notes.push({
+      code: "version-below-current",
+      severity: "info",
+      message: `receipt is ${String(body.version)}, older than ${CURRENT_RECEIPT_VERSION}, and the effective floor ${RECEIPT_VERSIONS[floor] ?? MIN_ACCEPTED_RECEIPT_VERSION} accepted it; pass minVersion to require a newer schema`,
+    });
   }
   return notes;
 }

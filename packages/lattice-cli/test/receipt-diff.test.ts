@@ -241,6 +241,26 @@ describe("lattice receipt diff", () => {
     );
   });
 
+  it("names chainClosure and chainMemberCids when only the closure fields differ", async () => {
+    const cidA = `sha256:${"a".repeat(64)}`;
+    const cidB = `sha256:${"b".repeat(64)}`;
+    await writeJson(leftPath, envelope(body({ chainMemberCids: [cidA] })));
+    await writeJson(
+      rightPath,
+      envelope(body({ chainClosure: "member-cids", chainMemberCids: [cidA, cidB] })),
+    );
+
+    const { deps, bag } = captureDeps();
+    await runReceiptDiff({ left: leftPath, right: rightPath }, deps);
+
+    expect(bag.exitCode).toBe(1);
+    const report = JSON.parse(bag.stdout[0]!) as ReceiptDiffReport;
+    expect(report.differences).toEqual([
+      { path: "receipt.chainClosure", left: null, right: "member-cids" },
+      { path: "receipt.chainMemberCids", left: [cidA], right: [cidA, cidB] },
+    ]);
+  });
+
   it("exits 2 for malformed receipt payloads and emits no JSON", async () => {
     await writeJson(leftPath, {
       payloadType: "application/vnd.lattice.receipt+json",

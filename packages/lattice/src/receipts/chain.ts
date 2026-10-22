@@ -3,6 +3,7 @@ import type {
   CapabilityReceiptBody,
   KeySet,
   ReceiptEnvelope,
+  VerifyAdvisory,
   VerifyChainError,
   VerifyChainOptions,
   VerifyChainResult,
@@ -48,19 +49,27 @@ async function safeCid(envelope: ReceiptEnvelope): Promise<string | undefined> {
  *      from the root (`orphan-link`)
  *   6. `expectedCount` and `expectedRootCid` match when given
  *      (`count-mismatch`, `root-mismatch`)
+ *   7. chain closure, when any receipt declares `chainClosure` or
+ *      `requireClosure` is set (`count-mismatch`, see below)
  *
  * Tail truncation: dropping LEAF receipts leaves a smaller tree that is
  * still fully linked. Two commitments catch it. Pass `expectedCount`, or
  * mint the root with `chainClosure: "member-cids"` and a closing receipt
  * whose `chainMemberCids` lists every other member (crew runs do this).
- * A chain that has neither still verifies, and the result carries an
- * advisory saying so. `expectedRootCid` detects a replaced root, not a
- * missing leaf. Dropping the root or an interior node is detected
- * (`no-root`, `orphan-link`).
+ * With closure declared, exactly one closing receipt must be present and
+ * its list must equal the other presented CIDs, so a dropped or added
+ * member fails. `partial: true` relaxes that to "every presented receipt is
+ * listed" for selective disclosure; the closer is still required.
+ * `requireClosure: true` rejects a chain that declares no closure at all.
+ * Without either commitment a chain still verifies, and the result carries
+ * a `tail-truncation-unchecked` advisory. `expectedRootCid` detects a
+ * replaced root, not a missing leaf. Dropping the root or an interior node
+ * is detected (`no-root`, `orphan-link`).
  *
- * A successful result also carries `advisories` when audience, nonce,
- * expiry, or a raised `minVersion` were left unset. Those checks stay
- * opt-in so older receipts keep verifying.
+ * A successful result also carries structured `advisories` (see
+ * `receiptVerifyAdvisories`) for bindings that were not checked and
+ * optional checks the receipts do not use. Those checks stay opt-in so
+ * older receipts keep verifying.
  *
  * No replay cache is kept; dedupe on `receiptCid()` if a receipt must only
  * be accepted once. Invalid caller options (unknown `minVersion`,
@@ -71,7 +80,14 @@ export async function verifyChain(
   keySet: KeySet,
   options: VerifyChainOptions = {},
 ): Promise<VerifyChainResult> {
-  const { expectedRunId, expectedCount, expectedRootCid, ...verifyOptions } = options;
+  const {
+    expectedRunId,
+    expectedCount,
+    expectedRootCid,
+    requireClosure,
+    partial,
+    ...verifyOptions
+  } = options;
   const linkOptions: VerifyOptions = verifyOptions;
 
   if (envelopes.length === 0) {
@@ -210,10 +226,19 @@ export async function verifyChain(
     });
   }
 
-  const closure = checkChainClosure(nodes);
-  if (closure !== undefined) return fail(closure);
+  // Step 7: chain closure.
+  const closure = checkChainClosure(nodes, {
+    requireClosure: requireClosure === true,
+    partial: partial === true,
+  });
+  if (!closure.ok) return fail(closure.error);
 
-  const advisories = chainAdvisories(nodes, options, verifyOptions);
+  const advisories = chainAdvisories(nodes, {
+    closed: closure.closed,
+    expectedCount,
+    verifyOptions,
+    ...(closure.unpresented !== undefined ? { unpresented: closure.unpresented } : {}),
+  });
   return {
     ok: true,
     rootCid: root.cid,
@@ -224,64 +249,115 @@ export async function verifyChain(
   };
 }
 
-function checkChainClosure(nodes: readonly ChainNode[]): VerifyChainError | undefined {
-  const closers = nodes.filter((node) => node.body.chainClosure === "member-cids");
+type ClosureCheck =
+  | {
+      readonly ok: true;
+      readonly closed: boolean;
+      /** Listed members that a `partial` verification did not see. */
+      readonly unpresented?: number;
+    }
+  | { readonly ok: false; readonly error: VerifyChainError };
+
+/**
+ * Enforce `chainClosure`. Every failure is `count-mismatch` (the kind is
+ * shared with `expectedCount` on purpose; see VerifyChainErrorKind). Never
+ * throws: asReceiptBody already rejected malformed fields, and the
+ * Array.isArray guard keeps that true if the two drift.
+ */
+function checkChainClosure(
+  nodes: readonly ChainNode[],
+  mode: { readonly requireClosure: boolean; readonly partial: boolean },
+): ClosureCheck {
+  const declared = nodes.some((node) => node.body.chainClosure === "member-cids");
   const listed = nodes.filter((node) => node.body.chainMemberCids !== undefined);
-  if (closers.length === 0 && listed.length === 0) return undefined;
-  if (closers.length === 0) {
-    return {
-      kind: "count-mismatch",
-      message: "a receipt lists chainMemberCids but no receipt declared chainClosure",
-    };
+  if (!declared && listed.length === 0) {
+    if (mode.requireClosure) {
+      return countMismatch(
+        undefined,
+        "requireClosure is set but no receipt declares chainClosure, so dropped leaves cannot be detected",
+      );
+    }
+    return { ok: true, closed: false };
+  }
+  if (!declared) {
+    return countMismatch(
+      undefined,
+      "a receipt lists chainMemberCids but no receipt declared chainClosure",
+    );
   }
   if (listed.length !== 1) {
-    return {
-      kind: "count-mismatch",
-      message: `chainClosure requires exactly one receipt with chainMemberCids, found ${listed.length}`,
-    };
+    return countMismatch(
+      undefined,
+      `chainClosure requires exactly one receipt with chainMemberCids, found ${listed.length}`,
+    );
   }
   const closer = listed[0]!;
-  const declared = closer.body.chainMemberCids;
-  if (declared === undefined || declared.some((cid) => typeof cid !== "string")) {
-    return {
-      kind: "count-mismatch",
-      cid: closer.cid,
-      message: "chainMemberCids must be an array of CID strings",
-    };
+  const members: unknown = closer.body.chainMemberCids;
+  if (!Array.isArray(members) || !members.every((cid) => typeof cid === "string")) {
+    return countMismatch(closer.cid, "chainMemberCids must be an array of CID strings");
   }
-  const actual = new Set(nodes.filter((node) => node.cid !== closer.cid).map((node) => node.cid));
-  const declaredSet = new Set(declared);
-  const same =
-    declaredSet.size === actual.size &&
-    declaredSet.size === declared.length &&
-    [...declaredSet].every((cid) => actual.has(cid));
-  if (!same) {
-    return {
-      kind: "count-mismatch",
-      cid: closer.cid,
-      message: `chainMemberCids lists ${declared.length} members but the chain has ${actual.size} receipts besides the closer; a member was added or dropped`,
-    };
+  const declaredSet = new Set<string>(members);
+  if (declaredSet.size !== members.length) {
+    return countMismatch(closer.cid, "chainMemberCids lists a CID more than once");
   }
-  return undefined;
+  const presented = nodes.filter((node) => node.cid !== closer.cid);
+  const unlisted = presented.find((node) => !declaredSet.has(node.cid));
+  if (unlisted !== undefined) {
+    return countMismatch(
+      unlisted.cid,
+      `receipt ${unlisted.cid} is not listed in the closing receipt's chainMemberCids; a member was added`,
+    );
+  }
+  if (mode.partial) {
+    return { ok: true, closed: true, unpresented: declaredSet.size - presented.length };
+  }
+  if (presented.length !== declaredSet.size) {
+    return countMismatch(
+      closer.cid,
+      `chainMemberCids lists ${declaredSet.size} members but the chain has ${presented.length} besides the closer; a member was dropped`,
+    );
+  }
+  return { ok: true, closed: true };
+}
+
+function countMismatch(cid: string | undefined, message: string): ClosureCheck {
+  return {
+    ok: false,
+    error: { kind: "count-mismatch", message, ...(cid !== undefined ? { cid } : {}) },
+  };
 }
 
 function chainAdvisories(
   nodes: readonly ChainNode[],
-  options: VerifyChainOptions,
-  verifyOptions: VerifyOptions,
-): readonly string[] {
-  const notes: string[] = [];
-  const closed = nodes.some((node) => node.body.chainClosure === "member-cids");
-  if (options.expectedCount === undefined && !closed) {
-    notes.push(
-      "tail truncation of leaf receipts is not checked; pass expectedCount or mint a chainClosure receipt",
-    );
+  input: {
+    readonly closed: boolean;
+    readonly expectedCount: number | undefined;
+    readonly verifyOptions: VerifyOptions;
+    readonly unpresented?: number;
+  },
+): readonly VerifyAdvisory[] {
+  const notes: VerifyAdvisory[] = [];
+  if (input.expectedCount === undefined && !input.closed) {
+    notes.push({
+      code: "tail-truncation-unchecked",
+      severity: "warn",
+      message:
+        "dropped leaf receipts are not detected; pass expectedCount or verify a chain whose root declares chainClosure",
+    });
+  }
+  if (input.unpresented !== undefined && input.unpresented > 0) {
+    notes.push({
+      code: "closure-partial",
+      severity: "info",
+      message: `partial verification: ${input.unpresented} member(s) listed by the closing receipt were not presented and were not checked`,
+    });
   }
   const seen = new Set<string>();
   for (const node of nodes) {
-    for (const note of receiptVerifyAdvisories(node.body, verifyOptions)) {
-      if (!seen.has(note)) {
-        seen.add(note);
+    for (const note of receiptVerifyAdvisories(node.body, input.verifyOptions)) {
+      const key = `${note.code}\u0000${note.message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         notes.push(note);
       }
     }
