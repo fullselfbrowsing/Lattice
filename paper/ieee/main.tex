@@ -470,9 +470,9 @@ address matches as written, and so do a dashed United States social security num
 undashed nine-digit number counts as a social security number only when an SSN cue
 such as \code{ssn} or \code{social security} is the nearest preceding word. A plain
 ten-digit run counts as a phone number only when it is a valid North American number
-that follows a phone cue such as \code{phone} or \code{call}, or a \code{+1} trunk
-prefix. A card number is 13 to 19 digits, optionally grouped by single spaces or
-dashes, that pass the Luhn checksum; runs that start with 0 or 1, and 13-digit runs
+that follows a phone cue such as \code{phone} or \code{call}, or a \code{+1} or
+\code{1-} trunk prefix. A card number is 13 to 19 digits, optionally grouped by
+single spaces or dashes, that pass the Luhn checksum; runs that start with 0 or 1, and 13-digit runs
 that start with an ISBN-13 prefix, are skipped. A social security, phone, or card
 candidate is also skipped when the nearest preceding word on the same line is an
 identifier label: order, invoice, sku, ref, po, isbn, txn, or one of a few
@@ -760,12 +760,14 @@ response pass through, and that the set of adapter identifiers has size seven. P
 gives every adapter the same receipt format and the same verification path. It does not
 make the adapters transmit the same request. The \code{openai},
 \code{openai-compatible}, \code{xai}, \code{openrouter}, and \code{lm-studio} adapters
-share one request builder that sends each artifact as a text part holding JSON. A
-data-URL string is inlined as text, and binary image bytes are dropped, yet the receipt
-still hashes the dropped input. Its input hashes therefore record what the caller
+share one request builder that sends each artifact as a text part holding JSON and
+includes the artifact's value only when it is a string. A data-URL string is inlined as
+text, and other values, such as binary image bytes and JSON objects, are dropped, yet
+the receipt still hashes the dropped input. Its input hashes therefore record what the caller
 supplied, not what the provider received. The \code{anthropic} and \code{gemini}
-adapters send native image parts. The adapters also differ in sampling parameters: only
-\code{anthropic} sends a token cap and only \code{gemini} sends a temperature. Across
+adapters send native image parts. The adapters also differ in sampling parameters:
+\code{anthropic} sends a fixed token cap, \code{gemini} sends a fixed temperature and
+token cap, and the OpenAI-shaped adapters send neither. Across
 adapters a receipt means the same thing about its signed fields, but not about what the
 model saw.
 
@@ -851,8 +853,9 @@ iterations, per-agent iterations, concurrent children, and depth, and it coordin
 rate limits through a token bucket with default limits.
 
 With a signer, a crew returns a crew-start root, a completion receipt for the root
-agent and for each child run that completed, and a crew-close receipt, so a crew of
-$N$ agents that each run once returns $N+2$ receipts. The crew-start receipt hashes
+agent and for each child run that succeeded, and a crew-close receipt, so a crew of
+$N$ agents that each run once returns $N+2$ receipts when every child run succeeds. A
+child whose run fails gets no completion receipt. The crew-start receipt hashes
 the tree of agent identifiers, not their intents, tools, or policy, and declares
 closure. Each completion receipt chains to the root through a parent receipt content
 identifier and commits to that agent's output hash. The crew-close receipt lists the
@@ -1074,7 +1077,8 @@ run honestly. The hashes are unsalted, so a low-entropy input or output can be
 confirmed from a receipt by guessing. Single-agent runs return no receipt:
 \code{ai.runAgent} sends its checkpoint receipts to a tracer only, and only
 \code{ai.run} and crews return receipts to the caller. The five OpenAI-shaped adapters
-send artifacts as JSON text, drop binary image bytes, and still hash the dropped input,
+send artifacts as JSON text, drop values that are not strings, such as binary image
+bytes and JSON objects, and still hash the dropped input,
 so for those adapters an input hash does not show that the model received the input;
 in the hosted vision probe the Lattice arm answered blue for a red image while a direct
 image part answered red (Section~\ref{sec:realworld-broad}). When a configured signer
@@ -1092,8 +1096,10 @@ shape, such as passport numbers, and score far below the synthetic harness
 at commit \code{a8cc091}, which differ from the rules above as
 Section~\ref{sec:realworld} describes. The must-cite invariant is syntactic. By default it reads
 only citation lists, and its prose options check markers, not whether the cited
-artifact supports the claim. On long-form answers it accepted few gold titles
-(Section~\ref{sec:realworld}).
+artifact supports the claim. Long-form ASQA answers carry no citation list, so the
+default accepts a gold title in none of them; the count in Section~\ref{sec:realworld}
+was measured at commit \code{a8cc091}, where an inline marker containing the name
+counted by default.
 
 No replay cache ships with the verifier, so a relying party that must accept a receipt
 only once keeps its own record of accepted content identifiers. An open chain warns on
