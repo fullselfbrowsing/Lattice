@@ -58,7 +58,8 @@ def main() -> None:
         "dataset": "din0s/asqa dev, revision 084060f16b46f3165318f760b2339208b19a0bde, Apache-2.0",
         "n": n,
         "mustCiteAnyGold": prior["mustCiteAnyGold"],
-        "mustCiteNote": "Copied from datasets.json. The invariant is syntactic and case-sensitive.",
+        "mustCiteStructuredDefault": prior.get("mustCiteStructuredDefault"),
+        "mustCiteNote": "Copied from datasets.json. mustCiteAnyGold uses mustCiteOptions. mustCiteStructuredDefault uses the structured-list default and does not read the answer text. The invariant is syntactic and case-sensitive.",
         **({"mustCiteOptions": prior["mustCiteOptions"]} if prior.get("mustCiteOptions") else {}),
         "titleSubstringCaseSensitive": title_cs,
         "titleSubstringCaseInsensitive": title_ci,
@@ -71,8 +72,13 @@ def main() -> None:
         },
         "nli": {"measured": False, "reason": "not run in this stage"},
     }
-    if "--nli" in __import__("sys").argv:
+    argv = __import__("sys").argv
+    if "--nli" in argv:
         report["nli"] = run_nli(prepared)
+    elif (RESULTS / "citations.json").exists():
+        previous = json.loads((RESULTS / "citations.json").read_text()).get("nli")
+        if previous:
+            report["nli"] = previous
     (RESULTS / "citations.json").write_text(json.dumps(report, indent=2))
     print(json.dumps({k: report[k] for k in report if k != "nli"}, indent=2))
     print("nli", report["nli"].get("measured"), report["nli"].get("entailed"), report["nli"].get("reason"))

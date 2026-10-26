@@ -150,7 +150,16 @@ const gretel = await scorePii(`${CACHE}/gretel.jsonl`, (raw) => ({
 // inline rule is opted into: a bracket or parenthesis whose content equals
 // the title counts.
 const CITE_OPTIONS = { inline: true };
-let asqa = { n: 0, withBracket: 0, titleSubstring: 0, mustCiteAnyGold: 0, mustCiteFabricatedWhenBrackets: 0, bracketed: 0, mustCiteOptions: CITE_OPTIONS };
+let asqa = {
+  n: 0,
+  withBracket: 0,
+  titleSubstring: 0,
+  mustCiteAnyGold: 0,
+  mustCiteStructuredDefault: 0,
+  mustCiteFabricatedWhenBrackets: 0,
+  bracketed: 0,
+  mustCiteOptions: CITE_OPTIONS,
+};
 const fabricated = "not-a-real-source-zzz";
 for await (const row of lines(`${CACHE}/asqa.jsonl`)) {
   asqa.n += 1;
@@ -159,12 +168,16 @@ for await (const row of lines(`${CACHE}/asqa.jsonl`)) {
   if (bracketed) asqa.withBracket += 1;
   const titles = row.titles ?? [];
   if (titles.some((title) => answer.includes(title))) asqa.titleSubstring += 1;
-  let any = false;
+  let anyInline = false;
+  let anyDefault = false;
   for (const title of titles) {
-    const result = await L.evaluateTripwires({ answer }, [L.inv.mustCite(title, CITE_OPTIONS)]);
-    if (result.ok) any = true;
+    const inline = await L.evaluateTripwires({ answer }, [L.inv.mustCite(title, CITE_OPTIONS)]);
+    if (inline.ok) anyInline = true;
+    const structured = await L.evaluateTripwires({ answer }, [L.inv.mustCite(title)]);
+    if (structured.ok) anyDefault = true;
   }
-  if (any) asqa.mustCiteAnyGold += 1;
+  if (anyInline) asqa.mustCiteAnyGold += 1;
+  if (anyDefault) asqa.mustCiteStructuredDefault += 1;
   if (bracketed) {
     asqa.bracketed += 1;
     const fake = await L.evaluateTripwires({ answer }, [L.inv.mustCite(fabricated, CITE_OPTIONS)]);

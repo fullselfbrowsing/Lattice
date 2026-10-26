@@ -48,3 +48,15 @@ These outputs are gitignored because they are large, churn on every run, or hold
   and the same for `@full-self-browsing/lattice-cli` (`tests-lattice-cli.json`).
 
 The LaTeX tables are written only to `paper/eval-tables.tex` (there is no `results/tables.tex` copy). All synthetic data comes from fixed-seed PRNGs. See results/SUMMARY.md for the numbers.
+
+## Released 1.6.0 verifier (`.context/base`)
+
+`07-v16.mjs` imports `.context/base/packages/lattice/dist/index.js`. That path is not in git. It is a detached worktree of tag `v1.6.0`, the released verifier, used only to check that a crew chain from the current library still verifies there and that the released verifier does not enforce chain closure. A clean clone does not have the worktree, so those two checks fail until it is built.
+
+`eval/run-all.sh` runs `eval/scripts/prepare-base-verifier.sh` before `07-v16.mjs`. To build it by hand:
+
+```sh
+bash eval/scripts/prepare-base-verifier.sh
+```
+
+The script adds the worktree, installs with the lockfile at that tag, and builds `@full-self-browsing/lattice`. `BASE_VERIFIER_REF` overrides the tag. `.context/` is gitignored. Node 24 or newer must be on `PATH`, the same requirement as the rest of the harness.

@@ -199,7 +199,7 @@
       "check": "partial-rejects-unlisted-member",
       "ok": true,
       "kind": "count-mismatch",
-      "message": "receipt sha256:95501b1c7541c99c41339924dcef6427464ee133dee91deabd1b1b50754a165d is not listed in the closing receipt's chainMemberCids; a member was added"
+      "message": "receipt sha256:3ecc7e45379874be06c12a3869122be780d597a489448b6da95f05779510576a is not listed in the closing receipt's chainMemberCids; a member was added"
     },
     {
       "check": "createReceipt-rejects-malformed-member-cid",
@@ -289,19 +289,19 @@
       "check": "non-root-closure-verifyChain-rejected",
       "ok": true,
       "kind": "count-mismatch",
-      "message": "receipt sha256:36cf9b8085b8a0263a10f896df2d51823d8185829b05f97060275c3d130ddcd4 declares chainClosure but is not the root; only the root receipt may declare closure"
+      "message": "receipt sha256:aff29a9dd4cd91a0ba2375b153c918924cada56387f252b62feaae6040529b98 declares chainClosure but is not the root; only the root receipt may declare closure"
     },
     {
       "check": "non-root-closure-partial-rejected",
       "ok": true,
       "kind": "count-mismatch",
-      "message": "receipt sha256:36cf9b8085b8a0263a10f896df2d51823d8185829b05f97060275c3d130ddcd4 declares chainClosure but is not the root; only the root receipt may declare closure"
+      "message": "receipt sha256:aff29a9dd4cd91a0ba2375b153c918924cada56387f252b62feaae6040529b98 declares chainClosure but is not the root; only the root receipt may declare closure"
     },
     {
       "check": "root-only-closure-unclosed-root",
       "ok": true,
       "kind": "count-mismatch",
-      "message": "receipt sha256:476c145bb50a9b1584c68c7014e79290b6500e948abb1b3e111998703f32186a declares chainClosure but is not the root; only the root receipt may declare closure"
+      "message": "receipt sha256:f2d5f830d59f426ab04cb89721bbcf443ae257f7f14336168676e73ab93fd1fe declares chainClosure but is not the root; only the root receipt may declare closure"
     },
     {
       "check": "crew-receipts-n-plus-2",
@@ -367,7 +367,7 @@
       "check": "crew-child-mint-failure-throw-ReceiptSigningError",
       "ok": true,
       "kind": "ReceiptSigningError",
-      "message": "Receipt signing failed for run runAgentCrew-1792664177937-77f970ff2d8d8: crew-agent-completion:alpha receipt was not minted: remote signer 503 on crew-agent-completion:alpha; crew-close lists only the"
+      "message": "Receipt signing failed for run runAgentCrew-1793038371795-a24ba2e32dec28: crew-agent-completion:alpha receipt was not minted: remote signer 503 on crew-agent-completion:alpha; crew-close lists only th"
     },
     {
       "check": "crew-child-mint-throw-stops-crew",
@@ -385,19 +385,19 @@
       "check": "crew-start-failure-default-ReceiptSigningError",
       "ok": true,
       "kind": "ReceiptSigningError",
-      "message": "Receipt signing failed for run runAgentCrew-1792664177939-b6a09fcb114518: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-c034033a70321: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
     },
     {
       "check": "crew-start-failure-flag-ReceiptSigningError",
       "ok": true,
       "kind": "ReceiptSigningError",
-      "message": "Receipt signing failed for run runAgentCrew-1792664177939-4b8497eb051ea: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-70e3b1f700a22: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
     },
     {
       "check": "crew-start-failure-throw-ReceiptSigningError",
       "ok": true,
       "kind": "ReceiptSigningError",
-      "message": "Receipt signing failed for run runAgentCrew-1792664177940-2556e1b0e52e2: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-a91afa339a211: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
     },
     {
       "check": "base-1.6.0-verifier-accepts-new-crew-chain",

@@ -28,5 +28,6 @@ pnpm --filter @full-self-browsing/lattice-cli exec vitest run --reporter=json --
 node eval/scripts/03-tamper.mjs > $R/tamper.log </dev/null
 node eval/scripts/04-replay.mjs > $R/replay.log </dev/null
 node eval/scripts/05-policy.mjs > $R/policy.log </dev/null
+bash eval/scripts/prepare-base-verifier.sh
 node eval/scripts/07-v16.mjs > $R/v16.log </dev/null
 "$PYTHON" eval/scripts/06-report.py

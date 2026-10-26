@@ -732,6 +732,11 @@ def write_fragment() -> None:
             )
             +             "Output binding uses only calls that returned a receipt. "
             "The local row is the Ollama run in Section~\\ref{sec:realworld} (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
+            + (
+                ""
+                if (OPEN.get("env") or {}).get("latticeCommit")
+                else " These hosted rows do not name a library commit. They were recorded before crew receipts gained a closing member list and were not rerun for this revision, because no OpenRouter key was available. The receipt counts in the table are from that recording. Chain closure for the current library is the offline verifier check, not these hosted counts."
+            )
         )
         lines.append(" " + lattice_prose())
         lines.append("")
@@ -888,12 +893,19 @@ def write_fragment() -> None:
         lines.append(
             f"On ASQA dev \\citep{{asqa}} (n={CITE['n']}), a case-sensitive Wikipedia title substring matches {CITE['titleSubstringCaseSensitive']} long answers and a case-insensitive substring matches {CITE['titleSubstringCaseInsensitive']}. "
             f"Square-bracket citations appear in {CITE['answersWithSquareBracket']} answers and overlap a gold title in {CITE['bracketOverlapsGoldTitle']}. "
-            f"\\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. These three checks are different predicates. "
             + (
-                "\\texttt{mustCite} was called with \\texttt{inline:~true}, because the default reads only a structured citation list and these answers have none."
-                if (CITE.get("mustCiteOptions") or {}).get("inline")
-                else f"The \\texttt{{mustCite}} count was measured at {LEGACY_CITE_RULE.replace('the artifact name', 'the title')}. "
-                "The current default never reads the answer text, so it accepts a gold title in none of these answers unless \\texttt{inline:~true} is passed."
+                f"With \\texttt{{inline:~true}}, \\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. "
+                f"The structured default accepts a gold title in {CITE.get('mustCiteStructuredDefault')}. "
+                "These checks are different predicates. The structured default never reads the answer text."
+                if CITE.get("mustCiteStructuredDefault") is not None and (CITE.get("mustCiteOptions") or {}).get("inline")
+                else
+                f"\\texttt{{mustCite}} accepts a gold title in {CITE['mustCiteAnyGold']}. These three checks are different predicates. "
+                + (
+                    "\\texttt{mustCite} was called with \\texttt{inline:~true}, because the default reads only a structured citation list and these answers have none."
+                    if (CITE.get("mustCiteOptions") or {}).get("inline")
+                    else f"The \\texttt{{mustCite}} count was measured at {LEGACY_CITE_RULE.replace('the artifact name', 'the title')}. "
+                    "The current default never reads the answer text, so it accepts a gold title in none of these answers unless \\texttt{inline:~true} is passed."
+                )
             )
         )
         nli = CITE.get("nli") or {}

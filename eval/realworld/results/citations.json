@@ -1,8 +1,12 @@
 {
   "dataset": "din0s/asqa dev, revision 084060f16b46f3165318f760b2339208b19a0bde, Apache-2.0",
   "n": 948,
-  "mustCiteAnyGold": 7,
-  "mustCiteNote": "Copied from datasets.json. The invariant is syntactic and case-sensitive.",
+  "mustCiteAnyGold": 4,
+  "mustCiteStructuredDefault": 0,
+  "mustCiteNote": "Copied from datasets.json. mustCiteAnyGold uses mustCiteOptions. mustCiteStructuredDefault uses the structured-list default and does not read the answer text. The invariant is syntactic and case-sensitive.",
+  "mustCiteOptions": {
+    "inline": true
+  },
   "titleSubstringCaseSensitive": 525,
   "titleSubstringCaseInsensitive": 605,
   "answersWithSquareBracket": 2,

@@ -1,5 +1,6 @@
 // Real OpenRouter :free runs through Lattice's OpenAI-compatible adapter.
 // The key is read from the environment or OPENROUTER_KEY_FILE. It is never written to disk.
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { L, RESULTS, makeKeys, receiptBytes, containsMarker, stats, writeJSON, fingerprintArtifactValue } from "./lib.mjs";
 import { resolve } from "node:path";
@@ -464,6 +465,7 @@ const out = {
     maxTokens: { overhead: MAX_TOKENS, rag: MAX_TOKENS, ticket: MAX_TOKENS, agent: MAX_TOKENS, crew: MAX_TOKENS, multimodal: MAX_TOKENS },
     reasoning: { effort: "low" },
     mustCiteOptions: CITE_OPTIONS,
+    latticeCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     timing: "latticeMs excludes provider body, retries, and backoff; e2eMs = latticeMs + providerMs; latticePct = 100 * latticeMs / e2eMs. retryProviderMs, backoffMs, and slackMs are recorded separately.",
     plan: PLAN,
     tasks: [...TASKS],
@@ -775,10 +777,17 @@ async function runCrew(model, row) {
   }));
   if (halted(row)) return;
   const result = timed.result;
+  const receipts = result?.receipts ?? [];
+  const chain = receipts.length
+    ? await L.verifyChain(receipts, keys.keySet, { requireClosure: true })
+    : null;
   row.crew = {
     parentKind: result?.result?.kind ?? null,
     totalIterations: result?.totalIterations ?? null,
-    receiptCount: result?.receipts?.length ?? 0,
+    receiptCount: receipts.length,
+    chainClosure: chain
+      ? { ok: chain.ok === true, count: chain.ok ? chain.count : null, errorKind: chain.ok ? null : chain.error?.kind ?? null }
+      : null,
     perAgent: (result?.perAgent ?? []).map((agent) => ({ id: agent.id, iterations: agent.iterations, receiptCount: agent.receiptCids?.length ?? 0 })),
     answerChars: typeof result?.result?.output?.answer === "string" ? result.result.output.answer.length : 0,
     cited: typeof result?.result?.output?.answer === "string" && result.result.output.answer.includes("policy-refund"),

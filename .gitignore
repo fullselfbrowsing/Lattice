@@ -3,6 +3,10 @@ dist/
 coverage/
 examples/work-inbox/.lattice/
 
+# Released verifier worktree used by eval/scripts/07-v16.mjs. Created by
+# eval/scripts/prepare-base-verifier.sh. Not part of this branch.
+.context/
+
 # Secrets. Never commit API keys or env files.
 *.key
 **/*.key

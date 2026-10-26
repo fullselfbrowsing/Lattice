@@ -25,9 +25,13 @@ experiment.
 - Datasets are cached outside the repo in `REALWORLD_CACHE` (default
   `/tmp/realworld-data`). `scripts/02-prepare.py --download` fetches the three
   source files with `huggingface_hub` at the revisions in
-  `results/datasets.json`. The ai4privacy texts are never committed: the
-  license allows academic, non-commercial use with acknowledgement and forbids
-  redistribution.
+  `results/datasets.json`. The ai4privacy texts are never committed. The
+  `LICENSE.md` at the pinned revision grants them for academic research and
+  non-commercial use when Ai4Privacy is acknowledged. Redistribution and
+  commercial use need a written licence or a prior discussion with
+  licensing@ai4privacy.com. Neither was requested. One author's primary
+  affiliation is Full Self Browsing; the paper discloses that and publishes
+  aggregate scores only. Gretel and ASQA are Apache-2.0.
 
 Environment variables: `NODE_BIN` (default `node` on `PATH`), `PYTHON`,
 `REALWORLD_CACHE`, `CMP_DIR`, `COSIGN_BIN`, `LATTICE_SPANS` (default

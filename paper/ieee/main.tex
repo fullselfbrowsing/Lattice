@@ -1089,16 +1089,14 @@ four United States and email formats documented in the source. Names, addresses,
 non-United States formats are not detected. Identifier labels and type cues trade recall
 against precision: a real number right after a label such as \code{ref}, or a bare
 number without its cue, is missed, and long Luhn-valid identifiers are flagged. On
-public data the social security and phone detectors confuse identifiers of the same
-shape, such as passport numbers, and score far below the synthetic harness
-(Table~\ref{tab:rw-pii-ai4}). Those public-data rows were measured with the detectors
-at commit \code{a8cc091}, which differ from the rules above as
-Section~\ref{sec:realworld} describes. The must-cite invariant is syntactic. By default it reads
+public data the phone detector still overlaps social-security spans, while the
+social-security cue rule removes passport-shaped false positives and also misses
+more true SSNs (Table~\ref{tab:rw-pii-ai4}). Those public-data rows were remeasured
+with the detectors at commit \code{ae99fb5}. The must-cite invariant is syntactic. By default it reads
 only citation lists, and its prose options check markers, not whether the cited
 artifact supports the claim. Long-form ASQA answers carry no citation list, so the
-default accepts a gold title in none of them; the count in Section~\ref{sec:realworld}
-was measured at commit \code{a8cc091}, where an inline marker containing the name
-counted by default.
+structured default accepts a gold title in 0 of 948 answers. With \code{inline:~true}
+it accepts 4. The earlier count of 7 used a default that read inline markers.
 
 No replay cache ships with the verifier, so a relying party that must accept a receipt
 only once keeps its own record of accepted content identifiers. An open chain warns on
@@ -1168,12 +1166,14 @@ The offline evaluation harness lives in \code{eval/}. \code{eval/run-all.sh} reb
 % --- Acknowledgment -------------------------------------------------------
 \section*{Acknowledgment}
 
-The evaluation uses the ai4privacy pii-masking-300k dataset \cite{ai4privacy} under its
-terms for academic, non-commercial use with acknowledgement, the Gretel synthetic PII
-finance dataset \cite{gretelfinance}, and the ASQA dataset \cite{asqa}. The committed
-results hold aggregate scores, not dataset records.
-% TODO(authors): confirm that the ai4privacy non-commercial terms cover this use, given
-% the first author's company affiliation.
+The evaluation uses the ai4privacy pii-masking-300k dataset \cite{ai4privacy}. The
+LICENSE.md at the pinned revision grants the texts for academic research and
+non-commercial use when Ai4Privacy is acknowledged. Redistribution and commercial
+use need a written licence or a prior discussion with licensing@ai4privacy.com;
+neither was requested. Aggregate scores are published and the texts are not.
+One author's primary affiliation is a company, disclosed as a competing interest.
+The Gretel synthetic PII finance dataset \cite{gretelfinance} and the ASQA dataset
+\cite{asqa} are Apache-2.0. The committed results hold aggregate scores, not dataset records.
 
 % --- References -----------------------------------------------------------
 \bibliographystyle{IEEEtran}

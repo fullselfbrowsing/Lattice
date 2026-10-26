@@ -1,5 +1,6 @@
 // Real local-model runs through Lattice's OpenAI-compatible adapter.
 // Ollama must already be serving MODEL (default llama3.2:3b).
+import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -15,7 +16,11 @@ const CITE_OPTIONS = { inline: true };
 const keys = await makeKeys();
 const httpLog = [];
 const out = {
-  env: { ...hardware(), mustCiteOptions: CITE_OPTIONS },
+  env: {
+    ...hardware(),
+    mustCiteOptions: CITE_OPTIONS,
+    latticeCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  },
   note: "temperature and max_tokens are injected by a fetch wrapper because createOpenAICompatibleProvider does not send them.",
   overhead: [],
   workloads: [],
@@ -299,13 +304,20 @@ try {
     policy: { budget: { maxIterations: 4, maxWallTimeMs: 180000 } },
   }));
   const result = timed.result;
+  const receipts = result.receipts ?? [];
+  const chain = receipts.length
+    ? await L.verifyChain(receipts, keys.keySet, { requireClosure: true })
+    : null;
   out.crew = {
     wallMs: +timed.wallMs.toFixed(3),
     httpMs: +timed.httpMs.toFixed(3),
     parentKind: result.result?.kind ?? null,
     perAgent: result.perAgent ?? [],
     totalIterations: result.totalIterations ?? null,
-    receiptCount: result.receipts?.length ?? 0,
+    receiptCount: receipts.length,
+    chainClosure: chain
+      ? { ok: chain.ok === true, count: chain.ok ? chain.count : null, errorKind: chain.ok ? null : chain.error?.kind ?? null }
+      : null,
     answer: result.result?.kind === "success" ? result.result.output?.answer ?? null : null,
     error: result.result?.kind === "success" ? null : (result.result?.message ?? result.result?.kind ?? null),
   };
