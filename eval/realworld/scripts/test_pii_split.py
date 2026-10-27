@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pii_split import prepare_split, template_hash, verify_frozen, write_frozen
+from pii_split import historical_template, prepare_split, template_hash, verify_frozen, write_frozen
 
 
 def example(prefix: str, email: str = "one@example.com") -> dict:
@@ -38,6 +38,31 @@ class PiiSplitTests(unittest.TestCase):
             "historicalText": 1, "historicalTemplate": 1, "duplicateTrainText": 1,
         })
         self.assertNotIn(template_hash(old), {doc["templateHash"] for docs in splits.values() for doc in docs})
+
+    def test_historical_overrun_keeps_template_exclusion_and_records_provenance(self):
+        old = example("alpha")
+        original_end = old["spans"][0]["end"] + 9
+        old["spans"][0]["end"] = original_end
+        old["_source"] = {"file": "historical.jsonl", "row": 12}
+        manifest, splits = prepare_split(self.corpus(), [old], {"historical.jsonl": "hash"})
+        self.assertEqual(manifest["excluded"]["historicalTemplate"], 1)
+        self.assertEqual(manifest["historicalAnnotationSummary"]["adjustedSpans"], 1)
+        adjustment = manifest["historicalAnnotationAdjustments"][0]
+        self.assertEqual((adjustment["sourceFile"], adjustment["sourceRow"]), ("historical.jsonl", 12))
+        self.assertEqual(adjustment["original"]["end"], original_end)
+        self.assertEqual(adjustment["effective"]["end"], len(old["text"]))
+        self.assertEqual(old["spans"][0]["end"], original_end)
+        self.assertNotIn(template_hash(example("alpha")), {doc["templateHash"] for docs in splits.values() for doc in docs})
+        self.assertNotIn(old["text"], json.dumps(adjustment))
+        with self.assertRaises(ValueError):
+            prepare_split([old] + self.corpus(), [], {})
+
+    def test_unrecoverable_historical_offsets_are_not_silently_dropped(self):
+        for start, end in ((100, 110), (-1, 4), (1, 1), (3, 2), ("0", 4)):
+            old = example("alpha")
+            old["spans"][0]["start"], old["spans"][0]["end"] = start, end
+            with self.assertRaisesRegex(ValueError, "cannot exclude its template safely"):
+                historical_template(old)
 
     def test_frozen_manifest_is_reproducible_and_cannot_be_overwritten(self):
         manifest, splits = prepare_split(self.corpus(), [], {})

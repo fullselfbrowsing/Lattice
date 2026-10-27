@@ -35,17 +35,19 @@ def main() -> None:
     for filename in ("gretel.jsonl", "english_openpii_8k.jsonl"):
         path = cache / filename
         sources[filename] = sha256(path.read_bytes())
-        for line in path.read_text().splitlines():
+        for row_index, line in enumerate(path.read_text().splitlines()):
             if line.strip():
                 row = json.loads(line)
                 historical.append({
                     "text": row["text"] if filename == "gretel.jsonl" else row["source_text"],
                     "spans": row.get("spans" if filename == "gretel.jsonl" else "privacy_mask") or [],
+                    "_source": {"file": filename, "row": row_index},
                 })
     manifest, splits = prepare_split(train, historical, sources)
     digest = write_frozen(args.output or cache / "pii-split", manifest, splits)
     print(json.dumps({
         "manifestSha256": digest, "splits": manifest["splits"], "excluded": manifest["excluded"],
+        "historicalAnnotationSummary": manifest["historicalAnnotationSummary"],
     }, indent=2))
 
 

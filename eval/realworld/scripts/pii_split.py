@@ -14,7 +14,7 @@ import unicodedata
 from collections import Counter
 from pathlib import Path
 
-SPLIT_VERSION = "gretel-pii-split/v1"
+SPLIT_VERSION = "gretel-pii-split/v2"
 GRETEL_REVISION = "7b844d16738527a04264f50214cb426a4cea0897"
 GRETEL_TRAIN_FILE = "data/English_train-00000-of-00001.parquet"
 SEED = "lattice-pii-dev-holdout-v1"
@@ -53,13 +53,55 @@ def template_hash(doc: dict) -> str:
     return sha256(template.encode("utf-8"))
 
 
+def historical_template(doc: dict) -> tuple[str, list[dict]]:
+    """Preserve exclusion templates when an annotation extends past EOF.
+
+    Only the visible portion can affect a template. This adaptation is for
+    historical deduplication, never detector gold or training annotations.
+    Bounds without any valid visible portion remain an error.
+    """
+    text = doc["text"]
+    spans, adjustments = [], []
+    source = doc.get("_source", {})
+    for index, span in enumerate(doc["spans"]):
+        start, end = span["start"], span["end"]
+        if type(start) is not int or type(end) is not int or not 0 <= start < end or start >= len(text):
+            raise ValueError("Historical annotation has no valid visible bounds; cannot exclude its template safely")
+        if end > len(text):
+            adjustments.append({
+                "documentId": sha256(text.encode("utf-8")),
+                "sourceFile": source.get("file"),
+                "sourceRow": source.get("row"),
+                "spanIndex": index,
+                "label": span["label"],
+                "reason": "end_exceeds_text_length",
+                "action": "mask_visible_intersection_for_historical_template_only",
+                "original": {"start": start, "end": end},
+                "effective": {"start": start, "end": len(text)},
+            })
+            end = len(text)
+        spans.append({**span, "start": start, "end": end})
+    return template_hash({"text": text, "spans": spans}), adjustments
+
+
 def prepare_split(train: list[dict], historical: list[dict], sources: dict) -> tuple[dict, dict[str, list[dict]]]:
     """Freeze an 80/20 split by template groups, independent of input order."""
     old_texts = {sha256(normalized_text(doc["text"]).encode("utf-8")) for doc in historical}
-    old_templates = {template_hash(doc) for doc in historical}
+    old_templates = set()
+    historical_adjustments = []
+    for doc in historical:
+        group, adjustments = historical_template(doc)
+        old_templates.add(group)
+        historical_adjustments.extend(adjustments)
+    historical_adjustments.sort(key=lambda item: (
+        item["sourceFile"] or "", item["sourceRow"] if item["sourceRow"] is not None else -1,
+        item["documentId"], item["spanIndex"],
+    ))
     excluded = {"historicalText": 0, "historicalTemplate": 0, "duplicateTrainText": 0}
     unique: dict[str, dict] = {}
     for doc in train:
+        # Validate before deduplication so a discarded duplicate cannot hide bad gold.
+        template_hash(doc)
         key = sha256(normalized_text(doc["text"]).encode("utf-8"))
         # Deterministic tie-break if equivalent text has variant annotations.
         if key in unique:
@@ -110,6 +152,13 @@ def prepare_split(train: list[dict], historical: list[dict], sources: dict) -> t
         "targetGroupFraction": {"dev": 0.8, "holdout": 0.2},
         "trainInputDocuments": len(train),
         "historicalInputDocuments": len(historical),
+        "historicalAnnotationPolicy": "Retain every historical text and template exclusion. If a positive integer span starts inside the text but ends past EOF, mask its visible intersection for template grouping and record original/effective bounds. Reject noninteger, negative, empty, reversed, and wholly out-of-bounds spans. Training annotations remain strict and are validated before deduplication. Scoring gold is not changed.",
+        "historicalAnnotationSummary": {
+            "adjustedDocuments": len({(item["sourceFile"], item["sourceRow"], item["documentId"]) for item in historical_adjustments}),
+            "adjustedSpans": len(historical_adjustments),
+            "reasons": dict(sorted(Counter(item["reason"] for item in historical_adjustments).items())),
+        },
+        "historicalAnnotationAdjustments": historical_adjustments,
         "excluded": excluded,
         "splits": {},
         "assignments": [],
