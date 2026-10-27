@@ -1083,7 +1083,9 @@ send artifacts as JSON text, drop values that are not strings, such as binary im
 bytes and JSON objects, and still hash the dropped input,
 so for those adapters an input hash does not show that the model received the input;
 in the hosted vision probe the Lattice arm answered blue for a red image while a direct
-image part answered red (Section~\ref{sec:realworld-broad}). When a configured signer
+image part answered red (Section~\ref{sec:realworld-broad}). That probe was not repeated
+on the 2026-10-26 hosted rerun, so the mismatch is still open and was not rechecked
+at commit \code{c5f79b0}. When a configured signer
 fails, the runtime does not hide the gap: by default the result carries a receipt error
 field and an event, and an operator can instead configure the run to fail.
 
@@ -1111,6 +1113,10 @@ elsewhere, but they cannot prove that the external executor used the claimed pro
 unless that executor supplies trustworthy raw envelopes. The hosted measurements use
 free endpoints. They rate-limit, they are not a paid-latency sample, and a model that
 rejects ordinary chat calls is reported as unavailable rather than given a latency.
+The 2026-10-26 rerun at commit \code{c5f79b0} measured higher Lattice processing than
+the previous free-tier run, 1.7 to 3.0~ms at the median. Liquid and Laguna hit the
+crew wall-clock budget and are not successful crews. The single-agent and image
+stages were not part of that rerun.
 Paired provider times are too noisy to treat as the cost of the extra prompt tokens
 Lattice packs.
 

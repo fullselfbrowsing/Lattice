@@ -1,10 +1,11 @@
 """Figures for the broadened real-world comparison. Numbers come from JSON.
 
-Hosted end-to-end time is recomputed from the per-trial phase times in
-openrouter.json as Lattice processing plus the provider time of the attempt that
-returned. Retried attempts, backoff, pacing, and slack are excluded. The PDFs and
-realworld-broad.tex are copied into paper/ and paper/ieee/; the PNGs stay in
-results/.
+Hosted end-to-end time is recomputed from the per-trial phase times as Lattice
+processing plus the provider time of the attempt that returned. Retried attempts,
+backoff, pacing, and slack are excluded. When results/openrouter-rerun.json is
+present it is the hosted source, and results/openrouter.json stays the previous
+recording used for the comparison. The PDFs and realworld-broad.tex are copied
+into paper/ and paper/ieee/; the PNGs stay in results/.
 """
 from __future__ import annotations
 
@@ -24,7 +25,12 @@ PAPER = ROOT.parents[1] / "paper"
 LIVE = json.loads((RESULTS / "live.json").read_text())
 COMPARE = json.loads((RESULTS / "compare.json").read_text())
 PII = json.loads((RESULTS / "pii-tools.json").read_text()) if (RESULTS / "pii-tools.json").exists() else None
-OPEN = json.loads((RESULTS / "openrouter.json").read_text()) if (RESULTS / "openrouter.json").exists() else None
+OPEN_PATH = RESULTS / "openrouter.json"
+RERUN_PATH = RESULTS / "openrouter-rerun.json"
+OPEN_PREV = json.loads(OPEN_PATH.read_text()) if OPEN_PATH.exists() and RERUN_PATH.exists() else None
+OPEN = json.loads(RERUN_PATH.read_text()) if RERUN_PATH.exists() else (
+    json.loads(OPEN_PATH.read_text()) if OPEN_PATH.exists() else None
+)
 GATE = json.loads((RESULTS / "gateways.json").read_text()) if (RESULTS / "gateways.json").exists() else None
 TAMPER = json.loads((RESULTS / "tamper-classes.json").read_text()) if (RESULTS / "tamper-classes.json").exists() else None
 CITE = json.loads((RESULTS / "citations.json").read_text()) if (RESULTS / "citations.json").exists() else None
@@ -157,14 +163,29 @@ def latency_dist() -> None:
 
 
 def replay_counts(row: dict) -> tuple[int, int]:
-    rag = row.get("rag") or []
+    """Output-hash matches over every replayed receipt, including failed calls.
+
+    A match requires verification, an output hash equal to the signed hash, and
+    detection of a one-character alteration. The denominator is every replay row.
+    Failed calls that kept an empty answer stay in the denominator.
+    """
     replay = row.get("replay") or []
-    if rag and len(rag) == len(replay):
-        chosen = [item for src, item in zip(rag, replay) if src.get("ok")]
-    else:
-        chosen = replay
-    good = sum(1 for item in chosen if item.get("verified") and item.get("outputHashMatch") and item.get("alteredDetected"))
-    return good, len(chosen)
+    good = sum(
+        1
+        for item in replay
+        if item.get("verified") and item.get("outputHashMatch") and item.get("alteredDetected")
+    )
+    return good, len(replay)
+
+
+def replay_flags(row: dict) -> tuple[int, int, int, int]:
+    replay = row.get("replay") or []
+    return (
+        len(replay),
+        sum(1 for item in replay if item.get("verified")),
+        sum(1 for item in replay if item.get("materialized") and item.get("replayOk")),
+        sum(1 for item in replay if item.get("alteredDetected")),
+    )
 
 
 def replay_chart() -> None:
@@ -187,8 +208,8 @@ def replay_chart() -> None:
         ax.text(i, (a / b if b else 0) + 0.02, f"{a}/{b}", ha="center", fontsize=7)
     ax.set_ylim(0, 1.15)
     ax.set_xticks(x, labels, rotation=25, ha="right")
-    ax.set_ylabel("Verified, hash bound, edit detected")
-    ax.set_title("Signed output binding of RAG receipts")
+    ax.set_ylabel("Output hash matched")
+    ax.set_title("Replayed receipts whose output hash matched (n includes failures)")
     ax.grid(axis="y", lw=0.3)
     save(fig, "rw-replay")
 
@@ -503,6 +524,19 @@ def cited_cell(row: dict) -> str:
     return ", ".join(parts)
 
 
+def crew_cell(row: dict) -> str:
+    crew = row.get("crew")
+    if not crew:
+        return "---"
+    count = crew.get("receiptCount")
+    kind = crew.get("parentKind")
+    if crew.get("ok") and kind == "success":
+        return "---" if count is None else str(count)
+    if kind == "crew-budget-exceeded":
+        return "budget" if count is None else f"{count} budget"
+    return "fail"
+
+
 def openrouter_rows() -> list[str]:
     summary = LIVE["overheadSummary"]
     by_temp = {block["temperature"]: block for block in LIVE["drift"]}
@@ -540,7 +574,7 @@ def openrouter_rows() -> list[str]:
             "---" if not replay else f"{replay_counts(row)[0]}/{replay_counts(row)[1]}",
             "---" if not row.get("ticket") else ("call failed" if not row["ticket"].get("ok") else yn(row["ticket"].get("signedMarkerLeak"))),
             "---" if not row.get("agent") else (str(row["agent"].get("receiptCount")) if row["agent"].get("ok") else "fail"),
-            "---" if not row.get("crew") else (str(row["crew"].get("receiptCount")) if row["crew"].get("ok") and row["crew"].get("parentKind") == "success" else "fail"),
+            crew_cell(row),
         ]) + r" \\")
     return lines
 
@@ -561,20 +595,30 @@ def pii_rows(dataset: str) -> list[str]:
     return rows
 
 
+def report_medians(report: dict | None) -> tuple[list[float], list[float]]:
+    hosted, hosted_pcts = [], []
+    if not report:
+        return hosted, hosted_pcts
+    for row in report.get("models") or []:
+        samples = lattice_samples(row)
+        if not samples:
+            continue
+        hosted.append(median([item["signedLatticeMs"] for item in samples]))
+        hosted_pcts.append(median([value for value in (hosted_pct(item) for item in samples) if value is not None]))
+    return hosted, hosted_pcts
+
+
 def lattice_prose() -> str:
     local = local_lattice_ms()
     local_e2e = [item["signedMs"] for item in LIVE["overhead"] if item.get("signedMs")]
     local_pct = [100.0 * gap / e2e for gap, e2e in zip(local, local_e2e) if e2e]
-    hosted = []
-    hosted_pcts = []
+    hosted, hosted_pcts = report_medians(OPEN)
     token_meds = []
     delta_meds = []
     for row in finished_models():
         samples = lattice_samples(row)
         if not samples:
             continue
-        hosted.append(median([item["signedLatticeMs"] for item in samples]))
-        hosted_pcts.append(median([hosted_pct(item) for item in samples]))
         tokens = [item.get("extraPromptTokens") for item in samples if item.get("extraPromptTokens") is not None]
         deltas = [item.get("packingProviderDeltaMs") for item in samples if item.get("packingProviderDeltaMs") is not None]
         if tokens:
@@ -591,11 +635,29 @@ def lattice_prose() -> str:
     if hosted:
         parts.append(
             f"Across hosted models with a successful signed short prompt, the median Lattice processing time was {min(hosted):.2f}--{max(hosted):.2f}~ms, "
-            f"or {min(hosted_pcts):.3f}--{max(hosted_pcts):.3f}\\% of end-to-end time. "
+            f"or {min(hosted_pcts):.3f}--{max(hosted_pcts):.3f}\\% of end-to-end time "
+            f"({min(hosted):.1f} to {max(hosted):.1f}~ms and {min(hosted_pcts):.2f} to {max(hosted_pcts):.2f}\\% at the reported rounding). "
             "Table~\\ref{tab:rw-lattice} gives the median and p95 in milliseconds and as a percentage. "
-            "The percentages are recomputed from the per-trial phase times; the \\texttt{signedLatticePct} field stored in \\texttt{openrouter.json} also counts the HTTP time of retried attempts. "
+            "With five trials, p95 is the largest trial. "
+            "The percentages are recomputed from the per-trial phase times as Lattice milliseconds over Lattice milliseconds plus the provider time of the attempt that returned. "
+            "The \\texttt{signedLatticePct} field stored in the previous \\texttt{openrouter.json} also counts the HTTP time of retried attempts, so the comparison uses the recomputed rows for both runs. "
             "Lattice time includes \\texttt{createAI()} construction and the fetch wrapper's JSON handling, so it is an upper bound."
         )
+        previous, previous_pcts = report_medians(OPEN_PREV)
+        if previous and previous_pcts:
+            parts.append(
+                f"On the previous recording those medians were {min(previous):.2f}--{max(previous):.2f}~ms, "
+                f"or {min(previous_pcts):.3f}--{max(previous_pcts):.3f}\\% of end-to-end time. "
+                "The new medians are higher."
+            )
+        liquid = next((row for row in finished_models() if "lfm" in row.get("model", "")), None)
+        if liquid:
+            samples = lattice_samples(liquid)
+            pct = [value for value in (hosted_pct(item) for item in samples) if value is not None]
+            if pct:
+                parts.append(
+                    f"Liquid's percentage p95 is {quantile(pct, 0.95):.2f}\\%, the highest hosted p95 in this run."
+                )
     if token_meds:
         parts.append(
             f"The packed Lattice prompt added {min(token_meds):.0f}--{max(token_meds):.0f} prompt tokens at the median versus the one-line direct prompt. "
@@ -641,6 +703,188 @@ def lattice_rows() -> list[str]:
             "---" if not deltas else f"{quantile(deltas, 0.5):.0f}",
         ]) + r" \\")
     return rows
+
+
+def hosted_provenance() -> str:
+    env = (OPEN or {}).get("env") or {}
+    commit = env.get("latticeCommit")
+    if not commit:
+        return (
+            " These hosted rows do not name a library commit. They were recorded before crew receipts gained a closing member list and were not rerun for this revision, because no OpenRouter key was available. "
+            "The receipt counts in the table are from that recording. Chain closure for the current library is the offline verifier check, not these hosted counts."
+        )
+    started = env.get("date") or ""
+    when = tex(started)
+    if started.startswith("2026-10-26T19:13"):
+        when = "2026-10-26 14:13 CDT (2026-10-26T19:13:36Z)"
+    plan = env.get("plan") or {}
+    return (
+        f" This hosted recording is library commit \\texttt{{{commit[:7]}}}, started at {when}, on the author's machine. "
+        "The local Ollama rows, the public-dataset rows, and the gateway rows are earlier recordings and are not from that machine. "
+        f"The plan called {plan.get('overheadN', 5)} short-prompt trials per model and replayed the RAG receipts (20 per model that returned them). "
+        "Only free OpenRouter models were called. "
+        + (
+            "The single-agent stage and the image stage were left out of this recording. "
+            if plan.get("agent") is False or plan.get("multimodal") is False
+            else ""
+        )
+    )
+
+
+def hosted_followup() -> list[str]:
+    if not OPEN:
+        return []
+    lines: list[str] = []
+    replay_bits = []
+    flag_bits = []
+    for row in finished_models():
+        if not row.get("replay"):
+            continue
+        good, total = replay_counts(row)
+        n, verified, replayed, altered = replay_flags(row)
+        name = ident(row["model"])
+        if good != total:
+            replay_bits.append(f"{name} {good}/{total}")
+        if n and verified == n and replayed == n and altered == n:
+            flag_bits.append(name)
+    if replay_bits:
+        lines.append(
+            "Output binding in Table~\\ref{tab:rw-models} counts whether the replayed output hash matched. "
+            + "The misses are "
+            + "; ".join(replay_bits)
+            + ". "
+            "On every model that has a replay row, all 20 receipts verified, the offline replay materialized, and the altered copy was detected. "
+            "The misses are the trials whose kept answer is empty after a provider error, HTTP 429, or an upstream timeout, so the string passed to \\texttt{replayOffline} does not hash to the signed output. "
+            "The run summary describes those misses as the free model giving a different answer on re-execution. "
+            "They are not signature failures and not chain failures. \\texttt{replayOffline} does not call the model; it checks the output the caller supplies."
+        )
+    budget = []
+    closed_ok = []
+    for row in finished_models():
+        crew = row.get("crew") or {}
+        if not crew:
+            continue
+        name = ident(row["model"])
+        closure = crew.get("chainClosure") or {}
+        closed = closure.get("ok") is True
+        if crew.get("parentKind") == "crew-budget-exceeded":
+            slack = crew.get("slackMs")
+            iters = crew.get("totalIterations")
+            iter_text = "1 iteration" if iters == 1 else f"{iters} iterations"
+            budget.append(
+                f"{name} used {iter_text}, kept {crew.get('receiptCount')} receipts, "
+                f"and the chain closed: {yn(closed)}"
+                + (f", with {slack / 1000:.0f}~s of recorded slack" if isinstance(slack, (int, float)) else "")
+            )
+        elif crew.get("ok") and crew.get("parentKind") == "success" and closed:
+            closed_ok.append(f"{name} ({crew.get('receiptCount')} receipts)")
+    if budget:
+        lines.append(
+            "These crews hit \\texttt{crew-budget-exceeded} and are not successes. "
+            + " ".join(sentence if sentence.endswith(".") else sentence + "." for sentence in budget)
+            + " The harness allows 4 iterations and 180~s of wall time. The iteration counts are below that cap. "
+            "The slack field holds pacing and HTTP 429 backoff that the Lattice processing clock excludes, and both slack totals are above 180~s. "
+            "The likely cause is those free-tier waits exhausting the wall-clock budget. That reading is inferred from the timers, not from a log line that names the budget. "
+            "The three-receipt chains still closed."
+        )
+    if closed_ok:
+        lines.append(
+            "Crews that finished with a closed chain and parent kind success: " + "; ".join(closed_ok) + "."
+        )
+    missing = [
+        tex(name)
+        for name, row in ((OPEN.get("catalog") or {}).items())
+        if not row.get("found")
+    ]
+    if missing:
+        lines.append(
+            "These requested ids were absent from OpenRouter's catalog at rerun time, so they have no new row: "
+            + ", ".join(f"\\texttt{{{name}}}" for name in missing)
+            + (
+                ". \\texttt{minimax/minimax-m3.1-flash:free} was measured in the previous recording."
+                if any("minimax" in name for name in missing)
+                else "."
+            )
+        )
+    plan = (OPEN.get("env") or {}).get("plan") or {}
+    if plan.get("agent") is False:
+        lines.append(
+            "The single-agent stage was not run. On the previous recording the single-agent return carried no receipt. "
+            "That gap is open on this commit and was not rechecked, so this rerun does not show it fixed. "
+            "The agent column is blank for that reason."
+        )
+    if plan.get("multimodal") is False and OPEN_PREV:
+        lines.append(
+            "The image stage was not run. The color mismatch that follows is the earlier probe, at the previous recording, and was not rechecked on this commit. It remains an open gap."
+        )
+        lines.extend(vision_lines(OPEN_PREV["models"]))
+    errors = hosted_errors()
+    if errors:
+        lines.append("Recorded provider errors, quoted in full and counted across overhead, RAG, and ticket calls: " + " ".join(errors))
+    return lines
+
+
+def hosted_errors() -> list[str]:
+    from collections import Counter
+    sentences = []
+    for row in finished_models():
+        counts: Counter[str] = Counter()
+        for block in ("overhead", "rag", "ticket", "crew"):
+            value = row.get(block)
+            items = [value] if isinstance(value, dict) else (value or [])
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                message = item.get("error") or item.get("errorMessage")
+                if message:
+                    counts[str(message)] += 1
+        if row.get("error"):
+            counts[str(row["error"])] += 1
+        if not counts:
+            continue
+        parts = [f"{tex(message)} ({count})" for message, count in counts.most_common()]
+        sentences.append(f"{ident(row['model'])}: " + "; ".join(parts) + ".")
+    return sentences
+
+
+def vision_lines(rows: list[dict]) -> list[str]:
+    lines = []
+    for row in rows:
+        multi = row.get("multimodal") or {}
+        if not multi.get("ran"):
+            continue
+        direct = multi.get("direct") or {}
+        lattice = multi.get("lattice") or {}
+        usage = lattice.get("usage") or {}
+        reasoning = usage.get("reasoningTokens")
+        completion = usage.get("completionTokens")
+        capped = reasoning is not None and completion is not None and reasoning >= completion and lattice.get("finishReason") == "length"
+        lattice_answer = (multi.get("latticeAnswer") or "").strip()
+        direct_answer = (multi.get("directAnswer") or "").strip()
+        effort = multi.get("reasoningEffort")
+        lines.append(
+            f"On a 16$\\times$16 solid red PNG, {ident(row['model'])} "
+            f"answered red from a direct \\texttt{{image\\_url}} part: {yn(multi.get('directNamesRed'))}"
+            + (f" (answer {tex(direct_answer)})" if direct_answer else "")
+            + f". The Lattice image artifact answered red: {yn(multi.get('latticeNamesRed'))}"
+            + (f" (answer {tex(lattice_answer)})" if lattice_answer else "")
+            + ". "
+            f"The PNG bytes were present in the Lattice request body: {yn(multi.get('imageMarkerInRequest'))}. "
+            f"The direct response provider was {tex(direct.get('provider') or '---')}."
+            + (f" This vision call set \\texttt{{reasoning.effort={tex(effort)}}}." if effort else "")
+            + (
+                f" The Lattice call stopped for length with {reasoning} reasoning tokens out of {completion} completion tokens, and both answers were empty, so this row is not a color-identification score."
+                if capped else ""
+            )
+        )
+        if multi.get("note"):
+            lines.append(tex(multi["note"]))
+        lines.append(
+            "Lattice's OpenAI-compatible request builder, which the openai, xai, openrouter, and lm-studio adapters share, sends each artifact as a text part holding JSON and never emits an image part. "
+            "A data-URL string is inlined as text and binary bytes are dropped, so the model received no image part"
+            + (f", and the Lattice arm answered {tex(lattice_answer)} for a red PNG." if lattice_answer and not multi.get("latticeNamesRed") else ".")
+        )
+    return lines
 
 
 def detector_commit() -> str:
@@ -701,7 +945,11 @@ def write_fragment() -> None:
         "\\label{sec:realworld-broad}",
         "\\emergencystretch=8em",
         "",
-        "This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine.",
+        (
+            "This subsection adds the detector, citation, and gateway measurements from the local harness, and a hosted-model rerun recorded on the author's machine."
+            if OPEN_PREV
+            else "This subsection adds the detector, citation, gateway, and hosted-model measurements from the same machine."
+        ),
         "",
     ]
     if OPEN:
@@ -730,18 +978,14 @@ def write_fragment() -> None:
                 else f"A RAG call succeeds when the run returns an answer that passes \\texttt{{mustCite}}. The recorded verdicts come from the rules at {LEGACY_CITE_RULE}. "
                 "The current default reads only a structured citation list and would fail every recorded RAG answer unless \\texttt{inline:~true} is passed. "
             )
-            +             "Output binding uses only calls that returned a receipt. "
+            +             "Output binding counts replayed receipts whose signed output hash matched the kept answer, over every replay row, including calls that kept an empty answer. "
             "The local row is the Ollama run in Section~\\ref{sec:realworld} (drift n=3, overhead n=5). Hosted drift used n=10 when the call returned."
-            + (
-                ""
-                if (OPEN.get("env") or {}).get("latticeCommit")
-                else " These hosted rows do not name a library commit. They were recorded before crew receipts gained a closing member list and were not rerun for this revision, because no OpenRouter key was available. The receipt counts in the table are from that recording. Chain closure for the current library is the offline verifier check, not these hosted counts."
-            )
+            + hosted_provenance()
         )
         lines.append(" " + lattice_prose())
         lines.append("")
         lines += table(
-            "Short-prompt latency and the RAG, output-binding, ticket, and crew checks. Signed ms is the median of Lattice processing plus the provider time of the attempt that returned. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Output binding counts receipts that verified and whose signed output hash matched the kept answer and changed after a one-character edit, among calls that returned a receipt. Receipt columns are the single-agent return and the crew return.",
+            "Short-prompt latency and the RAG, output-binding, ticket, and crew checks. Signed ms is the median of Lattice processing plus the provider time of the attempt that returned. Lattice ms is the median signed processing time, excluding provider time, retries, and backoff. Drift cells are unique successes / successes / attempts. Output binding is how many replayed receipts verified, matched the signed output hash, and detected a one-character edit, over every replay row, including calls that kept an empty answer. A crew cell of ``N budget'' is \\texttt{crew-budget-exceeded} with N receipts, not a successful crew. A blank agent cell means that stage was not run.",
             "tab:rw-models",
             "@{}l l r r r r r l r l r r@{}",
             [
@@ -791,42 +1035,9 @@ def write_fragment() -> None:
                 )
         if any(row.get("rag") for row in finished_models()):
             lines.append("")
-        for row in finished_models():
-            multi = row.get("multimodal") or {}
-            if not multi.get("ran"):
-                continue
-            direct = multi.get("direct") or {}
-            lattice = multi.get("lattice") or {}
-            usage = lattice.get("usage") or {}
-            reasoning = usage.get("reasoningTokens")
-            completion = usage.get("completionTokens")
-            capped = reasoning is not None and completion is not None and reasoning >= completion and lattice.get("finishReason") == "length"
-            lattice_answer = (multi.get("latticeAnswer") or "").strip()
-            direct_answer = (multi.get("directAnswer") or "").strip()
-            effort = multi.get("reasoningEffort")
-            lines.append(
-                f"On a 16$\\times$16 solid red PNG, {ident(row['model'])} "
-                f"answered red from a direct \\texttt{{image\\_url}} part: {yn(multi.get('directNamesRed'))}"
-                + (f" (answer {tex(direct_answer)})" if direct_answer else "")
-                + f". The Lattice image artifact answered red: {yn(multi.get('latticeNamesRed'))}"
-                + (f" (answer {tex(lattice_answer)})" if lattice_answer else "")
-                + ". "
-                f"The PNG bytes were present in the Lattice request body: {yn(multi.get('imageMarkerInRequest'))}. "
-                f"The direct response provider was {tex(direct.get('provider') or '---')}."
-                + (f" This vision call set \\texttt{{reasoning.effort={tex(effort)}}}." if effort else "")
-                + (
-                    f" The Lattice call stopped for length with {reasoning} reasoning tokens out of {completion} completion tokens, and both answers were empty, so this row is not a color-identification score."
-                    if capped else ""
-                )
-            )
-            if multi.get("note"):
-                lines.append(tex(multi["note"]))
-            lines.append(
-                "Lattice's OpenAI-compatible request builder, which the openai, xai, openrouter, and lm-studio adapters share, sends each artifact as a text part holding JSON and never emits an image part. "
-                "A data-URL string is inlined as text and binary bytes are dropped, so the model received no image part"
-                + (f", and the Lattice arm answered {tex(lattice_answer)} for a red PNG." if lattice_answer and not multi.get("latticeNamesRed") else ".")
-            )
-            lines.append("")
+        lines.extend(vision_lines(finished_models()))
+        lines.extend(hosted_followup())
+        lines.append("")
     if PII:
         lines.append(
             "Document-level precision, recall, and F1 use the harness overlap rule: a document is a true positive when any predicted span of that type overlaps a gold span. "
@@ -946,7 +1157,7 @@ def write_fragment() -> None:
         "\\begin{figure}[t]",
         "\\centering",
         "\\includegraphics[width=0.9\\linewidth]{rw-replay.pdf}",
-        "\\caption{Signed output binding on receipts from calls that returned. A receipt counts when it verified, its signed output hash matched the kept answer, and a one-character edit of that answer changed the hash. \\texttt{replayOffline} returns the outputs the caller supplies, so this is a hash-binding check, not a re-run of the model. Rate-limited calls with no receipt are left out of the denominator.}",
+        "\\caption{Share of replayed receipts whose output hash matched the signed hash. A receipt counts only when it also verified and a one-character edit was detected. The denominator is every replay row, including calls that kept an empty answer. \\texttt{replayOffline} returns the outputs the caller supplies, so this is not a second call to the model.}",
         "\\label{fig:rw-replay}",
         "\\end{figure}",
         "",
