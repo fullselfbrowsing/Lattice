@@ -18,6 +18,7 @@ import urllib.request
 from pathlib import Path
 
 import pyarrow.parquet as pq
+from pii_split import GRETEL_REVISION, GRETEL_TRAIN_FILE, sha256
 
 CACHE = os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data")
 os.makedirs(CACHE, exist_ok=True)
@@ -55,10 +56,29 @@ def download() -> dict[str, str]:
     return pins
 
 
+def download_train() -> None:
+    from huggingface_hub import hf_hub_download
+
+    repo = "gretelai/synthetic_pii_finance_multilingual"
+    path = hf_hub_download(repo_id=repo, filename=GRETEL_TRAIN_FILE, repo_type="dataset", revision=GRETEL_REVISION)
+    destination = Path(CACHE) / "gretel_en_train.parquet"
+    shutil.copyfile(path, destination)
+    (Path(CACHE) / "gretel-train-source.json").write_text(json.dumps({
+        "dataset": repo, "file": GRETEL_TRAIN_FILE, "revision": GRETEL_REVISION,
+        "sha256": sha256(destination.read_bytes()),
+    }, indent=2) + "\n")
+    print("downloaded", repo, GRETEL_REVISION[:12], "->", destination.name)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--download", action="store_true", help="fetch the source files at the revisions in results/datasets.json")
+    parser.add_argument("--download-train", action="store_true", help="fetch pinned Gretel English train and record provenance for an unseen dev/holdout split")
     args = parser.parse_args()
+    if args.download_train:
+        download_train()
+        if not args.download:
+            return
     pins = download() if args.download else {}
 
     def rev(name: str) -> str | None:

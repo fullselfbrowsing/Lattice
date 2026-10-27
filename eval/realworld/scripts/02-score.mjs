@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { L, ROOT, writeJSON } from "./lib.mjs";
+import { detectorSpans, toCodePointSpans, matchedCount } from "./pii-spans.mjs";
 
 const CACHE = process.env.REALWORLD_CACHE ?? "/tmp/realworld-data";
 const meta = JSON.parse(readFileSync(`${CACHE}/dataset-meta.json`, "utf8"));
@@ -42,16 +43,13 @@ function overlaps(start, end, spans) {
   return spans.some((span) => start < span.end && end > span.start);
 }
 
-function locate(text, substring) {
-  const spots = [];
-  let from = 0;
-  while (substring && from <= text.length) {
-    const at = text.indexOf(substring, from);
-    if (at < 0) break;
-    spots.push({ start: at, end: at + substring.length });
-    from = at + 1;
-  }
-  return spots;
+function locate(detector, text) {
+  return toCodePointSpans(text, detectorSpans(detector, text).spans);
+}
+
+function uniqueSpans(spans) {
+  return [...new Map(spans.map((span) => [span.start + ":" + span.end, span])).values()]
+    .sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
 async function* lines(path) {
@@ -93,9 +91,8 @@ async function scorePii(path, adapt) {
     }
     const hits = [];
     for (const detector of L.defaultPiiDetectors) {
-      const found = detector.detect(text);
-      if (!found.matched) continue;
-      const spots = locate(text, found.substring);
+      const spots = locate(detector, text);
+      if (!spots.length) continue;
       hits.push({ name: detector.name, spots });
     }
     if (!inScope) {
@@ -195,29 +192,28 @@ function shapeOf(label, text) {
 
 async function scoreInScopeShapes(path, adapt) {
   const byType = {};
-  for (const detector of L.defaultPiiDetectors) byType[detector.name] = { tp: 0, fp: 0, fn: 0, goldSpans: 0 };
+  for (const detector of L.defaultPiiDetectors) byType[detector.name] = { tp: 0, fp: 0, fn: 0, goldSpans: 0, predSpans: 0 };
   for await (const raw of lines(path)) {
     const { text, spans } = adapt(raw);
+    const codepoints = Array.from(text);
     const gold = {};
     for (const span of spans) {
       const mapped = TYPE_MAP[span.label] ?? TYPE_MAP[String(span.label).toLowerCase()] ?? null;
       if (!mapped) continue;
-      const surface = text.slice(span.start, span.end);
+      const surface = codepoints.slice(span.start, span.end).join("");
       if (!shapeOf(mapped, surface)) continue;
       (gold[mapped] ??= []).push(span);
     }
     for (const detector of L.defaultPiiDetectors) {
       const bucket = byType[detector.name];
-      const goldSpans = gold[detector.name] ?? [];
+      const goldSpans = uniqueSpans(gold[detector.name] ?? []);
       bucket.goldSpans += goldSpans.length;
-      const found = detector.detect(text);
-      const spots = found.matched ? locate(text, found.substring) : [];
-      const matched = spots.some((spot) => overlaps(spot.start, spot.end, goldSpans));
-      if (found.matched && matched) bucket.tp += 1;
-      else if (found.matched) bucket.fp += 1;
-      for (const span of goldSpans) {
-        if (!spots.some((spot) => overlaps(spot.start, spot.end, [span]))) bucket.fn += 1;
-      }
+      const spots = uniqueSpans(locate(detector, text));
+      const matched = matchedCount(spots, goldSpans);
+      bucket.predSpans += spots.length;
+      bucket.tp += matched;
+      bucket.fp += spots.length - matched;
+      bucket.fn += goldSpans.length - matched;
     }
   }
   return Object.fromEntries(Object.entries(byType).map(([name, counts]) => [name, {
@@ -239,14 +235,13 @@ for await (const raw of lines(`${CACHE}/english_openpii_8k.jsonl`)) {
   const text = raw.source_text;
   for (const span of raw.privacy_mask ?? []) {
     if (span.label !== "SOCIALNUMBER") continue;
-    const surface = text.slice(span.start, span.end);
+    const surface = Array.from(text).slice(span.start, span.end).join("");
     if (!(/^\d{3}-\d{2}-\d{4}$/.test(surface) || /^\d{3} \d{2} \d{4}$/.test(surface) || /^\d{9}$/.test(surface))) continue;
     ssnGold += 1;
-    const found = ssnDet.detect(text);
-    const at = found.matched ? text.indexOf(found.substring) : -1;
-    const ok = found.matched && at < span.end && at + found.substring.length > span.start;
+    const spots = locate(ssnDet, text);
+    const ok = spots.some((spot) => overlaps(spot.start, spot.end, [span]));
     if (ok) ssnHit += 1;
-    else if (found.matched) ssnMissElsewhere += 1;
+    else if (spots.length) ssnMissElsewhere += 1;
     else ssnMissNone += 1;
   }
 }
@@ -254,15 +249,17 @@ for await (const raw of lines(`${CACHE}/english_openpii_8k.jsonl`)) {
 const report = {
   lattice: { version: L.latticeVersion ?? null, commit: gitHead() },
   datasets: meta,
-  unit: "One prediction per document per detector. The detector returns a single match. A match is a true positive when that substring overlaps a gold span of the mapped type. A gold document with no overlapping match is a false negative. A match that overlaps no gold span of that type is a false positive.",
+  scorerVersion: "pii-dataset-diagnostics/v2",
+  offsetUnit: "codepoint",
+  unit: "Legacy document any-overlap aggregation with actual all-match extraction and normalized code-point offsets. This differs from historical single-substring extraction. Complete blocking, classification, exact and overlap entity metrics are reported by pii-metrics/v2 in pii-tools.json.",
   inScopeMap: ["EMAIL/email -> email", "SOCIALNUMBER/ssn -> us-ssn", "TEL/phone -> us-phone", "credit card labels -> credit-card"],
   ai4privacy: ai4,
   ai4privacy_in_scope_shapes: ai4Shapes,
   gretel_english_test: gretel,
   gretel_in_scope_shapes: gretelShapes,
-  shapeRule: "Second pass keeps only gold spans whose surface form matches the detector's stated format (US SSN 9-digit/dashed/spaced, US phone 10-digit or grouped, email containing @). Recall here is span-level. Precision is still one prediction per document.",
+  shapeRule: "Diagnostic subset only: gold spans whose surface form matches the default detector's stated format. Predictions and gold are deduplicated and matched one-to-one by overlap; precision and spanRecall both use entity counts. Do not compare against historical hybrid document/span counts.",
   asqa_dev: asqa,
-  usSsnSingleMatch: { goldUsShaped: ssnGold, overlappedByTheOneMatch: ssnHit, missedBecauseMatchWasElsewhere: ssnMissElsewhere, noMatch: ssnMissNone },
+  usSsnAllMatches: { goldUsShaped: ssnGold, overlappedByAMatch: ssnHit, missedBecauseMatchesWereElsewhere: ssnMissElsewhere, noMatch: ssnMissNone },
 };
 writeJSON("datasets.json", report);
 console.log(JSON.stringify({

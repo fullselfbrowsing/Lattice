@@ -17,6 +17,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from pii_metrics import SCORER_VERSION, finish, load_span_rows, score
+
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
 RESULTS = ROOT / "results"
@@ -26,15 +28,19 @@ TYPES = ("email", "us-ssn", "us-phone", "credit-card")
 TYPE_MAP = {
     "EMAIL": "email",
     "email": "email",
+    "e-mail": "email",
     "SOCIALNUMBER": "us-ssn",
     "ssn": "us-ssn",
     "social_security_number": "us-ssn",
+    "social_security": "us-ssn",
     "TEL": "us-phone",
     "phone": "us-phone",
     "phone_number": "us-phone",
+    "telephone": "us-phone",
     "CREDITCARD": "credit-card",
     "CREDITCARDNUMBER": "credit-card",
     "credit_card": "credit-card",
+    "creditcard": "credit-card",
     "credit_card_number": "credit-card",
     "card_number": "credit-card",
     "EMAIL_ADDRESS": "email",
@@ -82,58 +88,8 @@ def load_gold(path: Path, adapt) -> list[dict]:
                 kind = mapped(str(span["label"]))
                 if kind:
                     gold[kind].append((span["start"], span["end"]))
-            docs.append({"text": text, "gold": gold})
+            docs.append({"text": text, "gold": gold, "allGold": [(span["start"], span["end"]) for span in spans]})
     return docs
-
-
-def overlaps(start: int, end: int, spans: list[tuple[int, int]]) -> bool:
-    return any(start < stop and end > begin for begin, stop in spans)
-
-
-def score(docs: list[dict], predictions: list[list[dict]]) -> dict:
-    document = {name: {"tp": 0, "fp": 0, "fn": 0, "goldDocs": 0} for name in TYPES}
-    span = {name: {"tp": 0, "fp": 0, "fn": 0, "goldSpans": 0, "predSpans": 0} for name in TYPES}
-    for doc, preds in zip(docs, predictions, strict=True):
-        by_type: dict[str, list[tuple[int, int]]] = {name: [] for name in TYPES}
-        for pred in preds:
-            kind = pred["type"]
-            if kind in by_type:
-                by_type[kind].append((pred["start"], pred["end"]))
-        for name in TYPES:
-            gold = doc["gold"][name]
-            guessed = by_type[name]
-            if gold:
-                document[name]["goldDocs"] += 1
-            hit = any(overlaps(start, end, gold) for start, end in guessed)
-            if guessed and hit:
-                document[name]["tp"] += 1
-            elif guessed:
-                document[name]["fp"] += 1
-            if gold and not hit:
-                document[name]["fn"] += 1
-            span[name]["goldSpans"] += len(gold)
-            span[name]["predSpans"] += len(guessed)
-            for start, end in guessed:
-                if overlaps(start, end, gold):
-                    span[name]["tp"] += 1
-                else:
-                    span[name]["fp"] += 1
-            for begin, stop in gold:
-                if not any(overlaps(start, end, [(begin, stop)]) for start, end in guessed):
-                    span[name]["fn"] += 1
-    return {"document": finish(document), "span": finish(span)}
-
-
-def finish(counts: dict) -> dict:
-    out = {}
-    for name, row in counts.items():
-        precision = None if row["tp"] + row["fp"] == 0 else row["tp"] / (row["tp"] + row["fp"])
-        recall = None if row["tp"] + row["fn"] == 0 else row["tp"] / (row["tp"] + row["fn"])
-        f1 = None
-        if precision is not None and recall is not None and precision + recall > 0:
-            f1 = 2 * precision * recall / (precision + recall)
-        out[name] = {**row, "precision": precision, "recall": recall, "f1": f1}
-    return out
 
 
 def latency_summary(samples: list[float]) -> dict:
@@ -320,13 +276,7 @@ def main() -> None:
         [{"label": span["label"], "start": span["start"], "end": span["end"]} for span in raw.get("spans") or []],
     ))
     print("docs", len(ai4), len(gretel), flush=True)
-    lattice_preds = {"ai4privacy": [[] for _ in ai4], "gretel": [[] for _ in gretel]}
-    lattice_ms = {"ai4privacy": [], "gretel": []}
-    with spans_path.open() as handle:
-        for line in handle:
-            row = json.loads(line)
-            lattice_preds[row["dataset"]][row["i"]] = row["spans"]
-            lattice_ms[row["dataset"]].append(row["ms"])
+    lattice_preds, lattice_ms, extraction_meta = load_span_rows(spans_path, {"ai4privacy": ai4, "gretel": gretel})
 
     tools = [{
         "tool": "lattice-noPII",
@@ -335,8 +285,8 @@ def main() -> None:
             "ai4privacy": {**score(ai4, lattice_preds["ai4privacy"]), "latencyMs": latency_summary(lattice_ms["ai4privacy"])},
             "gretel": {**score(gretel, lattice_preds["gretel"]), "latencyMs": latency_summary(lattice_ms["gretel"])},
         },
-        "note": "Every occurrence of the single substring returned by detect(), the same locate() rule as 02-score.mjs.",
-        "meta": lattice_meta(),
+        "note": "All matches from findAll(), or only the first returned match for custom detectors without findAll; see per-row extraction metadata. No substring occurrence expansion.",
+        "meta": {**lattice_meta(), "extraction": extraction_meta},
     }]
     prior = json.loads((RESULTS / "datasets.json").read_text())
     prior_email = prior["ai4privacy"]["types"]["email"]
@@ -344,6 +294,7 @@ def main() -> None:
     tools[0]["matchesPriorDocumentEmail"] = (
         got["tp"] == prior_email["tp"] and got["fp"] == prior_email["fp"] and got["fn"] == prior_email["fn"]
     )
+    tools[0]["priorDocumentScorerVersion"] = prior.get("scorerVersion", "legacy-single-substring")
     print("lattice email match", tools[0]["matchesPriorDocumentEmail"], got["tp"], got["fp"], got["fn"], flush=True)
 
     runners = [
@@ -382,7 +333,8 @@ def main() -> None:
 
 def base_report(tools: list[dict]) -> dict:
     return {
-        "unit": "Document-level matches the Lattice harness: one document is a true positive when any predicted span of that type overlaps a gold span. Span-level counts each predicted span and each missed gold span. Lattice counts every occurrence of the one substring detect() returns.",
+        "scorerVersion": SCORER_VERSION,
+        "unit": "Code-point offsets. document retains the legacy any-overlap per-type metric. documentClassification measures presence/absence of each type regardless of location. span and spanExact deduplicate and match predictions to gold one-to-one. blocking distinguishes four mapped types from all annotated personal data. All-match scores are not interchangeable with earlier single-substring scores.",
         "datasets": {
             "ai4privacy": "ai4privacy/pii-masking-300k English validation, revision c8c77895a005822682b66ab547fc0422579bc1d3, 7946 docs, academic/non-commercial, no redistribution",
             "gretel": "gretelai/synthetic_pii_finance_multilingual English test, revision 7b844d16738527a04264f50214cb426a4cea0897, Apache-2.0, 2891 docs",

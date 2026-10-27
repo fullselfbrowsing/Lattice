@@ -1,4 +1,4 @@
-"""Replace the Lattice block in pii-tools.json using every substring occurrence.
+"""Replace the Lattice block in pii-tools.json using actual detector matches.
 
 Re-scores Lattice without re-running the other detectors. It reads the span
 file that 06-lattice-spans.mjs writes (LATTICE_SPANS, default
@@ -38,13 +38,7 @@ def main() -> None:
         raw["text"],
         [{"label": span["label"], "start": span["start"], "end": span["end"]} for span in raw.get("spans") or []],
     ))
-    preds = {"ai4privacy": [[] for _ in ai4], "gretel": [[] for _ in gretel]}
-    times = {"ai4privacy": [], "gretel": []}
-    with SPANS.open() as handle:
-        for line in handle:
-            row = json.loads(line)
-            preds[row["dataset"]][row["i"]] = row["spans"]
-            times[row["dataset"]].append(row["ms"])
+    preds, times, extraction_meta = module.load_span_rows(SPANS, {"ai4privacy": ai4, "gretel": gretel})
     lattice = {
         "tool": "lattice-noPII",
         "measured": True,
@@ -52,8 +46,8 @@ def main() -> None:
             "ai4privacy": {**module.score(ai4, preds["ai4privacy"]), "latencyMs": module.latency_summary(times["ai4privacy"])},
             "gretel": {**module.score(gretel, preds["gretel"]), "latencyMs": module.latency_summary(times["gretel"])},
         },
-        "note": "Every occurrence of the single substring returned by detect(), the same locate() rule as 02-score.mjs.",
-        "meta": module.lattice_meta(),
+        "note": "All-match extraction; first-match fallback for detectors without findAll. No substring occurrence expansion.",
+        "meta": {**module.lattice_meta(), "extraction": extraction_meta},
     }
     prior = json.loads((RESULTS / "datasets.json").read_text())
     checks = []
@@ -62,6 +56,7 @@ def main() -> None:
         expected = prior[prior_key]["types"]["email"]
         checks.append(got["tp"] == expected["tp"] and got["fp"] == expected["fp"] and got["fn"] == expected["fn"])
     lattice["matchesPriorDocumentEmail"] = all(checks)
+    lattice["priorDocumentScorerVersion"] = prior.get("scorerVersion", "legacy-single-substring")
     tools = report["tools"]
     replaced = False
     for index, tool in enumerate(tools):
@@ -70,11 +65,9 @@ def main() -> None:
             replaced = True
     if not replaced:
         tools.insert(0, lattice)
-    report["unit"] = (
-        "Document-level matches the Lattice harness: one document is a true positive when any predicted span of that type overlaps a gold span. "
-        "Span-level counts each predicted span and each missed gold span. "
-        "Lattice counts every occurrence of the one substring detect() returns."
-    )
+    report["scorerVersion"] = module.SCORER_VERSION
+    report["unit"] = module.base_report([])["unit"]
+    report["comparisonNote"] = "Only the Lattice row was rescored. Competitor rows without scorerVersion remain historical and must not be ranked against corrected span scores."
     missing = report.setdefault("not_measured", [])
     if not any(item.get("tool") == "nemo-guardrails" for item in missing):
         missing.append(module.nemo_status())
