@@ -369,7 +369,6 @@ async function createOpenAICompatibleRequestBody(input: {
               contextPack: input.request.contextPack === undefined
                 ? undefined
                 : {
-                    id: input.request.contextPack.id,
                     tokenBudget: input.request.contextPack.tokenBudget,
                     estimatedTokens: input.request.contextPack.estimatedTokens,
                     included: input.request.contextPack.included,

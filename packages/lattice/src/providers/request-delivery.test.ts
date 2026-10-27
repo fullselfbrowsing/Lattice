@@ -180,6 +180,49 @@ describe.each(Object.entries(factories))("%s request delivery", (family, factory
 });
 
 describe("runtime generation forwarding", () => {
+  it("sends byte-identical bodies for repeated equivalent runs while retaining plan context IDs", async () => {
+    const bodies: string[] = [];
+    const fetch = (async (_url: unknown, init?: RequestInit) => {
+      bodies.push(String(init?.body));
+      return response(false);
+    }) as typeof globalThis.fetch;
+    const ai = createAI({ providers: [createOpenAICompatibleProvider({
+      model: "test", baseUrl: "https://provider.test/v1", fetch,
+    })] });
+    const request = {
+      task: "Read the image and JSON.", outputs: { answer: "text" as const },
+      artifacts: [
+        artifact.image(new Uint8Array([1, 2, 3]), { id: "image", mediaType: "image/png" }),
+        artifact.json({ answer: 42 }, { id: "json" }),
+      ],
+      generation: { temperature: 0, maxOutputTokens: 37 },
+    };
+    const first = await ai.run(request);
+    const second = await ai.run(request);
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toBe(bodies[1]);
+    if (first.plan.kind !== "execution-plan" || second.plan.kind !== "execution-plan") {
+      throw new Error("Expected complete execution plans.");
+    }
+    const firstContext = first.plan.context;
+    const secondContext = second.plan.context;
+    expect(firstContext?.id).toMatch(/^context-pack:/u);
+    expect(secondContext?.id).toMatch(/^context-pack:/u);
+    expect(firstContext?.id).not.toBe(secondContext?.id);
+    const body = JSON.parse(bodies[0]!);
+    const parts = userParts(body, "compatible");
+    const contextMetadata = JSON.parse(parts[1]!.text).contextPack;
+    expect(contextMetadata).not.toHaveProperty("id");
+    expect(contextMetadata).toEqual(Object.fromEntries(
+      Object.entries(firstContext!).filter(([key]) => key !== "id" && key !== "kind"),
+    ));
+    expect(body).toMatchObject({ temperature: 0, max_tokens: 37 });
+    expect(parts).toContainEqual({ type: "image_url", image_url: { url: "data:image/png;base64,AQID" } });
+    expect(parts.some((part) => typeof part.text === "string" && part.text.includes('"answer":42'))).toBe(true);
+  });
+
   it("delivers packed images and JSON through ai.run", async () => {
     let body = "";
     const fetch = (async (_url: unknown, init?: RequestInit) => {
