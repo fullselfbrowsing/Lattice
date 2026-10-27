@@ -45,6 +45,7 @@ export type {
 } from "./audit/external-execution.js";
 export { ReceiptSigningError, isTerminal } from "./results/errors.js";
 export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
+export { UnsupportedArtifactTransportError } from "./providers/multimodal.js";
 export {
   createAISdkProvider,
   createOpenAICompatibleProvider,
@@ -256,6 +257,8 @@ export type {
   ProviderGatewayMetadata,
   ProviderRef,
   ProviderRunRequest,
+  ProviderGenerationOptions,
+  ProviderRequestMetadata,
   ProviderRunResponse,
   ProviderStream,
   ProviderStreamChunk,

@@ -33,8 +33,11 @@ import {
   artifactBase64Data,
   artifactHttpUrl,
   mediaTypeForArtifact,
-  packagedPlanForArtifact,
+  artifactText,
+  resolvedArtifactTransport,
+  UnsupportedArtifactTransportError,
 } from "./multimodal.js";
+import { notifyRequestPrepared, validateGenerationOptions } from "./request.js";
 import { readSseEvents } from "./sse.js";
 import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
@@ -119,6 +122,7 @@ async function createAnthropicMessagesBody(input: {
   readonly request: ProviderRunRequest;
   readonly stream?: boolean;
 }): Promise<AnthropicMessagesBodyResult> {
+  validateGenerationOptions(input.request.generation, 1);
   // Phase 39 (DELEG-04): opt-in prompt-cache prefix. When present, hoist
   // it to a `cache_control`-marked system content block. Conditional VALUE,
   // not conditional spread: the `system` key is always present per the
@@ -157,7 +161,9 @@ async function createAnthropicMessagesBody(input: {
             : [...content.blocks, { type: "text", text: input.request.task }],
         },
       ],
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: input.request.generation?.maxOutputTokens ?? DEFAULT_MAX_TOKENS,
+      ...(input.request.generation?.temperature !== undefined
+        ? { temperature: input.request.generation.temperature } : {}),
       ...(input.stream === true ? { stream: true } : {}),
       ...(tools.length > 0 ? { tools } : {}),
       ...(toolChoice !== undefined ? { tool_choice: toolChoice } : {}),
@@ -212,19 +218,19 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
   let usesFilesApi = false;
 
   for (const inputArtifact of request.artifacts) {
-    if (inputArtifact.kind !== "image") {
+    const transport = resolvedArtifactTransport(request, inputArtifact);
+    if (inputArtifact.kind !== "image" || transport === "extracted-text") {
+      if (["audio", "video", "file", "document"].includes(inputArtifact.kind) &&
+        transport !== "extracted-text" && transport !== "transcript") {
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+      }
+      blocks.push({ type: "text", text: artifactText(request, inputArtifact) });
       continue;
     }
-
-    const packaged = packagedPlanForArtifact(request, inputArtifact.id);
-    if (packaged === undefined) {
-      continue;
-    }
-
-    if (packaged.transport === "file-id") {
+    if (transport === "file-id") {
       const fileId = anthropicFileId(inputArtifact);
       if (fileId === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       blocks.push({
         type: "image",
@@ -237,10 +243,10 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
       continue;
     }
 
-    if (packaged.transport === "url") {
+    if (transport === "url") {
       const url = artifactHttpUrl(inputArtifact);
       if (url === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       blocks.push({
         type: "image",
@@ -252,10 +258,10 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
       continue;
     }
 
-    if (packaged.transport === "base64" || packaged.transport === "inline") {
+    if (transport === "base64" || transport === "inline") {
       const data = await artifactBase64Data(inputArtifact);
       if (data === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       blocks.push({
         type: "image",
@@ -265,7 +271,9 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
           data,
         },
       });
+      continue;
     }
+    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
   }
 
   return { blocks, usesFilesApi };
@@ -576,6 +584,7 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Prov
       });
       const bodyStr = JSON.stringify(messagesBody.body);
       assertNoPublicUrlEgress(request, id, bodyStr);
+      await notifyRequestPrepared(request, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -690,6 +699,7 @@ async function* streamAnthropicResponse(input: {
   });
   const streamBodyStr = JSON.stringify(messagesBody.body);
   assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
+  await notifyRequestPrepared(input.request, streamBodyStr);
   const response = await input.fetchImpl(`${input.baseUrl}/v1/messages`, {
     method: "POST",
     headers: {

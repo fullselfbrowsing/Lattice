@@ -103,7 +103,7 @@ export const artifact = {
     return createArtifact("file", "file", value, options);
   },
 
-  image(value: Blob | File | string, options: ArtifactOptions = {}): ArtifactInput {
+  image(value: Blob | File | ArrayBuffer | ArrayBufferView | string, options: ArtifactOptions = {}): ArtifactInput {
     return createArtifact("image", "file", value, options);
   },
 

@@ -15,6 +15,7 @@ import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 import { defineTool } from "../tools/tools.js";
+import { UnsupportedArtifactTransportError } from "./multimodal.js";
 
 function makeFakeFetch(body: unknown, status = 200): typeof fetch {
   return (async () =>
@@ -1077,12 +1078,6 @@ describe("Phase 36: OpenAI-compatible output sanitizers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// h31: noPublicUrl cross-adapter parity
-// ---------------------------------------------------------------------------
-// Tests A and B are RED before adapters.ts is patched (Task 2).
-// Tests C, D, E must be GREEN immediately (positive path + Anthropic/Gemini parity lock).
-// ---------------------------------------------------------------------------
-
 describe("noPublicUrl cross-adapter parity", () => {
   const ARTIFACT_ID = "img-1";
   const PUBLIC_URL = "https://example.com/img.png";
@@ -1093,8 +1088,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     sseData("[DONE]"),
   ];
 
-  // Test A: url-kind artifact with transport "inline" (noPublicUrl blocks url field).
-  it("Test A: OpenAI-compat omits url field when transport is not 'url' (noPublicUrl blocked)", async () => {
+  it("OpenAI-compat rejects a URL artifact assigned an inline transport", async () => {
     const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
     const adapter = createOpenAICompatibleProvider({
       model: "test",
@@ -1102,7 +1096,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch,
     });
 
-    await collectStream(
+    await expect(collectStream(
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
@@ -1123,17 +1117,11 @@ describe("noPublicUrl cross-adapter parity", () => {
           warnings: [],
         },
       }),
-    );
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a streaming request.");
-    const bodyStr = first.init.body as string;
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    )).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
-  // Test B: image-kind artifact whose value is a public URL with transport "base64"
-  // (noPublicUrl fallback — value-borne URL must not leak).
-  it("Test B: OpenAI-compat omits value-borne public URL when transport is not 'url' (noPublicUrl blocked)", async () => {
+  it("OpenAI-compat rejects a URL image without bytes for its base64 transport", async () => {
     const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
     const adapter = createOpenAICompatibleProvider({
       model: "test",
@@ -1141,7 +1129,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch,
     });
 
-    await collectStream(
+    await expect(collectStream(
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
@@ -1162,12 +1150,8 @@ describe("noPublicUrl cross-adapter parity", () => {
           warnings: [],
         },
       }),
-    );
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a streaming request.");
-    const bodyStr = first.init.body as string;
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    )).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
   // Test C: positive / no over-blocking — url-kind artifact with transport "url"
@@ -1209,9 +1193,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     expect(bodyStr).toContain(PUBLIC_URL);
   });
 
-  // Test D: Anthropic parity lock — image artifact with transport "base64" must not
-  // include a public URL in the request body (Anthropic already compliant; regression lock).
-  it("Test D: Anthropic omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+  it("Anthropic rejects a URL image without bytes for its base64 transport", async () => {
     const requests: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
       requests.push({ url: String(url), init: init ?? {} });
@@ -1235,7 +1217,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch: fakeFetch,
     });
 
-    await adapter.execute!({
+    await expect(adapter.execute!({
       task: "describe this image",
       artifacts: [
         artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
@@ -1254,18 +1236,11 @@ describe("noPublicUrl cross-adapter parity", () => {
         ],
         warnings: [],
       },
-    });
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a request.");
-    const bodyStr = first.init.body as string;
-    // Anthropic is already compliant: image with base64 transport must not emit the public URL
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    })).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
-  // Test E: Gemini parity lock — image artifact with transport "base64" must not
-  // include a public URL in the request body (Gemini already compliant; regression lock).
-  it("Test E: Gemini omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+  it("Gemini rejects a URL image without bytes for its base64 transport", async () => {
     const requests: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
       requests.push({ url: String(url), init: init ?? {} });
@@ -1292,7 +1267,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch: fakeFetch,
     });
 
-    await adapter.execute!({
+    await expect(adapter.execute!({
       task: "describe this image",
       artifacts: [
         artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
@@ -1311,12 +1286,7 @@ describe("noPublicUrl cross-adapter parity", () => {
         ],
         warnings: [],
       },
-    });
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a request.");
-    const bodyStr = first.init.body as string;
-    // Gemini is already compliant: image with base64 transport must not emit the public URL
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    })).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 });

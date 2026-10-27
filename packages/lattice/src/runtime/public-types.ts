@@ -83,6 +83,8 @@ export type {
   ProviderPricingHint,
   ProviderRef,
   ProviderRunRequest,
+  ProviderGenerationOptions,
+  ProviderRequestMetadata,
   ProviderRunResponse,
   ProviderStream,
   ProviderStreamChunk,

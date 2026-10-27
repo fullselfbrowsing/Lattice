@@ -5,6 +5,7 @@ export {
 } from "./providers/adapters.js";
 export type {
   OpenAICompatibleProviderOptions,
+  OpenAIProviderOptions,
   SdkLikeProviderOptions,
 } from "./providers/adapters.js";
 export { createAnthropicProvider } from "./providers/anthropic.js";
@@ -22,6 +23,7 @@ export type { OpenRouterProviderOptions } from "./providers/openrouter.js";
 export { createXaiProvider } from "./providers/xai.js";
 export type { XaiProviderOptions } from "./providers/xai.js";
 export { collectStream } from "./providers/streaming.js";
+export { UnsupportedArtifactTransportError } from "./providers/multimodal.js";
 export type { CollectStreamOptions } from "./providers/streaming.js";
 export { parseToolUseEnvelope } from "./tools/tool-use.js";
 export type { ToolUseRequest } from "./tools/tool-use.js";
@@ -36,6 +38,8 @@ export type {
   ProviderRef,
   ProviderRegistryInput,
   ProviderRunRequest,
+  ProviderGenerationOptions,
+  ProviderRequestMetadata,
   ProviderRunResponse,
   ProviderFinishMetadata,
   ProviderStream,

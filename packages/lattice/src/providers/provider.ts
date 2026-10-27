@@ -110,6 +110,16 @@ export interface ProviderStructuredOutputRequest {
   readonly strict?: boolean;
 }
 
+export interface ProviderGenerationOptions {
+  readonly temperature?: number;
+  readonly maxOutputTokens?: number;
+}
+
+export interface ProviderRequestMetadata {
+  /** SHA-256 hex of the serialized UTF-8 body submitted to configured fetch. */
+  readonly bodyHash: string;
+}
+
 export interface ProviderRunRequest {
   readonly task: string;
   readonly artifacts: readonly ArtifactInput[];
@@ -117,6 +127,9 @@ export interface ProviderRunRequest {
   readonly outputContracts?: OutputContractMap;
   readonly policy?: unknown;
   readonly signal?: AbortSignal;
+  readonly generation?: ProviderGenerationOptions;
+  /** Awaited before submission, including attempts that later fail. No headers or content are exposed. */
+  readonly onRequestPrepared?: (metadata: ProviderRequestMetadata) => void | Promise<void>;
   readonly plan?: ExecutionPlan;
   readonly contextPack?: ContextPack;
   readonly providerPackaging?: ProviderPackagingPlan;

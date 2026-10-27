@@ -36,8 +36,11 @@ import {
   artifactHttpUrl,
   geminiFileUri,
   mediaTypeForArtifact,
-  packagedPlanForArtifact,
+  artifactText,
+  resolvedArtifactTransport,
+  UnsupportedArtifactTransportError,
 } from "./multimodal.js";
+import { notifyRequestPrepared, validateGenerationOptions } from "./request.js";
 import { readSseEvents } from "./sse.js";
 import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
@@ -139,6 +142,7 @@ const GEMINI_QUIRKS: GeminiQuirks = {
 async function createGeminiGenerateContentBody(
   request: ProviderRunRequest,
 ): Promise<Record<string, unknown>> {
+  validateGenerationOptions(request.generation);
   const parts = await createGeminiUserParts(request);
   const functionDeclarations = geminiFunctionDeclarations(request.nativeTools);
   const toolConfig = geminiToolConfig(request.nativeToolChoice);
@@ -152,9 +156,9 @@ async function createGeminiGenerateContentBody(
       },
     ],
     generationConfig: {
-      temperature: DEFAULT_TEMPERATURE,
+      temperature: request.generation?.temperature ?? DEFAULT_TEMPERATURE,
       topP: DEFAULT_TOP_P,
-      maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+      maxOutputTokens: request.generation?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       ...(structuredOutputConfig !== undefined ? structuredOutputConfig : {}),
     },
     safetySettings: SAFETY_SETTINGS,
@@ -216,19 +220,19 @@ async function createGeminiUserParts(
   const parts: Record<string, unknown>[] = [{ text: request.task }];
 
   for (const inputArtifact of request.artifacts) {
-    if (!isGeminiMediaArtifact(inputArtifact.kind)) {
+    const transport = resolvedArtifactTransport(request, inputArtifact);
+    if (!isGeminiMediaArtifact(inputArtifact.kind) || transport === "extracted-text" || transport === "transcript") {
+      if (["file", "document"].includes(inputArtifact.kind) &&
+        transport !== "extracted-text" && transport !== "transcript") {
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+      }
+      parts.push({ text: artifactText(request, inputArtifact) });
       continue;
     }
-
-    const packaged = packagedPlanForArtifact(request, inputArtifact.id);
-    if (packaged === undefined) {
-      continue;
-    }
-
-    if (packaged.transport === "file-id") {
+    if (transport === "file-id") {
       const fileUri = geminiFileUri(inputArtifact);
       if (fileUri === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       parts.push({
         fileData: {
@@ -239,10 +243,10 @@ async function createGeminiUserParts(
       continue;
     }
 
-    if (packaged.transport === "url") {
+    if (transport === "url") {
       const fileUri = artifactHttpUrl(inputArtifact);
       if (fileUri === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       parts.push({
         fileData: {
@@ -253,10 +257,10 @@ async function createGeminiUserParts(
       continue;
     }
 
-    if (packaged.transport === "base64" || packaged.transport === "inline") {
+    if (transport === "base64" || transport === "inline") {
       const data = await artifactBase64Data(inputArtifact);
       if (data === undefined) {
-        continue;
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
       }
       parts.push({
         inlineData: {
@@ -264,7 +268,9 @@ async function createGeminiUserParts(
           data,
         },
       });
+      continue;
     }
+    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
   }
 
   return parts;
@@ -557,6 +563,7 @@ export function createGeminiProvider(
       const requestBody = await createGeminiGenerateContentBody(request);
       const bodyStr = JSON.stringify(requestBody);
       assertNoPublicUrlEgress(request, id, bodyStr);
+      await notifyRequestPrepared(request, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -671,6 +678,7 @@ async function* streamGeminiResponse(input: {
   const requestBody = await createGeminiGenerateContentBody(input.request);
   const streamBodyStr = JSON.stringify(requestBody);
   assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
+  await notifyRequestPrepared(input.request, streamBodyStr);
   const response = await input.fetchImpl(
     geminiGenerateContentUrl({
       baseUrl: input.baseUrl,

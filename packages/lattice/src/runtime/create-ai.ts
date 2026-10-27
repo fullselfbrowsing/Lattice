@@ -28,11 +28,13 @@ import { packageArtifactsForProvider } from "../providers/packaging.js";
 import { collectStream } from "../providers/streaming.js";
 import type {
   ProviderAdapter,
+  ProviderGenerationOptions,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
 } from "../providers/provider.js";
 import { hashInputArtifacts, hashOutputForReceipt } from "../receipts/hashes.js";
+import { validateGenerationOptions } from "../providers/request.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
 import type {
@@ -107,6 +109,7 @@ export interface RunIntent<TOutputs extends OutputContractMap> {
   readonly toolInputs?: Record<string, unknown>;
   readonly contract?: CapabilityContract;
   readonly receipt?: RunReceiptOptions;
+  readonly generation?: ProviderGenerationOptions;
 }
 
 const ZERO_USAGE: Usage = { promptTokens: 0, completionTokens: 0, costUsd: 0 };
@@ -282,6 +285,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     throw new DOMException("Run aborted before execution.", "AbortError");
   }
   assertRunReceiptOptions(intent.receipt);
+  validateGenerationOptions(intent.generation);
 
   const runId = createRunId();
   const events: RunEvent[] = [];
@@ -428,6 +432,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       artifacts: built.artifacts,
       outputs: Object.keys(intent.outputs),
       outputContracts: intent.outputs,
+      ...(intent.generation !== undefined ? { generation: intent.generation } : {}),
       ...(built.mergedPolicy !== undefined ? { policy: built.mergedPolicy } : {}),
       ...(intent.signal !== undefined ? { signal: intent.signal } : {}),
       plan,

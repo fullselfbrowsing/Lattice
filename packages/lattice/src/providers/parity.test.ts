@@ -941,10 +941,7 @@ describe("noPublicUrl defense-in-depth chokepoint parity (260616-inn)", () => {
     ).rejects.toThrow(INN_PUBLIC_URL);
   });
 
-  // Test 4 (must be GREEN immediately — no-false-positive):
-  // noPublicUrl:true but the URL was already stripped from the body by packaging.
-  // The chokepoint substring-scans serializedBody; if the URL isn't there, it does not throw.
-  it("Test 4: No throw when noPublicUrl:true but URL was already stripped from body (packaging removed it)", async () => {
+  it("rejects a URL artifact that cannot satisfy the requested base64 transport", async () => {
     const { fetch } = makeCapturingFetch(OPENAI_COMPAT_BODY);
     const adapter = createOpenAICompatibleProvider({
       model: "test-model",
@@ -953,9 +950,6 @@ describe("noPublicUrl defense-in-depth chokepoint parity (260616-inn)", () => {
       fetch,
     });
 
-    // Artifact whose value is a public URL, but providerPackaging requests base64 transport.
-    // The OpenAI-compat adapter will NOT emit the URL in the body for non-url transport,
-    // so assertNoPublicUrlEgress will not find the URL substring and will not throw.
     const urlArtifact = artifact.url(INN_PUBLIC_URL, { id: "url-art" });
 
     await expect(
@@ -978,7 +972,7 @@ describe("noPublicUrl defense-in-depth chokepoint parity (260616-inn)", () => {
           warnings: [],
         },
       }),
-    ).resolves.toBeDefined();
+    ).rejects.toMatchObject({ kind: "unsupported-artifact-transport" });
   });
 
   // Test 5 (must be GREEN immediately — scope):

@@ -29,7 +29,7 @@ import type { CapabilityContract } from "../contract/contract.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import type { InferOutputMap } from "../outputs/infer.js";
 import type { PolicySpec } from "../policy/policy.js";
-import type { Usage } from "../providers/provider.js";
+import type { ProviderGenerationOptions, Usage } from "../providers/provider.js";
 import type { LatticeRunError } from "../results/errors.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
 import type { SurvivabilityAdapter } from "../runtime/survivability.js";
@@ -95,6 +95,7 @@ export interface IterationRecord {
  */
 export interface AgentIntent<TOutputs extends OutputContractMap = OutputContractMap> {
   readonly task: string;
+  readonly generation?: ProviderGenerationOptions;
   readonly tools: ReadonlyArray<ToolDefinition<StandardSchemaV1>>;
   readonly host?: _AgentHost;
   /**

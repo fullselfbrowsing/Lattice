@@ -39,6 +39,7 @@ import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMapValues } from "../outputs/validate.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
+import { validateGenerationOptions } from "../providers/request.js";
 import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
 
@@ -124,6 +125,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   config: LatticeConfig = {},
   internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
+  validateGenerationOptions(intent.generation);
   const startedAt = Date.now();
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
@@ -281,6 +283,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         artifacts: [],
         outputs: outputNames,
         outputContracts,
+        ...(intent.generation !== undefined ? { generation: intent.generation } : {}),
         ...(intent.policy !== undefined ? { policy: intent.policy } : {}),
       };
       response = host.transport !== undefined

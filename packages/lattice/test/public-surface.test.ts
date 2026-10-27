@@ -87,6 +87,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "STEP_TRANSITION_EVENT_NAME",
   "STUCK_REASONS",
   "ToolCallValidationError",
+  "UnsupportedArtifactTransportError",
   "artifact",
   "collectStream",
   "contract",
