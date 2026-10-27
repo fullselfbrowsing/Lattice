@@ -142,6 +142,8 @@ export interface CrewDispatchContext {
   readonly tracer?: AgentIntent["tracer"];
   /** Optional crew-level hook pipeline threaded into child loops. */
   readonly pipeline?: AgentIntent["pipeline"];
+  /** Generation settings inherited by every child loop. */
+  readonly generation?: AgentIntent["generation"];
 }
 
 /** Seam-compatible dispatch function (39-03 `runAgentInternal` options). */
@@ -329,6 +331,7 @@ function createDispatcherNode(
       ...(ctx.signer !== undefined ? { signer: ctx.signer } : {}),
       ...(ctx.tracer !== undefined ? { tracer: ctx.tracer } : {}),
       ...(ctx.pipeline !== undefined ? { pipeline: ctx.pipeline } : {}),
+      ...(ctx.generation !== undefined ? { generation: ctx.generation } : {}),
     };
     const childResult = await runAgentInternal(
       childIntent,

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
-import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
+import type { ProviderRunRequest, ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
@@ -56,10 +56,12 @@ function makeScriptedProvider(
   const answerQueue = [...answers];
   const usageQueue = [...usages];
   const tasks: string[] = [];
+  const requests: ProviderRunRequest[] = [];
   const provider = createFakeProvider({
     id: "crew-fake",
     response: (request): ProviderRunResponse => {
       tasks.push(request.task);
+      requests.push(request);
       return {
         rawOutputs: { answer: answerQueue.shift() ?? "" },
         normalizedUsage: usageQueue.shift() ?? {
@@ -70,7 +72,7 @@ function makeScriptedProvider(
       };
     },
   });
-  return { provider, tasks };
+  return { provider, tasks, requests };
 }
 
 function decodeReceiptBody(payload: string): CapabilityReceiptBody {
@@ -82,6 +84,53 @@ afterEach(() => {
 });
 
 describe("runAgentCrew — orchestration and accounting", () => {
+  it.each([undefined, { temperature: 0, maxOutputTokens: 73 }])(
+    "preserves crew generation settings across root, child, and grandchild requests: %j",
+    async (generation) => {
+      const leaf = makeChild("leaf");
+      const researcher = defineAgent({
+        ...makeChild("researcher"),
+        childAgents: [leaf],
+      });
+      const root = makeRoot([researcher]);
+      const { provider, requests } = makeScriptedProvider([
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"find facts"}}]}',
+        '{"tool_calls":[{"id":"c2","name":"leaf","args":{"task":"check evidence"}}]}',
+        "leaf evidence",
+        "research summary",
+        "final synthesis",
+      ], []);
+      const ai = createAI({ providers: [provider] });
+      const result = await ai.runAgentCrew({
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { maxDepth: 2, maxIterationsPerAgent: 3 },
+        ...(generation !== undefined ? { generation } : {}),
+      });
+
+      expect(result.result.kind).toBe("success");
+      expect(result.perAgent.map(({ id, iterations }) => ({ id, iterations }))).toEqual([
+        { id: "leaf", iterations: 1 },
+        { id: "researcher", iterations: 2 },
+        { id: "lead", iterations: 2 },
+      ]);
+      expect(requests).toHaveLength(5);
+      for (const request of requests) {
+        if (generation === undefined) expect(request).not.toHaveProperty("generation");
+        else expect(request.generation).toEqual(generation);
+      }
+    },
+  );
+
+  it("rejects invalid crew generation settings before provider calls", async () => {
+    const { provider, requests } = makeScriptedProvider(["unused"], []);
+    await expect(runAgentCrew({
+      root: makeRoot([]), hosts: { childHost: createNoopAgentHost() },
+      generation: { maxOutputTokens: 0 },
+    }, { providers: [provider] })).rejects.toThrow("generation.maxOutputTokens");
+    expect(requests).toHaveLength(0);
+  });
+
   it("completes a minimal parent + child crew and returns aggregate usage", async () => {
     const child = makeChild("researcher");
     const root = makeRoot([child]);

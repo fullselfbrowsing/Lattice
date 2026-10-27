@@ -20,10 +20,12 @@ import type { BudgetInvariant } from "../../contract/contract.js";
 import { createCostTracker, type CostTracker } from "../infra/cost-tracker.js";
 import type {
   ProviderAdapter,
+  ProviderGenerationOptions,
   ProviderRunRequest,
   ProviderRunResponse,
   Usage,
 } from "../../providers/provider.js";
+import { validateGenerationOptions } from "../../providers/request.js";
 import { receiptCid } from "../../receipts/cid.js";
 import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { computeArtifactLineageMerkleRoot } from "../../receipts/lineage.js";
@@ -68,6 +70,8 @@ export interface RunAgentCrewOptions {
   readonly root: AgentSpec;
   readonly hosts: { readonly childHost: AgentHost };
   readonly policy?: CrewPolicy;
+  /** Generation settings shared by the root and every delegated agent. */
+  readonly generation?: ProviderGenerationOptions;
   /** Crew-level signer threaded into member loops and completion receipts. */
   readonly signer?: ReceiptSigner;
   /** Crew-level tracer threaded into member loops. */
@@ -151,6 +155,7 @@ export async function runAgentCrew(
   config: LatticeConfig = {},
 ): Promise<CrewResult> {
   const policy = validateCrewPolicy(options.policy);
+  validateGenerationOptions(options.generation);
   const runId = `runAgentCrew-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const startedAt = Date.now();
   const accounting = new Map<string, AgentAccounting>();
@@ -216,6 +221,7 @@ export async function runAgentCrew(
     ...(options.signer !== undefined ? { signer: options.signer } : {}),
     ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
     ...(options.pipeline !== undefined ? { pipeline: options.pipeline } : {}),
+    ...(options.generation !== undefined ? { generation: options.generation } : {}),
   });
 
   const parentIntent: AgentIntent = {
@@ -226,6 +232,7 @@ export async function runAgentCrew(
     ...(options.signer !== undefined ? { signer: options.signer } : {}),
     ...(options.tracer !== undefined ? { tracer: options.tracer } : {}),
     ...(options.pipeline !== undefined ? { pipeline: options.pipeline } : {}),
+    ...(options.generation !== undefined ? { generation: options.generation } : {}),
   };
 
   const parentResult = await runAgentInternal(parentIntent, config, {
