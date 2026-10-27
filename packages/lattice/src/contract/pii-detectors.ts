@@ -78,16 +78,22 @@
  *     line break. Runs that start with 0 or 1 never count, which removes
  *     most epoch-millisecond and snowflake ids.
  *
- * Detectors see one string at a time, not the field name that holds it, so
+ * By default, detectors see one string at a time without its field name, so
  * a bare value under a telling key (`{ ssn: "123456789" }`) is not flagged.
+ * Explicit contextual mode additionally recognizes selected SSN/phone field
+ * names, unseparated +1 NANP numbers, and immediate customer-contact cues.
+ * A field cue applies only to that field's string or array entries; it does
+ * not propagate into a nested object's other fields.
  * Names, postal addresses, IP addresses, dates of birth, and non-US formats
  * are not detected.
  *
- * Each detector returns either `{ matched: true, substring }` carrying
+ * Each detector's detect() returns either `{ matched: true, substring }` carrying
  * ONLY the matched fragment, or `{ matched: false }`. The substring shape
  * is required so the tripwire evaluator can emit narrowed evidence; the
  * receipt redaction policy (receipts/redact.ts) masks it before signing.
  *
+ * Built-in detectors also expose findAll() with exclusive UTF-16 offsets,
+ * using the same recognition predicates as the short-circuit detect().
  * Detector order in `defaultPiiDetectors` is deterministic so the
  * evaluator's first-violation semantics produce stable receipts.
  */
@@ -96,9 +102,65 @@ export type PiiDetectorResult =
   | { readonly matched: true; readonly substring: string }
   | { readonly matched: false };
 
+/** Offsets use JavaScript UTF-16 code units; end is exclusive. */
+export interface PiiMatch {
+  readonly start: number;
+  readonly end: number;
+  readonly substring: string;
+}
+
+/** Additional signals are used only when contextual is explicitly true. */
+export interface PiiDetectionContext {
+  readonly contextual?: boolean;
+  readonly fieldName?: string;
+}
+
 export interface PiiDetector {
   readonly name: string;
-  detect(input: string): PiiDetectorResult;
+  detect(input: string, context?: PiiDetectionContext): PiiDetectorResult;
+  /** Enumerates distinct matches using the same predicates as detect(). */
+  findAll?(input: string, context?: PiiDetectionContext): readonly PiiMatch[];
+}
+
+type MatchScanner = (input: string, context?: PiiDetectionContext) => Generator<PiiMatch>;
+
+function detector(name: string, scan: MatchScanner): PiiDetector {
+  return {
+    name,
+    detect(input, context) {
+      // Stop at the first match without allocating the complete result.
+      for (const hit of scan(input, context)) return { matched: true, substring: hit.substring };
+      return { matched: false };
+    },
+    findAll(input, context) {
+      const seen = new Set<string>();
+      const matches: PiiMatch[] = [];
+      for (const hit of scan(input, context)) {
+        const key = `${hit.start}:${hit.end}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          matches.push(hit);
+        }
+      }
+      return matches;
+    },
+  };
+}
+
+function matchAt(start: number, substring: string): PiiMatch {
+  return { start, end: start + substring.length, substring };
+}
+
+function hasFieldCue(context: PiiDetectionContext | undefined, kind: "ssn" | "phone"): boolean {
+  if (context?.contextual !== true || context.fieldName === undefined) return false;
+  const name = context.fieldName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return kind === "ssn"
+    ? /^(?:ssn|usssn|socialsecurity|socialsecuritynumber)$/.test(name)
+    : /^(?:phone|phonenumber|telephone|telephonenumber|mobile|mobilephone|mobilephonenumber|cell|cellphone|cellphonenumber|fax|faxnumber)$/.test(name);
+}
+
+function hasSupportPhoneCue(input: string, index: number): boolean {
+  return /\b(?:(?:call|phone|contact)(?:\s+the)?\s+(?:customer|client|patient)|customer\s+(?:support|service)|support\s+(?:phone|line|number))(?:\s+(?:at|on))?[\s:#=]*$/.test(textBefore(input, index));
 }
 
 /**
@@ -251,48 +313,40 @@ function isEmailLocalChar(code: number): boolean {
   );
 }
 
-const emailDetector: PiiDetector = {
-  name: "email",
-  detect(input: string): PiiDetectorResult {
-    // Local + domain + TLD, the same match as `[\w.+-]+@[\w-]+\.[\w.-]+`.
-    // Requires at least one non-empty label on each side and a dot in the
-    // domain part. Rejects `@bad`, `bad@`, `not-an-email`. Scanning from
-    // each `@` instead of from every start position keeps a long run of
-    // word characters (a base64 blob, a digit string) linear to scan: the
-    // local part stops at the previous `@`, and the domain at the next.
-    const domain = /[\w-]+\.[\w.-]+/y;
-    for (let at = input.indexOf("@"); at !== -1; at = input.indexOf("@", at + 1)) {
-      let start = at;
-      while (start > 0 && isEmailLocalChar(input.charCodeAt(start - 1))) start -= 1;
-      if (start === at) continue;
-      domain.lastIndex = at + 1;
-      const match = domain.exec(input);
-      if (match !== null) return { matched: true, substring: input.slice(start, at + 1) + match[0] };
-    }
-    return { matched: false };
-  },
-};
+const emailDetector = detector("email", function* (input) {
+  // Local + domain + TLD, the same match as `[\w.+-]+@[\w-]+\.[\w.-]+`.
+  // Requires at least one non-empty label on each side and a dot in the
+  // domain part. Rejects `@bad`, `bad@`, `not-an-email`. Scanning from
+  // each `@` instead of from every start position keeps a long run of
+  // word characters (a base64 blob, a digit string) linear to scan: the
+  // local part stops at the previous `@`, and the domain at the next.
+  const domain = /[\w-]+\.[\w.-]+/y;
+  for (let at = input.indexOf("@"); at !== -1; at = input.indexOf("@", at + 1)) {
+    let start = at;
+    while (start > 0 && isEmailLocalChar(input.charCodeAt(start - 1))) start -= 1;
+    if (start === at) continue;
+    domain.lastIndex = at + 1;
+    const match = domain.exec(input);
+    if (match !== null) yield matchAt(start, input.slice(start, at + 1) + match[0]);
+  }
+});
 
-const ssnDetector: PiiDetector = {
-  name: "us-ssn",
-  detect(input: string): PiiDetectorResult {
-    // Group 1 is the dashed form, flagged unless an identifier label sits
-    // right before it ("order 123-45-6789"). The spaced and undashed forms
-    // need an SSN cue right before them ("SSN 123456789"), so "104857600
-    // bytes" and "512 64 4096" pass. Word boundaries keep a 9-digit run from
-    // matching inside a 10-digit phone or a 16-digit reference.
-    for (const match of input.matchAll(
-      /\b(\d{3}-\d{2}-\d{4})\b|\b\d{3} \d{2} \d{4}\b|(?<!\.)\b\d{9}\b/g,
-    )) {
-      const flagged =
-        match[1] !== undefined
-          ? !hasIdentifierLabel(input, match.index)
-          : hasPositiveCue(input, match.index, SSN_CUES);
-      if (flagged) return { matched: true, substring: match[0] };
-    }
-    return { matched: false };
-  },
-};
+const ssnDetector = detector("us-ssn", function* (input, context) {
+  // Group 1 is the dashed form, flagged unless an identifier label sits
+  // right before it ("order 123-45-6789"). The spaced and undashed forms
+  // need an SSN cue right before them ("SSN 123456789"), so "104857600
+  // bytes" and "512 64 4096" pass. Word boundaries keep a 9-digit run from
+  // matching inside a 10-digit phone or a 16-digit reference.
+  for (const match of input.matchAll(
+    /\b(\d{3}-\d{2}-\d{4})\b|\b\d{3} \d{2} \d{4}\b|(?<!\.)\b\d{9}\b/g,
+  )) {
+    const flagged =
+      match[1] !== undefined
+        ? !hasIdentifierLabel(input, match.index)
+        : hasPositiveCue(input, match.index, SSN_CUES) || hasFieldCue(context, "ssn");
+    if (flagged) yield matchAt(match.index, match[0]);
+  }
+});
 
 /** Digit groups joined by single space or dash separators. */
 const DIGIT_RUN = /\b\d+(?:[ -]\d+)*\b/g;
@@ -348,74 +402,79 @@ function innerCardSpans(run: string): Array<readonly [number, number]> {
   return spans.filter(([from, to]) => CARD_SHAPE.test(run.slice(from, to)));
 }
 
-const creditCardDetector: PiiDetector = {
-  name: "credit-card",
-  detect(input: string): PiiDetectorResult {
-    // 13-19 digits with optional single space or dash separators, then
-    // Luhn. Every candidate in every digit run is checked, so a reference
-    // number earlier in the text does not hide a card after it. A short
-    // number written next to a card joins it into one run ("Apt 18 4111
-    // 1111 1111 1111"), so when no candidate in a run is a card, its
-    // card-shaped inner spans are checked as well. The issuer prefix is not
-    // allowlisted; only the known non-card runs and values right after an
-    // identifier label ("ref 4111...") are skipped.
-    for (const run of input.matchAll(DIGIT_RUN)) {
-      const text = run[0];
-      if (text.length < 13) continue;
-      for (const candidate of text.matchAll(CARD_CANDIDATE)) {
-        const card = cardAt(input, run.index + candidate.index, candidate[0]);
-        if (card !== undefined) return { matched: true, substring: card };
-      }
-      for (const [start, end] of innerCardSpans(text)) {
-        const card = cardAt(input, run.index + start, text.slice(start, end));
-        if (card !== undefined) return { matched: true, substring: card };
+const creditCardDetector = detector("credit-card", function* (input) {
+  // 13-19 digits with optional single space or dash separators, then
+  // Luhn. Every candidate in every digit run is checked, so a reference
+  // number earlier in the text does not hide a card after it. A short
+  // number written next to a card joins it into one run ("Apt 18 4111
+  // 1111 1111 1111"), so when no candidate in a run is a card, its
+  // card-shaped inner spans are checked as well. The issuer prefix is not
+  // allowlisted; only the known non-card runs and values right after an
+  // identifier label ("ref 4111...") are skipped.
+  for (const run of input.matchAll(DIGIT_RUN)) {
+    const text = run[0];
+    if (text.length < 13) continue;
+    let foundCandidate = false;
+    for (const candidate of text.matchAll(CARD_CANDIDATE)) {
+      const card = cardAt(input, run.index + candidate.index, candidate[0]);
+      if (card !== undefined) {
+        foundCandidate = true;
+        yield matchAt(run.index + candidate.index, card);
       }
     }
-    return { matched: false };
-  },
-};
+    if (foundCandidate) continue;
+    for (const [start, end] of innerCardSpans(text)) {
+      const card = cardAt(input, run.index + start, text.slice(start, end));
+      if (card !== undefined) yield matchAt(run.index + start, card);
+    }
+  }
+});
 
 /** A `+1` or `1` trunk prefix at the start of a phone match. */
 const TRUNK_PREFIX = /^(?:\+1|1[ .-])/;
 
-const phoneDetector: PiiDetector = {
-  name: "us-phone",
-  detect(input: string): PiiDetectorResult {
-    // Three ways into the area code, then the 3-4 tail with a separator.
-    //   1. A `+1` or `1` trunk prefix followed by the area code. After a
-    //      consumed prefix the area code needs no word boundary, so
-    //      `+1415-555-1234` matches (review finding on PR #22); `1` without
-    //      `+` still requires its own separator (`\b1[ .-]`).
-    //   2. A parenthesized area code with no prefix.
-    //   3. A bare area code at a word boundary followed by a separator.
-    // Separators may be dash, dot, or space (issue #21 F8). These forms are
-    // flagged unless an identifier label sits right before them ("SKU
-    // 123-456-7890").
-    //
-    // The last alternative is a plain 10-digit run (group 2) with an
-    // optional `+1` plus separator or `1-` trunk prefix (group 1). It must
-    // be a valid NANP number, so epoch seconds before 2033 and anything with
-    // a leading 0 or 1 fail, and without a prefix it may not follow a `.`,
-    // so "3.1415926535" fails. Without a trunk prefix it also needs a phone
-    // cue right before it ("call 4155551234"). An 11-digit run never
-    // matches, because `\b` cannot start inside it.
-    //
-    // A trunk prefix is itself a phone cue and always sits nearer the value
-    // than any label, so a prefixed match is flagged even after a label.
-    // That also keeps "Order 1 415 555 0134" flagged when the order number
-    // reads as a `1` trunk.
-    for (const match of input.matchAll(
-      /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b|(?:(\+1[ .-]|\b1-)|(?<!\.))\b([2-9]\d{2}[2-9]\d{6})\b/g,
-    )) {
-      let flagged: boolean;
-      if (TRUNK_PREFIX.test(match[0])) flagged = true;
-      else if (match[2] !== undefined) flagged = hasPositiveCue(input, match.index, PHONE_CUES);
-      else flagged = !hasIdentifierLabel(input, match.index);
-      if (flagged) return { matched: true, substring: match[0] };
+const PHONE_PATTERN = /(?:(?:\+1[ .-]?|\b1[ .-])(?:\(\d{3}\)[ .-]?|\d{3}[ .-])|\(\d{3}\)[ .-]?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b|(?:(\+1[ .-]|\b1-)|(?<!\.))\b([2-9]\d{2}[2-9]\d{6})\b/g;
+const CONTEXTUAL_PHONE_PATTERN = new RegExp(
+  String.raw`(?<![\w+])\+1[2-9]\d{2}[2-9]\d{6}(?!\w)|` + PHONE_PATTERN.source,
+  "g",
+);
+
+const phoneDetector = detector("us-phone", function* (input, context) {
+  // Three ways into the area code, then the 3-4 tail with a separator.
+  //   1. A `+1` or `1` trunk prefix followed by the area code. After a
+  //      consumed prefix the area code needs no word boundary, so
+  //      `+1415-555-1234` matches (review finding on PR #22); `1` without
+  //      `+` still requires its own separator (`\b1[ .-]`).
+  //   2. A parenthesized area code with no prefix.
+  //   3. A bare area code at a word boundary followed by a separator.
+  // Separators may be dash, dot, or space (issue #21 F8). These forms are
+  // flagged unless an identifier label sits right before them ("SKU
+  // 123-456-7890").
+  //
+  // The last alternative is a plain 10-digit run (group 2) with an
+  // optional `+1` plus separator or `1-` trunk prefix (group 1). It must
+  // be a valid NANP number, so epoch seconds before 2033 and anything with
+  // a leading 0 or 1 fail, and without a prefix it may not follow a `.`,
+  // so "3.1415926535" fails. Without a trunk prefix it also needs a phone
+  // cue right before it ("call 4155551234"). An 11-digit run never
+  // matches, because `\b` cannot start inside it.
+  //
+  // A trunk prefix is itself a phone cue and always sits nearer the value
+  // than any label, so a prefixed match is flagged even after a label.
+  // That also keeps "Order 1 415 555 0134" flagged when the order number
+  // reads as a `1` trunk.
+  for (const match of input.matchAll(context?.contextual === true ? CONTEXTUAL_PHONE_PATTERN : PHONE_PATTERN)) {
+    let flagged: boolean;
+    if (TRUNK_PREFIX.test(match[0])) flagged = true;
+    else if (match[2] !== undefined) {
+      flagged = hasPositiveCue(input, match.index, PHONE_CUES) ||
+        hasFieldCue(context, "phone") ||
+        (context?.contextual === true && hasSupportPhoneCue(input, match.index));
     }
-    return { matched: false };
-  },
-};
+    else flagged = !hasIdentifierLabel(input, match.index);
+    if (flagged) yield matchAt(match.index, match[0]);
+  }
+});
 
 /**
  * Default PII detectors used by `evaluateTripwires` for `no-pii` invariants.

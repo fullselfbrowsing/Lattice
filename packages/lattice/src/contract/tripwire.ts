@@ -7,7 +7,7 @@ import type {
   MustCiteInvariant,
   NoPiiInvariant,
 } from "./invariants.js";
-import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
+import { defaultPiiDetectors, type PiiDetector, type PiiDetectionContext } from "./pii-detectors.js";
 
 /**
  * Evidence emitted when a tripwire invariant fires.
@@ -827,15 +827,17 @@ function isPlainObject(value: object): boolean {
  *   - Date, Map, typed arrays, and other non-plain objects are skipped
  *   - numbers, booleans, null, undefined pass (numbers are not stringified)
  *   - a `visited` map records the shallowest depth at which each object has
- *     been scanned. Meeting an object again at the same or a greater depth
+ *     been scanned under each field context. Meeting that object and context
+ *     again at the same or a greater depth
  *     is a cycle or a shared reference whose subtree was already covered at
  *     least as deeply, so it is skipped. Meeting it strictly shallower
  *     rescans it, because the earlier visit may have lost descendants to the
  *     depth cap (review finding on PR #22: an object first reached at depth
  *     31 was marked scanned while its children were cut at 32, and a later
- *     shallow reference to it was skipped). Each object is rescanned at most
- *     MAX_NO_PII_WALK_DEPTH times, so shared references cannot blow up the
- *     walk the way a path-stack-only cycle guard would on a diamond graph.
+ *     shallow reference to it was skipped). Each object and field context
+ *     pair is rescanned at most MAX_NO_PII_WALK_DEPTH times. Aliased arrays
+ *     under different fields can therefore use different cues while cycles
+ *     and repeated references with the same cue remain bounded.
  * Traversal order takes precedence over detector order: the first string
  * reached that any detector flags is the reported violation.
  */
@@ -843,12 +845,13 @@ function scanForPii(
   value: unknown,
   detectors: readonly PiiDetector[],
   frames: PathFrame[],
-  visited: Map<object, number>,
+  visited: Map<object, Map<string, number>>,
   depth: number,
+  context?: PiiDetectionContext,
 ): PiiHit | undefined {
   if (typeof value === "string") {
     for (const detector of detectors) {
-      const result = detector.detect(value);
+      const result = detector.detect(value, context);
       if (result.matched) {
         return { detector: detector.name, substring: result.substring, frames: [...frames] };
       }
@@ -857,14 +860,18 @@ function scanForPii(
   }
   if (typeof value !== "object" || value === null) return undefined;
   if (depth >= MAX_NO_PII_WALK_DEPTH) return undefined;
-  const scannedAt = visited.get(value);
+  // Arrays aliased under different fields must be checked with both cues.
+  const contextKey = context?.contextual === true ? context.fieldName ?? "" : "";
+  const contexts = visited.get(value) ?? new Map<string, number>();
+  const scannedAt = contexts.get(contextKey);
   if (scannedAt !== undefined && scannedAt <= depth) return undefined;
-  visited.set(value, depth);
+  contexts.set(contextKey, depth);
+  visited.set(value, contexts);
 
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
       frames.push({ kind: "index", index });
-      const hit = scanForPii(entry, detectors, frames, visited, depth + 1);
+      const hit = scanForPii(entry, detectors, frames, visited, depth + 1, context);
       frames.pop();
       if (hit !== undefined) return hit;
     }
@@ -875,7 +882,10 @@ function scanForPii(
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record).sort()) {
     frames.push({ kind: "key", key });
-    const hit = scanForPii(record[key], detectors, frames, visited, depth + 1);
+    const childContext = context?.contextual === true
+      ? { contextual: true, fieldName: key }
+      : undefined;
+    const hit = scanForPii(record[key], detectors, frames, visited, depth + 1, childContext);
     frames.pop();
     if (hit !== undefined) return hit;
   }
@@ -920,7 +930,11 @@ function evaluateNoPii(
   // Issue #21 F8: a non-string value at the path used to pass silently,
   // which let PII inside nested objects, arrays, and `[*]` wildcard results
   // through. Walk containers instead; see scanForPii for the order rules.
-  const hit = scanForPii(value, detectors, [], new Map<object, number>(), 0);
+  const context = decl.contextual === true ? {
+    contextual: true,
+    fieldName: (decl.path.split(".").at(-1) ?? "").replace(/\[(?:\*|\d+)\]/g, ""),
+  } : undefined;
+  const hit = scanForPii(value, detectors, [], new Map(), 0, context);
   if (hit === undefined) return { ok: true };
 
   const foundAt = formatViolationPath(decl.path, hit.frames);

@@ -71,9 +71,10 @@ export type {
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
+  NoPiiOptions,
 } from "./contract/invariants.js";
 export { defaultPiiDetectors } from "./contract/pii-detectors.js";
-export type { PiiDetector, PiiDetectorResult } from "./contract/pii-detectors.js";
+export type { PiiDetector, PiiDetectorResult, PiiMatch, PiiDetectionContext } from "./contract/pii-detectors.js";
 export {
   estimateRouteCost,
   evaluateContractAgainstRoute,

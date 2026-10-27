@@ -113,6 +113,8 @@ export interface NoPiiInvariant {
   readonly id: string;
   readonly kind: "no-pii";
   readonly path: string;
+  /** Opt into field cues, bounded support phrases, and US E.164 phone forms. */
+  readonly contextual?: boolean;
 }
 
 export interface MatchesInvariant<T = unknown> {
@@ -130,6 +132,10 @@ export type InvariantDeclaration =
 
 export interface InvariantOptions {
   readonly id?: string;
+}
+
+export interface NoPiiOptions extends InvariantOptions {
+  readonly contextual?: boolean;
 }
 
 /** Options for `inv.mustCite` (issue #21 F9). See MustCiteInvariant. */
@@ -213,11 +219,15 @@ export const inv = {
    * `observed.foundAt` on the runtime error only, because it can contain
    * model-produced object keys and must not enter the signed receipt.
    */
-  noPII(path: string, options?: InvariantOptions): NoPiiInvariant {
+  noPII(path: string, options?: NoPiiOptions): NoPiiInvariant {
+    if (options?.contextual !== undefined && typeof options.contextual !== "boolean") {
+      throw new TypeError("noPII contextual must be a boolean.");
+    }
     return Object.freeze({
       id: nextId("no-pii", options),
       kind: "no-pii" as const,
       path,
+      ...(options?.contextual !== undefined ? { contextual: options.contextual } : {}),
     });
   },
   matches<T>(
