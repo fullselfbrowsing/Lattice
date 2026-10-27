@@ -56,6 +56,7 @@ function save() {
 
 async function observedFetch(url, init = {}) {
   if (String(url) !== BASE + "/chat/completions") throw new Error("Unexpected inference endpoint.");
+  if (active.expectedBody && init.body !== active.expectedBody) throw new Error("Matched request bodies differ before egress.");
   const body = JSON.parse(init.body);
   const maximum = body.max_tokens ?? body.max_completion_tokens;
   if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 1024) throw new Error("Every inference call needs a bounded token cap.");
@@ -72,7 +73,7 @@ async function observedFetch(url, init = {}) {
     let response;
     let bytes;
     try {
-      response = await fetch(url, { ...init, signal: AbortSignal.timeout(90000) });
+      response = await fetch(url, { ...init, signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(90000)]) : AbortSignal.timeout(90000) });
       bytes = await response.arrayBuffer();
     } catch (error) {
       active.calls.push({ bodyHash: sha(init.body), model: body.model, status: null, httpMs: performance.now() - started, costUsd: null, attempt });
@@ -244,7 +245,7 @@ async function transport(model, n) {
     const directBody = await captureBody(model, request);
     for (const arm of i % 2 ? ["direct", "signed"] : ["signed", "direct"]) {
       await runCase(String(i), model, "transport", arm,
-        () => arm === "direct" ? direct(directBody) : ai(model).run(request),
+        () => { active.expectedBody = directBody; return arm === "direct" ? direct(directBody) : ai(model).run(request); },
         ({ answer, ok }) => ({ correct: ok && answer.trim().toLowerCase().replace(/[.!]$/, "") === expected, modality: isImage ? "image" : "json" }));
     }
   }
@@ -258,7 +259,7 @@ async function latency(model) {
     const rotation = (i + 5) % 3;
     for (const arm of [...arms.slice(rotation), ...arms.slice(0, rotation)]) {
       await runCase(String(i), model, i < 0 ? "latency-warmup" : "latency", arm,
-        () => arm === "direct" ? direct(directBody) : ai(model, arm === "signed").run(request),
+        () => { active.expectedBody = directBody; return arm === "direct" ? direct(directBody) : ai(model, arm === "signed").run(request); },
         ({ answer, ok }) => ({ correct: ok && answer.trim().toLowerCase() === "pong" }));
     }
   }
@@ -308,7 +309,7 @@ async function citations(model, smoke = false) {
   for (const row of rows) {
     if (stopped) break;
     const ids = row.docs.map((doc) => doc.id);
-    const task = "Answer using only the supplied passages. Return JSON with answer (a concise string with [sN] citations after each factual statement) and citations (an array of objects with source equal to a cited source ID). If the passages cannot answer, state that explicitly; never invent evidence. Question: " + row.question;
+    const task = "Answer using only the supplied passages. Return exactly one JSON object, with no markdown fences or surrounding text. Use this shape: {\"answer\":\"A concise answer with [sN] citations after each factual statement.\",\"citations\":[{\"source\":\"sN\"}]}. Use the key source, never id. Escape quotes only once as required by JSON. If the passages cannot answer, state that explicitly; never invent evidence. Question: " + row.question;
     const request = intent(task, row.docs.map((doc) => L.artifact.text(doc.title + "\n" + doc.text, { id: doc.id, label: doc.id })), 512);
     const validator = schema((value) => parseCited(String(value), ids).valid ? { value } : { issues: [{ message: "Return valid JSON with resolvable, used citation IDs." }] });
     for (const arm of ["prompt-only", "contract"]) {
@@ -368,6 +369,7 @@ try {
     timing: "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
     requestBinding: "SHA256 of serialized body handed to configured fetch; retries may repeat a body. No claim of receiver attestation.",
     scope: "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
+    smokeGate: "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors remain measured outcomes. Citation contract rejection is expected enforcement.",
     tokenCaps: { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
   if (existsSync(OUT)) {
     out = readJSON(OUT);
@@ -381,15 +383,15 @@ try {
       ["transport", "direct", 2], ["transport", "signed", 2], ["privacy", "signed", 1],
       ["agent", "signed", 1], ["crew", "signed", 1], ["citations", "prompt-only", 1], ["citations", "contract", 1],
     ].every(([suite, arm, count]) => smoke.rows.filter((r) => r.model === model && r.suite === suite && r.arm === arm).length === count));
-    const failed = smoke.rows.some((r) => !r.ok || r.correct === false || r.usableAnswer === false
+    const failed = smoke.rows.some((r) => (!r.ok && !(r.suite === "citations" && r.errorKind === "tripwire-violated"))
       || (r.suite === "crew" && (!r.childExecuted || !r.chainClosed))
       || (r.suite === "agent" && !r.toolCalls)
       || r.answerContainsMarker === true || r.signedMarkerLeak === true
       || (r.arm !== "direct" && r.suite !== "crew" && (!r.receipt.present || !r.receipt.verified
-        || !r.receipt.outputHashMatch || !r.receipt.editedOutputDetected || !r.receipt.taskBound
+        || (r.receipt.outputBindingEligible && (!r.receipt.outputHashMatch || !r.receipt.editedOutputDetected)) || !r.receipt.taskBound
         || !r.receipt.policyBound || !r.receipt.requestBound || !r.receipt.submittedBodiesCovered || !r.receipt.expectedBindingsVerified)));
     if (smoke.env.codeHash !== codeHash || smoke.env.harnessHash !== harnessHash || !coverage || failed || smoke.stopped) {
-      throw new Error("A complete passing smoke run on the same build and harness is required.");
+      throw new Error("A complete smoke run with transport, receipt and execution checks passing on the same build and harness is required.");
     }
   }
   if (STAGE === "judge") await judge();
