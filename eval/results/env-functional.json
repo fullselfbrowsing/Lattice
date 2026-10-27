@@ -1,0 +1,19 @@
+{
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "platform": "linux 6.12.94+",
+  "arch": "x64",
+  "cpu": "Intel(R) Xeon(R) Processor",
+  "cores": 4,
+  "totalMemGB": 15.6,
+  "latticeVersion": "1.6.0",
+  "date": "2026-10-26T18:12:27.038Z",
+  "libraryCommit": "8a112e761d39702cfcf3af31760e78fea60b070f",
+  "usedFor": [
+    "03-tamper",
+    "04-replay",
+    "05-policy",
+    "07-v16",
+    "vitest test counts"
+  ]
+}

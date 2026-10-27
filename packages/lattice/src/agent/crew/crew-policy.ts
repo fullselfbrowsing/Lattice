@@ -33,7 +33,14 @@ export interface CrewRateLimitOverride {
 
 /** Crew-level policy contract (D-06, D-11, D-16). */
 export interface CrewPolicy {
-  /** Crew-level shared budget pool — `BudgetInvariant` reused verbatim. */
+  /**
+   * Crew-level shared budget pool — `BudgetInvariant` reused verbatim.
+   * `maxWallTimeMs` runs from crew start until the root agent's loop
+   * returns. Receipts signed inside that loop (child completion and
+   * per-iteration checkpoint receipts) count against it; the root agent's
+   * completion receipt and the crew-close receipt, signed afterwards, do
+   * not.
+   */
   readonly budget?: BudgetInvariant;
   readonly maxTotalIterations?: number;
   readonly maxIterationsPerAgent?: number;

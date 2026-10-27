@@ -16,9 +16,9 @@ Lattice lets developers describe a job, attach artifacts, declare outputs, and s
 ![Node](https://img.shields.io/badge/Node-%3E%3D24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![ESM](https://img.shields.io/badge/ESM-only-000000?style=for-the-badge)
 ![Standard Schema](https://img.shields.io/badge/Standard_Schema-compatible-8B5CF6?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.5.1-0078D4?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.6.0-0078D4?style=for-the-badge)
 
-[Install](#install) · [Quick Start](#quick-start) · [Runtime](#runtime) · [Modular Entrypoints](#modular-entrypoints) · [Providers](#providers) · [Audit](#audit) · [Agents](#agents) · [CLI](#cli) · [Development](#development)
+[Install](#install) · [Quick Start](#quick-start) · [Runtime](#runtime) · [Contracts](#contracts) · [Modular Entrypoints](#modular-entrypoints) · [Providers](#providers) · [Audit](#audit) · [Agents](#agents) · [CLI](#cli) · [Development](#development)
 
 </div>
 
@@ -26,14 +26,21 @@ Lattice lets developers describe a job, attach artifacts, declare outputs, and s
 
 Lattice is published under the `@full-self-browsing` npm scope.
 
-* `@full-self-browsing/lattice`: `1.5.1`
-* `@full-self-browsing/lattice-cli`: `1.5.1`
+* `@full-self-browsing/lattice`: `1.6.0`
+* `@full-self-browsing/lattice-cli`: `1.6.0`
 * Runtime target: Node.js `>=24`
 * Package format: ESM
 * License: MIT
 * Registry publishing: npm OIDC Trusted Publisher with provenance attestations
 
 The full runtime targets Node 24 and newer. Several modular facades are validated as Node 20 compatible for applications that want to adopt Lattice one slice at a time.
+
+### Known gaps
+
+* `ai.runAgent` returns no receipt. `AgentSuccess.receipt`, `AgentFailure.receipt`, and `IterationRecord.receipt` are never set, and the loop does not use the signer passed to `createAI`. With a `signer` on the agent intent, each iteration's checkpoint receipt is emitted only as a `step.transition` tracer event (`metadata.envelope`), so a caller without a tracer keeps none. `ai.run` and `runAgentCrew` return their receipts.
+* The OpenAI-shaped adapters (`openai`, `openai-compatible`, `xai`, `openrouter`, `lm-studio`, and `litellm`) send every artifact as a text part holding JSON metadata and never send an image part. The artifact's value is included only when it is a string, so a data URL is inlined as text, while a `Blob` or `File` image and the object value of an `artifact.json` or `artifact.toolResult` are dropped. The model never sees a dropped value, yet the receipt still hashes it. Pass JSON as a string (for example `artifact.text(JSON.stringify(value))`) on these adapters. The Anthropic and Gemini adapters send native image parts.
+* The OpenAI-shaped adapters send no `temperature` or `max_tokens`, so the provider defaults apply. The Anthropic adapter sends a fixed `max_tokens`, and the Gemini adapter sends a fixed temperature and output token cap.
+* `createOpenAIProvider` without a `baseUrl` posts to `https://api.openai.com/chat/completions`, which lacks `/v1`. For OpenAI, use `createOpenAICompatibleProvider` with `baseUrl: "https://api.openai.com/v1"`.
 
 ## Why Lattice
 
@@ -45,14 +52,14 @@ Lattice puts that machinery behind one TypeScript first runtime while keeping th
 
 ## What Lattice Handles
 
-* Artifacts: text, JSON, files, URLs, images, audio, video, documents, and tool results.
+* Artifacts: text, JSON, files, URLs, images, audio, video, documents, and tool results. The OpenAI-shaped adapters send only string artifact values and drop binary bytes and JSON objects; see [Known gaps](#known-gaps).
 * Outputs: plain text, Standard Schema and Zod compatible structured data, citations, and generated artifact refs.
 * Routing: deterministic provider and model selection from capability metadata, policy, cost, latency, privacy, and fallback rules.
 * Context: artifact refs, summaries, token estimates, and context pack plans.
 * Providers: OpenAI, OpenAI compatible gateways, Anthropic, Gemini, xAI, OpenRouter, LiteLLM, LM Studio, AI SDK style providers, and fake providers for tests.
 * Audit: JCS canonical receipts, DSSE envelopes, Ed25519 signatures, CIDs, replay envelopes, redaction, and verification.
 * Tools: tool definitions, tool execution, MCP shaped resources, MCP shaped prompts, tool results as artifacts, and returned tool call validation.
-* Agents: opt in single agent loops and structured crew runs built on the same provider, tool, policy, event, and receipt primitives.
+* Agents: opt in single agent loops and structured crew runs built on the same provider, tool, policy, and event primitives. With a signer, crew runs return receipts, and the single agent loop sends its checkpoint receipts to the tracer only.
 
 ## Install
 
@@ -176,6 +183,54 @@ void result;
 
 Every run produces a plan with routing, context packing, validation, attempts, fallback, usage, and event data. When a signer is configured, terminal results also include a verifiable receipt. Pass `receipt: { audience, nonce, ttlMs }` on the intent to bind that receipt to a relying party, a single-use value, or a validity window. If the signer fails, the result carries `receiptError` instead of a receipt; set `receipts: { onSignerError: "throw" }` on the config to fail the run instead.
 
+## Contracts
+
+A contract adds a budget and output invariants to a run. Pass it as `contract` on the intent. When an invariant fails, `ai.run` returns a `tripwire-violated` failure, and a configured signer records that verdict in the receipt.
+
+```ts
+import { contract, inv } from "@full-self-browsing/lattice";
+
+const checks = contract({
+  budget: { maxCostUsd: 0.05 },
+  invariants: [
+    inv.noPII("answer"),
+    inv.mustCite("refund-policy", { inline: true }),
+  ],
+});
+```
+
+### noPII
+
+`inv.noPII(path)` runs four detectors on every string at `path`, including strings nested in objects and arrays. They are a narrow screen for common US formats, not a data-loss-prevention system.
+
+* `email`: `local@domain.tld`.
+* `us-ssn`: dashed `123-45-6789`. A spaced `123 45 6789` or an undashed 9-digit run matches only when an SSN cue (`ssn`, `ss#`, `social security`, `social sec`) is the nearest word before it.
+* `us-phone`: separated forms such as `415-555-0134`, `415.555.0134`, and `(415) 555-0134`, with an optional `+1` or `1` trunk prefix. A plain 10-digit run matches only when it is a valid NANP number, does not follow a `.`, and comes after a trunk prefix (`+1` followed by a space, dot, or dash, or `1-`) or a phone cue (`phone`, `tel`, `call`, `mobile`, `cell`, `fax`) as the nearest word. Unseparated `+14155551234` is not detected.
+* `credit-card`: 13 to 19 digits that pass Luhn, optionally separated by single spaces or dashes. Every digit run is checked, and a card joined to a neighbouring number ("Apt 18 4111 1111 1111 1111", a card followed by its CVV) is still found. Runs that start with 0 or 1 (epoch milliseconds, snowflake ids) are skipped, so UATP cards are not detected. 13-digit runs that start with 978 or 979 (ISBN-13) are skipped too. No issuer prefix list is applied.
+
+Only punctuation and the words `no`, `number`, `num`, `nbr`, `nr`, `is`, `at`, `on`, `me`, and `us` may sit between a cue and a bare value. "call me at 4155551234" is flagged; "call Jane at 4155551234" is not.
+
+`us-ssn`, `us-phone`, and `credit-card` skip a value when the nearest word before it is an identifier label: `order`, `orders`, `ord`, `invoice`, `inv`, `sku`, `ref`, `po`, `isbn`, `pn`, or `txn`, joined to the value only by whitespace, `:`, `#`, `=`, `no.`, `number`, or `is`. `email` never checks labels, so "Order: alice@example.com" is flagged. "Order No. 123-45-6789" is skipped. "Customer SSN 123-45-6789" and "Order 5521, 415-555-0134" are flagged, because `customer` is not a label and a number between label and value breaks the link. A phone with a `+1` or `1` trunk prefix is flagged even right after a label ("SKU +1 415 555 0134"). Cues and labels are read from the 48 characters before a value, cut at the last line break and the last sentence end.
+
+Known trade-offs:
+
+* A real value right after a label is missed ("ref 123-45-6789").
+* About one random 13-19 digit number in ten passes Luhn, so a text that lists k long numeric ids (a CSV column, a JSON array, log lines) is flagged with probability near 1 - 0.9^k.
+* Detectors read string values, not object keys, so `{ ssn: "123456789" }` is not flagged.
+* Names, postal addresses, IP addresses, dates of birth, and non-US formats are not detected.
+
+### mustCite
+
+`inv.mustCite(name)` passes when a citations list has an entry naming the artifact: a string equal to `name`, or an object whose `source` equals it. It reads the top-level `citations` list first. When that list is missing or does not name the artifact, it also searches the top-level `evidence` list and any `citations` or `evidence` array nested in objects and arrays. By default it never reads prose. `path` points at one list and turns off the nested search, `keys` compares other object keys, and `caseInsensitive: true` ignores case.
+
+Three options read the output's prose. All are off by default.
+
+* `inline: true` also passes on a `[name]` or `(name)` marker, or on a group where one `;`- or `,`-separated part is the name, with an optional `p. 4` or `§3` locator: `[doc-a; doc-b]` and `(doc-a, p. 4)` cite `doc-a`. It applies only when no located list has entries, so a non-empty list that omits the artifact still fails. Code spans, fenced code, and link text are ignored.
+* `rejectUncited: true` fails a list entry that names the artifact when the text carries citation markers and none of them cites it. Markers are numbers and ranges such as `[1]`, `[1, 2]`, and `[2-4]` (resolved by an entry's `label`, `marker`, or `id`, else by 1-based list position; a number past the end cites another source), author-year brackets such as `[Smith 1999]`, and a bracket equal to a list entry. Links, footnotes, `[x]`, `[sic]`, `[INFO]`, `arr[0]`, dates such as `[March 2024]`, timestamps, and code are ignored.
+* `textPath` limits the `inline` and `rejectUncited` scan to the strings at one path, such as `answer` or `sections[*].text`. Without it every string in the output is scanned, so a bracketed number in a log line counts as a marker.
+
+The check is syntactic. It confirms that a citation is present, not that the artifact supports the claim. Options are added to the contract only when set, so existing contract hashes do not change. `inv.mustCite("")` and a whitespace-only name throw `TypeError`.
+
 ## Modular Entrypoints
 
 Lattice can be adopted one module at a time. The package manifest exposes machine readable compatibility metadata under `lattice.modules`.
@@ -288,7 +343,13 @@ await verifyReceipt(
 );
 ```
 
-`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Receipts that chain through `parentReceiptCid`, such as a crew root and its agent completion receipts, verify as one tree with `verifyChain`:
+A receipt signs hashes of the input artifacts and the outputs, the contract hash and verdict, the model, the selected route, usage, and redacted tripwire evidence. It does not sign the task or prompt text, the policy, or the routing rationale. The hashes are unsalted SHA-256, so a low-entropy value such as an SSN can be confirmed from a receipt by trying candidates.
+
+`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Audience, nonce, `maxAgeMs`, and a raised `minVersion` are opt-in, so a receipt that omits them still verifies.
+
+`receiptVerifyAdvisories(verified.body, options)` reports what was not checked as `{ code, severity, message }` objects. A `warn` (`audience-unchecked`, `nonce-unchecked`) means the receipt carries a binding that the verifier did not check. An `info` (`audience-absent`, `nonce-absent`, `expiry-absent`, `version-below-current`) names an optional check the receipt does not use. Gate on `code` and `severity`, not on the message.
+
+Receipts that chain through `parentReceiptCid`, such as a crew root and its agent completion receipts, verify as one tree with `verifyChain`:
 
 ```ts
 import { verifyChain } from "@full-self-browsing/lattice/audit";
@@ -300,7 +361,14 @@ const chain = await verifyChain(receipts, keySet, {
 if (!chain.ok) throw new Error(`${chain.error.kind}: ${chain.error.message}`);
 ```
 
-Dropped leaf receipts are only detectable when `expectedCount` or an external anchor supplies an out-of-band commitment; `expectedRootCid` detects a replaced root, not a missing leaf.
+Dropped leaf receipts are detectable when `expectedCount` or an external anchor supplies an out-of-band commitment, or when the root receipt sets `chainClosure: "member-cids"` and one closing receipt lists every other member in `chainMemberCids`. Crew runs do this. A closed chain that is missing a member or its closer fails with `count-mismatch`. 1.6.x verifiers accept closed chains but ignore the closure fields, so they do not detect a dropped member.
+
+* `requireClosure: true` fails a chain that declares no closure.
+* `partial: true` verifies a disclosed subset of a closed chain. The closing receipt must be present and must list every presented receipt. Listed members that were not presented produce a `closure-partial` warning.
+
+A chain with no commitment still verifies, and `chain.advisories` includes a `tail-truncation-unchecked` warning along with each receipt's advisories. `expectedRootCid` detects a replaced root, not a missing leaf.
+
+`runAgentCrew` with a signer returns its receipts in mint order: a crew-start root, a completion receipt for each child run that succeeded, the root agent's completion receipt, and a crew-close receipt. When each of N agents runs once and every child run succeeds, that is N + 2 receipts. A child that never runs or whose run fails gets no completion receipt, so pass `receipts.length` as `expectedCount`. The crew-start receipt's output hash covers the agent id tree, not the intents, tools, or policy. `receipts.onSignerError` applies to every crew receipt after crew-start. Under `"flag"`, the default, the crew result is still returned and `CrewResult.receiptError` lists every failed mint in mint order. A chain missing a completion receipt still verifies, so check `receiptError` before treating `receipts` as the whole crew. Under `"throw"` the crew rejects with `ReceiptSigningError` at the failed mint. A failed crew-start mint always rejects with `ReceiptSigningError`.
 
 ## Tools and MCP
 
@@ -382,7 +450,7 @@ if (result.kind === "success") {
 }
 ```
 
-Agent execution uses the same policy, provider, tool, event, receipt, and survivability primitives as normal runs. Non agent modular entrypoints are checked so they do not pull the agent surface into provider only, audit only, tools only, eval only, or core only adoption paths.
+Agent execution uses the same policy, provider, tool, event, and survivability primitives as normal runs. `ai.runAgent` returns no receipt: with a `signer` on the intent, each iteration's checkpoint receipt is emitted only as a `step.transition` tracer event, so pass a `tracer` to keep them. `runAgentCrew` returns its receipts, as described under [Audit](#audit). Non agent modular entrypoints are checked so they do not pull the agent surface into provider only, audit only, tools only, eval only, or core only adoption paths.
 
 ## CLI
 
@@ -398,7 +466,9 @@ lattice receipt verify-chain --help
 lattice diagnostics lm-studio --help
 ```
 
-Use it for receipt verification, offline replay, eval gates, receipt inspection, chain verification, and local diagnostics. `lattice verify` accepts `--min-version`, `--audience`, `--nonce`, and `--max-age-ms`; `lattice receipt verify-chain <dir>` verifies every receipt in a directory as one tree and accepts `--expect-count`, `--run-id`, and `--root-cid`.
+Use it for receipt verification, offline replay, eval gates, receipt inspection, chain verification, and local diagnostics. `lattice verify` accepts `--min-version`, `--audience`, `--nonce`, `--max-age-ms`, and `--quiet`. `lattice receipt verify-chain <dir>` verifies every receipt in a directory as one tree. It accepts the same flags plus `--expect-count`, `--run-id`, `--root-cid`, `--require-closure`, and `--partial`.
+
+On success both commands print advisories to stderr: a `WARN <code>: <message>` line for every warning, and an `INFO <code>: <message>` line for every note unless `--quiet` is passed. `--quiet` never hides `WARN` lines. Advisories do not change the exit code.
 
 ## Development
 

@@ -1,0 +1,433 @@
+{
+  "checks": 71,
+  "passed": 71,
+  "failed": [],
+  "rows": [
+    {
+      "check": "plain-verifies",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "advisories-on-unbound-receipt",
+      "ok": true,
+      "kind": "3 info advisories",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "advisory-shape-structured",
+      "ok": true,
+      "kind": "{code, severity, message}",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "current-version-no-version-advisory",
+      "ok": true,
+      "kind": "",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "bound-accepts-matching-options",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "audience-mismatch",
+      "ok": true,
+      "kind": "audience-mismatch",
+      "message": "receipt audience \"relying-party\" does not match expected \"other\""
+    },
+    {
+      "check": "nonce-mismatch",
+      "ok": true,
+      "kind": "nonce-mismatch",
+      "message": "receipt nonce does not match the expected nonce"
+    },
+    {
+      "check": "expired",
+      "ok": true,
+      "kind": "receipt-expired",
+      "message": "receipt expired at 2099-01-01T00:00:00Z"
+    },
+    {
+      "check": "minVersion-v1.4-accepts-current",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "bound-unchecked-audience-warns",
+      "ok": true,
+      "kind": "warn:audience-unchecked",
+      "message": "warn:audience-unchecked || warn:nonce-unchecked"
+    },
+    {
+      "check": "bound-unchecked-nonce-warns",
+      "ok": true,
+      "kind": "warn:nonce-unchecked",
+      "message": "warn:audience-unchecked || warn:nonce-unchecked"
+    },
+    {
+      "check": "nonce-value-never-echoed",
+      "ok": true,
+      "kind": "not echoed",
+      "message": "warn:tail-truncation-unchecked || warn:audience-unchecked || warn:nonce-unchecked"
+    },
+    {
+      "check": "expiresAt-set-no-expiry-advisory",
+      "ok": true,
+      "kind": "",
+      "message": "warn:audience-unchecked || warn:nonce-unchecked"
+    },
+    {
+      "check": "bound-and-checked-no-advisories",
+      "ok": true,
+      "kind": "0 advisories",
+      "message": ""
+    },
+    {
+      "check": "maxAgeMs-silences-expiry-absent",
+      "ok": true,
+      "kind": "",
+      "message": "info:audience-absent || info:nonce-absent"
+    },
+    {
+      "check": "minVersion-floor-rejects-v1.1",
+      "ok": true,
+      "kind": "schema-version-too-low",
+      "message": "Receipt body.version \"lattice-receipt/v1.1\" is below the accepted floor \"lattice-receipt/v1.4\" (CRYPTO-01). Accepted: lattice-receipt/v1.4."
+    },
+    {
+      "check": "v1.1-still-verifies-without-minVersion",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "version-below-current-info-effective-floor",
+      "ok": true,
+      "kind": "info:version-below-current",
+      "message": "receipt is lattice-receipt/v1.1, older than lattice-receipt/v1.4, and the effective floor lattice-receipt/v1.1 accepted it; pass minVersion to require a newer schema"
+    },
+    {
+      "check": "version-below-current-kept-at-baseline-minVersion",
+      "ok": true,
+      "kind": "info:version-below-current",
+      "message": "receipt is lattice-receipt/v1.1, older than lattice-receipt/v1.4, and the effective floor lattice-receipt/v1.1 accepted it; raise minVersion above lattice-receipt/v1.1 to require a newer schema"
+    },
+    {
+      "check": "truncate-without-expectedCount",
+      "ok": true,
+      "kind": "accepted",
+      "message": "warn:tail-truncation-unchecked || info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "truncate-with-expectedCount",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chain has 3 receipts; expected 4"
+    },
+    {
+      "check": "expectedCount-silences-tail-advisory",
+      "ok": true,
+      "kind": "accepted",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "requireClosure-rejects-unclosed-chain",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "requireClosure is set but no receipt declares chainClosure, so dropped leaves cannot be detected"
+    },
+    {
+      "check": "closed-chain-accepts",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "closed-chain-no-tail-advisory",
+      "ok": true,
+      "kind": "",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "closed-chain-dropped-leaf",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainMemberCids lists 2 members but the chain has 1 besides the closer; a member was dropped"
+    },
+    {
+      "check": "closed-chain-dropped-closer",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainClosure requires exactly one receipt with chainMemberCids, found 0"
+    },
+    {
+      "check": "requireClosure-accepts-closed-chain",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "partial-subset-accepts-with-closure-partial-warn",
+      "ok": true,
+      "kind": "warn:closure-partial",
+      "message": "partial verification: 1 member(s) listed by the closing receipt were not presented and were not checked"
+    },
+    {
+      "check": "partial-full-set-no-closure-partial",
+      "ok": true,
+      "kind": "accepted",
+      "message": "info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "subset-without-partial-rejected",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainMemberCids lists 3 members but the chain has 2 besides the closer; a member was dropped"
+    },
+    {
+      "check": "partial-requires-closer",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainClosure requires exactly one receipt with chainMemberCids, found 0"
+    },
+    {
+      "check": "partial-rejects-unlisted-member",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "receipt sha256:3ecc7e45379874be06c12a3869122be780d597a489448b6da95f05779510576a is not listed in the closing receipt's chainMemberCids; a member was added"
+    },
+    {
+      "check": "createReceipt-rejects-malformed-member-cid",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainMemberCids[0] must be a sha256:<64 lowercase hex> receipt CID, got \"not-a-cid\""
+    },
+    {
+      "check": "createReceipt-rejects-non-array-member-list",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainMemberCids must be an array of sha256:<hex> receipt CIDs"
+    },
+    {
+      "check": "createReceipt-rejects-duplicate-member-cid",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainMemberCids lists sha256:1111111111111111111111111111111111111111111111111111111111111111 more than once"
+    },
+    {
+      "check": "createReceipt-rejects-unsorted-member-list",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainMemberCids must be sorted"
+    },
+    {
+      "check": "createReceipt-rejects-unknown-closure-mode",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainClosure must be \"member-cids\", got \"all\""
+    },
+    {
+      "check": "createReceipt-rejects-closure-on-non-root",
+      "ok": true,
+      "kind": "TypeError",
+      "message": "createReceipt: chainClosure is only valid on a root receipt; omit parentReceiptCid or chainClosure"
+    },
+    {
+      "check": "malformed-chainClosure-mode-verifyReceipt",
+      "ok": true,
+      "kind": "version-mismatch",
+      "message": "receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainClosure must be \"member-cids\""
+    },
+    {
+      "check": "malformed-chainMemberCids-string-verifyReceipt",
+      "ok": true,
+      "kind": "version-mismatch",
+      "message": "receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainMemberCids must be an array of CID strings"
+    },
+    {
+      "check": "malformed-chainMemberCids-non-string-verifyReceipt",
+      "ok": true,
+      "kind": "version-mismatch",
+      "message": "receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainMemberCids must be an array of CID strings"
+    },
+    {
+      "check": "malformed-root-closure-verifyChain-link-invalid",
+      "ok": true,
+      "kind": "link-invalid(version-mismatch)",
+      "message": "receipt[0] failed verification: version-mismatch: receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainClosure must be \"member-cids\""
+    },
+    {
+      "check": "malformed-closer-verifyChain-link-invalid",
+      "ok": true,
+      "kind": "link-invalid(version-mismatch)",
+      "message": "receipt[2] failed verification: version-mismatch: receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainMemberCids must be an array of CID strings"
+    },
+    {
+      "check": "malformed-closer-partial-link-invalid",
+      "ok": true,
+      "kind": "link-invalid(version-mismatch)",
+      "message": "receipt[2] failed verification: version-mismatch: receipt body is not a lattice-receipt/v1.1, lattice-receipt/v1.2, lattice-receipt/v1.3, lattice-receipt/v1.4 shape: chainMemberCids must be an array of CID strings"
+    },
+    {
+      "check": "duplicate-member-cid-verifyChain",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainMemberCids lists a CID more than once"
+    },
+    {
+      "check": "non-root-closure-receipt-verifies-alone",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "non-root-closure-verifyChain-rejected",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "receipt sha256:aff29a9dd4cd91a0ba2375b153c918924cada56387f252b62feaae6040529b98 declares chainClosure but is not the root; only the root receipt may declare closure"
+    },
+    {
+      "check": "non-root-closure-partial-rejected",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "receipt sha256:aff29a9dd4cd91a0ba2375b153c918924cada56387f252b62feaae6040529b98 declares chainClosure but is not the root; only the root receipt may declare closure"
+    },
+    {
+      "check": "root-only-closure-unclosed-root",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "receipt sha256:f2d5f830d59f426ab04cb89721bbcf443ae257f7f14336168676e73ab93fd1fe declares chainClosure but is not the root; only the root receipt may declare closure"
+    },
+    {
+      "check": "crew-receipts-n-plus-2",
+      "ok": true,
+      "kind": "5 receipts for 3 agents",
+      "message": "crew-start:lead, crew-agent-completion:alpha, crew-agent-completion:beta, crew-agent-completion:lead, crew-close:lead"
+    },
+    {
+      "check": "crew-start-declares-closure-closer-lists-members",
+      "ok": true,
+      "kind": "closer lists 4",
+      "message": ""
+    },
+    {
+      "check": "crew-chain-verifies-requireClosure",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    },
+    {
+      "check": "crew-closer-verdict-success",
+      "ok": true,
+      "kind": "success",
+      "message": ""
+    },
+    {
+      "check": "crew-dropped-leaf-count-mismatch",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainMemberCids lists 4 members but the chain has 3 besides the closer; a member was dropped"
+    },
+    {
+      "check": "crew-dropped-closer-count-mismatch",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "chainClosure requires exactly one receipt with chainMemberCids, found 0"
+    },
+    {
+      "check": "crew-partial-disclosure-warns",
+      "ok": true,
+      "kind": "warn:closure-partial",
+      "message": "warn:closure-partial || info:audience-absent || info:nonce-absent || info:expiry-absent"
+    },
+    {
+      "check": "crew-budget-exceeded-closer-execution-failed",
+      "ok": true,
+      "kind": "crew-budget-exceeded / execution-failed",
+      "message": ""
+    },
+    {
+      "check": "crew-child-mint-failure-default-receiptError",
+      "ok": true,
+      "kind": "signer-failed",
+      "message": "crew-agent-completion:alpha receipt was not minted: remote signer 503 on crew-agent-completion:alpha; crew-close lists only the receipts that were minted, so the chain still verifies without this agen"
+    },
+    {
+      "check": "crew-child-mint-failure-flag-receiptError",
+      "ok": true,
+      "kind": "signer-failed",
+      "message": "crew-agent-completion:alpha receipt was not minted: remote signer 503 on crew-agent-completion:alpha; crew-close lists only the receipts that were minted, so the chain still verifies without this agen"
+    },
+    {
+      "check": "crew-child-mint-failure-throw-ReceiptSigningError",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": "Receipt signing failed for run runAgentCrew-1793038371795-a24ba2e32dec28: crew-agent-completion:alpha receipt was not minted: remote signer 503 on crew-agent-completion:alpha; crew-close lists only th"
+    },
+    {
+      "check": "crew-child-mint-throw-stops-crew",
+      "ok": true,
+      "kind": "2 provider calls",
+      "message": ""
+    },
+    {
+      "check": "crew-closer-mint-failure-flagged-chain-unverifiable",
+      "ok": true,
+      "kind": "count-mismatch",
+      "message": "crew-close:lead receipt was not minted: remote signer 503 on crew-close:lead; the crew-start receipt declares chainClosure, so verifyChain rejects these receipts without it"
+    },
+    {
+      "check": "crew-start-failure-default-ReceiptSigningError",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-c034033a70321: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+    },
+    {
+      "check": "crew-start-failure-flag-ReceiptSigningError",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-70e3b1f700a22: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+    },
+    {
+      "check": "crew-start-failure-throw-ReceiptSigningError",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": "Receipt signing failed for run runAgentCrew-1793038371799-a91afa339a211: crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran"
+    },
+    {
+      "check": "base-1.6.0-verifier-accepts-new-crew-chain",
+      "ok": true,
+      "kind": "latticeVersion 1.6.0",
+      "message": "count=5"
+    },
+    {
+      "check": "base-1.6.0-verifier-does-not-enforce-closure (documented)",
+      "ok": true,
+      "kind": "accepted",
+      "message": "closure is enforced only by the new verifier"
+    },
+    {
+      "check": "signer-flag-default",
+      "ok": true,
+      "kind": "signer-failed",
+      "message": "signer down"
+    },
+    {
+      "check": "signer-throw",
+      "ok": true,
+      "kind": "ReceiptSigningError",
+      "message": ""
+    },
+    {
+      "check": "no-signer-no-receipt",
+      "ok": true,
+      "kind": "",
+      "message": ""
+    }
+  ]
+}

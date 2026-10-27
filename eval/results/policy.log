@@ -1,0 +1,135 @@
+{
+  requests: 1000,
+  repeatedEvaluations: 20000,
+  identicalDecisionRate: 1,
+  catalogPermutationSameSelectionRate: 1,
+  routed: 938,
+  noRoute: 62,
+  selectedViolatingPolicy: 0,
+  noRouteDespiteFeasibleCandidate: 0
+}
+{"o":{"n":6100,"tp":3314,"fp":0,"fn":786,"tn":2000,"precision":1,"recall":0.8083},"oOrigNeg":{"n":5100,"tp":3314,"fp":0,"fn":786,"tn":1000,"precision":1,"recall":0.8083},"i":{"n":5500,"tp":3300,"fp":0,"fn":200,"tn":2000,"precision":1,"recall":0.9429},"iOrigNeg":{"n":4500,"tp":3300,"fp":0,"fn":200,"tn":1000,"precision":1,"recall":0.9429},"orig":{"n":2400,"tp":1400,"fp":0,"fn":0,"tn":1000,"precision":1,"recall":1},"new":{"n":3100,"tp":1900,"fp":0,"fn":200,"tn":1000,"precision":1,"recall":0.9048},"newNeg":{"n":1000,"fp":0,"tn":1000,"falsePositiveRate":0},"ev":0.9698249849124925}
+┌─────────┬─────────────────────────────────┬────────────┬───────┬─────────┬─────┬─────────────┐
+│ (index) │ label                           │ set        │ isPII │ inScope │ n   │ flaggedRate │
+├─────────┼─────────────────────────────────┼────────────┼───────┼─────────┼─────┼─────────────┤
+│ 0       │ 'email'                         │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 1       │ 'email-obfuscated'              │ 'original' │ true  │ false   │ 100 │ 0           │
+│ 2       │ 'ssn-dashed'                    │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 3       │ 'ssn-nodash'                    │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 4       │ 'ssn-spaced'                    │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 5       │ 'cc-plain'                      │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 6       │ 'cc-spaced'                     │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 7       │ 'cc-dashed'                     │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 8       │ 'cc-amex'                       │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 9       │ 'phone-dashed'                  │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 10      │ 'phone-paren'                   │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 11      │ 'phone-dotted'                  │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 12      │ 'phone-+1'                      │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 13      │ 'phone-plain10'                 │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 14      │ 'name-address'                  │ 'original' │ true  │ false   │ 100 │ 0           │
+│ 15      │ 'iban'                          │ 'original' │ true  │ false   │ 100 │ 0.14        │
+│ 16      │ 'uk-phone'                      │ 'original' │ true  │ false   │ 100 │ 0           │
+│ 17      │ 'ipv4'                          │ 'original' │ true  │ false   │ 100 │ 0           │
+│ 18      │ 'dob'                           │ 'original' │ true  │ false   │ 100 │ 0           │
+│ 19      │ 'neg-date'                      │ 'original' │ false │ null    │ 100 │ 0           │
+│ 20      │ 'neg-version'                   │ 'original' │ false │ null    │ 100 │ 0           │
+│ 21      │ 'neg-order-id-3-2-4'            │ 'original' │ false │ null    │ 100 │ 0           │
+│ 22      │ 'neg-sku-3-3-4'                 │ 'original' │ false │ null    │ 100 │ 0           │
+│ 23      │ 'neg-16digit-random'            │ 'original' │ false │ null    │ 100 │ 0           │
+│ 24      │ 'neg-sha'                       │ 'original' │ false │ null    │ 100 │ 0           │
+│ 25      │ 'neg-amount'                    │ 'original' │ false │ null    │ 100 │ 0           │
+│ 26      │ 'neg-isbn13'                    │ 'original' │ false │ null    │ 100 │ 0           │
+│ 27      │ 'neg-plain-text'                │ 'original' │ false │ null    │ 100 │ 0           │
+│ 28      │ 'neg-decorator'                 │ 'original' │ false │ null    │ 100 │ 0           │
+│ 29      │ 'nested-object-email'           │ 'original' │ true  │ true    │ 100 │ 1           │
+│ 30      │ 'crm-customer-ssn'              │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 31      │ 'crm-customer-ssn-nodash'       │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 32      │ 'crm-account-holder-ssn-spaced' │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 33      │ 'crm-patient-id-ssn'            │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 34      │ 'crm-customer-phone'            │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 35      │ 'crm-customer-phone-plain10'    │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 36      │ 'crm-call-customer'             │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 37      │ 'crm-call-customer-plain10'     │ 'new'      │ true  │ true    │ 100 │ 0           │
+│ 38      │ 'crm-customer-card'             │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 39      │ 'crm-multiline-ticket'          │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 40      │ 'crm-csv-ssn'                   │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 41      │ 'crm-csv-phone'                 │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 42      │ 'crm-csv-ssn-undashed'          │ 'new'      │ true  │ true    │ 100 │ 0           │
+│ 43      │ 'crm-markdown-row'              │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 44      │ 'crm-markdown-card'             │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 45      │ 'cc-unionpay'                   │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 46      │ 'cc-maestro'                    │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 47      │ 'cc-mir'                        │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 48      │ 'cc-diners-309'                 │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 49      │ 'cc-diners-39'                  │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 50      │ 'cc-rupay'                      │ 'new'      │ true  │ true    │ 100 │ 1           │
+│ 51      │ 'neg-epoch-seconds'             │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 52      │ 'neg-epoch-ms'                  │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 53      │ 'neg-bytes-9digit'              │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 54      │ 'neg-bytes-10digit'             │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 55      │ 'neg-population'                │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 56      │ 'neg-aba-routing'               │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 57      │ 'neg-spaced-triple'             │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 58      │ 'neg-decimal'                   │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 59      │ 'neg-zip4-nodash'               │ 'new'      │ false │ null    │ 100 │ 0           │
+│ 60      │ 'neg-build-id'                  │ 'new'      │ false │ null    │ 100 │ 0           │
+└─────────┴─────────────────────────────────┴────────────┴───────┴─────────┴─────┴─────────────┘
+┌─────────┬──────────────────────────────────────────────┬────────────┬───────────┬──────────────────┬────────┬───────┐
+│ (index) │ label                                        │ set        │ mode      │ labeledSatisfies │ passed │ agree │
+├─────────┼──────────────────────────────────────────────┼────────────┼───────────┼──────────────────┼────────┼───────┤
+│ 0       │ 'string-cite'                                │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 1       │ 'object-cite'                                │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 2       │ 'evidence-key'                               │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 3       │ 'multi-cite'                                 │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 4       │ 'missing'                                    │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 5       │ 'empty'                                      │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 6       │ 'wrong-doc'                                  │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 7       │ 'case-variant'                               │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 8       │ 'case-variant-opt-in'                        │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 9       │ 'nested-citations'                           │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 10      │ 'inline-text-only'                           │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 11      │ 'object-other-key'                           │ 'original' │ 'default' │ false            │ false  │ true  │
+│ 12      │ 'object-id-key'                              │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 13      │ 'hallucinated-cite-string'                   │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 14      │ 'named-without-brackets'                     │ 'original' │ 'default' │ true             │ true   │ true  │
+│ 15      │ 'numeric-marker-with-list'                   │ 'new'      │ 'default' │ true             │ true   │ true  │
+│ 16      │ 'numeric-markers-multi'                      │ 'new'      │ 'default' │ true             │ true   │ true  │
+│ 17      │ 'numeric-marker-without-list'                │ 'new'      │ 'default' │ false            │ false  │ true  │
+│ 18      │ 'markdown-link-with-list'                    │ 'new'      │ 'default' │ true             │ true   │ true  │
+│ 19      │ 'sic-with-list'                              │ 'new'      │ 'default' │ true             │ true   │ true  │
+│ 20      │ 'path-scoped-title-brackets'                 │ 'new'      │ 'default' │ true             │ true   │ true  │
+│ 21      │ 'path-scoped-list-omits'                     │ 'new'      │ 'default' │ false            │ false  │ true  │
+│ 22      │ 'inline-text-only-opt-in'                    │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 23      │ 'inline-paren-locator-opt-in'                │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 24      │ 'inline-near-miss-opt-in'                    │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 25      │ 'inline-link-text-opt-in'                    │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 26      │ 'inline-list-omits-opt-in'                   │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 27      │ 'inline-textPath-other-field-opt-in'         │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 28      │ 'hallucinated-cite-string-opt-in'            │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 29      │ 'rejectUncited-numeric-label-key'            │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 30      │ 'rejectUncited-numeric-position'             │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 31      │ 'rejectUncited-numeric-other-entry'          │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 32      │ 'rejectUncited-numeric-out-of-range'         │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+│ 33      │ 'rejectUncited-ignores-link-and-sic'         │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 34      │ 'rejectUncited-textPath-scopes-scan'         │ 'new'      │ 'opt-in'  │ true             │ true   │ true  │
+│ 35      │ 'rejectUncited-without-textPath-reads-title' │ 'new'      │ 'opt-in'  │ false            │ false  │ true  │
+└─────────┴──────────────────────────────────────────────┴────────────┴───────────┴──────────────────┴────────┴───────┘
+{"byMode":{"default":{"cases":22,"agree":22},"optIn":{"cases":14,"agree":14}},"original":{"cases":15,"agree":15},"originalCommittedLabels":{"cases":15,"agree":13,"relabeled":["inline-text-only","hallucinated-cite-string"]},"new":{"cases":21,"agree":21}}
+┌─────────┬─────────────────────┬───────────────┬─────────────────────┬──────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ (index) │ adapter             │ noPiiContract │ verdict             │ leakedFields │ redactionsManifest                                                                                                                                      │
+├─────────┼─────────────────────┼───────────────┼─────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 0       │ 'openai'            │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 1       │ 'openai'            │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 2       │ 'openai-compatible' │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 3       │ 'openai-compatible' │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 4       │ 'anthropic'         │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 5       │ 'anthropic'         │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 6       │ 'gemini'            │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 7       │ 'gemini'            │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 8       │ 'xai'               │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 9       │ 'xai'               │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 10      │ 'openrouter'        │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 11      │ 'openrouter'        │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+│ 12      │ 'lm-studio'         │ false         │ 'success'           │ 'none'       │ '[]'                                                                                                                                                    │
+│ 13      │ 'lm-studio'         │ true          │ 'tripwire-violated' │ 'none'       │ '[{"path":"tripwireEvidence.message","reason":"tripwire-message-templated"},{"path":"tripwireEvidence.observed","reason":"no-pii-detector-mask-only"}]' │
+└─────────┴─────────────────────┴───────────────┴─────────────────────┴──────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

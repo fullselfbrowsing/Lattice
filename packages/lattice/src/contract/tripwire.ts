@@ -12,8 +12,12 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
 /**
  * Evidence emitted when a tripwire invariant fires.
  *
- * `path` is always the DECLARED path from the invariant (or the located
- * citations key for `must-cite`), never a location derived from the output.
+ * `path` is always developer-owned: the DECLARED path from the invariant, or
+ * for a `must-cite` without one, the `citations` or `evidence` key name the
+ * default search covers. It is never a location derived from the output,
+ * because such a location can contain model-produced object keys and `path`
+ * is signed as is. A nested must-cite list's concrete location appears only
+ * in `message`.
  *
  * `observed` is the runtime (unsigned) view of what the kernel saw. It is
  * narrowed, not sanitized:
@@ -25,14 +29,15 @@ import { defaultPiiDetectors, type PiiDetector } from "./pii-detectors.js";
  *   - for `matches`: the value at `path`
  *
  * `message` may embed the same runtime content (the concrete location, a
- * schema library's issue text) because it exists to make the runtime error
- * actionable.
+ * competing citation marker, a schema library's issue text) because it
+ * exists to make the runtime error actionable.
  *
  * This evidence reaches callers through `result.error.evidence` so they can
  * debug the violation. Before any of it is SIGNED into a receipt,
- * receipts/redact.ts rewrites `observed` (and the `matches` message) to a
- * non-reversible shape. Do not add fields here that must survive signing
- * without also teaching redact.ts about them.
+ * receipts/redact.ts rewrites `observed` to a non-reversible shape and
+ * rebuilds `message` from the kind, `path`, and the detector name; `path` and
+ * `invariantId` are signed unchanged. Do not add fields here that must
+ * survive signing without also teaching redact.ts about them.
  */
 export interface TripwireEvidence {
   readonly invariantId: string;
@@ -99,40 +104,118 @@ async function evaluateOne(
 
 const DEFAULT_MUST_CITE_KEYS: readonly string[] = ["source"];
 
+/** Keys that hold citation lists. No must-cite walk descends below them. */
+const CITATION_KEYS = ["citations", "evidence"] as const;
+const CITATION_CONTAINER_KEYS: ReadonlySet<string> = new Set(CITATION_KEYS);
+
+/** Entry keys a numbered marker such as `[1]` is resolved against. */
+const CITATION_LABEL_KEYS = ["label", "marker", "id"] as const;
+
 /**
- * `must-cite` checks that a citation naming `artifactName` is PRESENT in the
- * located citations array. It does not verify that the cited artifact
- * supports the claim; that is a semantic judgment outside the kernel.
+ * Bound on how deep the must-cite walks (the nested-list lookup and the prose
+ * scan behind `inline` and `rejectUncited`) descend, the same bound the no-pii
+ * walk uses. Containers at this depth are not read. For `rejectUncited`,
+ * reaching the bound anywhere means a citing marker could be hidden below it,
+ * so the verdict is unknown and the entry is not rejected.
+ */
+const MAX_MUST_CITE_WALK_DEPTH = 32;
+
+interface CitationList {
+  readonly value: readonly unknown[];
+  /**
+   * The developer-owned name evidence reports for the list: `decl.path`, or
+   * the `citations`/`evidence` key the default search covers.
+   */
+  readonly path: string;
+  /**
+   * Where a nested list sits, such as `answers[0].citations`. It is built
+   * from the output's own keys, so it only ever goes into the runtime
+   * message, which receipts/redact.ts rebuilds before signing.
+   */
+  readonly location?: string;
+}
+
+/**
+ * `must-cite` checks that a citation naming `artifactName` is present. It
+ * does not verify that the cited artifact supports the claim; that is a
+ * semantic judgment outside the kernel.
  *
- * Defaults reproduce the original behavior exactly: search top-level
- * `citations` then `evidence`, compare string entries directly and object
- * entries by their `source` key, case-sensitively. `decl.path`, `decl.keys`,
- * and `decl.caseInsensitive` (issue #21 F9) relax each of those in turn.
+ * The default is a structured match: search top-level `citations` then
+ * `evidence`, compare string entries directly and object entries by their
+ * `source` key, case-sensitively. `decl.path`, `decl.keys`, and
+ * `decl.caseInsensitive` (issue #21 F9) relax each of those in turn. Without
+ * `decl.path`, when the first top-level list is missing or does not name the
+ * artifact, the other top-level list and every `citations` or `evidence`
+ * array nested below the top level are searched as well (see
+ * locateMustCiteLists). The default never reads the output's prose.
+ *
+ * Evidence `path` is `decl.path` or the key name of the reported list, never
+ * the dotted location of a nested list: that location is built from the
+ * output's keys and would be signed as is. The location goes into the
+ * runtime message instead.
+ *
+ * Two opt-in flags read the prose, meaning every string in the output (or in
+ * the `decl.textPath` subtree when set) except those below
+ * `citations`/`evidence` keys and the `decl.path` subtree:
+ *   - `decl.inline` also accepts a `[...]` or `(...)` group whose content
+ *     equals the name (see markerNamesArtifact), but only when no located
+ *     list has entries. A list that exists and omits the artifact still
+ *     fails.
+ *   - `decl.rejectUncited` fails a list entry that names the artifact when
+ *     the prose carries citation markers and none of them cites the artifact
+ *     (see createMarkerResolver for what counts as a marker). The message
+ *     names the first competing marker and where it was found.
+ *
+ * `caseInsensitive` applies the same `toLowerCase()` fold to list entries and
+ * prose. Prose matching compares a bracket's whole content, or whole
+ * `;`/`,`-separated parts of it, never substrings, so no word-boundary rule
+ * is involved.
  */
 function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireResult {
-  const located =
-    decl.path !== undefined
-      ? locateCitationsAtPath(output, decl.path)
-      : locateCitations(output);
-  const cites = located?.value ?? [];
-  const path = located?.path ?? decl.path ?? "citations";
+  const fold = caseFold(decl.caseInsensitive === true);
+  const target = fold(decl.artifactName);
   const keys = decl.keys ?? DEFAULT_MUST_CITE_KEYS;
   const equals = (candidate: unknown): boolean =>
-    typeof candidate === "string" &&
-    (decl.caseInsensitive === true
-      ? candidate.toLowerCase() === decl.artifactName.toLowerCase()
-      : candidate === decl.artifactName);
-
-  const matched = cites.some((entry) => {
+    typeof candidate === "string" && fold(candidate) === target;
+  const namesArtifact = (entry: unknown): boolean => {
     if (typeof entry === "string") return equals(entry);
     if (typeof entry === "object" && entry !== null) {
       const record = entry as Record<string, unknown>;
       return keys.some((key) => key in record && equals(record[key]));
     }
     return false;
-  });
+  };
 
-  if (matched) return { ok: true };
+  const lists = locateMustCiteLists(output, decl, namesArtifact);
+  const matched = lists.find((list) => list.value.some(namesArtifact));
+  const reported = matched ?? lists[0];
+  const cites = reported?.value ?? [];
+  const path = reported?.path ?? decl.path ?? "citations";
+
+  let message = `must-cite: no citation found for "${decl.artifactName}".`;
+  if (matched !== undefined) {
+    if (decl.rejectUncited !== true) return { ok: true };
+    const competing = findCompetingMarker(
+      output,
+      decl,
+      createMarkerResolver({ list: matched.value, keys, fold, target, namesArtifact }),
+    );
+    if (competing === undefined) return { ok: true };
+    const where = competing.foundAt === "" ? "in the output" : `at "${competing.foundAt}"`;
+    message =
+      `must-cite: citation "${decl.artifactName}" is not cited in the text; ` +
+      `${competing.marker} ${where} cites another source.`;
+  } else if (
+    decl.inline === true &&
+    lists.every((list) => list.value.length === 0) &&
+    proseHasInlineCitation(output, decl, fold, target)
+  ) {
+    return { ok: true };
+  } else if (reported?.location !== undefined) {
+    message =
+      `must-cite: no citation found for "${decl.artifactName}"; ` +
+      `observed is the list at "${reported.location}".`;
+  }
 
   return {
     ok: false,
@@ -141,29 +224,123 @@ function evaluateMustCite(output: unknown, decl: MustCiteInvariant): TripwireRes
       kind: "must-cite",
       path,
       observed: cites,
-      message: `must-cite: no citation found for "${decl.artifactName}".`,
+      message,
     },
   };
 }
 
+function caseFold(caseInsensitive: boolean): (value: string) => string {
+  return caseInsensitive ? (value) => value.toLowerCase() : (value) => value;
+}
+
 /**
- * Locate the citations payload in `output`. Searches top-level for a
- * `citations` or `evidence` key holding an array. Per 08-CONTEXT.md:
+ * The citation lists to search, in reporting order: only the `decl.path`
+ * array when a path is declared; otherwise the first top-level list, which
+ * alone decides when it names the artifact (the original structured match),
+ * else every top-level list followed by the nested lists.
+ */
+function locateMustCiteLists(
+  output: unknown,
+  decl: MustCiteInvariant,
+  namesArtifact: (entry: unknown) => boolean,
+): readonly CitationList[] {
+  if (decl.path !== undefined) {
+    const declared = locateCitationsAtPath(output, decl.path);
+    return declared === undefined ? [] : [declared];
+  }
+  const top = locateTopLevelCitations(output);
+  const first = top[0];
+  if (first !== undefined && first.value.some(namesArtifact)) return [first];
+  return [...top, ...locateNestedCitations(output, top)];
+}
+
+/**
+ * The top-level `citations` and `evidence` arrays, in that order. The first
+ * is the citations payload the original match reads. Per 08-CONTEXT.md:
  * "Path defaults to evidence if the output has a citations field; the
  * runtime locates the citations payload in the output."
- *
- * Returns `undefined` when neither field is an array.
  */
-function locateCitations(
-  output: unknown,
-): { readonly value: readonly unknown[]; readonly path: string } | undefined {
-  if (typeof output !== "object" || output === null) return undefined;
+function locateTopLevelCitations(output: unknown): readonly CitationList[] {
+  if (typeof output !== "object" || output === null) return [];
   const record = output as Record<string, unknown>;
-  for (const key of ["citations", "evidence"] as const) {
+  const lists: CitationList[] = [];
+  for (const key of CITATION_KEYS) {
     const value = record[key];
-    if (Array.isArray(value)) return { value, path: key };
+    if (Array.isArray(value)) lists.push({ value, path: key });
   }
-  return undefined;
+  return lists;
+}
+
+interface NestedListWalk {
+  readonly found: CitationList[];
+  readonly lists: Set<unknown>;
+  readonly visited: Map<object, number>;
+}
+
+/**
+ * Every `citations` or `evidence` array below the top level, for outputs that
+ * wrap the list (`{ answer: { text, citations } }`) or hold several answers
+ * (`{ sections: [{ text, citations }] }`). The walk uses the no-pii scan's
+ * order and guards: plain-object keys in sorted order, arrays in index order,
+ * non-plain objects skipped, a depth-keyed visited map so cycles and shared
+ * references cannot multiply the work, and MAX_MUST_CITE_WALK_DEPTH. It does
+ * not descend into a `citations` or `evidence` value, and skips an array
+ * already listed in `known`. Each list's `path` is its key name; its dotted
+ * location is kept apart in `location` for the runtime message.
+ */
+function locateNestedCitations(
+  output: unknown,
+  known: readonly CitationList[],
+): readonly CitationList[] {
+  const walk: NestedListWalk = {
+    found: [],
+    lists: new Set<unknown>(known.map((list) => list.value)),
+    visited: new Map<object, number>(),
+  };
+  collectNestedCitations(output, walk, [], 0);
+  return walk.found;
+}
+
+function collectNestedCitations(
+  value: unknown,
+  walk: NestedListWalk,
+  frames: PathFrame[],
+  depth: number,
+): void {
+  if (typeof value !== "object" || value === null) return;
+  if (depth >= MAX_MUST_CITE_WALK_DEPTH) return;
+  const seenAt = walk.visited.get(value);
+  if (seenAt !== undefined && seenAt <= depth) return;
+  walk.visited.set(value, depth);
+
+  if (Array.isArray(value)) {
+    for (const [index, entry] of value.entries()) {
+      frames.push({ kind: "index", index });
+      collectNestedCitations(entry, walk, frames, depth + 1);
+      frames.pop();
+    }
+    return;
+  }
+  if (!isPlainObject(value)) return;
+  const record = value as Record<string, unknown>;
+  if (depth > 0) {
+    for (const key of CITATION_KEYS) {
+      const list = record[key];
+      if (!Array.isArray(list) || walk.lists.has(list)) continue;
+      walk.lists.add(list);
+      walk.found.push({
+        value: list,
+        path: key,
+        location: formatViolationPath("", [...frames, { kind: "key", key }]),
+      });
+    }
+  }
+  for (const key of Object.keys(record).sort()) {
+    if (CITATION_CONTAINER_KEYS.has(key)) continue;
+    frames.push({ kind: "key", key });
+    collectNestedCitations(record[key], walk, frames, depth + 1);
+    frames.pop();
+  }
 }
 
 /**
@@ -172,12 +349,430 @@ function locateCitations(
  * is an array of per-element resolutions and is NOT flattened, so point the
  * path at the array that holds the citation entries.
  */
-function locateCitationsAtPath(
-  output: unknown,
-  path: string,
-): { readonly value: readonly unknown[]; readonly path: string } | undefined {
+function locateCitationsAtPath(output: unknown, path: string): CitationList | undefined {
   const value = resolvePath(output, path);
   return Array.isArray(value) ? { value, path } : undefined;
+}
+
+interface ProseExclusions {
+  readonly root: boolean;
+  readonly containers: ReadonlySet<object>;
+  readonly properties: ReadonlyMap<object, ReadonlySet<string>>;
+}
+
+interface ProseWalk {
+  readonly excluded: ProseExclusions;
+  readonly visited: Map<object, number>;
+  /** Called for each prose string; returning true stops the walk. */
+  readonly visit: (text: string, frames: readonly PathFrame[]) => boolean;
+  truncated: boolean;
+}
+
+/**
+ * Walk the output's prose for `inline` and `rejectUncited`: every string at
+ * or below `decl.textPath` (the whole output when unset) except those below
+ * `citations`/`evidence` keys and the `decl.path` subtree. A `textPath` that
+ * resolves to nothing leaves nothing to read. Order and guards match
+ * locateNestedCitations, with depth counted from the scanned root. `visit`
+ * receives the frames below the root (see proseLocation). `stopped` is true
+ * when `visit` ended the walk; `truncated` is true when a container sat at
+ * MAX_MUST_CITE_WALK_DEPTH and was not read.
+ */
+function scanProse(
+  output: unknown,
+  decl: MustCiteInvariant,
+  visit: (text: string, frames: readonly PathFrame[]) => boolean,
+): { readonly stopped: boolean; readonly truncated: boolean } {
+  const walk: ProseWalk = {
+    excluded: declaredSubtree(output, decl),
+    visited: new Map<object, number>(),
+    visit,
+    truncated: false,
+  };
+  const root = resolvePath(output, decl.textPath ?? "", {
+    skip: (value, location) =>
+      walk.excluded.root ||
+      (typeof value === "object" && value !== null && walk.excluded.containers.has(value)) ||
+      (location !== undefined &&
+        walk.excluded.properties.get(location.parent)?.has(location.key) === true),
+  });
+  const stopped = walkProse(root, walk, [], 0);
+  return { stopped, truncated: walk.truncated };
+}
+
+/** The concrete location of a prose string, from the frames scanProse passes. */
+function proseLocation(decl: MustCiteInvariant, frames: readonly PathFrame[]): string {
+  return formatViolationPath(decl.textPath ?? "", frames);
+}
+
+/**
+ * Exclude the original locations selected by the citation path, including
+ * primitive fields projected into fresh wildcard arrays. Container identities
+ * also remain excluded through aliases, including object entries of a selected
+ * array. String equality is never used: equal text elsewhere is still prose.
+ */
+function declaredSubtree(output: unknown, decl: MustCiteInvariant): ProseExclusions {
+  const containers = new Set<object>();
+  const properties = new Map<object, Set<string>>();
+  const excluded = { root: false, containers, properties };
+  if (decl.path === undefined) return excluded;
+  resolvePath(output, decl.path, {
+    visit: (value, location) => {
+      if (location === undefined) {
+        excluded.root = true;
+      } else {
+        let keys = properties.get(location.parent);
+        if (keys === undefined) {
+          keys = new Set<string>();
+          properties.set(location.parent, keys);
+        }
+        keys.add(location.key);
+      }
+      if (typeof value !== "object" || value === null) return;
+      containers.add(value);
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (typeof entry === "object" && entry !== null) containers.add(entry);
+        }
+      }
+    },
+  });
+  return excluded;
+}
+
+function walkProse(value: unknown, walk: ProseWalk, frames: PathFrame[], depth: number): boolean {
+  if (typeof value === "string") return walk.visit(value, frames);
+  if (typeof value !== "object" || value === null || walk.excluded.containers.has(value)) return false;
+  if (depth >= MAX_MUST_CITE_WALK_DEPTH) {
+    walk.truncated = true;
+    return false;
+  }
+  const seenAt = walk.visited.get(value);
+  if (seenAt !== undefined && seenAt <= depth) return false;
+  walk.visited.set(value, depth);
+
+  if (Array.isArray(value)) {
+    for (const [index, entry] of value.entries()) {
+      if (walk.excluded.properties.get(value)?.has(String(index)) === true) continue;
+      frames.push({ kind: "index", index });
+      const stopped = walkProse(entry, walk, frames, depth + 1);
+      frames.pop();
+      if (stopped) return true;
+    }
+    return false;
+  }
+  if (!isPlainObject(value)) return false;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record).sort()) {
+    if (CITATION_CONTAINER_KEYS.has(key) || walk.excluded.properties.get(value)?.has(key) === true) {
+      continue;
+    }
+    frames.push({ kind: "key", key });
+    const stopped = walkProse(record[key], walk, frames, depth + 1);
+    frames.pop();
+    if (stopped) return true;
+  }
+  return false;
+}
+
+interface MarkerGroup {
+  /** The group as written, brackets included. */
+  readonly raw: string;
+  readonly content: string;
+}
+
+/**
+ * Square-bracket groups of 1 to 120 characters on one line. An escaped
+ * `\[...]` is skipped, and so is link text: `[text](url)` is a link.
+ */
+const SQUARE_GROUP = /(?<!\\)\[([^\[\]\n]{1,120})\](?!\()/g;
+const PAREN_GROUP = /\(([^()\n]{1,120})\)/g;
+const FENCE_LINE = /^ {0,3}(?:```|~~~)/;
+const CODE_SPAN = /`[^`\n]{1,500}`/g;
+
+/**
+ * Bracket groups in `text` that may be citation markers. Fenced code blocks
+ * and inline code spans are dropped first, so `arr[0]` in code is never a
+ * marker. Parenthesized groups are included only when `parentheses` is set.
+ */
+function markerGroups(text: string, parentheses: boolean): readonly MarkerGroup[] {
+  const prose = withoutCode(text);
+  const groups: MarkerGroup[] = [];
+  for (const match of prose.matchAll(SQUARE_GROUP)) {
+    groups.push({ raw: match[0], content: match[1] ?? "" });
+  }
+  if (parentheses) {
+    for (const match of prose.matchAll(PAREN_GROUP)) {
+      groups.push({ raw: match[0], content: match[1] ?? "" });
+    }
+  }
+  return groups;
+}
+
+function withoutCode(text: string): string {
+  if (!text.includes("`") && !text.includes("~~~")) return text;
+  let fenced = false;
+  const kept: string[] = [];
+  for (const line of text.split("\n")) {
+    if (FENCE_LINE.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (!fenced) kept.push(line);
+  }
+  return kept.join("\n").replace(CODE_SPAN, " ");
+}
+
+/** A trailing `p. 4`, `pp. 4-5`, or `§3.2` locator, or a part that is only one. */
+const LOCATOR = /(?:^|,\s*|\s+)(?:pp?\.\s*\d+(?:\s*[-–—]\s*\d+)?|§\s*\d+(?:\.\d+)*)$/u;
+
+interface MarkerPart {
+  /** The part, trimmed. */
+  readonly text: string;
+  /** The part, trimmed and without a trailing locator. */
+  readonly bare: string;
+}
+
+function toMarkerPart(part: string): MarkerPart {
+  const text = part.trim();
+  return { text, bare: text.replace(LOCATOR, "").trim() };
+}
+
+/**
+ * The readings of a group's content, in order: the whole content, its
+ * `;`-separated parts, then its `;`- and `,`-separated parts. Each part is
+ * kept both trimmed and without a trailing locator, so a name that itself
+ * ends in a locator shape (`42 U.S.C. § 1983`, `Handbook p. 12`) can still
+ * match. A part that is only a locator is dropped.
+ */
+function markerReadings(content: string): readonly (readonly MarkerPart[])[] {
+  return [[content], content.split(";"), content.split(/[;,]/)].map((parts) =>
+    parts.map(toMarkerPart).filter((part) => part.bare !== ""),
+  );
+}
+
+function partIs(part: MarkerPart, fold: (value: string) => string, target: string): boolean {
+  return fold(part.text) === target || fold(part.bare) === target;
+}
+
+function proseHasInlineCitation(
+  output: unknown,
+  decl: MustCiteInvariant,
+  fold: (value: string) => string,
+  target: string,
+): boolean {
+  return scanProse(output, decl, (text) =>
+    markerGroups(text, true).some((group) => markerNamesArtifact(group.content, fold, target)),
+  ).stopped;
+}
+
+/**
+ * Inline match for `inline`: the group's whole content, or one of its
+ * `;`/`,`-separated parts, equals the name once trimmed, with or without a
+ * trailing locator, so `[doc-a]`, `(doc-a, p. 4)`, and `[doc-a; doc-b]` cite
+ * `doc-a`, and `[42 U.S.C. § 1983]` cites `42 U.S.C. § 1983`. It is equality,
+ * not containment: `[doc-a.v2]`, `[doc-a-draft]`, and `(not doc-a)` do not,
+ * and a name never matches across a group's own delimiter (`[doc]a]` is the
+ * group `[doc]`). The check is syntactic, so a sentence that disowns
+ * `(doc-a)` still counts.
+ */
+function markerNamesArtifact(
+  content: string,
+  fold: (value: string) => string,
+  target: string,
+): boolean {
+  return markerReadings(content).some((parts) => parts.some((part) => partIs(part, fold, target)));
+}
+
+interface MarkerContext {
+  /** The located list that names the artifact. */
+  readonly list: readonly unknown[];
+  readonly keys: readonly string[];
+  readonly fold: (value: string) => string;
+  readonly target: string;
+  readonly namesArtifact: (entry: unknown) => boolean;
+}
+
+/** What a square-bracket group's content cites; see createMarkerResolver. */
+type MarkerResolver = (content: string) => boolean | undefined;
+
+interface CompetingMarker {
+  readonly marker: string;
+  readonly foundAt: string;
+}
+
+/**
+ * For `rejectUncited`: the first marker, in walk order, that cites something
+ * other than the artifact, provided no marker cites the artifact and the walk
+ * read the whole output. Only square brackets are markers here: an aside or
+ * an area code in parentheses would otherwise look like a competing citation.
+ */
+function findCompetingMarker(
+  output: unknown,
+  decl: MustCiteInvariant,
+  resolve: MarkerResolver,
+): CompetingMarker | undefined {
+  let competing: CompetingMarker | undefined;
+  const scan = scanProse(output, decl, (text, frames) => {
+    for (const group of markerGroups(text, false)) {
+      const cited = resolve(group.content);
+      if (cited === true) return true;
+      if (cited === false && competing === undefined) {
+        competing = { marker: group.raw, foundAt: proseLocation(decl, frames) };
+      }
+    }
+    return false;
+  });
+  return scan.stopped || scan.truncated ? undefined : competing;
+}
+
+const MAX_CITATION_NUMBER = 999;
+const CITATION_NUMBER = /^([1-9]\d{0,2})(?:\s*[-–—]\s*([1-9]\d{0,2}))?$/;
+const AUTHOR_YEAR =
+  /^(\p{Lu}[\p{L}\p{M}'’.-]*)(?:\s+(?:et\s+al\.?|(?:and|&)\s+\p{Lu}[\p{L}\p{M}'’.-]*))?,?\s+(?:1[5-9]|20)\d{2}[a-z]?$/u;
+
+/**
+ * Capitalized words that put a year in a date or an annotation rather than
+ * name an author: `[March 2024]`, `[Updated 2024]`, `[Est. 1999]`,
+ * `[Copyright 2025]`. Compared lowercased, without trailing dots. `May` is
+ * here too, so `[May 2019]` reads as a date, not as the author May.
+ */
+const NOT_AN_AUTHOR: ReadonlySet<string> = new Set([
+  "january", "february", "march", "april", "may", "june", "july", "august",
+  "september", "october", "november", "december",
+  "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+  "spring", "summer", "fall", "autumn", "winter",
+  "fiscal", "fy", "cy", "ad", "bc", "ce", "bce",
+  "early", "late", "mid", "end", "since", "circa", "ca", "in", "from", "until", "by",
+  "before", "after", "as", "of",
+  "updated", "revised", "rev", "est", "estd", "established", "founded", "copyright",
+  "archived", "accessed", "retrieved", "published", "posted", "edited", "modified",
+  "released", "version", "ver", "edition", "ed", "effective", "dated", "date", "year",
+]);
+
+/**
+ * Only the leading name is checked: a date or an annotation is one word and
+ * a year, while `[Smith and March 2024]` names two authors.
+ */
+function isAuthorYear(part: string): boolean {
+  const lead = AUTHOR_YEAR.exec(part)?.[1];
+  return lead !== undefined && !NOT_AN_AUTHOR.has(lead.toLowerCase().replace(/\.+$/u, ""));
+}
+
+/**
+ * Build the `rejectUncited` resolver for one list. It answers what a
+ * square-bracket group cites: `true` for the artifact, `false` for something
+ * else, `undefined` when the group is not a citation marker. The first
+ * reading (see markerReadings) in which every part is a citation token
+ * decides. A token is one of:
+ *   - a number or range from 1 to 999 (`[1]`, `[2-4]`, `[1, 3]`). Each number
+ *     resolves to the list entries whose `label`, `marker`, or `id` is that
+ *     number, else to the entry at that 1-based position. A number past the
+ *     end of the list cites something else.
+ *   - the artifact name, or an identifier of a list entry (a string entry, a
+ *     `keys` value, or a `label`/`marker`/`id`), citing that entry.
+ *   - an author-year reference such as `Smith 1999` or `Smith et al., 2001a`
+ *     that matches no entry, citing something else, unless the name is a
+ *     month or a date annotation (see NOT_AN_AUTHOR).
+ * Anything else (`[x]`, `[sic]`, `[INFO]`, `[a, b]`, `[^1]`, `[0]`,
+ * timestamps, years) leaves the group as plain text.
+ *
+ * The lookups are built once, so the cost of a group does not grow with the
+ * list or with a range's width: a running count over 1..999 tells whether any
+ * number in a range cites the artifact, one map answers identifier lookups,
+ * and verdicts are memoized per group content.
+ */
+function createMarkerResolver(context: MarkerContext): MarkerResolver {
+  const { list, keys, fold, target, namesArtifact } = context;
+  const citing = list.map(namesArtifact);
+  // label -> whether some entry carrying it names the artifact
+  const byLabel = new Map<string, boolean>();
+  // folded identifier -> whether some entry carrying it names the artifact
+  const byIdentifier = new Map<string, boolean>();
+  for (const [index, entry] of list.entries()) {
+    const cites = citing[index] === true;
+    for (const label of entryLabels(entry)) {
+      byLabel.set(label, byLabel.get(label) === true || cites);
+    }
+    for (const identifier of entryIdentifiers(entry, keys)) {
+      const folded = fold(identifier);
+      byIdentifier.set(folded, byIdentifier.get(folded) === true || cites);
+    }
+  }
+
+  // citingUpTo[n] counts the numbers 1..n that cite the artifact.
+  let citingUpTo: Int32Array | undefined;
+  const rangeCites = (first: number, last: number): boolean => {
+    if (citingUpTo === undefined) {
+      const counts = new Int32Array(MAX_CITATION_NUMBER + 1);
+      for (let n = 1; n <= MAX_CITATION_NUMBER; n += 1) {
+        const cites = byLabel.get(String(n)) ?? (n <= list.length && citing[n - 1] === true);
+        counts[n] = (counts[n - 1] ?? 0) + (cites ? 1 : 0);
+      }
+      citingUpTo = counts;
+    }
+    return (citingUpTo[last] ?? 0) - (citingUpTo[first - 1] ?? 0) > 0;
+  };
+
+  const resolveToken = (part: MarkerPart): boolean | undefined => {
+    const range = citationRange(part.bare);
+    if (range !== undefined) return rangeCites(range.first, range.last);
+    if (partIs(part, fold, target)) return true;
+    const listed = byIdentifier.get(fold(part.text)) ?? byIdentifier.get(fold(part.bare));
+    if (listed !== undefined) return listed;
+    return isAuthorYear(part.bare) ? false : undefined;
+  };
+
+  const resolveContent = (content: string): boolean | undefined => {
+    for (const parts of markerReadings(content)) {
+      if (parts.length === 0) continue;
+      const cited = parts.map(resolveToken);
+      if (cited.every((value) => value !== undefined)) return cited.includes(true);
+    }
+    return undefined;
+  };
+
+  const verdicts = new Map<string, boolean | undefined>();
+  return (content) => {
+    if (verdicts.has(content)) return verdicts.get(content);
+    const verdict = resolveContent(content);
+    verdicts.set(content, verdict);
+    return verdict;
+  };
+}
+
+function citationRange(part: string): { readonly first: number; readonly last: number } | undefined {
+  const match = CITATION_NUMBER.exec(part);
+  if (match === null) return undefined;
+  const first = Number(match[1]);
+  const last = match[2] === undefined ? first : Number(match[2]);
+  return last < first ? undefined : { first, last };
+}
+
+/** `label`, `marker`, and `id` values as strings, with one `[...]` wrapper removed. */
+function entryLabels(entry: unknown): readonly string[] {
+  if (typeof entry !== "object" || entry === null) return [];
+  const record = entry as Record<string, unknown>;
+  const labels: string[] = [];
+  for (const key of CITATION_LABEL_KEYS) {
+    const value = record[key];
+    if (typeof value === "string" || typeof value === "number") {
+      labels.push(String(value).trim().replace(/^\[([^\]]*)\]$/, "$1").trim());
+    }
+  }
+  return labels;
+}
+
+function entryIdentifiers(entry: unknown, keys: readonly string[]): readonly string[] {
+  if (typeof entry === "string") return [entry];
+  if (typeof entry !== "object" || entry === null) return [];
+  const record = entry as Record<string, unknown>;
+  const identifiers: string[] = [];
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string") identifiers.push(value);
+  }
+  return [...identifiers, ...entryLabels(entry)];
 }
 
 function evaluateFieldFromTable(
@@ -387,10 +982,22 @@ async function evaluateMatches(
  * chains could allocate O(N^k). Accepted for v1.1 — provider responses
  * are bounded by output token caps.
  */
-function resolvePath(value: unknown, path: string): unknown {
-  if (path === "") return value;
+function resolvePath(value: unknown, path: string, traversal?: PathTraversal): unknown {
   const tokens = tokenize(path);
-  return walk(value, tokens, 0);
+  return walk(value, tokens, 0, traversal);
+}
+
+/** A location in the original output, before any wildcard array is created. */
+interface PathLocation {
+  readonly parent: object;
+  readonly key: string;
+}
+
+interface PathTraversal {
+  /** Observe each resolved endpoint at its original location. */
+  readonly visit?: (value: unknown, location: PathLocation | undefined) => void;
+  /** Prune a source location before resolving further or projecting its value. */
+  readonly skip?: (value: unknown, location: PathLocation | undefined) => boolean;
 }
 
 type Token =
@@ -448,22 +1055,37 @@ function tokenize(path: string): readonly Token[] {
   return tokens;
 }
 
-function walk(value: unknown, tokens: readonly Token[], cursor: number): unknown {
-  if (cursor >= tokens.length) return value;
+function walk(
+  value: unknown,
+  tokens: readonly Token[],
+  cursor: number,
+  traversal?: PathTraversal,
+  location?: PathLocation,
+): unknown {
+  if (traversal?.skip?.(value, location) === true) return undefined;
+  if (cursor >= tokens.length) {
+    traversal?.visit?.(value, location);
+    return value;
+  }
   if (value === undefined || value === null) return undefined;
   const token = tokens[cursor]!;
   if (token.type === "key") {
     if (typeof value !== "object") return undefined;
     const next = (value as Record<string, unknown>)[token.name];
-    return walk(next, tokens, cursor + 1);
+    return walk(next, tokens, cursor + 1, traversal, { parent: value, key: token.name });
   }
   if (token.type === "index") {
     if (!Array.isArray(value)) return undefined;
-    return walk(value[token.index], tokens, cursor + 1);
+    return walk(value[token.index], tokens, cursor + 1, traversal, {
+      parent: value,
+      key: String(token.index),
+    });
   }
   // wildcard
   if (!Array.isArray(value)) return undefined;
-  return value.map((entry) => walk(entry, tokens, cursor + 1));
+  return value.map((entry, index) =>
+    walk(entry, tokens, cursor + 1, traversal, { parent: value, key: String(index) }),
+  );
 }
 
 /**

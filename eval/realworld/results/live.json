@@ -1,0 +1,540 @@
+{
+  "env": {
+    "node": "v24.22.1",
+    "platform": "linux 6.12.94+",
+    "arch": "x64",
+    "cpu": "Intel(R) Xeon(R) Processor",
+    "cores": 4,
+    "totalMemGB": 15.63,
+    "freeMemGB": 6.75,
+    "latticeVersion": "1.6.0",
+  "ollama": "ollama version is 0.40.7",
+  "model": "llama3.2:3b",
+  "modelDigest": "sha256:a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+  "modelParameters": "3.2B",
+  "modelQuantization": "Q4_K_M",
+  "modelArchitecture": "llama",
+  "modelSize": "2.0 GB",
+  "gpu": false,
+  "baseUrl": "http://127.0.0.1:11434/v1",
+    "date": "2026-10-21T17:01:01.145Z"
+  },
+  "note": "temperature and max_tokens are injected by a fetch wrapper because createOpenAICompatibleProvider does not send them.",
+  "overhead": [
+    {
+      "i": 0,
+      "plainMs": 4844.711,
+      "plainUsage": {
+        "prompt_tokens": 32,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens": 3,
+        "total_tokens": 35
+      },
+      "unsignedMs": 846.987,
+      "unsignedHttpMs": 831.319,
+      "unsignedOutsidePct": 1.85,
+      "unsignedPromptChars": 382,
+      "signedMs": 605.756,
+      "signedHttpMs": 590.797,
+      "signedOutsidePct": 2.469,
+      "signedPromptChars": 382,
+      "receiptBytes": {
+        "envelope": 996,
+        "body": 592
+      },
+      "unsignedOk": true,
+      "signedOk": true,
+      "signedError": null
+    },
+    {
+      "i": 1,
+      "plainMs": 466.396,
+      "plainUsage": {
+        "prompt_tokens": 32,
+        "prompt_tokens_details": {
+          "cached_tokens": 26
+        },
+        "completion_tokens": 3,
+        "total_tokens": 35
+      },
+      "unsignedMs": 744.527,
+      "unsignedHttpMs": 743.556,
+      "unsignedOutsidePct": 0.13,
+      "unsignedPromptChars": 382,
+      "signedMs": 559.741,
+      "signedHttpMs": 557.569,
+      "signedOutsidePct": 0.388,
+      "signedPromptChars": 382,
+      "receiptBytes": {
+        "envelope": 996,
+        "body": 592
+      },
+      "unsignedOk": true,
+      "signedOk": true,
+      "signedError": null
+    },
+    {
+      "i": 2,
+      "plainMs": 275.568,
+      "plainUsage": {
+        "prompt_tokens": 32,
+        "prompt_tokens_details": {
+          "cached_tokens": 26
+        },
+        "completion_tokens": 3,
+        "total_tokens": 35
+      },
+      "unsignedMs": 700.235,
+      "unsignedHttpMs": 699.213,
+      "unsignedOutsidePct": 0.146,
+      "unsignedPromptChars": 382,
+      "signedMs": 557.514,
+      "signedHttpMs": 555.066,
+      "signedOutsidePct": 0.439,
+      "signedPromptChars": 382,
+      "receiptBytes": {
+        "envelope": 996,
+        "body": 592
+      },
+      "unsignedOk": true,
+      "signedOk": true,
+      "signedError": null
+    },
+    {
+      "i": 3,
+      "plainMs": 276.272,
+      "plainUsage": {
+        "prompt_tokens": 32,
+        "prompt_tokens_details": {
+          "cached_tokens": 26
+        },
+        "completion_tokens": 3,
+        "total_tokens": 35
+      },
+      "unsignedMs": 760.252,
+      "unsignedHttpMs": 759.445,
+      "unsignedOutsidePct": 0.106,
+      "unsignedPromptChars": 382,
+      "signedMs": 558.686,
+      "signedHttpMs": 556.813,
+      "signedOutsidePct": 0.335,
+      "signedPromptChars": 382,
+      "receiptBytes": {
+        "envelope": 996,
+        "body": 592
+      },
+      "unsignedOk": true,
+      "signedOk": true,
+      "signedError": null
+    },
+    {
+      "i": 4,
+      "plainMs": 277.96,
+      "plainUsage": {
+        "prompt_tokens": 32,
+        "prompt_tokens_details": {
+          "cached_tokens": 26
+        },
+        "completion_tokens": 3,
+        "total_tokens": 35
+      },
+      "unsignedMs": 740.078,
+      "unsignedHttpMs": 737.599,
+      "unsignedOutsidePct": 0.335,
+      "unsignedPromptChars": 382,
+      "signedMs": 535.779,
+      "signedHttpMs": 533.064,
+      "signedOutsidePct": 0.507,
+      "signedPromptChars": 382,
+      "receiptBytes": {
+        "envelope": 996,
+        "body": 592
+      },
+      "unsignedOk": true,
+      "signedOk": true,
+      "signedError": null
+    }
+  ],
+  "workloads": [
+    {
+      "id": "rag-t0-0",
+      "kind": "rag",
+      "temperature": 0,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 3869.865,
+      "httpMs": 3855.694,
+      "outsideHttpPct": 0.366,
+      "promptChars": 953,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]"
+    },
+    {
+      "id": "rag-t0-1",
+      "kind": "rag",
+      "temperature": 0,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 3726.268,
+      "httpMs": 3724.117,
+      "outsideHttpPct": 0.058,
+      "promptChars": 953,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]"
+    },
+    {
+      "id": "rag-t0-2",
+      "kind": "rag",
+      "temperature": 0,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 3434.148,
+      "httpMs": 3432.056,
+      "outsideHttpPct": 0.061,
+      "promptChars": 953,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]"
+    },
+    {
+      "id": "rag-t07-0",
+      "kind": "rag",
+      "temperature": 0.7,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 2377.381,
+      "httpMs": 2375.312,
+      "outsideHttpPct": 0.087,
+      "promptChars": 955,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery. [policy-refund]"
+    },
+    {
+      "id": "rag-t07-1",
+      "kind": "rag",
+      "temperature": 0.7,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 2447.404,
+      "httpMs": 2444.536,
+      "outsideHttpPct": 0.117,
+      "promptChars": 955,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery. [policy-refund]"
+    },
+    {
+      "id": "rag-t07-2",
+      "kind": "rag",
+      "temperature": 0.7,
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 2396.833,
+      "httpMs": 2393.449,
+      "outsideHttpPct": 0.141,
+      "promptChars": 955,
+      "cited": true,
+      "mustCitePassed": true,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answer": "Refunds are allowed within 30 days of delivery. [policy-refund]"
+    },
+    {
+      "id": "support-ticket",
+      "kind": "pii-ticket",
+      "ok": true,
+      "errorKind": null,
+      "wallMs": 4599.42,
+      "httpMs": 4592.633,
+      "outsideHttpPct": 0.148,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "requestText": "Reply in one sentence. Do not repeat phone numbers, emails, or SSNs. Confirm whether a refund can be reviewed.",
+      "responseText": "A refund for order id 100384 can be reviewed, but the provided information does not confirm whether a refund has already been processed or if there are any outstanding issues.",
+      "markers": [
+        "jamie.lee@example.com",
+        "415-555-0134",
+        "219-09-9999",
+        "ZWQ-MARKER-9c1e4b"
+      ]
+    },
+    {
+      "id": "sequential-support",
+      "kind": "sequential",
+      "requestText": "Using only the policy text, answer in one sentence and cite it as [policy-refund]. What is the refund window?",
+      "responseText": "Refunds are allowed within 30 days of delivery, as stated in our policy [policy-refund].",
+      "ok": true,
+      "wallMs": 6579.213,
+      "httpMs": 6573.5740000000005
+    }
+  ],
+  "drift": [
+    {
+      "temperature": 0,
+      "n": 3,
+      "exactMatch": true,
+      "normalizedMatch": true,
+      "uniqueExact": 1,
+      "cited": 3,
+      "mustCitePassed": 3,
+      "answers": [
+        "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]",
+        "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]",
+        "Refunds are allowed within 30 days of delivery, as stated in the policy-refund clause. [policy-refund]"
+      ]
+    },
+    {
+      "temperature": 0.7,
+      "n": 3,
+      "exactMatch": true,
+      "normalizedMatch": true,
+      "uniqueExact": 1,
+      "cited": 3,
+      "mustCitePassed": 3,
+      "answers": [
+        "Refunds are allowed within 30 days of delivery. [policy-refund]",
+        "Refunds are allowed within 30 days of delivery. [policy-refund]",
+        "Refunds are allowed within 30 days of delivery. [policy-refund]"
+      ]
+    }
+  ],
+  "replay": [
+    {
+      "tag": "rag-t0-0",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    },
+    {
+      "tag": "rag-t0-1",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    },
+    {
+      "tag": "rag-t0-2",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    },
+    {
+      "tag": "rag-t07-0",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    },
+    {
+      "tag": "rag-t07-1",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    },
+    {
+      "tag": "rag-t07-2",
+      "verified": true,
+      "materialized": true,
+      "replayOk": true,
+      "outputHashMatch": true,
+      "alteredDetected": true,
+      "error": null
+    }
+  ],
+  "policy": [
+    {
+      "id": "support-ticket",
+      "inputDetectorHits": [
+        "email",
+        "us-ssn",
+        "us-phone"
+      ],
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "answerHasInScopePII": false,
+      "answerDetectors": [],
+      "signedMarkerLeak": false,
+      "signedMarkerHits": [],
+      "wallMs": 4599.42,
+      "httpMs": 4592.633,
+      "outsideHttpPct": 0.148,
+      "receiptBytes": {
+        "envelope": 1292,
+        "body": 816
+      },
+      "answerChars": 175
+    }
+  ],
+  "agent": {
+    "kind": "success",
+    "wallMs": 5520.227,
+    "httpMs": 5508.489,
+    "outsideHttpPct": 0.213,
+    "iterations": 2,
+    "toolCalls": 1,
+    "answer": "Refunds are allowed within 30 days, as stated in our refund policy.",
+    "error": null,
+    "receiptCount": 0,
+    "receiptBytes": null
+  },
+  "crew": {
+    "wallMs": 10569.479,
+    "httpMs": 10553.831,
+    "parentKind": "success",
+    "perAgent": [
+      {
+        "id": "researcher",
+        "usage": {
+          "promptTokens": 183,
+          "completionTokens": 22,
+          "costUsd": null
+        },
+        "iterations": 1,
+        "receiptCids": [
+          "sha256:4a421cdce681f92f5efe65198440e38c4496b04bfb96bdd3121ac12c94ae80f5"
+        ]
+      },
+      {
+        "id": "lead",
+        "usage": {
+          "promptTokens": 769,
+          "completionTokens": 66,
+          "costUsd": null
+        },
+        "iterations": 2,
+        "receiptCids": [
+          "sha256:fac3c765dcca04b229836bd925833fc53ab2804a8aa8e6f4832b7fbe6127ca0b"
+        ]
+      }
+    ],
+    "totalIterations": 3,
+    "receiptCount": 4,
+    "answer": "The refund window is typically within 30 days of purchase, as stated in our [policy-refund].",
+    "error": null
+  },
+  "sequential": {
+    "steps": [
+      {
+        "ok": true,
+        "wallMs": 2932.818,
+        "httpMs": 2930.788,
+        "outsideHttpPct": 0.069,
+        "answer": "Refunds are allowed within 30 days of delivery, as stated in the clause [policy-refund].",
+        "receiptBytes": {
+          "envelope": 1212,
+          "body": 754
+        }
+      },
+      {
+        "ok": true,
+        "errorKind": null,
+        "wallMs": 3646.395,
+        "httpMs": 3642.786,
+        "outsideHttpPct": 0.099,
+        "answer": "Refunds are allowed within 30 days of delivery, as stated in our policy [policy-refund].",
+        "receiptBytes": {
+          "envelope": 1292,
+          "body": 816
+        }
+      }
+    ]
+  },
+  "multimodal": {
+    "ran": false,
+    "reason": "After llama3.2:3b was loaded, free memory was about 2 GiB. A second vision model was not loaded."
+  },
+  "overheadSummary": {
+    "n": 5,
+    "plain": {
+      "n": 5,
+      "mean": 1228.1814,
+      "p50": 277.96,
+      "p95": 4844.711,
+      "min": 275.568,
+      "max": 4844.711
+    },
+    "unsigned": {
+      "n": 5,
+      "mean": 758.4158,
+      "p50": 744.527,
+      "p95": 846.987,
+      "min": 700.235,
+      "max": 846.987
+    },
+    "signed": {
+      "n": 5,
+      "mean": 563.4952000000001,
+      "p50": 558.686,
+      "p95": 605.756,
+      "min": 535.779,
+      "max": 605.756
+    },
+    "signedOutsidePct": {
+      "n": 5,
+      "mean": 0.8276,
+      "p50": 0.439,
+      "p95": 2.469,
+      "min": 0.335,
+      "max": 2.469
+    },
+    "unsignedOutsidePct": {
+      "n": 5,
+      "mean": 0.5134000000000001,
+      "p50": 0.146,
+      "p95": 1.85,
+      "min": 0.106,
+      "max": 1.85
+    },
+    "receiptEnvelope": {
+      "n": 5,
+      "mean": 996,
+      "p50": 996,
+      "p95": 996,
+      "min": 996,
+      "max": 996
+    }
+  }
+}

@@ -180,4 +180,55 @@ describe("inv.mustCite options (issue #21 F9)", () => {
     expect(result.keys).toEqual(["doc"]);
     expect(result.path).toBeUndefined();
   });
+
+  it("captures inline and rejectUncited when true", () => {
+    const result = inv.mustCite("a", { inline: true, rejectUncited: true });
+    expect(result).toEqual({
+      id: "must-cite-1",
+      kind: "must-cite",
+      artifactName: "a",
+      inline: true,
+      rejectUncited: true,
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+  });
+
+  it("false opt-in flags produce a declaration JSON-identical to the no-options form (contractHash stability)", () => {
+    const withoutOptions = JSON.stringify(inv.mustCite("a"));
+    inv.__resetCounterForTests();
+    const withFalseFlags = inv.mustCite("a", { inline: false, rejectUncited: false });
+    expect(JSON.stringify(withFalseFlags)).toBe(withoutOptions);
+    expect("inline" in withFalseFlags).toBe(false);
+    expect("rejectUncited" in withFalseFlags).toBe(false);
+  });
+
+  it("each opt-in flag changes the declaration JSON, so it changes the contractHash", () => {
+    const plain = JSON.stringify(inv.mustCite("a", { id: "x" }));
+    const inline = JSON.stringify(inv.mustCite("a", { id: "x", inline: true }));
+    const rejectUncited = JSON.stringify(inv.mustCite("a", { id: "x", rejectUncited: true }));
+    const textPath = JSON.stringify(inv.mustCite("a", { id: "x", rejectUncited: true, textPath: "answer" }));
+    expect(new Set([plain, inline, rejectUncited, textPath]).size).toBe(4);
+  });
+
+  it("textPath is captured only when set", () => {
+    const scoped = inv.mustCite("a", { rejectUncited: true, textPath: "sections[*].text" });
+    expect(scoped).toEqual({
+      id: "must-cite-1",
+      kind: "must-cite",
+      artifactName: "a",
+      rejectUncited: true,
+      textPath: "sections[*].text",
+    });
+    const unset = inv.mustCite("a", { rejectUncited: true });
+    expect("textPath" in unset).toBe(false);
+  });
+
+  it("throws a TypeError on an empty or whitespace-only artifactName without consuming an id", () => {
+    expect(() => inv.mustCite("")).toThrow(TypeError);
+    expect(() => inv.mustCite("   ")).toThrow(TypeError);
+    expect(() => inv.mustCite("\t\n", { inline: true })).toThrow(
+      "inv.mustCite: artifactName must not be empty.",
+    );
+    expect(inv.mustCite("a").id).toBe("must-cite-1");
+  });
 });

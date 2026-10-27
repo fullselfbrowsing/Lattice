@@ -6,13 +6,37 @@
  * the verifier treats bad options as programmer errors (TypeError). On the
  * command line they are user errors, so they map to a usage failure
  * (`FAIL kind=invalid-argument`, exit 2) instead of a crash.
+ *
+ * Also holds the advisory line format both commands print on success.
  */
 
 import {
   RECEIPT_VERSIONS,
   type ReceiptVersion,
+  type VerifyAdvisory,
   type VerifyOptions,
 } from "@full-self-browsing/lattice";
+
+/**
+ * stderr lines for a successful verification: `WARN <code>: <message>` for
+ * every warn-severity advisory, and `INFO <code>: <message>` for info ones
+ * unless `quiet` is set. Warnings are never suppressed, because each one
+ * names a binding or chain property that was not checked.
+ */
+export function advisoryLines(
+  advisories: readonly VerifyAdvisory[],
+  quiet: boolean,
+): readonly string[] {
+  const lines: string[] = [];
+  for (const advisory of advisories) {
+    if (advisory.severity === "warn") {
+      lines.push(`WARN ${advisory.code}: ${advisory.message}`);
+    } else if (!quiet) {
+      lines.push(`INFO ${advisory.code}: ${advisory.message}`);
+    }
+  }
+  return lines;
+}
 
 export interface VerifyOptionArgs {
   readonly minVersion?: string;

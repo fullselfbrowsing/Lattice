@@ -18,6 +18,7 @@ import {
 } from "../../receipts/sign.js";
 import type { CapabilityReceiptBody, ReceiptEnvelope, ReceiptSigner } from "../../receipts/types.js";
 import { verifyReceipt } from "../../receipts/verify.js";
+import { ReceiptSigningError } from "../../results/errors.js";
 import type { SerializedSnapshot } from "../../runtime/survivability.js";
 import { defineTool } from "../../tools/tools.js";
 
@@ -978,6 +979,80 @@ describe("createCrewDispatcher — signer failure is recorded on the tracer (iss
     );
     expect(mintEvents).toHaveLength(1);
     expect(mintEvents[0]?.attributes?.mintError).toBe("crew signer down");
+  });
+
+  const downSigner: ReceiptSigner = {
+    kid: "boom",
+    publicKeyJwk: { kty: "OKP", crv: "Ed25519", x: "" },
+    async sign(): Promise<Uint8Array> {
+      throw new Error("crew signer down");
+    },
+  };
+
+  it("reports the failed child mint through receiptMintFailed under onSignerError: flag", async () => {
+    const researcher = makeResearcherSpec();
+    const scripted = makeScriptedFake(["flagged summary"]);
+    const failures: string[] = [];
+    const dispatcher = createCrewDispatcher(
+      makeRootSpec([researcher]),
+      makeCtx({
+        config: { providers: [scripted.fake], receipts: { onSignerError: "flag" } },
+        signer: downSigner,
+        crewRootCid: `sha256:${"ab".repeat(32)}`,
+        receiptMintFailed: (detail) => {
+          failures.push(detail);
+        },
+      }),
+    );
+
+    const dispatched = await dispatcher.dispatchToolUse(
+      { id: "rc-flag", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+
+    expect(JSON.parse(dispatched?.content ?? "{}")).toMatchObject({
+      summary: "flagged summary",
+      receipts: [],
+    });
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain("crew-agent-completion:researcher receipt was not minted: crew signer down");
+    expect(failures[0]).toContain("still verifies without");
+  });
+
+  it("rejects with ReceiptSigningError under onSignerError: throw", async () => {
+    const researcher = makeResearcherSpec();
+    const scripted = makeScriptedFake(["unsigned summary"]);
+    const failures: string[] = [];
+    const traced: Array<Record<string, unknown> | undefined> = [];
+    const dispatcher = createCrewDispatcher(
+      makeRootSpec([researcher]),
+      makeCtx({
+        config: { providers: [scripted.fake], receipts: { onSignerError: "throw" } },
+        signer: downSigner,
+        crewRootCid: `sha256:${"ab".repeat(32)}`,
+        receiptMintFailed: (detail) => {
+          failures.push(detail);
+        },
+        tracer: {
+          kind: "tracer",
+          event: (_name, attributes) => {
+            traced.push(attributes);
+          },
+        },
+      }),
+    );
+
+    const run = dispatcher.dispatchToolUse(
+      { id: "rc-throw", name: "researcher", args: { task: "go" } },
+      makeLoopCtx(),
+    );
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/crew-agent-completion:researcher receipt was not minted: crew signer down/u);
+    expect(failures).toEqual([]);
+    // The tracer still records the gap before the throw.
+    expect(traced).toContainEqual(
+      expect.objectContaining({ stepName: "crew-agent-completion:researcher", mintError: "crew signer down" }),
+    );
   });
 });
 

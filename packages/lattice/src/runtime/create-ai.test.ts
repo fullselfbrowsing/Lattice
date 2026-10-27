@@ -938,6 +938,46 @@ describe("Phase 9 receipts integration", () => {
     }
   });
 
+  it("T4c: a must-cite list under model-produced keys signs the default key, not the keys", async () => {
+    inv.__resetCounterForTests();
+    const { signer, keySet } = await makeSignerAndKeySet();
+    const key = "Jane Roe SSN 123-45-6789";
+    const provider = createFakeProvider({
+      response: {
+        rawOutputs: { sections: { [key]: { text: "Refund denied.", citations: ["other-doc"] } } },
+        normalizedUsage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+      },
+    });
+    const ai = createAI({ providers: [provider], signer });
+    const result = await ai.run({
+      task: "How long do refunds take?",
+      artifacts: [artifact.text("Refunds take 5 business days.", { label: "policy-refund" })],
+      outputs: {
+        sections: z.record(z.string(), z.object({ text: z.string(), citations: z.array(z.string()) })),
+      },
+      contract: contract({ invariants: [inv.mustCite("policy-refund")] }),
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe("tripwire-violated");
+    if (result.error.kind !== "tripwire-violated") return;
+    // The runtime error keeps the concrete location for debugging.
+    expect(result.error.message).toContain(`"sections.${key}.citations"`);
+    expect(result.error.evidence.path).toBe("citations");
+
+    const rawPayload = Buffer.from(result.receipt!.payload, "base64").toString("utf8");
+    expect(rawPayload).not.toContain("Jane Roe");
+    expect(rawPayload).not.toContain("123-45-6789");
+    const verifyResult = await verifyReceipt(result.receipt!, keySet);
+    expect(verifyResult.ok).toBe(true);
+    if (verifyResult.ok) {
+      expect(verifyResult.body.tripwireEvidence?.path).toBe("citations");
+      expect(verifyResult.body.tripwireEvidence?.message).toBe(
+        'must-cite: no matching citation at "citations".',
+      );
+    }
+  });
+
   it("T4b: tripwire-violated receipt lineageMerkleRoot includes packaged artifacts", async () => {
     inv.__resetCounterForTests();
     const { signer, keySet } = await makeSignerAndKeySet();

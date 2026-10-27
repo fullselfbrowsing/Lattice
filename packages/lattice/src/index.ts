@@ -30,7 +30,7 @@ export {
   generateEd25519KeyPairJwk,
 } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
-export { verifyReceipt } from "./receipts/verify.js";
+export { receiptVerifyAdvisories, verifyReceipt } from "./receipts/verify.js";
 export { verifyChain } from "./receipts/chain.js";
 export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
@@ -313,6 +313,9 @@ export type {
   ReceiptSignerErrorMode,
   ReceiptVersion,
   ReceiptsConfig,
+  VerifyAdvisory,
+  VerifyAdvisoryCode,
+  VerifyAdvisorySeverity,
   VerifyChainError,
   VerifyChainErrorKind,
   VerifyChainFail,

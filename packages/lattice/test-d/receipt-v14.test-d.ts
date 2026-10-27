@@ -5,6 +5,7 @@ import {
 } from "tsd";
 import {
   RECEIPT_VERSIONS,
+  receiptVerifyAdvisories,
   verifyChain,
   verifyReceipt,
   type CapabilityReceiptBody,
@@ -12,6 +13,11 @@ import {
   type KeySet,
   type ReceiptEnvelope,
   type ReceiptVersion,
+  type VerifyAdvisory,
+  type VerifyAdvisoryCode,
+  type VerifyAdvisorySeverity,
+  type VerifyChainOk,
+  type VerifyChainOptions,
   type VerifyChainResult,
   type VerifyErrorKind,
   type VerifyOptions,
@@ -75,3 +81,39 @@ expectType<Promise<VerifyChainResult>>(
     expectedAudience: "svc-a",
   }),
 );
+
+// Chain closure: signed body fields, issuance input, and verifier options.
+expectType<"member-cids" | undefined>(body.chainClosure);
+expectType<readonly string[] | undefined>(body.chainMemberCids);
+expectError<CapabilityReceiptBody["chainClosure"]>("merkle-v2");
+expectAssignable<CreateReceiptInput>({
+  runId: "run-x",
+  model: { requested: "m", observed: null },
+  route: { providerId: "p", capabilityId: "p/m", attemptNumber: 1 },
+  usage: { promptTokens: 0, completionTokens: 0, costUsd: 0 },
+  contractVerdict: "success",
+  contractHash: null,
+  inputHashes: [],
+  outputHash: null,
+  chainClosure: "member-cids",
+  chainMemberCids: ["sha256:abab"],
+});
+expectError<CreateReceiptInput["chainClosure"]>("merkle-v2");
+expectAssignable<VerifyChainOptions>({ requireClosure: true, partial: true });
+expectError<VerifyChainOptions>({ requireClosure: "yes" });
+
+// Structured advisories from receiptVerifyAdvisories and VerifyChainOk.
+declare const chainOk: VerifyChainOk;
+expectType<readonly VerifyAdvisory[]>(receiptVerifyAdvisories(body));
+expectType<readonly VerifyAdvisory[]>(receiptVerifyAdvisories(body, { expectedAudience: "svc-a" }));
+expectType<readonly VerifyAdvisory[] | undefined>(chainOk.advisories);
+declare const advisory: VerifyAdvisory;
+expectType<VerifyAdvisoryCode>(advisory.code);
+expectType<VerifyAdvisorySeverity>(advisory.severity);
+expectType<string>(advisory.message);
+expectAssignable<VerifyAdvisorySeverity>("warn");
+expectAssignable<VerifyAdvisorySeverity>("info");
+expectError<VerifyAdvisorySeverity>("error");
+expectAssignable<VerifyAdvisoryCode>("audience-unchecked");
+expectAssignable<VerifyAdvisoryCode>("tail-truncation-unchecked");
+expectError<VerifyAdvisoryCode>("audience");
