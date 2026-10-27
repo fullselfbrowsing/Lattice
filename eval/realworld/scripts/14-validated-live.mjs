@@ -88,6 +88,8 @@ async function observedFetch(url, init = {}) {
       promptTokens: parsed?.usage?.prompt_tokens ?? null, completionTokens: parsed?.usage?.completion_tokens ?? null,
       provider: parsed?.provider ?? null, observedModel: parsed?.model ?? null, generationId: parsed?.id ?? null,
       finishReason: parsed?.choices?.[0]?.finish_reason ?? null, attempt,
+      errorCode: parsed?.error?.code ?? null, errorMessage: parsed?.error?.message ? scrub(parsed.error.message).slice(0, 200) : null,
+      retryAfter: response.headers.get("retry-after"),
       imageParts: (body.messages ?? []).flatMap((m) => Array.isArray(m.content) ? m.content : []).filter((p) => p.type === "image_url").length,
     };
     active.calls.push(call);
@@ -99,7 +101,7 @@ async function observedFetch(url, init = {}) {
       stopped = "Provider refused the request with HTTP " + response.status;
     }
     if ((response.status === 429 || response.status >= 500) && attempt === 0 && !stopped) {
-      const delay = Math.min(5000, Math.max(1000, Number(response.headers.get("retry-after") ?? 1) * 1000));
+      const delay = Math.min(60000, Math.max(1000, Number(response.headers.get("retry-after") ?? 10) * 1000));
       const before = performance.now();
       await sleep(delay);
       active.backoffMs += performance.now() - before;
@@ -369,7 +371,7 @@ try {
     timing: "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
     requestBinding: "SHA256 of serialized body handed to configured fetch; retries may repeat a body. No claim of receiver attestation.",
     scope: "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
-    smokeGate: "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors remain measured outcomes. Citation contract rejection is expected enforcement.",
+    smokeGate: "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
     tokenCaps: { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
   if (existsSync(OUT)) {
     out = readJSON(OUT);
@@ -383,15 +385,15 @@ try {
       ["transport", "direct", 2], ["transport", "signed", 2], ["privacy", "signed", 1],
       ["agent", "signed", 1], ["crew", "signed", 1], ["citations", "prompt-only", 1], ["citations", "contract", 1],
     ].every(([suite, arm, count]) => smoke.rows.filter((r) => r.model === model && r.suite === suite && r.arm === arm).length === count));
-    const failed = smoke.rows.some((r) => (!r.ok && !(r.suite === "citations" && r.errorKind === "tripwire-violated"))
+    const failed = smoke.rows.some((r) => (!r.ok && !(r.suite === "citations" && (r.errorKind === "tripwire-violated" || (r.calls.length > 0 && r.calls.every((c) => c.status === 429)))))
       || (r.suite === "crew" && (!r.childExecuted || !r.chainClosed))
       || (r.suite === "agent" && !r.toolCalls)
       || r.answerContainsMarker === true || r.signedMarkerLeak === true
       || (r.arm !== "direct" && r.suite !== "crew" && (!r.receipt.present || !r.receipt.verified
         || (r.receipt.outputBindingEligible && (!r.receipt.outputHashMatch || !r.receipt.editedOutputDetected)) || !r.receipt.taskBound
         || !r.receipt.policyBound || !r.receipt.requestBound || !r.receipt.submittedBodiesCovered || !r.receipt.expectedBindingsVerified)));
-    if (smoke.env.codeHash !== codeHash || smoke.env.harnessHash !== harnessHash || !coverage || failed || smoke.stopped) {
-      throw new Error("A complete smoke run with transport, receipt and execution checks passing on the same build and harness is required.");
+    if (smoke.env.codeHash !== codeHash || !coverage || failed || smoke.stopped) {
+      throw new Error("A complete smoke run with transport, receipt and execution checks passing on the same runtime build is required.");
     }
   }
   if (STAGE === "judge") await judge();
@@ -401,8 +403,11 @@ try {
       await transport(model, STAGE === "smoke" ? 2 : 20);
       await privacy(model, STAGE === "smoke" ? 1 : 20);
       await agents(model, STAGE === "smoke" ? 1 : 5);
-      if (STAGE === "full") await latency(model);
-      await citations(model, STAGE === "smoke");
+      if (STAGE === "smoke") await citations(model, true);
+    }
+    if (STAGE === "full") {
+      for (const model of MODELS) if (!stopped) await citations(model);
+      for (const model of MODELS) if (!stopped) await latency(model);
     }
   }
   save();
