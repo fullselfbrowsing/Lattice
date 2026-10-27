@@ -1,4 +1,5 @@
 import { canonicalizeReceiptBody } from "./canonical.js";
+import { executionBindingProblem } from "./bindings.js";
 import {
   PAYLOAD_TYPE,
   base64Encode,
@@ -128,6 +129,7 @@ function asReceiptBody(value: unknown): CapabilityReceiptBody | undefined {
   if (v.nonce !== undefined && typeof v.nonce !== "string") return undefined;
   if (v.expiresAt !== undefined && typeof v.expiresAt !== "string") return undefined;
   if (closureFieldProblem(v) !== undefined) return undefined;
+  if (executionBindingProblem(v) !== undefined) return undefined;
   return v as unknown as CapabilityReceiptBody;
 }
 
@@ -201,6 +203,13 @@ export async function verifyReceipt(
   const nowMs = resolveNowMs(options.now);
   const floor = resolveVersionFloor(options.minVersion);
   const maxAgeMs = resolveMaxAgeMs(options.maxAgeMs);
+  const bindingProblem = executionBindingProblem({
+    ...(options.expectedTaskHash !== undefined ? { taskHash: options.expectedTaskHash } : {}),
+    ...(options.expectedPolicyHash !== undefined ? { policyHash: options.expectedPolicyHash } : {}),
+    ...(options.expectedProviderRequestHashes !== undefined
+      ? { providerRequestHashes: options.expectedProviderRequestHashes } : {}),
+  });
+  if (bindingProblem !== undefined) throw new TypeError(`verifyReceipt: expected ${bindingProblem}`);
 
   // Step 1: decode envelope (catches wrong payloadType, base64 errors).
   let decoded;
@@ -363,7 +372,17 @@ export async function verifyReceipt(
     }
   }
 
-  // Step 13: success — surface the key state so callers can warn on retired.
+  for (const [field, expected] of [
+    ["taskHash", options.expectedTaskHash],
+    ["policyHash", options.expectedPolicyHash],
+    ["providerRequestHashes", options.expectedProviderRequestHashes],
+  ] as const) {
+    if (expected !== undefined && JSON.stringify(body[field]) !== JSON.stringify(expected)) {
+      return fail("execution-binding-mismatch", `receipt ${field} is absent or differs from the expected binding`);
+    }
+  }
+
+  // Success — surface the key state so callers can warn on retired.
   return { ok: true, body, keyState: entry.state };
 }
 

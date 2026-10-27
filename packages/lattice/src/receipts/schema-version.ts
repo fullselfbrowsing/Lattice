@@ -20,6 +20,12 @@ import type { ReceiptVersion } from "./types.js";
  * does not enforce closure: a dropped crew leaf still verifies there. Only
  * verifiers from the release that added the fields (1.7.0) enforce it, and
  * `requireClosure` is how a relying party insists on it.
+ *
+ * Task, policy, and provider request hashes are also optional v1.4 fields.
+ * Earlier verifiers authenticate these bytes through generic canonicalization
+ * but do not enforce digest expectations. Relying parties must use a verifier
+ * with expectedTaskHash, expectedPolicyHash, and expectedProviderRequestHashes
+ * support when they require execution binding.
  */
 export const RECEIPT_VERSIONS: readonly ReceiptVersion[] = Object.freeze([
   "lattice-receipt/v1",

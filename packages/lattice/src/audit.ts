@@ -1,3 +1,4 @@
+export { hashCanonicalForReceipt } from "./receipts/bindings.js";
 export { createReceipt } from "./receipts/receipt.js";
 export type { CreateReceiptInput } from "./receipts/receipt.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";

@@ -6,9 +6,8 @@
  * provider iterations and dispatches tool calls between them. With a
  * signer on the intent, Phase 16's `createCheckpointHook` mints a
  * per-iteration checkpoint receipt and emits it only as a `step.transition`
- * tracer event (`metadata.envelope`). `ai.runAgent` returns no receipt on
- * its result; a caller without a tracer keeps none. `ai.run` and
- * `runAgentCrew` return receipts.
+ * tracer event (`metadata.envelope`). Signed `ai.runAgent` results also
+ * include a terminal receipt, independently of tracing or checkpoint hooks.
  *
  * Composition surfaces (all optional on `AgentIntent`):
  *   - `pipeline?` — Phase 15 `HookPipeline`; if absent, runtime creates a default.
@@ -32,6 +31,7 @@ import type { PolicySpec } from "../policy/policy.js";
 import type { ProviderGenerationOptions, Usage } from "../providers/provider.js";
 import type { LatticeRunError } from "../results/errors.js";
 import type { ReceiptEnvelope, ReceiptSigner } from "../receipts/types.js";
+import type { ReceiptError } from "../results/result.js";
 import type { SurvivabilityAdapter } from "../runtime/survivability.js";
 import type { ToolUseRequest } from "../tools/tool-use.js";
 import type { ToolDefinition } from "../tools/tools.js";
@@ -115,8 +115,8 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
   readonly tracer?: TracerLike;
   /**
    * When `false`, the runtime will NOT auto-register `createCheckpointHook`
-   * even if `signer` is provided. Callers who want full manual control over
-   * receipt minting set this to `false` and register their own hook.
+   * even if `signer` is provided. Callers can register their own checkpoint
+   * hook; terminal result receipt issuance is independent of this setting.
    * Defaults to `true` (auto-register when signer present).
    */
   readonly autoRegisterCheckpoint?: boolean;
@@ -127,9 +127,9 @@ export interface AgentIntent<TOutputs extends OutputContractMap = OutputContract
  * answer and (when `outputs` is declared) the final answer validates.
  *
  * `iterations[]` records every iteration that ran — including the one that
- * produced the final answer. `receipt` is not set: the loop mints no receipt
- * at loop close, and with a `signer` its per-iteration checkpoint receipts go
- * only to `step.transition` tracer events, not to `iterations[i].receipt`.
+ * produced the final answer. When the intent or runtime supplies a signer,
+ * `receipt` holds the terminal execution receipt. Per-iteration checkpoint
+ * receipts still go only to `step.transition` tracer events.
  */
 export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContractMap> {
   readonly kind: "success";
@@ -138,6 +138,7 @@ export interface AgentSuccess<TOutputs extends OutputContractMap = OutputContrac
   readonly usage: Usage;
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly receipt?: ReceiptEnvelope;
+  readonly receiptError?: ReceiptError;
 }
 
 /**
@@ -168,8 +169,9 @@ export interface AgentFailure {
   readonly iterations: ReadonlyArray<IterationRecord>;
   readonly reason?: string;
   readonly cause?: unknown;
-  /** Not set by the agent loop; see `AgentSuccess`. */
+  /** Signed terminal failure receipt, with no replayable output hash. */
   readonly receipt?: ReceiptEnvelope;
+  readonly receiptError?: ReceiptError;
 }
 
 /**

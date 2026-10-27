@@ -5,6 +5,7 @@ import {
 } from "tsd";
 import {
   RECEIPT_VERSIONS,
+  hashCanonicalForReceipt,
   receiptVerifyAdvisories,
   verifyChain,
   verifyReceipt,
@@ -22,6 +23,8 @@ import {
   type VerifyErrorKind,
   type VerifyOptions,
   type VerifyResult,
+  type AgentResult,
+  type ReceiptError,
 } from "@full-self-browsing/lattice";
 
 declare const body: CapabilityReceiptBody;
@@ -32,6 +35,12 @@ declare const keySet: KeySet;
 expectType<string | undefined>(body.audience);
 expectType<string | undefined>(body.nonce);
 expectType<string | undefined>(body.expiresAt);
+expectType<string | undefined>(body.taskHash);
+expectType<string | undefined>(body.policyHash);
+expectType<readonly string[] | undefined>(body.providerRequestHashes);
+expectType<Promise<string>>(hashCanonicalForReceipt("original task"));
+declare const agent: AgentResult;
+expectType<ReceiptError | undefined>(agent.receiptError);
 expectError<CapabilityReceiptBody["expiresAt"]>(42);
 
 // The version union gained v1.4; unknown literals are rejected at compile time.
@@ -50,6 +59,9 @@ expectAssignable<CreateReceiptInput>({
   contractHash: null,
   inputHashes: [],
   outputHash: null,
+  taskHash: "a".repeat(64),
+  policyHash: "b".repeat(64),
+  providerRequestHashes: ["c".repeat(64)],
   audience: "svc-a",
   nonce: "n-1",
   expiresAt: "2026-01-01T00:00:00.000Z",
@@ -60,6 +72,9 @@ expectAssignable<VerifyOptions>({
   minVersion: "lattice-receipt/v1.3",
   expectedAudience: "svc-a",
   expectedNonce: "n-1",
+  expectedTaskHash: "a".repeat(64),
+  expectedPolicyHash: "b".repeat(64),
+  expectedProviderRequestHashes: ["c".repeat(64)],
   now: new Date(),
   maxAgeMs: 60_000,
 });
@@ -70,6 +85,7 @@ expectType<Promise<VerifyResult>>(verifyReceipt(envelope, keySet, {}));
 expectAssignable<VerifyErrorKind>("audience-mismatch");
 expectAssignable<VerifyErrorKind>("nonce-mismatch");
 expectAssignable<VerifyErrorKind>("receipt-expired");
+expectAssignable<VerifyErrorKind>("execution-binding-mismatch");
 
 // F3: verifyChain over a set of envelopes.
 expectType<Promise<VerifyChainResult>>(verifyChain([envelope], keySet));

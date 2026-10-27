@@ -143,6 +143,7 @@ const EXPECTED_PUBLIC_VALUE_EXPORTS = [
   "getRecommendedSanitizers",
   "getStructuredOutputContract",
   "getToolUseContract",
+  "hashCanonicalForReceipt",
   "importMcpTools",
   "inv",
   "isTerminal",

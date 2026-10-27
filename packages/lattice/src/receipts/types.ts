@@ -107,6 +107,12 @@ export interface CapabilityReceiptBody {
   readonly contractHash: string | null;
   readonly inputHashes: readonly string[];
   readonly outputHash: string | null;
+  /** SHA-256 of the original task as canonical JSON (including string quotes). */
+  readonly taskHash?: string;
+  /** SHA-256 of the effective policy as canonical JSON. Digests are unsalted. */
+  readonly policyHash?: string;
+  /** Ordered hashes of request bytes submitted to configured fetch, including retries. */
+  readonly providerRequestHashes?: readonly string[];
   readonly redactionPolicyId: string;
   readonly redactions: readonly ReceiptRedaction[];
   readonly noRouteReasons?: readonly RouteRejectReason[];
@@ -166,6 +172,7 @@ export type VerifyErrorKind =
   | "schema-version-too-low"
   | "audience-mismatch"
   | "nonce-mismatch"
+  | "execution-binding-mismatch"
   | "receipt-expired";
 
 export interface VerifyError {
@@ -204,6 +211,12 @@ export interface VerifyOptions {
   readonly expectedAudience?: string;
   /** When set, `body.nonce` must equal this. An absent nonce fails. */
   readonly expectedNonce?: string;
+  /** Requires this original-task digest; an absent binding fails. */
+  readonly expectedTaskHash?: string;
+  /** Requires this effective-policy digest; an absent binding fails. */
+  readonly expectedPolicyHash?: string;
+  /** Requires the complete ordered submission list, including repeated identical bodies. */
+  readonly expectedProviderRequestHashes?: readonly string[];
   /** Clock for expiry checks. Defaults to the current time. Pin it in tests. */
   readonly now?: Date | string;
   /** Reject when `issuedAt + maxAgeMs` is before `now`. */

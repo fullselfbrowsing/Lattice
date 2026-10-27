@@ -37,6 +37,7 @@ import { hashInputArtifacts, hashOutputForReceipt } from "../receipts/hashes.js"
 import { validateGenerationOptions } from "../providers/request.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
+import { createRequestBindingCollector, hashCanonicalForReceipt } from "../receipts/bindings.js";
 import type {
   ContractVerdict,
   ReceiptEnvelope,
@@ -294,6 +295,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const built = await buildPlan(normalized, intent, runId, events);
   let plan = built.plan;
   const selected = plan.route.selected;
+  const requestBindings = createRequestBindingCollector();
 
   if (selected === undefined) {
     const contractReasons = plan.route.noRouteReasons.filter(
@@ -307,6 +309,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const issuance = await maybeIssueReceipt(normalized, events, {
       runId,
       planId: plan.id,
+      task: intent.task,
+      policy: built.mergedPolicy ?? {},
+      requestBindings,
       ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: intent.artifacts ?? [],
@@ -440,6 +445,14 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       providerPackaging: attemptPackaging.plan,
       packagedArtifacts: attemptPackaging.packagedArtifacts,
     };
+    if (normalized.signer !== undefined) {
+      Object.defineProperty(request, "onRequestPrepared", {
+        value: requestBindings.onRequestPrepared,
+        enumerable: true,
+        writable: false,
+        configurable: false,
+      });
+    }
     const gatewayMetadata = gatewayMetadataForRoute(route, built.mergedPolicy?.gateway);
 
     try {
@@ -469,7 +482,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
         ],
       });
 
-      const response = streamingRequested
+      const response = await requestBindings.observe(async () => streamingRequested
         ? await executeStreamingProvider({
             normalized,
             events,
@@ -482,7 +495,7 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
             ...(gatewayMetadata !== undefined ? { gatewayMetadata } : {}),
           })
         : await (adapter as ProviderAdapter &
-            Required<Pick<ProviderAdapter, "execute">>).execute(request);
+            Required<Pick<ProviderAdapter, "execute">>).execute(request));
       await intent.overrides?.hooks?.afterProviderCall?.({ plan, response });
       await emitEvent(normalized, events, createRunEvent("provider.attempt", {
         runId,
@@ -529,6 +542,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           const issuance = await maybeIssueReceipt(normalized, events, {
             runId,
             planId: failedPlan.id,
+            task: intent.task,
+            policy: built.mergedPolicy ?? {},
+            requestBindings,
             ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
@@ -597,6 +613,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
           const issuance = await maybeIssueReceipt(normalized, events, {
             runId,
             planId: failedPlan.id,
+            task: intent.task,
+            policy: built.mergedPolicy ?? {},
+            requestBindings,
             ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
             ...(intent.contract !== undefined
               ? { contract: intent.contract }
@@ -686,6 +705,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
       const issuance = await maybeIssueReceipt(normalized, events, {
         runId,
         planId: completedPlan.id,
+        task: intent.task,
+        policy: built.mergedPolicy ?? {},
+        requestBindings,
         ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
         ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
         artifacts: built.artifacts,
@@ -754,6 +776,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
     const issuance = await maybeIssueReceipt(normalized, events, {
       runId,
       planId: plan.id,
+      task: intent.task,
+      policy: built.mergedPolicy ?? {},
+      requestBindings,
       ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
       ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
       artifacts: built.artifacts,
@@ -787,6 +812,9 @@ async function runWithConfig<const TOutputs extends OutputContractMap>(
   const issuance = await maybeIssueReceipt(normalized, events, {
     runId,
     planId: failedPlan.id,
+    task: intent.task,
+    policy: built.mergedPolicy ?? {},
+    requestBindings,
     ...(intent.receipt !== undefined ? { binding: intent.receipt } : {}),
     ...(intent.contract !== undefined ? { contract: intent.contract } : {}),
     artifacts: built.artifacts,
@@ -1243,6 +1271,9 @@ async function sha256HexOfCanonicalContract(
 }
 
 interface MaybeIssueReceiptInput {
+  readonly task: string;
+  readonly policy: unknown;
+  readonly requestBindings: ReturnType<typeof createRequestBindingCollector>;
   readonly runId: string;
   /** Plan id attached to any event the issuance path emits. */
   readonly planId?: string;
@@ -1303,6 +1334,9 @@ async function maybeIssueReceipt(
     );
     const outputHash = await hashOutputForReceipt(input.outputs);
     const contractHash = await sha256HexOfCanonicalContract(input.contract);
+    const taskHash = await hashCanonicalForReceipt(input.task);
+    const policyHash = await hashCanonicalForReceipt(input.policy);
+    const providerRequestHashes = input.requestBindings.hashes;
     const modelClass = resolveReceiptModelClass(input.route, input.model);
     // issuedAt is fixed here so expiresAt = issuedAt + ttlMs exactly.
     const issuedAt = new Date().toISOString();
@@ -1325,6 +1359,9 @@ async function maybeIssueReceipt(
         usage: input.usage,
         contractVerdict: input.contractVerdict,
         contractHash,
+        taskHash,
+        policyHash,
+        ...(providerRequestHashes !== undefined ? { providerRequestHashes } : {}),
         inputHashes,
         outputHash,
         ...(input.noRouteReasons !== undefined

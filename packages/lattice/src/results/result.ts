@@ -11,7 +11,8 @@ import type { LatticeRunError } from "./errors.js";
  * Why a configured signer produced no receipt for this run (issue #21 F5).
  * Present only when `LatticeConfig.signer` is set, `receipts.onSignerError`
  * is `"flag"` (the default), and issuance failed; `receipt` is then absent.
- * `CrewResult.receiptError` reuses this shape for crew receipts.
+ * Agent and crew results reuse this shape for terminal receipts; agents may
+ * also supply their signer on the intent.
  */
 export interface ReceiptError {
   readonly kind: "signer-failed";

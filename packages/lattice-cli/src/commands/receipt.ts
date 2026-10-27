@@ -280,6 +280,9 @@ const verifyChainCommand = defineCommand({
       type: "string",
       description: "Require every receipt's nonce to equal this value.",
     },
+    "task-hash": { type: "string", description: "Require this canonical task SHA-256 digest." },
+    "policy-hash": { type: "string", description: "Require this effective policy SHA-256 digest." },
+    "request-hashes": { type: "string", description: "Require this comma-separated ordered list of provider request SHA-256 digests." },
     "max-age-ms": {
       type: "string",
       description:
@@ -312,6 +315,9 @@ const verifyChainCommand = defineCommand({
       ...(args["min-version"] !== undefined ? { minVersion: args["min-version"] } : {}),
       ...(args.audience !== undefined ? { audience: args.audience } : {}),
       ...(args.nonce !== undefined ? { nonce: args.nonce } : {}),
+      ...(args["task-hash"] !== undefined ? { taskHash: args["task-hash"] } : {}),
+      ...(args["policy-hash"] !== undefined ? { policyHash: args["policy-hash"] } : {}),
+      ...(args["request-hashes"] !== undefined ? { requestHashes: args["request-hashes"] } : {}),
       ...(args["max-age-ms"] !== undefined
         ? { maxAgeMs: Number(args["max-age-ms"]) }
         : {}),

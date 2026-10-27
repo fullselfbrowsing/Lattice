@@ -1,3 +1,4 @@
+export { hashCanonicalForReceipt } from "./receipts/bindings.js";
 export { artifact } from "./artifacts/artifact.js";
 export { BAND, createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
 export {

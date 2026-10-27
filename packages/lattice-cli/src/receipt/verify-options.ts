@@ -43,6 +43,9 @@ export interface VerifyOptionArgs {
   readonly audience?: string;
   readonly nonce?: string;
   readonly maxAgeMs?: number;
+  readonly taskHash?: string;
+  readonly policyHash?: string;
+  readonly requestHashes?: string;
 }
 
 export type BuildVerifyOptionsResult =
@@ -79,10 +82,21 @@ export function buildVerifyOptions(args: VerifyOptionArgs): BuildVerifyOptionsRe
   if (args.nonce !== undefined && args.nonce.length === 0) {
     return { ok: false, reason: "--nonce must not be empty" };
   }
+  const requestHashes = args.requestHashes?.split(",");
+  const digest = /^[0-9a-f]{64}$/u;
+  for (const [name, value] of [["task-hash", args.taskHash], ["policy-hash", args.policyHash]] as const) {
+    if (value !== undefined && !digest.test(value)) return { ok: false, reason: `--${name} must be a lowercase SHA-256 digest` };
+  }
+  if (requestHashes !== undefined && !requestHashes.every((hash) => digest.test(hash))) {
+    return { ok: false, reason: "--request-hashes must be a comma-separated ordered list of lowercase SHA-256 digests" };
+  }
   return {
     ok: true,
     options: {
       ...(minVersion !== undefined ? { minVersion } : {}),
+      ...(args.taskHash !== undefined ? { expectedTaskHash: args.taskHash } : {}),
+      ...(args.policyHash !== undefined ? { expectedPolicyHash: args.policyHash } : {}),
+      ...(requestHashes !== undefined ? { expectedProviderRequestHashes: requestHashes } : {}),
       ...(args.audience !== undefined ? { expectedAudience: args.audience } : {}),
       ...(args.nonce !== undefined ? { expectedNonce: args.nonce } : {}),
       ...(args.maxAgeMs !== undefined ? { maxAgeMs: args.maxAgeMs } : {}),

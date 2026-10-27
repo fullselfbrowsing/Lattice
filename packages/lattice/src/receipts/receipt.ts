@@ -4,6 +4,7 @@ import type { RouteRejectReason } from "../plan/plan.js";
 import type { Usage } from "../providers/provider.js";
 
 import { canonicalizeReceiptBody, usageToCanonical } from "./canonical.js";
+import { executionBindingProblem } from "./bindings.js";
 import {
   PAYLOAD_TYPE,
   base64Encode,
@@ -60,6 +61,9 @@ export interface CreateReceiptInput {
   readonly contractHash: string | null;
   readonly inputHashes: readonly string[];
   readonly outputHash: string | null;
+  readonly taskHash?: string;
+  readonly policyHash?: string;
+  readonly providerRequestHashes?: readonly string[];
   readonly redactionPolicyId?: string;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
@@ -159,6 +163,8 @@ export async function createReceipt(
   assertInstant("issuedAt", input.issuedAt);
   assertInstant("expiresAt", input.expiresAt);
   assertChainClosure(input.chainClosure, input.chainMemberCids, input.parentReceiptCid);
+  const bindingProblem = executionBindingProblem(input);
+  if (bindingProblem !== undefined) throw new TypeError(`createReceipt: ${bindingProblem}`);
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
   // Always emit the current schema. Older minted versions (v1.1 to v1.3)
@@ -191,6 +197,11 @@ export async function createReceipt(
     contractHash: input.contractHash,
     inputHashes: input.inputHashes,
     outputHash: input.outputHash,
+    ...(input.taskHash !== undefined ? { taskHash: input.taskHash } : {}),
+    ...(input.policyHash !== undefined ? { policyHash: input.policyHash } : {}),
+    ...(input.providerRequestHashes !== undefined
+      ? { providerRequestHashes: [...input.providerRequestHashes] }
+      : {}),
     redactionPolicyId: policyId,
     redactions: [],
     ...(input.noRouteReasons !== undefined

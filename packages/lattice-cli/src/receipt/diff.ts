@@ -69,6 +69,9 @@ interface ReceiptProjection {
   readonly hashes: {
     readonly inputHashes: unknown;
     readonly outputHash: unknown;
+    readonly taskHash: unknown;
+    readonly policyHash: unknown;
+    readonly providerRequestHashes: unknown;
   };
   readonly signatures: {
     readonly count: unknown;
@@ -320,6 +323,9 @@ function projectReceipt(
     hashes: {
       inputHashes: body.inputHashes ?? [],
       outputHash: body.outputHash ?? null,
+      taskHash: body.taskHash ?? null,
+      policyHash: body.policyHash ?? null,
+      providerRequestHashes: body.providerRequestHashes ?? null,
     },
     signatures: {
       count: envelope.signatures.length,
@@ -428,6 +434,9 @@ function compareProjection(
   pushDifference(differences, "usage.costUsd", left.usage.costUsd, right.usage.costUsd);
   pushDifference(differences, "hashes.inputHashes", left.hashes.inputHashes, right.hashes.inputHashes);
   pushDifference(differences, "hashes.outputHash", left.hashes.outputHash, right.hashes.outputHash);
+  for (const field of ["taskHash", "policyHash", "providerRequestHashes"] as const) {
+    pushDifference(differences, `hashes.${field}`, left.hashes[field], right.hashes[field]);
+  }
   pushDifference(differences, "signatures.count", left.signatures.count, right.signatures.count);
   pushDifference(differences, "signatures.keyids", left.signatures.keyids, right.signatures.keyids);
   pushDifference(differences, "signatures.values", left.signatures.values, right.signatures.values);
