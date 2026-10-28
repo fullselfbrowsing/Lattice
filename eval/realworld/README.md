@@ -5,6 +5,32 @@ models on OpenRouter, and the other record systems that could be executed on
 the same machine. The mocked harness in `eval/run-all.sh` is a different
 experiment.
 
+## Validated evaluation
+
+The October 27 implementation adds `results/validated-summary.md` as the current result entry point. Earlier local/free-tier recordings stay historical. They use different prompts, scorers, and library revisions and cannot establish a controlled before/after improvement.
+
+Build with `pnpm build`. Set `REALWORLD_CACHE` to a private, gitignored directory and `OPENROUTER_KEY_FILE` to a credential file. Raw corpora, model answers, and request bodies stay in that cache. Only aggregate results and content hashes are published. The paid runner serializes requests, persists reservations before egress, and shares a $10 ceiling across smoke, full, and judge stages. Unknown charges retain the entire conservative reservation. It never resets spend on resume.
+
+```sh
+python eval/realworld/scripts/02-prepare.py --download
+python eval/realworld/scripts/02-prepare.py --download-train
+python eval/realworld/scripts/02-prepare-pii-split.py
+python eval/realworld/scripts/13-prepare-citations.py
+EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
+EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
+EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.mjs
+node eval/realworld/scripts/15-accountability.mjs
+python eval/realworld/scripts/16-validated-report.py
+```
+
+The smoke gate checks native transport, signed bindings, tool execution, delegation, and receipt closure on the same runtime build. Model-quality errors, expected citation contract rejections, and citation-stage rate limits are recorded outcomes. The full runner asserts byte-identical direct/runtime requests before egress. Latency excludes five warmups per arm, rotates arm order, and includes retries and backoff in wall time; provider and runtime processing time are reported separately. Every incomplete suite retains its planned denominator.
+
+PII extraction uses `findAll`, UTF-16-to-codepoint conversion, deduplication, and maximum one-to-one span matching. Blocking, type classification, overlap extraction, and exact extraction are separate metrics. To emit a frozen split, set `PII_DATASET_FILE`, `PII_DATASET_NAME=dev` or `holdout`, `PII_CONTEXTUAL=0` or `1`, and `LATTICE_SPANS`, then run `06-lattice-spans.mjs`. Score with `12-score-pii-split.py --split-directory "$REALWORLD_CACHE/pii-split" --split holdout --profile default --spans FILE --output FILE`. Freeze both profiles and the manifest before opening the holdout. The current contextual candidate failed the macro-F1 promotion gate; defaults remain unchanged.
+
+The citation benchmark uses a pinned ALCE/ASQA source, five retrieved passages, 20 development and 60 evaluation questions, and identical prompt-only/contract prompts. The contract enforces JSON and citation-ID resolution only. The fixed model judge measures support, citation relevance/completeness, and answer correctness separately. Judge outputs are model judgments, not human labels. Invalid, blocked, and unjudged answers remain visible. A qualitative reviewer spot-check is documented separately and does not substitute for a human study.
+
+See [STUDY-PROTOCOL.md](STUDY-PROTOCOL.md) for prepared study materials. No participants were recruited.
+
 ## Setup
 
 - Build the library first (`pnpm build`); the scripts import

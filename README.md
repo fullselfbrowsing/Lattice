@@ -35,12 +35,13 @@ Lattice is published under the `@full-self-browsing` npm scope.
 
 The full runtime targets Node 24 and newer. Several modular facades are validated as Node 20 compatible for applications that want to adopt Lattice one slice at a time.
 
-### Known gaps
+### Execution evidence and transport
 
-* `ai.runAgent` returns no receipt. `AgentSuccess.receipt`, `AgentFailure.receipt`, and `IterationRecord.receipt` are never set, and the loop does not use the signer passed to `createAI`. With a `signer` on the agent intent, each iteration's checkpoint receipt is emitted only as a `step.transition` tracer event (`metadata.envelope`), so a caller without a tracer keeps none. `ai.run` and `runAgentCrew` return their receipts.
-* The OpenAI-shaped adapters (`openai`, `openai-compatible`, `xai`, `openrouter`, `lm-studio`, and `litellm`) send every artifact as a text part holding JSON metadata and never send an image part. The artifact's value is included only when it is a string, so a data URL is inlined as text, while a `Blob` or `File` image and the object value of an `artifact.json` or `artifact.toolResult` are dropped. The model never sees a dropped value, yet the receipt still hashes it. Pass JSON as a string (for example `artifact.text(JSON.stringify(value))`) on these adapters. The Anthropic and Gemini adapters send native image parts.
-* The OpenAI-shaped adapters send no `temperature` or `max_tokens`, so the provider defaults apply. The Anthropic adapter sends a fixed `max_tokens`, and the Gemini adapter sends a fixed temperature and output token cap.
-* `createOpenAIProvider` without a `baseUrl` posts to `https://api.openai.com/chat/completions`, which lacks `/v1`. For OpenAI, use `createOpenAICompatibleProvider` with `baseUrl: "https://api.openai.com/v1"`.
+With a signer, `ai.run` and `ai.runAgent` return terminal receipts, including signed failure verdicts. Single-agent execution uses the intent signer or the runtime signer. Per-iteration checkpoint receipts remain available through tracer events; crew receipt counts and closure behavior are unchanged.
+
+OpenAI-shaped adapters send supported images as native image parts and preserve JSON values. Unsupported media transports fail explicitly. `createOpenAIProvider()` uses the `/v1/chat/completions` endpoint. Set `generation: { temperature: 0, maxOutputTokens: 256 }` on run, agent, or crew intents to control provider-native sampling and output limits.
+
+Receipts bind the original task, normalized policy, and serialized provider request bodies when the adapter reports them. These are issuer-side commitments, not proof that a provider consumed the bytes. Custom adapters without request reporting remain visibly unbound. Unsalted hashes can reveal guesses of low-entropy values.
 
 ## Why Lattice
 
@@ -59,7 +60,7 @@ Lattice puts that machinery behind one TypeScript first runtime while keeping th
 * Providers: OpenAI, OpenAI compatible gateways, Anthropic, Gemini, xAI, OpenRouter, LiteLLM, LM Studio, AI SDK style providers, and fake providers for tests.
 * Audit: JCS canonical receipts, DSSE envelopes, Ed25519 signatures, CIDs, replay envelopes, redaction, and verification.
 * Tools: tool definitions, tool execution, MCP shaped resources, MCP shaped prompts, tool results as artifacts, and returned tool call validation.
-* Agents: opt in single agent loops and structured crew runs built on the same provider, tool, policy, and event primitives. With a signer, crew runs return receipts, and the single agent loop sends its checkpoint receipts to the tracer only.
+* Agents: opt in single agent loops and structured crew runs built on the same provider, tool, policy, and event primitives. With a signer, single-agent runs return a terminal receipt and crew runs return their receipt chain; per-iteration checkpoints are also available through the tracer.
 
 ## Install
 
@@ -219,6 +220,8 @@ Known trade-offs:
 * Detectors read string values, not object keys, so `{ ssn: "123456789" }` is not flagged.
 * Names, postal addresses, IP addresses, dates of birth, and non-US formats are not detected.
 
+`inv.noPII(path, { contextual: true })` additionally recognizes compact US E.164 numbers, bounded support/customer cues, and recognized object field names such as `ssn` and `phone`. This mode stays opt-in: the frozen Gretel evaluation did not show a macro-F1 improvement. Field cues are tested separately from the prose corpus. Built-in detectors expose `findAll(text, context?)`, returning `{ start, end, substring }` spans in JavaScript UTF-16 offsets; `detect()` remains the first-hit API. Custom detectors can implement `findAll` for unambiguous complete extraction.
+
 ### mustCite
 
 `inv.mustCite(name)` passes when a citations list has an entry naming the artifact: a string equal to `name`, or an object whose `source` equals it. It reads the top-level `citations` list first. When that list is missing or does not name the artifact, it also searches the top-level `evidence` list and any `citations` or `evidence` array nested in objects and arrays. By default it never reads prose. `path` points at one list and turns off the nested search, `keys` compares other object keys, and `caseInsensitive: true` ignores case.
@@ -343,9 +346,9 @@ await verifyReceipt(
 );
 ```
 
-A receipt signs hashes of the input artifacts and the outputs, the contract hash and verdict, the model, the selected route, usage, and redacted tripwire evidence. It does not sign the task or prompt text, the policy, or the routing rationale. The hashes are unsalted SHA-256, so a low-entropy value such as an SSN can be confirmed from a receipt by trying candidates.
+A receipt signs hashes of the input artifacts and outputs, the contract hash and verdict, the model, selected route, usage, and redacted tripwire evidence. New optional v1.4 fields bind the original task (`taskHash`), normalized policy (`policyHash`), and ordered serialized provider request bodies (`providerRequestHashes`). Task and policy use canonical JSON hashing via `hashCanonicalForReceipt`; request hashes cover the exact UTF-8 body handed to configured fetch, excluding headers. Changes made inside custom fetch and receiver consumption remain outside this boundary. If any executed adapter does not report its body digest, the request list is omitted. Routing scores and catalog versions still require separate records. External audit adapters can bind a request only when `rawRequest` is an exact serialized string. The hashes are unsalted SHA-256, so a low-entropy value such as an SSN can be confirmed from a receipt by trying candidates.
 
-`verifyReceipt` takes an optional third argument for verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Audience, nonce, `maxAgeMs`, and a raised `minVersion` are opt-in, so a receipt that omits them still verifies.
+`verifyReceipt` accepts `expectedTaskHash`, `expectedPolicyHash`, and `expectedProviderRequestHashes` (order and duplicates matter). Missing or unequal bindings fail when required. Older v1.4 receipts still verify without these expectations; older verifiers do not enforce the new fields. Other options in the third argument define verifier policy: `minVersion` raises the accepted schema floor, `expectedAudience` and `expectedNonce` require the receipt's v1.4 binding fields to match, and `now` plus `maxAgeMs` bound the issue time. A receipt that carries `expiresAt` is rejected after that instant whether or not options are passed. Audience, nonce, `maxAgeMs`, and a raised `minVersion` are opt-in, so a receipt that omits them still verifies.
 
 `receiptVerifyAdvisories(verified.body, options)` reports what was not checked as `{ code, severity, message }` objects. A `warn` (`audience-unchecked`, `nonce-unchecked`) means the receipt carries a binding that the verifier did not check. An `info` (`audience-absent`, `nonce-absent`, `expiry-absent`, `version-below-current`) names an optional check the receipt does not use. Gate on `code` and `severity`, not on the message.
 
@@ -450,7 +453,7 @@ if (result.kind === "success") {
 }
 ```
 
-Agent execution uses the same policy, provider, tool, event, and survivability primitives as normal runs. `ai.runAgent` returns no receipt: with a `signer` on the intent, each iteration's checkpoint receipt is emitted only as a `step.transition` tracer event, so pass a `tracer` to keep them. `runAgentCrew` returns its receipts, as described under [Audit](#audit). Non agent modular entrypoints are checked so they do not pull the agent surface into provider only, audit only, tools only, eval only, or core only adoption paths.
+Agent execution uses the same policy, provider, tool, event, and survivability primitives as normal runs. `ai.runAgent` returns a terminal receipt on success or failure when the intent or runtime supplies a signer, without requiring a tracer. Per-iteration checkpoints still use `step.transition` tracer events. Signer failures return `receiptError` under the default flag policy or throw under `receipts.onSignerError: "throw"`. `runAgentCrew` returns its receipts, as described under [Audit](#audit). Non agent modular entrypoints are checked so they do not pull the agent surface into provider only, audit only, tools only, eval only, or core only adoption paths.
 
 ## CLI
 
@@ -466,7 +469,7 @@ lattice receipt verify-chain --help
 lattice diagnostics lm-studio --help
 ```
 
-Use it for receipt verification, offline replay, eval gates, receipt inspection, chain verification, and local diagnostics. `lattice verify` accepts `--min-version`, `--audience`, `--nonce`, `--max-age-ms`, and `--quiet`. `lattice receipt verify-chain <dir>` verifies every receipt in a directory as one tree. It accepts the same flags plus `--expect-count`, `--run-id`, `--root-cid`, `--require-closure`, and `--partial`.
+Use it for receipt verification, offline replay, eval gates, receipt inspection, chain verification, and local diagnostics. `lattice verify` accepts `--min-version`, `--audience`, `--nonce`, `--max-age-ms`, `--task-hash`, `--policy-hash`, `--request-hashes` (a comma-separated ordered list), and `--quiet`. `lattice receipt verify-chain <dir>` verifies every receipt in a directory as one tree. It accepts the same flags plus `--expect-count`, `--run-id`, `--root-cid`, `--require-closure`, and `--partial`.
 
 On success both commands print advisories to stderr: a `WARN <code>: <message>` line for every warning, and an `INFO <code>: <message>` line for every note unless `--quiet` is passed. `--quiet` never hides `WARN` lines. Advisories do not change the exit code.
 
