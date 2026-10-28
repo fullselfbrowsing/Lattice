@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-10-22T17:38:00.000Z"
-last_activity: 2026-10-22 - Completed quick task 261022-hg1: excluded wildcard citation strings from prose
+last_updated: "2026-10-28T01:08:57.000Z"
+last_activity: 2026-10-27 - Completed quick task 261027-kqr: runtime/evaluation improvements; paid coverage explicitly incomplete under cap
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-10-22 - Completed quick task 261022-hg1: excluded wildcard citation strings from prose
+Last activity: 2026-10-27 - Completed quick task 261027-kqr: runtime/evaluation improvements; paid coverage explicitly incomplete under cap
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-10-27 | Runtime and evaluation improvements | Native artifact transport, generation controls, execution-bound receipts, terminal agent receipts, one-to-one PII scoring and frozen holdout; contextual promotion rejected. Paid coverage 213/1,020; USD 0.0448 confirmed and USD 9.5895 conservatively charged/reserved. Reports and both PDFs rebuilt. See [quick task 261027-kqr](./quick/261027-kqr-implement-approved-runtime-and-evaluatio/261027-kqr-SUMMARY.md). |
 | 2026-10-22 | Exclude wildcard citation strings from prose | Fixed citation exclusions using original parent/key slots while preserving container aliases and textPath projections. Added 18 regression cases; 1,614 package tests and direct TypeScript checking passed. Implementation: `8a112e7`. See [quick task 261022-hg1](./quick/261022-hg1-exclude-wildcard-citation-strings-from-p/261022-hg1-SUMMARY.md). |
 | 2026-10-18 | Patch issue #21 receipt hardening | Fixed all ten eval-harness findings: real redaction of signed tripwire evidence for every invariant kind, receipt schema v1.4 with audience, nonce, and expiry plus verifier options and minVersion, `verifyChain` in core and CLI, signer-failure flag or throw policy with `receiptError`, crew completion `outputHash`, catalog-order-independent routing, nested `noPII` scanning, `mustCite` options; paper, SECURITY.md, README, docs, and changeset updated; PDF rebuilt (9 pages). |
 | 2026-06-23 | Refresh root README | Replaced stale v1.2 and v1.3 release narrative with a current Lattice 1.5.1 README covering status, quick start, runtime usage, modular entrypoints, providers, audit, tools, agents, CLI, and development. |
