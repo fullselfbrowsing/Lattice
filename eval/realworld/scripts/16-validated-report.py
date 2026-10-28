@@ -357,12 +357,20 @@ def tex_escape(value):
 
 
 def tex_table(caption, label, headers, rows):
+    aliases = {"GPT-4.1 mini": "GPT mini", "Gemini Flash Lite": "Flash Lite", "Claude Haiku 4.5": "Haiku 4.5"}
+    rows = [[aliases.get(str(value), value) for value in row] for row in rows]
+    if label == "validated-privacy":
+        headers = ["Model", "Tried", "Safe", "Leaks", "Raw", "Signed"]
+        caption += ". Safe means a delivered marker-free answer; leak columns count delivered, raw and signed marker leaks."
+    if label == "validated-agents":
+        headers = ["Model", "Suite", "Tried", "Pass", "Used", "N", "V"]
+        caption += ". Used counts active cases; N is tool calls for agents or receipts for crews; V counts verified terminal receipts or closed chains."
     lines = [r"\begin{table}[t]", r"\centering", r"\caption{" + tex_escape(caption) + "}",
-             r"\label{tab:" + label + "}", r"\resizebox{\linewidth}{!}{%",
+             r"\label{tab:" + label + "}", r"\begingroup\small\setlength{\tabcolsep}{3pt}", r"\begin{adjustbox}{max width=\linewidth}",
              r"\begin{tabular}{" + "l" * len(headers) + "}", r"\hline",
              " & ".join(map(tex_escape, headers)) + r" \\", r"\hline"]
     lines.extend(" & ".join(map(tex_escape, row)) + r" \\" for row in rows)
-    return "\n".join(lines + [r"\hline", r"\end{tabular}}", r"\end{table}"])
+    return "\n".join(lines + [r"\hline", r"\end{tabular}", r"\end{adjustbox}\endgroup", r"\end{table}"])
 
 
 def measured_count(value, denominator):
@@ -639,7 +647,7 @@ def self_test():
     assert promotion["promotionChecks"]["holdoutExactMacroF1Improves"]
     assert not promotion["promotionChecks"]["supportiveDevelopment"]
     assert not promotion["eligibleForDefaultPromotion"]
-    assert r"\resizebox{\linewidth}{!}" in tex_table("caption", "label", ["a"], [["b"]])
+    assert r"\begin{adjustbox}{max width=\linewidth}" in tex_table("caption", "label", ["a"], [["b"]])
     row = {"model": "m", "suite": "latency", "arm": "direct", "id": "0", "ok": True,
            "wallMs": 5, "providerMs": 4, "processingMs": 1}
     full = {"env": {"models": [{"id": "m"}]}, "rows": [row, {**row, "id": "1", "ok": False},
