@@ -396,6 +396,7 @@ def report_text(summary):
                         if development.get("available") else
                         "No development spot-check file was supplied. Development smoke cases are excluded from evaluation metrics.")
     sections.append(("## Development-only evidence", development_note))
+    sections.append(("## Reading the tables", "D = direct HTTP, U = unsigned runtime, S = signed runtime. Runtime success and task correctness are separate outcomes. Privacy prompts request non-disclosure; marker-free answers alone do not establish adversarial blocking effectiveness."))
     tables = []
     latency = [group for group in summary["groups"] if group["suite"] == "latency"]
     if any(group["timings"]["wallMs"]["n"] for group in latency):
@@ -497,25 +498,44 @@ def report_text(summary):
                                summary["method"]["transport"], summary["method"]["privacy"], pii_text,
                                account_text, summary["method"]["historical"]])
     sections.append(("## Interpretation and limits", limitations))
+    errors = summary.get("piiErrorAnalysis")
+    if errors:
+        email = errors["types"]["email"]["counts"]
+        sections.append(("## Next evaluation improvements", (
+            f"Development-only error analysis found {email['noAnnotatedOverlap']:,} of {email['unmatchedPredictions']:,} overlap-unmatched email predictions outside any annotated span. "
+            f"Only {email['otherLabelOverlapWithoutSameTypeOverlap']:,} overlapped another label, and {email['unmatchedWithExactStringAnnotatedElsewhere']:,} exactly repeated a complete annotated value elsewhere. "
+            "Review a blinded development sample to distinguish detector errors, boundary errors and annotation gaps before changing rules. No labels or scores were changed. "
+            "For citations, compare native JSON schema output and bounded repair as explicit new arms, recording added calls and cost; a syntax contract alone does not improve source support. "
+            "Resume a new paid experiment only after uncertain charges are reconciled or a new budget is explicitly authorized. Keep the current failed/incomplete recording intact.")))
     sections.append(("## Input hashes", markdown_table(["Input", "SHA-256"], [
         [name, item["sha256"] if item.get("available") else "unavailable"] for name, item in summary["inputs"].items()])))
     markdown = "\n\n".join(title + "\n\n" + content for title, content in sections) + "\n"
     # Long hashes remain in JSON/Markdown; a short display prefix avoids a TeX overflow.
     revision = str(env.get("revision", "unavailable"))[:12]
     harness = str(env.get("harnessHash", "unavailable"))[:12]
+    has_latency = any(group["timings"]["wallMs"]["n"] for group in latency)
+    has_judgments = any(group.get("judgeValid", 0) for group in summary["groups"] if group["suite"] == "citations")
+    paper_tables = [table for table in tables if table[1] != "validated-latency-coverage"
+                    and (has_judgments or table[1] not in {"validated-citations", "validated-claims"})]
+    paper_status = ("The planned latency study produced no samples, and citation correctness, support and completeness remain unmeasured. "
+                    "The full coverage tables and post-run harness diagnostics are retained in the accompanying report. "
+                    "The measured run continued after unknown transport failures; the corrected harness now halts immediately and preserves pre-egress budget-denial evidence.") if not has_latency and not has_judgments else stop_text
     tex = "\n\n".join([
+        r"\FloatBarrier",
         r"\subsection{Validated rerun with fixed denominators}", tex_escape(lead), tex_escape(budget_text),
-        tex_escape(stop_text),
+        tex_escape(paper_status),
         r"The citation subset is derived from ALCE \cite{alce}; this fixed-judge protocol is not an official ALCE evaluation or reproduction.",
         tex_escape(development_note),
         r"Recorded execution revision \texttt{" + tex_escape(revision) + r"} and harness hash \texttt{" +
         tex_escape(harness) + r"}; complete hashes are retained in the accompanying JSON report.",
-        *[tex_table(*table) for table in tables],
+        r"Arms D, U and S mean direct HTTP, unsigned runtime and signed runtime. Runtime success and task correctness are reported separately. Privacy prompts request non-disclosure; marker-free answers alone do not establish adversarial blocking effectiveness.",
+        *[tex_table(*table) for table in paper_tables],
         tex_escape(limitations.replace(f"ALCE: {ALCE_URL}. Pinned subset source: {hf}.", "Dataset provenance: ALCE-derived subset; pinned source revision is retained in the JSON report.").replace("\n\n", " ")),
-        r"\begin{figure}[t]\centering\includegraphics[width=\linewidth]{validated-latency.pdf}"
-        r"\caption{Latency measurement status. When samples exist, points are medians, whiskers are bootstrap 95\% median intervals, and crosses are p95. Unmeasured results have no estimates.}\end{figure}",
+        *((r"\begin{figure}[t]\centering\includegraphics[width=\linewidth]{validated-latency.pdf}"
+            r"\caption{Latency: medians, bootstrap 95\% median intervals, and p95 crosses.}\end{figure}",) if has_latency else ()),
         r"\begin{figure}[t]\centering\includegraphics[width=\linewidth]{validated-pii.pdf}"
         r"\caption{Heldout PII exact-span precision and exact/overlap F1. Values measure agreement with corpus annotations. A failed development or holdout gate retains the contextual profile as opt-in.}\end{figure}",
+        r"\FloatBarrier",
     ]) + "\n"
     return markdown, tex
 
@@ -670,9 +690,11 @@ def main():
     accountability = read("accountability.json")
     termination = read("validated-termination.json")
     development = read("citation-development-spotcheck.json", metadata_only=True)
+    error_analysis = read("pii-error-analysis.json")
     ledger = read("hosted-budget.json", path=args.budget)
     summary = summarize(full, judge, profiles, promotion, accountability, ledger, termination, args.bootstrap_draws)
     summary["inputs"] = inputs
+    summary["piiErrorAnalysis"] = error_analysis
     summary["developmentSpotcheck"] = {"available": bool(development), "source": "citation-development-spotcheck.json",
                                        "scope": "qualitative AI-reviewed development only; excluded from numerical accuracy and heldout metrics"}
     summary["generator"] = {"sha256": digest(Path(__file__).read_bytes()), "python": platform.python_version(),
