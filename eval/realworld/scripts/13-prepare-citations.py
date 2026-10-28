@@ -8,6 +8,7 @@ from pathlib import Path
 
 REVISION = "334fa2e7dd32040c3fef931a123c4be1a81e91a0"
 MEMBER = "ALCE-data/asqa_eval_gtr_top100.json"
+RAW_SHA256 = "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b"
 CACHE = Path(os.environ.get("REALWORLD_CACHE", "/tmp/realworld-data"))
 
 
@@ -29,6 +30,8 @@ def main():
                 else:
                     raise RuntimeError("Pinned ALCE member is missing")
     raw = raw_path.read_bytes()
+    if digest(raw) != RAW_SHA256:
+        raise RuntimeError("Cached ALCE bytes do not match the pinned source digest")
     rows = json.loads(raw)
     if isinstance(rows, dict):
         rows = rows["data"]

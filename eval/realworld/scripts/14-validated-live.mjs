@@ -6,11 +6,13 @@ import { deflateSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
 import * as L from "../../../packages/lattice/dist/index.js";
 import { fingerprintArtifactValue } from "../../../packages/lattice/dist/storage.js";
-import { EvaluationBudget, BudgetExceeded, requestCostBound } from "./budget.mjs";
+import { EvaluationBudget } from "./budget.mjs";
+import { createObservedFetch } from "./live-observer.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const CACHE = process.env.REALWORLD_CACHE ?? resolve(ROOT, ".context/eval-cache");
-const KEY_PATH = process.env.OPENROUTER_KEY_FILE ?? resolve(ROOT, ".context/attachments/y53fe4/openrouter.key");
+const KEY_PATH = process.env.OPENROUTER_KEY_FILE;
+if (!KEY_PATH) throw new Error("Set OPENROUTER_KEY_FILE to the evaluation credential file.");
 const KEY = readFileSync(KEY_PATH, "utf8").trim();
 if (!KEY || /\s/.test(KEY)) throw new Error("Invalid credential file.");
 const BASE = "https://openrouter.ai/api/v1";
@@ -25,7 +27,6 @@ mkdirSync(dirname(LOCK), { recursive: true });
 try { mkdirSync(LOCK); } catch { throw new Error("Another budgeted evaluation owns the lock; inspect before removing it."); }
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const scrub = (value) => String(value).split(KEY).join("[redacted]");
-const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 const readJSON = (path) => JSON.parse(readFileSync(path, "utf8"));
 const schema = (validate) => ({ "~standard": { version: 1, vendor: "lattice-eval", validate } });
@@ -54,62 +55,9 @@ function save() {
   writeAtomic(PRIVATE, privateRows);
 }
 
-async function observedFetch(url, init = {}) {
-  if (String(url) !== BASE + "/chat/completions") throw new Error("Unexpected inference endpoint.");
-  if (active.expectedBody && init.body !== active.expectedBody) throw new Error("Matched request bodies differ before egress.");
-  const body = JSON.parse(init.body);
-  const maximum = body.max_tokens ?? body.max_completion_tokens;
-  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 1024) throw new Error("Every inference call needs a bounded token cap.");
-  if (!MODELS.includes(body.model) || body.tools?.some((tool) => tool.type !== "function")) throw new Error("Unpriced model or server-side tool.");
-  if (body.plugins || body.web_search_options) throw new Error("Unpriced server-side extension.");
-  const model = modelCatalog.get(body.model);
-  const bound = requestCostBound(model, endpointCatalog[body.model], maximum);
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (stopped) throw new BudgetExceeded(stopped);
-    let reservation;
-    try { reservation = budget.reserve(body.model, bound); }
-    catch (error) { stopped = error.message; throw error; }
-    const started = performance.now();
-    let response;
-    let bytes;
-    try {
-      response = await fetch(url, { ...init, signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(90000)]) : AbortSignal.timeout(90000) });
-      bytes = await response.arrayBuffer();
-    } catch (error) {
-      active.calls.push({ bodyHash: sha(init.body), model: body.model, status: null, httpMs: performance.now() - started, costUsd: null, attempt });
-      throw new Error("Provider request failed or timed out; reservation retained.");
-    }
-    let parsed;
-    try { parsed = JSON.parse(Buffer.from(bytes).toString("utf8")); } catch { parsed = null; }
-    const actualCost = parsed?.usage?.cost;
-    const call = {
-      bodyHash: sha(init.body), model: body.model, status: response.status,
-      httpMs: performance.now() - started, costUsd: typeof actualCost === "number" ? actualCost : null,
-      promptTokens: parsed?.usage?.prompt_tokens ?? null, completionTokens: parsed?.usage?.completion_tokens ?? null,
-      provider: parsed?.provider ?? null, observedModel: parsed?.model ?? null, generationId: parsed?.id ?? null,
-      finishReason: parsed?.choices?.[0]?.finish_reason ?? null, attempt,
-      errorCode: parsed?.error?.code ?? null, errorMessage: parsed?.error?.message ? scrub(parsed.error.message).slice(0, 200) : null,
-      retryAfter: response.headers.get("retry-after"),
-      imageParts: (body.messages ?? []).flatMap((m) => Array.isArray(m.content) ? m.content : []).filter((p) => p.type === "image_url").length,
-    };
-    active.calls.push(call);
-    active.lastBody = init.body;
-    active.lastOutput = parsed?.choices?.[0]?.message?.content ?? "";
-    try { budget.settle(reservation, call.costUsd); }
-    catch (error) { stopped = error.message; throw error; }
-    if ([401, 402, 403].includes(response.status)) {
-      stopped = "Provider refused the request with HTTP " + response.status;
-    }
-    if ((response.status === 429 || response.status >= 500) && attempt === 0 && !stopped) {
-      const delay = Math.min(60000, Math.max(1000, Number(response.headers.get("retry-after") ?? 10) * 1000));
-      const before = performance.now();
-      await sleep(delay);
-      active.backoffMs += performance.now() - before;
-      continue;
-    }
-    return new Response(bytes, { status: response.status, statusText: response.statusText, headers: response.headers });
-  }
-  throw new Error("Provider retry exhausted.");
+async function observedFetch(url, init) {
+  return createObservedFetch({ BASE, MODELS, modelCatalog, endpointCatalog, budget,
+    getActive: () => active, getStopped: () => stopped, setStopped: (value) => { stopped = value; }, scrub })(url, init);
 }
 
 function ai(model, signed = true) {
@@ -137,10 +85,10 @@ async function receiptChecks(result, answer) {
   const outputs = result.outputs ?? result.output;
   const hash = outputs ? (await fingerprintArtifactValue(outputs))?.value ?? null : null;
   const edited = outputs ? (await fingerprintArtifactValue({ ...outputs, answer: answer + "!" }))?.value ?? null : null;
-  const submitted = active.calls.filter((call) => call.attempt === 0).map((call) => call.bodyHash);
+  const submitted = active.preparedBodies;
   const expected = await L.verifyReceipt(result.receipt, keys.keySet, {
     expectedTaskHash: active.expectedTaskHash, expectedPolicyHash: active.expectedPolicyHash,
-    expectedProviderRequestHashes: submitted,
+    ...(submitted.length ? { expectedProviderRequestHashes: submitted } : {}),
   });
   // Runtime captures each adapter submission; transport retries can repeat that same body.
   return {
@@ -159,7 +107,7 @@ async function runCase(id, model, suite, arm, work, grade = () => ({})) {
   const prior = out.rows.find((row) => row.id === id && row.model === model && row.suite === suite && row.arm === arm);
   if (prior) return prior;
   if (stopped) return null;
-  active = { calls: [], backoffMs: 0, lastBody: null, lastOutput: "" };
+  active = { calls: [], preparedBodies: [], backoffMs: 0, lastBody: null, lastOutput: "" };
   const started = performance.now();
   let result;
   let error = null;
@@ -364,18 +312,19 @@ try {
   const revision = git("rev-parse", "HEAD");
   const codeHash = sha(readFileSync(resolve(ROOT, "packages/lattice/dist/index.js")));
   const harnessHash = sha(readFileSync(import.meta.filename));
+  const observerHash = sha(readFileSync(resolve(import.meta.dirname, "live-observer.mjs")));
   const manifestPath = resolve(CACHE, "citation-split/manifest.json");
-  const env = { at: new Date().toISOString(), revision, codeHash, harnessHash, node: process.version, stage: STAGE,
+  const env = { at: new Date().toISOString(), revision, codeHash, harnessHash, observerHash, node: process.version, stage: STAGE,
     models: MODELS.map((id) => ({ id, pricing: modelCatalog.get(id).pricing, contextLength: modelCatalog.get(id).context_length })),
     citationManifest: existsSync(manifestPath) ? readJSON(manifestPath) : null,
     timing: "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
-    requestBinding: "SHA256 of serialized body handed to configured fetch; retries may repeat a body. No claim of receiver attestation.",
+    requestBinding: "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
     scope: "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
     smokeGate: "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
     tokenCaps: { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
   if (existsSync(OUT)) {
     out = readJSON(OUT);
-    if (out.env.codeHash !== codeHash || out.env.harnessHash !== harnessHash) throw new Error("Existing results have different code; archive them before a new run.");
+    if (out.env.codeHash !== codeHash || out.env.harnessHash !== harnessHash || out.env.observerHash !== observerHash) throw new Error("Existing results have different code; archive them before a new run.");
     if (existsSync(PRIVATE)) privateRows = readJSON(PRIVATE);
   } else out = { version: "validated-live/v1", env, rows: [] };
   save();

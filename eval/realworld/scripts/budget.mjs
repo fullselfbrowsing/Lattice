@@ -25,6 +25,7 @@ export class EvaluationBudget {
   get chargedUsd() { return this.state.entries.reduce((sum, entry) => sum + entry.chargedUsd, 0); }
   get confirmedUsd() { return this.state.entries.filter((e) => e.settled).reduce((sum, e) => sum + e.chargedUsd, 0); }
   reserve(model, upperBoundUsd) {
+    if (this.state.haltedReason) throw new BudgetExceeded(this.state.haltedReason);
     if (!Number.isFinite(upperBoundUsd) || upperBoundUsd <= 0) throw new TypeError("A positive finite request cost bound is required.");
     if (this.chargedUsd + upperBoundUsd > this.state.limitUsd) throw new BudgetExceeded("Evaluation budget exhausted; no request sent.");
     const id = randomUUID();
@@ -39,10 +40,12 @@ export class EvaluationBudget {
     if (!Number.isFinite(actualUsd) || actualUsd < 0) throw new TypeError("Invalid provider cost.");
     entry.chargedUsd = actualUsd;
     entry.settled = true;
-    this.persist();
     if (actualUsd > entry.reservedUsd || this.chargedUsd > this.state.limitUsd) {
-      throw new BudgetExceeded("Provider charge exceeded the conservative reservation; evaluation halted.");
+      this.state.haltedReason = "Provider charge exceeded the conservative reservation; evaluation halted.";
+      this.persist();
+      throw new BudgetExceeded(this.state.haltedReason);
     }
+    this.persist();
   }
   persist() {
     mkdirSync(dirname(this.path), { recursive: true });

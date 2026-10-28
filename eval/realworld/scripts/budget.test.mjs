@@ -30,6 +30,8 @@ test("invalid and higher-than-reserved charges fail closed", () => {
     const id = budget.reserve("model", 0.1);
     assert.throws(() => budget.settle(id, 0.2), BudgetExceeded);
     assert.equal(budget.confirmedUsd, 0.2);
+    const resumed = new EvaluationBudget(join(dir, "budget.json"));
+    assert.throws(() => resumed.reserve("model", 0.1), BudgetExceeded);
     assert.throws(() => budget.settle(id, 0));
   } finally { rmSync(dir, { recursive: true }); }
 });
