@@ -1,0 +1,222 @@
+{
+  "dataset": "holdout",
+  "profile": "default",
+  "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+  "scorerCommit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+  "predictionProvenance": {
+    "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+    "node": "v24.14.1",
+    "latticeVersion": "1.6.0"
+  },
+  "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+  "datasetSha256": "986bb58f039d37abbac82b591692255fd5fdc6b09a074a5ccf0b0cc48459d71a",
+  "predictionSha256": "32005ea492f5ac7c1d4fa475fd8ca00254bd604a57c945c3e463c49917a24b89",
+  "documents": 5186,
+  "source": {
+    "dataset": "gretelai/synthetic_pii_finance_multilingual",
+    "file": "data/English_train-00000-of-00001.parquet",
+    "revision": "7b844d16738527a04264f50214cb426a4cea0897"
+  },
+  "extraction": {
+    "email": "all-matches",
+    "us-ssn": "all-matches",
+    "credit-card": "all-matches",
+    "us-phone": "all-matches"
+  },
+  "scorerVersion": "pii-metrics/v2",
+  "offsetUnit": "codepoint",
+  "document": {
+    "email": {
+      "tp": 357,
+      "fp": 415,
+      "fn": 21,
+      "goldDocs": 378,
+      "precision": 0.46243523316062174,
+      "recall": 0.9444444444444444,
+      "f1": 0.6208695652173913
+    },
+    "us-ssn": {
+      "tp": 106,
+      "fp": 8,
+      "fn": 10,
+      "goldDocs": 116,
+      "precision": 0.9298245614035088,
+      "recall": 0.9137931034482759,
+      "f1": 0.9217391304347826
+    },
+    "us-phone": {
+      "tp": 530,
+      "fp": 66,
+      "fn": 247,
+      "goldDocs": 777,
+      "precision": 0.889261744966443,
+      "recall": 0.6821106821106822,
+      "f1": 0.7720320466132556
+    },
+    "credit-card": {
+      "tp": 66,
+      "fp": 25,
+      "fn": 62,
+      "goldDocs": 128,
+      "precision": 0.7252747252747253,
+      "recall": 0.515625,
+      "f1": 0.6027397260273972
+    }
+  },
+  "documentClassification": {
+    "email": {
+      "tp": 357,
+      "fp": 415,
+      "fn": 21,
+      "tn": 4393,
+      "goldDocs": 378,
+      "precision": 0.46243523316062174,
+      "recall": 0.9444444444444444,
+      "f1": 0.6208695652173913
+    },
+    "us-ssn": {
+      "tp": 106,
+      "fp": 8,
+      "fn": 10,
+      "tn": 5062,
+      "goldDocs": 116,
+      "precision": 0.9298245614035088,
+      "recall": 0.9137931034482759,
+      "f1": 0.9217391304347826
+    },
+    "us-phone": {
+      "tp": 530,
+      "fp": 66,
+      "fn": 247,
+      "tn": 4343,
+      "goldDocs": 777,
+      "precision": 0.889261744966443,
+      "recall": 0.6821106821106822,
+      "f1": 0.7720320466132556
+    },
+    "credit-card": {
+      "tp": 66,
+      "fp": 25,
+      "fn": 62,
+      "tn": 5033,
+      "goldDocs": 128,
+      "precision": 0.7252747252747253,
+      "recall": 0.515625,
+      "f1": 0.6027397260273972
+    }
+  },
+  "span": {
+    "email": {
+      "tp": 477,
+      "fp": 1087,
+      "fn": 28,
+      "goldSpans": 505,
+      "predSpans": 1564,
+      "precision": 0.30498721227621484,
+      "recall": 0.9445544554455445,
+      "f1": 0.4610923151280812
+    },
+    "us-ssn": {
+      "tp": 117,
+      "fp": 27,
+      "fn": 11,
+      "goldSpans": 128,
+      "predSpans": 144,
+      "precision": 0.8125,
+      "recall": 0.9140625,
+      "f1": 0.8602941176470589
+    },
+    "us-phone": {
+      "tp": 664,
+      "fp": 139,
+      "fn": 311,
+      "goldSpans": 975,
+      "predSpans": 803,
+      "precision": 0.8268991282689913,
+      "recall": 0.681025641025641,
+      "f1": 0.7469066366704162
+    },
+    "credit-card": {
+      "tp": 80,
+      "fp": 54,
+      "fn": 68,
+      "goldSpans": 148,
+      "predSpans": 134,
+      "precision": 0.5970149253731343,
+      "recall": 0.5405405405405406,
+      "f1": 0.5673758865248227
+    }
+  },
+  "spanExact": {
+    "email": {
+      "tp": 395,
+      "fp": 1169,
+      "fn": 110,
+      "goldSpans": 505,
+      "predSpans": 1564,
+      "precision": 0.25255754475703324,
+      "recall": 0.7821782178217822,
+      "f1": 0.3818269695505075
+    },
+    "us-ssn": {
+      "tp": 117,
+      "fp": 27,
+      "fn": 11,
+      "goldSpans": 128,
+      "predSpans": 144,
+      "precision": 0.8125,
+      "recall": 0.9140625,
+      "f1": 0.8602941176470589
+    },
+    "us-phone": {
+      "tp": 621,
+      "fp": 182,
+      "fn": 354,
+      "goldSpans": 975,
+      "predSpans": 803,
+      "precision": 0.7733499377334994,
+      "recall": 0.6369230769230769,
+      "f1": 0.6985376827896513
+    },
+    "credit-card": {
+      "tp": 78,
+      "fp": 56,
+      "fn": 70,
+      "goldSpans": 148,
+      "predSpans": 134,
+      "precision": 0.582089552238806,
+      "recall": 0.527027027027027,
+      "f1": 0.5531914893617021
+    }
+  },
+  "blocking": {
+    "mapped_types": {
+      "tp": 984,
+      "fp": 185,
+      "fn": 161,
+      "tn": 3856,
+      "goldDocs": 1145,
+      "precision": 0.8417450812660393,
+      "recall": 0.8593886462882097,
+      "f1": 0.8504753673293
+    },
+    "all_annotated_types": {
+      "tp": 1154,
+      "fp": 15,
+      "fn": 3459,
+      "tn": 558,
+      "goldDocs": 4613,
+      "precision": 0.9871685201026519,
+      "recall": 0.25016258400173425,
+      "f1": 0.39916983742649603
+    }
+  },
+  "latencyMs": {
+    "n": 5186,
+    "mean": 0.00600470497493251,
+    "p50": 0.0047,
+    "p95": 0.0115,
+    "min": 0.0009,
+    "max": 0.5993
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": "pii-promotion/v1",
+  "frozenBeforeHoldout": true,
+  "baseline": "default",
+  "candidate": "contextual",
+  "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+  "runtimeCommit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+  "primaryMetric": "macro one-to-one exact-span F1 across four mapped types",
+  "gate": "macro F1 increases and no type loses more than 0.01 absolute exact-span precision; default promotion additionally requires supportive development evidence",
+  "developmentEvidence": "Candidate has slightly lower macro F1 on development; retain opt-in regardless of a tiny heldout delta. No post-holdout tuning.",
+  "holdout": {
+    "macroF1": {
+      "default": 0.62346256483723,
+      "contextual": 0.6233644004635945
+    },
+    "precisionLossByType": {
+      "email": 0.0,
+      "us-ssn": 0.0,
+      "us-phone": 0.0009618780320068687,
+      "credit-card": 0.0
+    },
+    "gatePassed": false,
+    "decision": "Keep contextual detection opt-in; no default promotion."
+  }
+}
