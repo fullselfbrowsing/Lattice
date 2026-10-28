@@ -20,7 +20,8 @@
  *   - packages/lattice/scripts/check-cli-deps.mjs (its FORBIDDEN array context)
  *
  * Skipped directories: node_modules, dist, .git, .changeset, .planning,
- * coverage. .planning is excluded because PITFALLS / CONTEXT docs cite the
+ * coverage, .context. Local worktrees and evaluation caches are not source.
+ * .planning is excluded because PITFALLS / CONTEXT docs cite the
  * anti-patterns as illustrative examples, not code.
  *
  * Exit codes:
@@ -42,6 +43,7 @@ const SKIP_NAMES = new Set([
   ".git",
   ".changeset",
   ".planning",
+  ".context",
   "coverage",
 ]);
 
