@@ -181,6 +181,7 @@ export OPENROUTER_KEY_FILE=/path/to/credential-file
 EVAL_COHORT=free EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
 EVAL_COHORT=free EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
 EVAL_COHORT=free EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.mjs
+python eval/realworld/scripts/19-free-format-analysis.py
 python eval/realworld/scripts/18-free-report.py
 ```
 
@@ -196,3 +197,7 @@ Citation judging uses a fixed free Xing 4.0 model and remains exploratory,
 without human validation. Invalid answers and provider errors remain visible;
 missing judgments are unknown rather than zero quality. Free-tier queueing and
 small timing samples do not establish production latency.
+
+The format-diagnostic script reads local private answer files but exports only
+aggregate failure categories. It never changes the recorded scoring. The free
+report also generates `validated-free.tex` for both paper drafts.

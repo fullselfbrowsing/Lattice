@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -55,11 +56,12 @@ def main():
         print("free-format-analysis self-test passed")
         return
     full = json.loads((RESULTS / "validated-free-full.json").read_text())
-    cache = ROOT / ".context/eval-cache"
+    cache = Path(os.environ.get("REALWORLD_CACHE", ROOT / ".context/eval-cache"))
     answers = {(r["model"], r["suite"], r["arm"], r["id"]): r
                for r in json.loads((cache / "validated-free-full-private.json").read_text())}
     examples = {r["id"]: r for r in map(json.loads, (cache / "citation-split/evaluation.jsonl").read_text().splitlines())}
-    grouped = defaultdict(lambda: {"cases": 0, "categories": Counter(), "lengthLimited": 0})
+    grouped = defaultdict(lambda: {"cases": 0, "categories": Counter(), "lengthLimited": 0,
+                                   "emptyContentFinishReasons": Counter()})
     for row in full["rows"]:
         if row["suite"] != "citations":
             continue
@@ -73,6 +75,8 @@ def main():
         group["cases"] += 1
         group["categories"][category] += 1
         group["lengthLimited"] += any(c.get("finishReason") == "length" for c in row["calls"])
+        if category == "empty-content":
+            group["emptyContentFinishReasons"][row["calls"][-1].get("finishReason") or "unspecified"] += 1
     result = {"version": "free-format-diagnostics/v1", "scope": "Post-hoc aggregate diagnosis only; no score changes or heldout prompt tuning.",
               "categoriesAreMutuallyExclusive": True,
               "notes": ["Empty citation lists are not automatically classified as justified abstentions.",

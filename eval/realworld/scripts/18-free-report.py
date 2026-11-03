@@ -129,6 +129,11 @@ def markdown(report):
             for category, count in sorted(group["categories"].items()):
                 if category != "valid":
                     lines.append(f"| {group['model']} | {group['arm']} | {category} | {count} |")
+        finishes = Counter()
+        for group in report["formatDiagnostics"]["groups"]:
+            finishes.update(group.get("emptyContentFinishReasons", {}))
+        lines += ["", "Empty-response finish reasons: " + ", ".join(f"`{k}`: {v}" for k, v in sorted(finishes.items())) +
+                  ". Token exhaustion and content filtering are distinct outcomes; filtered responses should not be treated as JSON-repair opportunities."]
     lines += ["", "## Provenance and limits", "", f"Measured revision: `{report['env']['revision']}`. Runtime hash: `{report['env']['codeHash']}`.", "",
               "All request bodies are hashed before egress without mutation. Catalog and endpoint prices, model IDs, generation limits, harness hashes and dataset manifests are recorded in the JSON artifacts. The paid ledger was never opened for writes by the free runner.", ""]
     lines += ["- " + item for item in report["limitations"]]
