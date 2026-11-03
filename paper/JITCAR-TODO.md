@@ -2,7 +2,7 @@
 
 **Priority: P0 — highest priority.** Updated November 3, 2026. This submission takes precedence over optional runtime development and further model experiments in this workspace.
 
-**Next working item: A1, the manuscript AI-provenance audit.** Work through the checklist one item at a time with Lakshman; initiate author-owned requests early so replies can arrive while manuscript work proceeds. A checked item requires the evidence specified below. Creating this checklist does not complete any submission item.
+**Current working item: C2, the end-to-end refund business case.** Research and a proposed synthetic travel-refund walkthrough are ready for author review; manuscript incorporation and C4 execution remain pending. C1 awaits author review, while A1's remaining provenance questions and other author-owned dependencies stay open. Work through the checklist one item at a time with Lakshman. A checked item requires the evidence specified below.
 
 ## Dates and decision rules
 
@@ -36,7 +36,7 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 ## What we can already reuse
 
-- The current [working manuscript](main.tex) already has DSRM/FEDS framing, five design requirements, four design principles, evaluation, implications for practice, and a proposed practitioner study. C1's organizational framing was revised Nov 3 and awaits author review; C2–C8 remain pending adaptation. The manuscript still uses the existing ISF-oriented format pending A7/P6.
+- The current [working manuscript](main.tex) already has DSRM/FEDS framing, five design requirements, four design principles, evaluation, implications for practice, and a proposed practitioner study. C1's organizational framing was revised Nov 3 and awaits author review. [C2 research and case design](research/C2-REFUND-CASE.md) are ready; incorporation and demonstration execution remain pending, along with C3–C8. The manuscript still uses the existing ISF-oriented format pending A7/P6.
 - The [free-model report](../eval/realworld/results/validated-free-summary.md) records 428 planned cases, 40/40 artifact transport checks, 4/4 single-agent cases, 3/4 crew cases, and 324 verified terminal receipts. Citation format passed 213/240; strict citation quality passed 166/240 under an exploratory automated judge without human calibration.
 - The free cohort added $0 account spend. Its residual timing includes harness work and is not a pure SDK-overhead measurement. Its results must remain separate from earlier paid and historical cohorts.
 - The manuscript currently contains red TODOs for practitioner-study approval/IRB, the archive DOI, author contributions, and ethics. Funding and a combined AI declaration were updated Nov 3 from author-supplied facts; final declaration review and competing-interest confirmation remain pending.
@@ -53,7 +53,7 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 - [ ] Inventory every manuscript section, abstract, table narrative, figure, appendix, and declaration as human-drafted, AI-drafted, AI-edited, or unknown. Link supporting session records, commits, or author confirmation; do not infer authorship from writing style or a commit author alone.
 - [ ] Record tool name, actual model/version where known, dates, task, affected text, and subsequent human work. Mark unavailable versions as unknown and request records; do not invent them.
 - [ ] Separate manuscript drafting from coding assistance, data analysis, reference assistance, and models evaluated as research subjects or judges.
-- [x] Record the known assistance: evaluation code/reporting, free-evaluation LaTeX prose and associated manuscript edits, submission planning, and the C1 introduction/abstract/conclusion revision. Preserve the author's confirmation about the original Introduction; continue the remaining section-level inventory separately.
+- [x] Record the known assistance: evaluation code/reporting, free-evaluation LaTeX prose and associated manuscript edits, submission planning, the C1 introduction/abstract/conclusion revision, and C2 primary-source research/scenario design. C2's research brief and process diagram are AI-assisted planning materials, not new manuscript text. Preserve the author's confirmation about the original Introduction; continue the remaining section-level inventory separately.
 - [ ] Compare the inventory with the current publisher policy; obtain guidance from Prof. Neouchi and, if needed, the journal about already AI-drafted passages. Authors determine and carry out the required original writing. Copyediting or disclosure alone must not be represented as automatically resolving prohibited drafting.
 - [ ] Preserve the inventory and supporting records privately; turn confirmed facts into the eventual disclosure under P5.
 
@@ -99,6 +99,8 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 ### A5 — Secure FSB case-publication permission or use the fallback
 
 **Owner:** Lakshman obtains permission from the authorized rights holder; Codex inventories proposed material. **Due:** request Nov 3; decision Nov 5. **Status:** pending.
+
+**C2 research update:** the proposed case uses synthetic travel-provider records motivated by a public tribunal decision. It needs no private FSB/Voyza material. Do not close A5 until the submission's case materials have been checked and the synthetic status is consistent throughout, or specific company material is separately authorized.
 
 - [ ] List the proposed organization name, process description, screenshots, logs, operational facts, quotations, and data to publish.
 - [ ] Obtain written permission covering those specific materials, anonymization, and journal/repository publication where applicable. Author affiliation alone is not permission for every company artifact.
@@ -162,15 +164,18 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ### C2 — Add one end-to-end business case
 
-**Target:** choose Nov 4; integrate Nov 5. **Depends on:** A5 and A7.
+**Target:** choose Nov 4; integrate Nov 5. **Depends on:** A5 and A7. **Status:** research and proposed walkthrough ready for author review (Nov 3); manuscript incorporation and C4 execution pending.
 
-- [x] Select **refund approval** as the working case. C1 uses an illustrative refund dispute, as authorized Nov 3. The full walkthrough remains pending; a real FSB case would still require the facts and permissions under A5.
+- [x] Select **refund approval** as the working case. C1 uses an illustrative refund dispute, as authorized Nov 3. The C2 research selects a **synthetic travel-refund review after conflicting chatbot advice**, motivated by *Moffatt v. Air Canada*, with Klarna and Zurich as commercial comparison examples. This is not a deployment at any named company.
+- [x] Research primary sources and prepare the [case-design brief](research/C2-REFUND-CASE.md), including actors, rules, ordinary/exception paths, a proposed process figure, evidence table, implementation mapping and C4 demonstration specification. These are research/design deliverables; the incorporation checkboxes below remain open.
 - [ ] Describe actors, incoming evidence, policy, decision authority, escalation, and expected business outcome. Separate documented facts from scenario assumptions.
 - [ ] Walk through intake → evidence preparation → policy/provider selection → model/tool execution → proposed decision → human approval/escalation → stored evidence → independent verification.
 - [ ] Include one ordinary path and one exception, such as conflicting policy evidence or a decision requiring human escalation.
 - [ ] Show what an auditor can establish from retained artifacts and receipts, and what remains an issuer claim or requires external evidence.
 - [ ] Add a compact process figure and an evidence table connecting each step to actor, control, artifact, and verification outcome.
 - [ ] Report only measured outcomes. Proposed savings, ROI, or reduced dispute time remain hypotheses unless supported by observations.
+
+**Recommended demonstration:** an eligible USD 180 refund and a challenged USD 240 rejection under explicitly invented rules. Include a signed but incorrect recommendation, changed or missing policy evidence, missing authorization, and separately recorded payment. Do not infer model quality from scripted outputs, human oversight from simulated approvals, or complete case evidence from a valid run receipt. Compare secured logging fairly. The research does not change existing evaluation results or the PDF.
 
 **Done when:** the case can be followed from business request to accountable decision and audit, with its real/synthetic status explicit throughout.
 
@@ -192,7 +197,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 - [ ] **Overhead:** distinguish controlled component benchmarks, hosted end-to-end latency, provider time, and harness-inclusive residual time. Report environment, revision, baseline, sample count, uncertainty, failures, and measurement limits.
 - [ ] **Tamper detection:** map attacks to the threat model; report altered/missing artifacts, receipt/signature changes, replay/binding mismatches, and chain omissions where actually tested. Include unmodified controls and explain unsupported threats such as a dishonest issuer or unwitnessed external effects.
-- [ ] **Case walkthrough:** execute or reproduce the C2 demonstration and record evidence for the normal and exception paths. Connect results to the requirements table.
+- [ ] **Case walkthrough:** execute or reproduce the C2 demonstration and record evidence for the normal and exception paths. Use the [C2 frozen-demonstration specification](research/C2-REFUND-CASE.md#demonstration-specification-for-c4): start with offline fixtures and actual Lattice signing/verification, label scripted decisions, include an incorrect-but-validly-signed output, and separate case completeness from signature validity. Connect results to the requirements table.
 - [ ] **Practitioner feedback decision by Nov 4:** include feedback only if the institutional determination, recruitment/consent, and actual collection permit it. Otherwise use an explicit future-work plan and limitation; do not treat a plan as completed evaluation.
 - [ ] **Quality:** distinguish format enforcement, citation support, answer correctness, and abstention. Retain the exploratory judge's limitations and the fact that identical paired requests do not establish generation improvement from post-generation contract checks.
 - [ ] Preserve frozen cohorts, denominators, failed runs, measured revisions, and the later HTTP-200 error-envelope fix. Avoid selectively rerunning failures or rewriting historical verdicts.
@@ -337,7 +342,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ## How we will work through this
 
-1. **Start A1:** build the authorship inventory and identify the existing email card; complete A7's general author requirements and portal checks alongside it. The call source and date are verified.
+1. **Continue A1:** complete the remaining authorship inventory and identify the existing email card; complete A7's general author requirements and portal checks alongside it. The original Introduction provenance, call source and deadline date are verified.
 2. **Resolve the external dependencies:** A2–A6 requests and factual questions, with Nov 5 fallback decisions. Track waiting replies while working on items that do not depend on them.
 3. **Work through C1–C8 in order**, choosing the C2 case before finalizing C1. For each item: inspect current material, agree the needed change, carry out permitted work, verify the result, and update its checkbox/status.
 4. **Apply the Nov 6 decision**, record JITCAR go/no-go, and follow the agreed venue path.
@@ -356,3 +361,5 @@ Optional runtime enhancements, broader model comparisons, new benchmark datasets
 | Nov 3 | Eight content changes remain pending despite reusable existing sections | Work through C1–C8 |
 | Nov 3 | Refund approval is the recommended working case; real/synthetic status is undecided | A5 and C2 |
 | Nov 3 | First substantive task is AI provenance, before manuscript rewriting | A1 |
+| Nov 3 | C1 revised after confirmation that the original Introduction was human-written | Author review remains open |
+| Nov 3 | C2 research selects a synthetic travel-refund dispute motivated by the Moffatt judgment; Klarna refunds and Zurich claims provide comparison contexts | Authors review research/design and write the original case narrative; C4 executes the proposed demonstration. Supersedes the earlier undecided case status |
