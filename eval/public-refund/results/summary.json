@@ -1,0 +1,98 @@
+{
+  "measuredRevision": "3330ca28c73ff11d355181cf24cb364ac1fe4c73",
+  "planned": 16,
+  "attempted": 16,
+  "models": [
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "planned": 8,
+      "attempted": 8,
+      "runtimeSuccess": 8,
+      "factualRuns": 8,
+      "citationRuns": 8,
+      "strictPass": 8,
+      "factualAnswers": 40,
+      "citedAnswers": 40,
+      "plannedAnswers": 40,
+      "signatures": 8,
+      "evidenceComplete": 8
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "planned": 8,
+      "attempted": 8,
+      "runtimeSuccess": 7,
+      "factualRuns": 7,
+      "citationRuns": 6,
+      "strictPass": 6,
+      "factualAnswers": 35,
+      "citedAnswers": 34,
+      "plannedAnswers": 40,
+      "signatures": 8,
+      "evidenceComplete": 7
+    }
+  ],
+  "byCase": [
+    {
+      "caseId": "moffatt",
+      "planned": 4,
+      "attempted": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "drn-4377241",
+      "planned": 4,
+      "attempted": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "drn-4148727",
+      "planned": 4,
+      "attempted": 4,
+      "strictPass": 3
+    },
+    {
+      "caseId": "drn-3785437",
+      "planned": 4,
+      "attempted": 4,
+      "strictPass": 3
+    }
+  ],
+  "strictPass": 14,
+  "evidenceComplete": 15,
+  "failures": [
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:0",
+      "error": "tripwire-violated",
+      "format": false,
+      "answers": []
+    },
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:1",
+      "error": null,
+      "format": true,
+      "answers": [
+        {
+          "id": "complaint_upheld",
+          "value": false,
+          "sources": [
+            "drn-4148727-p1"
+          ],
+          "fact": true,
+          "citation": false
+        }
+      ]
+    }
+  ],
+  "controlsPassed": 10,
+  "controlsTotal": 10,
+  "requestCount": 16,
+  "cohortRequests": 16,
+  "reportedZeroCost": 16,
+  "unknownCost": 0,
+  "nonzeroCost": 0,
+  "addedAccountUsageUsd": 0,
+  "paidLedgerUnchanged": true,
+  "stopped": null,
+  "scope": "Actual public records; retrospective source-grounded extraction. Complete decisions (including outcomes) provided. Not outcome prediction, adjudication, a production deployment or a representative benchmark."
+}

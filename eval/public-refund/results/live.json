@@ -1,0 +1,1587 @@
+{
+  "version": "public-refund/v1",
+  "protocolHash": "630c9c961ebe5aafd3e21907e25d879941fe79d49a69eaa1e4c34679744b847b",
+  "development": [],
+  "rows": [
+    {
+      "id": "moffatt:nvidia/nemotron-3.5-super-vl:free:0",
+      "caseId": "moffatt",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:42:46.809Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "019bc5b86635fa0963f6dcb3121473e7db586b732a27d0e49c71379594c35e20",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 8267.496,
+          "costUsd": 0,
+          "promptTokens": 6451,
+          "completionTokens": 2322,
+          "reasoningTokens": 2130,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749366-sI6wOgjVVvWhMGvzxK6n",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 8295.0235,
+      "pacingMs": 0.01883300000008603,
+      "httpMs": 8267.496,
+      "bundle": "bundles/moffatt-0-0.json",
+      "bundleHash": "1b22cb5bb1d880214119cb18b026c204358c92573de96c09db2de5e41d76216d",
+      "publicBundleHash": "ab9546fc9a808a44170c22a8c31b455374a6b7b2e7c9c3682997216b9f9159be"
+    },
+    {
+      "id": "moffatt:dots-studio/dots-3-note-preview:free:0",
+      "caseId": "moffatt",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:42:55.111Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "2389b1d19a668c4ee1414cbe8b017526cc215da86364f475d37aa1bccdebfa1e",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 31349.300667,
+          "costUsd": 0,
+          "promptTokens": 6198,
+          "completionTokens": 3367,
+          "reasoningTokens": 2619,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749375-ZiPtkWbn9R7EBF6SdPYo",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 31358.196666000003,
+      "pacingMs": 0.004042000000481494,
+      "httpMs": 31349.300667,
+      "bundle": "bundles/moffatt-1-0.json",
+      "bundleHash": "81d4531edbef9e1623dc9a581ba7198fb32258267fe46a659516f413e0659802",
+      "publicBundleHash": "57f01a7b2bb38ee449e3b645240c3e3a48727af83c15e374c8d2857fb157cde9"
+    },
+    {
+      "id": "drn-4377241:nvidia/nemotron-3.5-super-vl:free:0",
+      "caseId": "drn-4377241",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:43:26.476Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "ef1b03ae11dd5d71a37171ebdc71c12641a64cd7831f69c5ccadb2a25577b9d3",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 4902.003541999999,
+          "costUsd": 0,
+          "promptTokens": 4026,
+          "completionTokens": 1440,
+          "reasoningTokens": 1177,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749406-zbhDdE9L8B3xM7DPFCdC",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 4909.727165999997,
+      "pacingMs": 0.004999999997380655,
+      "httpMs": 4902.003541999999,
+      "bundle": "bundles/drn-4377241-0-0.json",
+      "bundleHash": "2c061bffe10cacd2a113116e72297217bd92bd1872938d06b807006adf912b63",
+      "publicBundleHash": "ebf9d47c96c1c3e20fbed4bb69e41724d416c2a1515248ea6aa4d9d4d4520dd1"
+    },
+    {
+      "id": "drn-4377241:dots-studio/dots-3-note-preview:free:0",
+      "caseId": "drn-4377241",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:43:31.391Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "2fbd9322350802785112b5937fb438e870d3ffb1dabe403af94e993c4e56bf9a",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 22515.955,
+          "costUsd": 0,
+          "promptTokens": 3911,
+          "completionTokens": 2485,
+          "reasoningTokens": 2247,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749411-ef91neNwo720Mo0jEuW6",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 22524.287915999994,
+      "pacingMs": 0.005124999996041879,
+      "httpMs": 22515.955,
+      "bundle": "bundles/drn-4377241-1-0.json",
+      "bundleHash": "0b6acc2566d63133000660d6398655a8eed38e4eb886997fb17890e55289cd47",
+      "publicBundleHash": "66783a26a43e90b42de242bc0a2f6e43bd44183f753ab4fef6d43ae10d659946"
+    },
+    {
+      "id": "drn-4148727:nvidia/nemotron-3.5-super-vl:free:0",
+      "caseId": "drn-4148727",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:43:53.920Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "89a4fb1873a140f47c0bd84beb0fd0feda947338e23a268b21cbdb6ed94f61e0",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 7207.423125000001,
+          "costUsd": 0,
+          "promptTokens": 2042,
+          "completionTokens": 1567,
+          "reasoningTokens": 1323,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749434-SNC90fkzOYc0LAXXJLm6",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 7213.128624999998,
+      "pacingMs": 0.005416999993030913,
+      "httpMs": 7207.423125000001,
+      "bundle": "bundles/drn-4148727-0-0.json",
+      "bundleHash": "c1950ca4510e7c7812cfa5a2fb017d93dbcd12f93a410cd13afa1d5e59eac75c",
+      "publicBundleHash": "f81334ed161aa7530ceec106243d3022292a2c2c658afd7c6226b7f09fda7acb"
+    },
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:0",
+      "caseId": "drn-4148727",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:44:01.137Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "5d68e9846c8d0bacdae309b6909aeb3a8bd38c50c7191798136f7f0b081f1be1",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 21136.337625,
+          "costUsd": 0,
+          "promptTokens": 1983,
+          "completionTokens": 2127,
+          "reasoningTokens": 1920,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749441-rVfIfTp9ykKffSVeWpLu",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 21142.369124999997,
+      "pacingMs": 0.004249999998137355,
+      "httpMs": 21136.337625,
+      "bundle": "bundles/drn-4148727-1-0.json",
+      "bundleHash": "0947b4830d4c961c92d3b69cfeb73f48f030cd2fdcfe036122fb5d8d6761445c",
+      "publicBundleHash": "a1ac652bca678cc1a057502ba1271204780b63c35c79454f468c7036562f93c3"
+    },
+    {
+      "id": "drn-3785437:nvidia/nemotron-3.5-super-vl:free:0",
+      "caseId": "drn-3785437",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:44:22.283Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "ba7db16c37577d74f833e19884560e30bb9819aef54c6b7b7292cac181538b0a",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 5117.379084,
+          "costUsd": 0,
+          "promptTokens": 3163,
+          "completionTokens": 1030,
+          "reasoningTokens": 720,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749462-o9jX32oGjlJNTFH7Anup",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 5124.368291000006,
+      "pacingMs": 0.0058330000028945506,
+      "httpMs": 5117.379084,
+      "bundle": "bundles/drn-3785437-0-0.json",
+      "bundleHash": "827563545438978456ef4e743f149313c425f7d683da24147217f30b506e0bef",
+      "publicBundleHash": "95a12c51818305fc940feeab0acbae4faec2826a413c8d268a05a3ed11e9c0c1"
+    },
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:0",
+      "caseId": "drn-3785437",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:44:27.411Z",
+      "runtimeOkay": false,
+      "error": "tripwire-violated",
+      "grade": {
+        "format": false,
+        "facts": false,
+        "citations": false,
+        "strict": false,
+        "answers": [],
+        "reason": "invalid-json"
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": false,
+        "evidenceOkay": false,
+        "problems": [
+          "no-successful-output"
+        ]
+      },
+      "calls": [
+        {
+          "bodyHash": "53a2d08078dfb0216b58f8915150d5cbca9e271f4e43e696e8f185df8811ff1d",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 21844.225625000006,
+          "costUsd": 0,
+          "promptTokens": 3062,
+          "completionTokens": 2338,
+          "reasoningTokens": 2022,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749467-PEBcCWayVghl1ivEnVyh",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 21852.45358300001,
+      "pacingMs": 0.0037500000034924597,
+      "httpMs": 21844.225625000006,
+      "bundle": "bundles/drn-3785437-1-0.json",
+      "bundleHash": "94116d23a4b9ca93c45ccb7e982992741aa223963043847d01a6043348337834",
+      "publicBundleHash": "a133755c4f6762a38cd227a7d64dfa8fc53080fcb79de84f2c3c87a9238d65ec"
+    },
+    {
+      "id": "moffatt:dots-studio/dots-3-note-preview:free:1",
+      "caseId": "moffatt",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:44:49.268Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "2389b1d19a668c4ee1414cbe8b017526cc215da86364f475d37aa1bccdebfa1e",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 13192.634666000013,
+          "costUsd": 0,
+          "promptTokens": 6198,
+          "completionTokens": 1331,
+          "reasoningTokens": 1058,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749489-EayF4syPCWuPUqv6pAfc",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 13202.550917000015,
+      "pacingMs": 0.00791699999535922,
+      "httpMs": 13192.634666000013,
+      "bundle": "bundles/moffatt-1-1.json",
+      "bundleHash": "3d9d65e782831e2b49c37e43554e11b6272264c1a33fbaca741c802d30910ecb",
+      "publicBundleHash": "9ae791b9e753be59e83933bcc57f10c6ef559c9bbf3f1faac9fb4e743df063ec"
+    },
+    {
+      "id": "moffatt:nvidia/nemotron-3.5-super-vl:free:1",
+      "caseId": "moffatt",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:45:02.476Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "019bc5b86635fa0963f6dcb3121473e7db586b732a27d0e49c71379594c35e20",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 19099.515957999974,
+          "costUsd": 0,
+          "promptTokens": 6451,
+          "completionTokens": 3430,
+          "reasoningTokens": 3252,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749502-MHBxXtkbHu9yzcU4d7Bc",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 19109.405958000018,
+      "pacingMs": 0.007749999989755452,
+      "httpMs": 19099.515957999974,
+      "bundle": "bundles/moffatt-0-1.json",
+      "bundleHash": "d4d415c83e26b8910a386674ce40885eafc78755b403598af4ed452e4e9158a4",
+      "publicBundleHash": "12834bf39af0693bb24d107fe5af3418bb49dcc4fa4432ca0d234a8de4bc727f"
+    },
+    {
+      "id": "drn-4377241:dots-studio/dots-3-note-preview:free:1",
+      "caseId": "drn-4377241",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:45:21.593Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "2fbd9322350802785112b5937fb438e870d3ffb1dabe403af94e993c4e56bf9a",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 25009.174958000018,
+          "costUsd": 0,
+          "promptTokens": 3911,
+          "completionTokens": 2518,
+          "reasoningTokens": 2273,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749521-tusey2tFjQz46KEbvWDk",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 25015.807208000013,
+      "pacingMs": 0.004457999981241301,
+      "httpMs": 25009.174958000018,
+      "bundle": "bundles/drn-4377241-1-1.json",
+      "bundleHash": "cf424de54977c8185e2e64cc98eb5b9e0e06d3550179c313ec89c2b1b6852463",
+      "publicBundleHash": "ff3b929e077844ce5dd367c12b7d8630ea2062c5f51a2b7c67797e06a459250f"
+    },
+    {
+      "id": "drn-4377241:nvidia/nemotron-3.5-super-vl:free:1",
+      "caseId": "drn-4377241",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:45:46.615Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "ef1b03ae11dd5d71a37171ebdc71c12641a64cd7831f69c5ccadb2a25577b9d3",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 6998.183000000019,
+          "costUsd": 0,
+          "promptTokens": 4026,
+          "completionTokens": 1570,
+          "reasoningTokens": 1290,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749546-9Zg1vv6BFFvfIF09MRfs",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 7001.778749999998,
+      "pacingMs": 0.005499999999301508,
+      "httpMs": 6998.183000000019,
+      "bundle": "bundles/drn-4377241-0-1.json",
+      "bundleHash": "0e0cfa6bcc443066439947f3c32bff4c18aaaf07d905a1284c8ef06e18180f7f",
+      "publicBundleHash": "a41a5d5f4212d8ba496548689276262ee9e7918010a3a0d02594d8079c9472a4"
+    },
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:1",
+      "caseId": "drn-4148727",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:45:53.620Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": false,
+        "strict": false,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": false
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "5d68e9846c8d0bacdae309b6909aeb3a8bd38c50c7191798136f7f0b081f1be1",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 19498.408959000022,
+          "costUsd": 0,
+          "promptTokens": 1983,
+          "completionTokens": 1772,
+          "reasoningTokens": 1443,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749553-3G9r7igES3GA6nrKObTC",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 19502.83158300002,
+      "pacingMs": 0.0027500000142026693,
+      "httpMs": 19498.408959000022,
+      "bundle": "bundles/drn-4148727-1-1.json",
+      "bundleHash": "0bd610584896c437c9eee24530cb23b627d736c9be8f0cb66e31cb302c80c428",
+      "publicBundleHash": "dc93a82786e428ced6b3e98b1b4e1ef13763656fbd3de98eb0cbdfe99522e31c"
+    },
+    {
+      "id": "drn-4148727:nvidia/nemotron-3.5-super-vl:free:1",
+      "caseId": "drn-4148727",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:46:13.126Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "89a4fb1873a140f47c0bd84beb0fd0feda947338e23a268b21cbdb6ed94f61e0",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 4954.259208999982,
+          "costUsd": 0,
+          "promptTokens": 2042,
+          "completionTokens": 1561,
+          "reasoningTokens": 1280,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749573-o1RiagIPmfDihjTUTQmF",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 4962.319999999978,
+      "pacingMs": 0.0037500000034924597,
+      "httpMs": 4954.259208999982,
+      "bundle": "bundles/drn-4148727-0-1.json",
+      "bundleHash": "072fcd6cf72f971e37cb25456dfabd703d6ac98765274c461b9bbd06d74e7c4d",
+      "publicBundleHash": "7c88642165bb5a68b27c54845d277c31ec5590b6d7e5b98e3d6ac691b6318a32"
+    },
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:1",
+      "caseId": "drn-3785437",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:46:18.093Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "53a2d08078dfb0216b58f8915150d5cbca9e271f4e43e696e8f185df8811ff1d",
+          "model": "dots-studio/dots-3-note-preview:free",
+          "status": 200,
+          "httpMs": 11458.621625,
+          "costUsd": 0,
+          "promptTokens": 3062,
+          "completionTokens": 1067,
+          "reasoningTokens": 802,
+          "provider": "AtlasCloud",
+          "observedModel": "dots-studio/dots-3-note-preview:free",
+          "generationId": "gen-1793749578-vlY42YmGdwovvcJ5JGYw",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 11465.425625000003,
+      "pacingMs": 0.004457999981241301,
+      "httpMs": 11458.621625,
+      "bundle": "bundles/drn-3785437-1-1.json",
+      "bundleHash": "6c85cb6299b609f5af75c1c325ec3a313b120da61dc9306355973a15ba20f9db",
+      "publicBundleHash": "53e0fb966858055b33e15c47b3ca9e190c7b2590fc9fc3a6d32e465a538f83a2"
+    },
+    {
+      "id": "drn-3785437:nvidia/nemotron-3.5-super-vl:free:1",
+      "caseId": "drn-3785437",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-03T23:46:29.565Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "ba7db16c37577d74f833e19884560e30bb9819aef54c6b7b7292cac181538b0a",
+          "model": "nvidia/nemotron-3.5-super-vl:free",
+          "status": 200,
+          "httpMs": 3225.692792000016,
+          "costUsd": 0,
+          "promptTokens": 3163,
+          "completionTokens": 837,
+          "reasoningTokens": 529,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3.5-super-vl:free",
+          "generationId": "gen-1793749589-ygkxglpq7B5WfDt0CAjJ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "wallMs": 3228.9840420000255,
+      "pacingMs": 0.006250000005820766,
+      "httpMs": 3225.692792000016,
+      "bundle": "bundles/drn-3785437-0-1.json",
+      "bundleHash": "3ee47dc6b72a161c6807dbf02d2e61337d0596d21c7262f2d2f9a89677aa5dfd",
+      "publicBundleHash": "937fa373ce4fba29c5829f1f17538ffdfa06fa34a2768175b27cb4111e31193d"
+    }
+  ],
+  "resumes": [],
+  "stopped": null,
+  "ledgerAfter": {
+    "mode": "free-only",
+    "limitUsd": 0,
+    "confirmedUsd": 0,
+    "requests": 834,
+    "maxRequests": 900,
+    "unreportedCosts": 50,
+    "remainingAtStartupMinusRequests": 212
+  },
+  "accountAfter": {
+    "usage": 0.04546433,
+    "usageDaily": 0,
+    "quota": {
+      "used": 784,
+      "limit": 1000,
+      "remaining": 216
+    }
+  },
+  "addedAccountUsageUsd": 0,
+  "cohortRequests": 16,
+  "paidLedgerUnchanged": true,
+  "finishedAt": "2026-11-03T23:46:32.829Z"
+}
