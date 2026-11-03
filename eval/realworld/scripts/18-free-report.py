@@ -128,6 +128,70 @@ def markdown(report):
     return "\n".join(lines)
 
 
+def latex(report):
+    names = {"nvidia/nemotron-3.5-super-vl:free": "Nemotron VL",
+             "dots-studio/dots-3-note-preview:free": "Dots Note"}
+    models = [m["id"] for m in report["env"]["models"]]
+    lookup = {(g["model"], g["suite"], g["arm"]): g for g in report["groups"]}
+    lines = [r"\FloatBarrier", r"\subsection{Separate zero-cost hosted cohort}",
+             f"A separate follow-up recorded {report['recorded']}/{report['expected']} planned cases, excluding "
+             f"{report['warmupRows']} latency warmups. It used the free catalog variants of Nemotron 3.5 Super VL and Dots 3 Note Preview. "
+             "Model and endpoint prices were checked as zero before inference; model fallback and server-side extensions were disallowed. "
+             f"Provider-reported charges across development, evaluation and judging total USD {report['accounting']['reportedCostUsd']:.6f} "
+             f"over {report['accounting']['requestsAcrossStages']} requests; {report['accounting']['unreportedCosts']} requests lack a reported cost. "
+             "The earlier paid ledger and its unresolved reservations were preserved.",
+             "These results are not pooled with the paid cohort. An initial development smoke found Gemma 4 31B rate-limited and "
+             "small output allowances exhausted by Nemotron reasoning. Before heldout inference, the second model was changed to Dots "
+             "and output caps were fixed at 1024 tokens for simple tasks and 4096 for citations, agents and judging, "
+             "with temperature zero and provider-default reasoning. Development recordings remain separate.",
+             "Both citation arms use the same 60 frozen ALCE-derived questions and retrieved passages. "
+             f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} "
+             "completed citation request pairs had identical body hashes. The contract validates syntax and citation identifiers "
+             "after generation; it does not repair answers or establish entailment. Differences in generated quality between arms "
+             "therefore do not demonstrate that the contract improved generation."]
+    behavior = []
+    for model in models:
+        transport = sum(lookup[model, "transport", a]["correct"] for a in ("direct", "signed"))
+        privacy = lookup[model, "privacy", "signed"]
+        behavior.append([names.get(model, model), f"{transport}/20",
+                         f"{lookup[model, 'agent', 'signed']['correct']}/2",
+                         f"{lookup[model, 'crew', 'signed']['correct']}/2",
+                         f"{privacy['answerAvailable'] - privacy['answerContainsMarker']}/10"])
+    lines.append(metrics.tex_table("Free-cohort task outcomes. Artifact correctness combines 10 image and 10 JSON calls per model. "
+                                   "Agent and crew passes require actual tool use or delegation. Privacy counts delivered marker-free "
+                                   "answers to non-disclosure prompts, not adversarial blocking.", "free-behavior",
+                                   ["Model", "Artifacts", "Agent", "Crew", "Privacy"], behavior))
+    cited = []
+    for model in models:
+        for arm in ("prompt-only", "contract"):
+            c = lookup[model, "citations", arm]["citations"]
+            cited.append([names.get(model, model), "Prompt" if arm == "prompt-only" else "Contract",
+                          f"{c['formatValid']}/60", f"{c['usable']}/60", f"{c['judgeValid']}/{c['judgeAttempted']}",
+                          f"{c['strictSuccess']}/60" if c['strictSuccess'] is not None else "unknown"])
+    lines.append(metrics.tex_table("Free-cohort citation outcomes. Judge is valid/attempted judgments; strict means an answer "
+                                   "judged correct with every factual claim supported and cited. Missing judgments remain unknown.",
+                                   "free-citations", ["Model", "Arm", "Format", "Usable", "Judge", "Strict"], cited))
+    lines.append("The fixed free Xing 4.0 judge is exploratory and has not been calibrated against human annotations. "
+                 "These support judgments are neither human accuracy labels nor official ALCE scores. "
+                 "Invalid or unavailable answers remain in the 60-question denominator.")
+    times = []
+    for model in models:
+        for arm in ("direct", "unsigned", "signed"):
+            t = lookup[model, "latency", arm]["timing"]
+            times.append([names.get(model, model), metrics.ARMS[arm], t["wallMs"]["n"],
+                          metrics.number(t["wallMs"]["p50"], 1), metrics.number(t["processingMs"]["p50"], 2)])
+    lines.append(metrics.tex_table("Free-cohort latency medians in milliseconds. D/U/S are direct, unsigned and signed; "
+                                   "N counts correct successful trials out of 20, excluding warmups and pacing.",
+                                   "free-latency", ["Model", "Arm", "N", "Wall", "Residual"], times))
+    lines.append("Residual time includes harness hashing, ledger writes and JSON processing, and is not pure SDK overhead. "
+                 "The JSON report includes bootstrap median intervals and p95 values. Small samples and free-tier queueing "
+                 "limit latency generalization. Solid-color images and short policy tools are narrow runtime fixtures.")
+    lines.append(r"Recorded revision \texttt{" + metrics.tex_escape(report["env"]["revision"][:12]) +
+                 r"}; full code, harness, model, endpoint and dataset provenance is retained in the free-cohort JSON artifacts.")
+    lines.append(r"\FloatBarrier")
+    return "\n\n".join(lines) + "\n"
+
+
 def main():
     if "--self-test" in sys.argv:
         env = {"cohort": "free", "counts": {"transport": 10, "privacy": 10, "agents": 2, "citations": 60, "latency": 20},
@@ -159,6 +223,9 @@ def main():
     report = summarize(full, judge, ledger)
     (RESULTS / "validated-free-summary.json").write_text(json.dumps(report, indent=2) + "\n")
     (RESULTS / "validated-free-summary.md").write_text(markdown(report))
+    fragment = latex(report)
+    for directory in (RESULTS, ROOT / "paper", ROOT / "paper/ieee"):
+        (directory / "validated-free.tex").write_text(fragment)
     print(json.dumps({k: report[k] for k in ("recorded", "expected", "runtimeSuccess", "stopped", "accounting")}))
 
 

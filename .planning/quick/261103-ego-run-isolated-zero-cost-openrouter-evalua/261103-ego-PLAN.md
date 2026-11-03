@@ -19,6 +19,8 @@ Pin `nvidia/nemotron-3.5-super-vl:free` and `google/gemma-4-31b-it:free` based o
 
 Publish a separate local free-cohort summary and reproduction instructions, with free-tier availability and judge limitations. Do not pool paid/free model results or treat new measurements as completion of the old cohort. Verify original paid artifacts/ledger are unchanged, run focused harness tests, scan output for the credential, update GSD state, and commit locally. No push, PR posting, merging, or publication.
 
+Add a generated free-cohort follow-up fragment to both paper drafts, keeping the earlier paid fragment unchanged. Rebuild both PDFs and visually inspect the added section using the PDF skill. The new section must distinguish syntax enforcement from answer support, and label the free judge and small latency sample as exploratory.
+
 Sources checked 2026-11-03: OpenRouter models/endpoints/key APIs; official free variant and limits documentation. Key reported 1,000 daily free requests remaining. Free variants have zero inference price but limited availability. Only public benchmark passages and synthetic fixtures are transmitted.
 
 ## Development-only adjustment before heldout inference
