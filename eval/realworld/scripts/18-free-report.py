@@ -66,7 +66,18 @@ def summarize(full, judge, ledger):
         if row["suite"] == "citations" and row["calls"]:
             citation_pairs.setdefault((row["model"], row["id"]), {})[row["arm"]] = [c["bodyHash"] for c in row["calls"]]
     paired = [pair for pair in citation_pairs.values() if len(pair) == 2]
+    quality_failures = Counter()
+    for row in judge.get("rows", []):
+        if not metrics.valid_judge(row):
+            continue
+        claims = row["claims"]
+        failures = {"incorrectAnswer": not row["answerCorrect"], "abstained": row["abstained"],
+                    "emptyClaims": not claims, "unsupportedClaim": any(not c["supported"] for c in claims),
+                    "uncitedClaim": any(not c["cited"] or not c["citationCount"] for c in claims),
+                    "irrelevantCitation": any(c["relevantCitations"] < c["citationCount"] for c in claims)}
+        quality_failures.update(k for k, failed in failures.items() if failed)
     return {"version": "free-report/v1", "env": env, "groups": groups,
+            "overlappingJudgeFailureCounts": dict(quality_failures),
             "judgeModel": judge.get("env", {}).get("judgeModel", env.get("judgeModel")),
             "judgeEnv": judge.get("env"), "judgeProbes": judge.get("probes", []),
             "wrappedJudgeRows": sum(r.get("judgeWrappedJson") is True for r in judge.get("rows", [])),
@@ -113,6 +124,7 @@ def markdown(report):
     lines += ["", "Strict success requires a usable, correct, non-abstaining answer with at least one factual claim; every claim must be supported and cited, and every listed citation for that claim must be relevant.", "",
               f"Fixed exploratory judge: `{report['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
               f"The replacement judge passed {sum(p.get('judgeValid') is True for p in report['judgeProbes'])} synthetic supported/contradicted probes; this is not human calibration. {report['wrappedJudgeRows']} judge replies required removal of a single outer JSON fence. Candidate answers were never normalized. The initial rate-limited Xing attempt is preserved separately and not pooled. Collector hashes distinguish sequential and bounded concurrent grading with the same model, rubric and generation settings.", "",
+              "Overlapping judge failure categories (answers can appear in several): " + ", ".join(f"`{k}`: {v}" for k, v in sorted(report["overlappingJudgeFailureCounts"].items())) + ". These are model judgments, not human-confirmed error labels.", "",
               f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} completed citation request pairs had identical body hashes. The contract validates format after generation; it neither repairs output nor verifies entailment. Differences in generated answer quality across these arms do not establish that the contract improved generation.", "",
               "## Latency", "", "Medians below use successful, correct non-warmup cases. Wall time excludes recorded request pacing. JSON includes bootstrap median intervals and p95; these small free-tier samples do not estimate production latency.", "",
               "| Model | Arm | Eligible / 20 | Wall median ms | HTTP median ms | Processing median ms |", "|---|---|---:|---:|---:|---:|"]
@@ -143,8 +155,9 @@ def markdown(report):
     lines += ["", "## Next experiments", "",
               "1. On a separate development set, compare explicit reasoning allowances and output budgets against the current provider defaults. Record visible-answer completion, token use and supported-answer quality together; a larger budget alone is not evidence of improvement.",
               "2. Define and evaluate an explicit abstention result, then validate citation-list and inline-marker consistency. Keep supported answers, justified abstentions, filtering and transport failures separate. Do not silently repair or rescore the frozen answers.",
-              "3. Calibrate the support judge with blinded human labels before using it to rank models or claim quality gains. The synthetic probes check basic behavior only; a same-vendor judge may introduce bias.",
-              "4. Confirm the HTTP-200 error-envelope fix with the existing offline regressions and a new independently recorded cohort when needed. Measure provider availability separately from task quality, and use more timing trials for production latency claims."]
+              "3. On development questions, test claim-level evidence selection and minimal supporting citations. Track irrelevant citations, unsupported claims and answer correctness separately; adding more citations can lower precision without improving support.",
+              "4. Calibrate the support judge with blinded human labels before using it to rank models or claim quality gains. The synthetic probes check basic behavior only; a same-vendor judge may introduce bias.",
+              "5. Confirm the HTTP-200 error-envelope fix with the existing offline regressions and a new independently recorded cohort when needed. Measure provider availability separately from task quality, and use more timing trials for production latency claims."]
     lines += ["", "## Provenance and limits", "", f"Measured revision: `{report['env']['revision']}`. Runtime hash: `{report['env']['codeHash']}`.", "",
               f"The measured runtime accepted {report['acceptedHttp200Errors']} upstream error envelope inside HTTP 200 as empty output. The task-answer check excluded it from latency statistics. A subsequent adapter fix rejects error envelopes in ordinary and streaming responses; the recorded verdict is retained rather than rewritten.", "",
               "All request bodies are hashed before egress without mutation. Catalog and endpoint prices, model IDs, generation limits, harness hashes and dataset manifests are recorded in the JSON artifacts. The paid ledger was never opened for writes by the free runner.", ""]
@@ -167,7 +180,7 @@ def latex(report):
              "The earlier paid ledger and its unresolved reservations were preserved.",
              "These results are not pooled with the paid cohort. An initial development smoke found Gemma 4 31B rate-limited and "
              "small output allowances exhausted by Nemotron reasoning. Before heldout inference, the second model was changed to Dots "
-             "and output caps were fixed at 1024 tokens for simple tasks and 4096 for citations, agents and judging, "
+             "and output caps were fixed at 1024 tokens for simple tasks and 4096 for citations and agents, "
              "with temperature zero and provider-default reasoning. Development recordings remain separate.",
              "Both citation arms use the same 60 frozen ALCE-derived questions and retrieved passages. "
              f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} "
@@ -201,8 +214,13 @@ def latex(report):
                  "These support judgments are neither human accuracy labels nor official ALCE scores. "
                  "Invalid or unavailable answers remain in the 60-question denominator. An initial Xing judge attempt was rate-limited "
                  "and is retained separately, not pooled. The replacement passed two synthetic supported/contradicted probes. "
+                 "It uses temperature zero, a 4096-token output cap and a 1024-token reasoning allowance. "
                  "Judge replies may have one outer JSON fence removed; candidate answers are unchanged. Independent judgments "
                  "use a shared rate limiter and at most four concurrent requests; collector hashes record the scheduling transition.")
+    failures = report["overlappingJudgeFailureCounts"]
+    lines.append(f"Overlapping judge failure labels include {failures.get('irrelevantCitation', 0)} answers with an irrelevant citation, "
+                 f"{failures.get('incorrectAnswer', 0)} incorrect answers, {failures.get('uncitedClaim', 0)} answers with an uncited claim, "
+                 f"and {failures.get('unsupportedClaim', 0)} with an unsupported claim. These counts overlap and are not human-confirmed labels.")
     if report.get("formatDiagnostics"):
         categories = Counter()
         finishes = Counter()
@@ -264,6 +282,11 @@ def main():
         cited = next(g["citations"] for g in result["groups"] if g["suite"] == "citations" and g["arm"] == "prompt-only")
         assert cited["strictSuccess"] == 1 and cited["strictSuccessPerExpected"] == 1 / 60
         assert cited["unjudgedOrInvalidPerExpected"] == 59
+        judge["rows"][0]["claims"][0]["relevantCitations"] = 0
+        result = summarize(full, judge, {"entries": [], "maxRequests": 900})
+        assert result["overlappingJudgeFailureCounts"] == {"irrelevantCitation": 1}
+        cited = next(g["citations"] for g in result["groups"] if g["suite"] == "citations" and g["arm"] == "prompt-only")
+        assert cited["strictSuccess"] == 0
         print("free-report self-test passed")
         return
     full = json.loads((RESULTS / "validated-free-full.json").read_text())

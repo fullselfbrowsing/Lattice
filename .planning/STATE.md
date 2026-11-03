@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: awaiting_next_milestone
 stopped_at: v1.5.0 archived; awaiting next milestone
-last_updated: "2026-10-28T01:08:57.000Z"
-last_activity: 2026-10-27 - Completed quick task 261027-kqr: runtime/evaluation improvements; paid coverage explicitly incomplete under cap
+last_updated: "2026-11-03T18:20:02.558946Z"
+last_activity: 2026-11-03 - Completed quick task 261103-ego: separate free cohort, 428/428 cases and 213 quality judgments, zero added spend
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: n/a
 Status: Awaiting next milestone
-Last activity: 2026-10-27 - Completed quick task 261027-kqr: runtime/evaluation improvements; paid coverage explicitly incomplete under cap
+Last activity: 2026-11-03 - Completed quick task 261103-ego: separate free cohort, 428/428 cases and 213 quality judgments, zero added spend
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-03 | Separate free-model evaluation | 428/428 cases, 213/213 valid exploratory judgments, 166/240 strict citation passes; 784 free requests and zero added spend. HTTP-200 error envelopes now rejected. Paid data preserved, reports/PDFs rebuilt. See [quick task 261103-ego](./quick/261103-ego-run-isolated-zero-cost-openrouter-evalua/261103-ego-SUMMARY.md). |
 | 2026-10-27 | Runtime and evaluation improvements | Native artifact transport, generation controls, execution-bound receipts, terminal agent receipts, one-to-one PII scoring and frozen holdout; contextual promotion rejected. Paid coverage 213/1,020; USD 0.0448 confirmed and USD 9.5895 conservatively charged/reserved. Reports and both PDFs rebuilt. See [quick task 261027-kqr](./quick/261027-kqr-implement-approved-runtime-and-evaluatio/261027-kqr-SUMMARY.md). |
 | 2026-10-22 | Exclude wildcard citation strings from prose | Fixed citation exclusions using original parent/key slots while preserving container aliases and textPath projections. Added 18 regression cases; 1,614 package tests and direct TypeScript checking passed. Implementation: `8a112e7`. See [quick task 261022-hg1](./quick/261022-hg1-exclude-wildcard-citation-strings-from-p/261022-hg1-SUMMARY.md). |
 | 2026-10-18 | Patch issue #21 receipt hardening | Fixed all ten eval-harness findings: real redaction of signed tripwire evidence for every invariant kind, receipt schema v1.4 with audience, nonce, and expiry plus verifier options and minVersion, `verifyChain` in core and CLI, signer-failure flag or throw policy with `receiptError`, crew completion `outputHash`, catalog-order-independent routing, nested `noPII` scanning, `mustCite` options; paper, SECURITY.md, README, docs, and changeset updated; PDF rebuilt (9 pages). |

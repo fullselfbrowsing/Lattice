@@ -1,0 +1,82 @@
+\FloatBarrier
+
+\subsection{Separate zero-cost hosted cohort}
+
+A separate follow-up recorded 428/428 planned cases, excluding 12 latency warmups. It used the free catalog variants of Nemotron 3.5 Super VL and Dots 3 Note Preview. Model and endpoint prices were checked as zero before inference; model fallback and server-side extensions were disallowed. Provider-reported charges across development, evaluation and judging total USD 0.000000 over 784 requests; 50 requests lack a reported cost. The earlier paid ledger and its unresolved reservations were preserved.
+
+These results are not pooled with the paid cohort. An initial development smoke found Gemma 4 31B rate-limited and small output allowances exhausted by Nemotron reasoning. Before heldout inference, the second model was changed to Dots and output caps were fixed at 1024 tokens for simple tasks and 4096 for citations and agents, with temperature zero and provider-default reasoning. Development recordings remain separate.
+
+Both citation arms use the same 60 frozen ALCE-derived questions and retrieved passages. 120/120 completed citation request pairs had identical body hashes. The contract validates syntax and citation identifiers after generation; it does not repair answers or establish entailment. Differences in generated quality between arms therefore do not demonstrate that the contract improved generation.
+
+\begin{table}[t]
+\centering
+\caption{Free-cohort task outcomes. Artifact correctness combines 10 image and 10 JSON calls per model. Agent and crew passes require actual tool use or delegation. Privacy counts delivered marker-free answers to non-disclosure prompts, not adversarial blocking.}
+\label{tab:free-behavior}
+\begingroup\small\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\hline
+Model & Artifacts & Agent & Crew & Privacy \\
+\hline
+Nemotron VL & 20/20 & 2/2 & 2/2 & 10/10 \\
+Dots Note & 20/20 & 2/2 & 1/2 & 10/10 \\
+\hline
+\end{tabular}
+\end{adjustbox}\endgroup
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Free-cohort citation outcomes. Judge is valid/attempted judgments; strict means a non-abstaining answer judged correct with at least one claim, every claim supported and cited, and every citation relevant. Missing judgments remain unknown.}
+\label{tab:free-citations}
+\begingroup\small\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llllll}
+\hline
+Model & Arm & Format & Usable & Judge & Strict \\
+\hline
+Nemotron VL & Prompt & 53/60 & 53/60 & 53/53 & 39/60 \\
+Nemotron VL & Contract & 56/60 & 56/60 & 56/56 & 44/60 \\
+Dots Note & Prompt & 52/60 & 52/60 & 52/52 & 42/60 \\
+Dots Note & Contract & 52/60 & 52/60 & 52/52 & 41/60 \\
+\hline
+\end{tabular}
+\end{adjustbox}\endgroup
+\end{table}
+
+The fixed free Nemotron 3 Ultra judge is exploratory and has not been calibrated against human annotations. These support judgments are neither human accuracy labels nor official ALCE scores. Invalid or unavailable answers remain in the 60-question denominator. An initial Xing judge attempt was rate-limited and is retained separately, not pooled. The replacement passed two synthetic supported/contradicted probes. It uses temperature zero, a 4096-token output cap and a 1024-token reasoning allowance. Judge replies may have one outer JSON fence removed; candidate answers are unchanged. Independent judgments use a shared rate limiter and at most four concurrent requests; collector hashes record the scheduling transition.
+
+Overlapping judge failure labels include 31 answers with an irrelevant citation, 14 incorrect answers, 9 answers with an uncited claim, and 8 with an unsupported claim. These counts overlap and are not human-confirmed labels.
+
+Post-hoc format diagnostics found 8 empty citation lists, 8 empty responses, 1 invalid JSON outputs, 2 unavailable responses, 8 unused source identifiers. Among empty responses, 6 ended at the token limit and 2 were filtered. These diagnoses do not change scores. Empty citation lists are not automatically justified abstentions; filtered outputs are not JSON-repair opportunities.
+
+\begin{table}[t]
+\centering
+\caption{Free-cohort latency medians in milliseconds. D/U/S are direct, unsigned and signed; N counts correct successful trials out of 20, excluding warmups and pacing.}
+\label{tab:free-latency}
+\begingroup\small\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\hline
+Model & Arm & N & Wall & Residual \\
+\hline
+Nemotron VL & D & 20 & 559.9 & 1.32 \\
+Nemotron VL & U & 20 & 636.6 & 1.69 \\
+Nemotron VL & S & 20 & 587.0 & 1.84 \\
+Dots Note & D & 20 & 1958.5 & 2.13 \\
+Dots Note & U & 19 & 1792.7 & 2.25 \\
+Dots Note & S & 20 & 1936.9 & 2.82 \\
+\hline
+\end{tabular}
+\end{adjustbox}\endgroup
+\end{table}
+
+Residual time includes harness hashing, ledger writes and JSON processing, and is not pure SDK overhead. The JSON report includes bootstrap median intervals and p95 values. Small samples and free-tier queueing limit latency generalization. Solid-color images and short policy tools are narrow runtime fixtures.
+
+The measured runtime accepted 1 upstream HTTP-200 error envelope as empty text. The answer check excluded it from latency statistics. The adapter was subsequently corrected to reject such envelopes in ordinary and streaming responses; the original measurement is retained.
+
+Collection restarted 2 times after guarded stops, using the same harness and free request ledger. Failed cases were retained rather than rerun or replaced; the restart log is included with the results.
+
+Recorded revision \texttt{07cd9006b0fc}; full code, harness, model, endpoint and dataset provenance is retained in the free-cohort JSON artifacts.
+
+\FloatBarrier

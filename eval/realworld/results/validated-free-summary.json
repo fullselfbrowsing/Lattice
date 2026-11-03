@@ -1,0 +1,1587 @@
+{
+  "version": "free-report/v1",
+  "env": {
+    "at": "2026-11-03T16:35:03.602Z",
+    "revision": "07cd9006b0fceaeacd81a8a6e38b66bb1b673c69",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "2026f5798258a13d34d75d9857da0c0cf31783b352653ed0f4d23e0ba3736b06",
+    "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "node": "v24.14.1",
+    "stage": "full",
+    "cohort": "free",
+    "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "counts": {
+      "transport": 10,
+      "privacy": 10,
+      "agents": 2,
+      "citations": 60,
+      "latency": 20,
+      "warmups": 2
+    },
+    "judgeModel": "xingchen-agi/xing4.0-29b-a4b:free",
+    "quota": {
+      "used": 57,
+      "limit": 1000,
+      "remaining": 943
+    },
+    "endpointCatalog": {
+      "nvidia/nemotron-3.5-super-vl:free": [
+        {
+          "name": "Nvidia | nvidia/nemotron-3.5-super-vl-20261015:free",
+          "model_id": "nvidia/nemotron-3.5-super-vl:free",
+          "model_name": "NVIDIA: Nemotron 3.5 Super VL",
+          "context_length": 1000000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Nvidia",
+          "tag": "nvidia",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "max_prompt_tokens": 868928,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "seed",
+            "top_p",
+            "tools",
+            "tool_choice",
+            "response_format",
+            "structured_outputs"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": true,
+            "function": true
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "dots-studio/dots-3-note-preview:free": [
+        {
+          "name": "AtlasCloud | dots-studio/dots-3-note-preview-20260813:free",
+          "model_id": "dots-studio/dots-3-note-preview:free",
+          "model_name": "Dots Studio: Dots3-Note Preview",
+          "context_length": 512000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "AtlasCloud",
+          "tag": "atlas-cloud/fp8",
+          "service_tier": null,
+          "quantization": "fp8",
+          "max_completion_tokens": 460800,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "xingchen-agi/xing4.0-29b-a4b:free": [
+        {
+          "name": "Phala | xingchen-agi/xing4.0-29b-a4b-20261015:free",
+          "model_id": "xingchen-agi/xing4.0-29b-a4b:free",
+          "model_name": "XingChen: Xing4.0 29B A4B",
+          "context_length": 262144,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Phala",
+          "tag": "phala",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 235929,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ]
+    },
+    "freePolicy": "Pinned :free catalog entries and zero endpoint prices; no model fallbacks/extensions; at most 900 requests across stages, 3200ms minimum spacing, no HTTP retries. Separate paid ledger remains untouched.",
+    "models": [
+      {
+        "id": "nvidia/nemotron-3.5-super-vl:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 1000000
+      },
+      {
+        "id": "dots-studio/dots-3-note-preview:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 512000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "wallMs includes HTTP and pacing; processingMs excludes HTTP and pacing. Subtract pacingMs from wallMs for comparisons.",
+    "requestBinding": "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
+    "paidLedgerHash": "6705196b1bd6c6da6148e832e5d8c3cec7c2bd7a9c1a4abff15ab36013d4b6f3",
+    "scope": "Exploratory free-model cohort; separate from paid results. Free-tier queueing and provider variability limit latency generalization; fixed free judge is not human validated.",
+    "smokeGate": "Complete smoke coverage, successful JSON transport for each model, verified receipt bindings/crew closure, no marker leakage. Model answer, tool-use and format errors remain measured outcomes.",
+    "tokenCaps": {
+      "latency": 1024,
+      "transport": 1024,
+      "privacy": 1024,
+      "citations": 4096,
+      "agent": 4096,
+      "crew": 4096,
+      "judge": 4096
+    }
+  },
+  "groups": [
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "transport",
+      "arm": "direct",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 10,
+      "byModality": {
+        "image": {
+          "attempted": 5,
+          "correct": 5
+        },
+        "json": {
+          "attempted": 5,
+          "correct": 5
+        }
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "transport",
+      "arm": "signed",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 10,
+        "verified": 10,
+        "taskBound": 10,
+        "policyBound": 10,
+        "requestBound": 10,
+        "expectedBindingsVerified": 10,
+        "submittedBodiesCovered": 10,
+        "outputBindingEligible": 10,
+        "outputHashMatch": 10,
+        "editedOutputDetected": 10
+      },
+      "correct": 10,
+      "byModality": {
+        "image": {
+          "attempted": 5,
+          "correct": 5
+        },
+        "json": {
+          "attempted": 5,
+          "correct": 5
+        }
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "privacy",
+      "arm": "signed",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 10,
+        "verified": 10,
+        "taskBound": 10,
+        "policyBound": 10,
+        "requestBound": 10,
+        "expectedBindingsVerified": 10,
+        "submittedBodiesCovered": 10,
+        "outputBindingEligible": 10,
+        "outputHashMatch": 10,
+        "editedOutputDetected": 10
+      },
+      "correct": null,
+      "answerAvailable": 10,
+      "answerContainsMarker": 0,
+      "rawOutputContainsMarker": 0,
+      "signedMarkerLeak": 0
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "agent",
+      "arm": "signed",
+      "expected": 2,
+      "attempted": 2,
+      "unattempted": 0,
+      "runtimeSuccess": 2,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 4
+      },
+      "receipts": {
+        "present": 2,
+        "verified": 2,
+        "taskBound": 2,
+        "policyBound": 2,
+        "requestBound": 2,
+        "expectedBindingsVerified": 2,
+        "submittedBodiesCovered": 2,
+        "outputBindingEligible": 2,
+        "outputHashMatch": 2,
+        "editedOutputDetected": 2
+      },
+      "correct": 2
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "crew",
+      "arm": "signed",
+      "expected": 2,
+      "attempted": 2,
+      "unattempted": 0,
+      "runtimeSuccess": 2,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 6
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 2,
+      "chainClosed": 2,
+      "childExecuted": 2
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citations",
+      "arm": "prompt-only",
+      "expected": 60,
+      "attempted": 60,
+      "unattempted": 0,
+      "runtimeSuccess": 60,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 60
+      },
+      "receipts": {
+        "present": 60,
+        "verified": 60,
+        "taskBound": 60,
+        "policyBound": 60,
+        "requestBound": 60,
+        "expectedBindingsVerified": 60,
+        "submittedBodiesCovered": 60,
+        "outputBindingEligible": 60,
+        "outputHashMatch": 60,
+        "editedOutputDetected": 60
+      },
+      "correct": null,
+      "citations": {
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 60,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1.0,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 60
+        },
+        "formatValid": 53,
+        "usable": 53,
+        "judgeAttempted": 53,
+        "judgeRuntimeSuccess": 53,
+        "judgeValid": 53,
+        "usableJudgeValid": 53,
+        "judgeAbstained": 0,
+        "emptyClaimJudgments": 0,
+        "answerCorrect": 51,
+        "usableAnswerCorrect": 51,
+        "strictSuccess": 39,
+        "judgeInvalid": 0,
+        "unjudgedOrInvalidPerExpected": 7,
+        "usableUnjudgedOrInvalid": 0,
+        "formatInvalidOrUnavailable": 7,
+        "answerCorrectPerExpected": 0.85,
+        "strictSuccessPerExpected": 0.65,
+        "answerCorrectAmongValidJudgments": 0.9622641509433962,
+        "claims": {
+          "claims": 140,
+          "supported": 140,
+          "cited": 137,
+          "supportedAndCited": 137,
+          "relevantCitations": 199,
+          "totalCitations": 217,
+          "support": 1.0,
+          "citedCompleteness": 0.9785714285714285,
+          "supportedAndCitedCompleteness": 0.9785714285714285,
+          "citationPrecision": 0.9170506912442397
+        },
+        "measurementStatus": "measured-with-fixed-denominator"
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citations",
+      "arm": "contract",
+      "expected": 60,
+      "attempted": 60,
+      "unattempted": 0,
+      "runtimeSuccess": 56,
+      "runtimeFailure": 4,
+      "runtimeSuccessPerExpected": 0.9333333333333333,
+      "errorKinds": {
+        "tripwire-violated": 4
+      },
+      "httpStatuses": {
+        "200": 60
+      },
+      "receipts": {
+        "present": 60,
+        "verified": 60,
+        "taskBound": 60,
+        "policyBound": 60,
+        "requestBound": 60,
+        "expectedBindingsVerified": 60,
+        "submittedBodiesCovered": 60,
+        "outputBindingEligible": 56,
+        "outputHashMatch": 56,
+        "editedOutputDetected": 56
+      },
+      "correct": null,
+      "citations": {
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 56,
+        "runtimeFailure": 4,
+        "runtimeSuccessPerExpected": 0.9333333333333333,
+        "errorKinds": {
+          "tripwire-violated": 4
+        },
+        "httpStatuses": {
+          "200": 60
+        },
+        "formatValid": 56,
+        "usable": 56,
+        "judgeAttempted": 56,
+        "judgeRuntimeSuccess": 56,
+        "judgeValid": 56,
+        "usableJudgeValid": 56,
+        "judgeAbstained": 1,
+        "emptyClaimJudgments": 0,
+        "answerCorrect": 52,
+        "usableAnswerCorrect": 52,
+        "strictSuccess": 44,
+        "judgeInvalid": 0,
+        "unjudgedOrInvalidPerExpected": 4,
+        "usableUnjudgedOrInvalid": 0,
+        "formatInvalidOrUnavailable": 4,
+        "answerCorrectPerExpected": 0.8666666666666667,
+        "strictSuccessPerExpected": 0.7333333333333333,
+        "answerCorrectAmongValidJudgments": 0.9285714285714286,
+        "claims": {
+          "claims": 146,
+          "supported": 143,
+          "cited": 144,
+          "supportedAndCited": 141,
+          "relevantCitations": 219,
+          "totalCitations": 236,
+          "support": 0.9794520547945206,
+          "citedCompleteness": 0.9863013698630136,
+          "supportedAndCitedCompleteness": 0.9657534246575342,
+          "citationPrecision": 0.9279661016949152
+        },
+        "measurementStatus": "measured-with-fixed-denominator"
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "latency",
+      "arm": "direct",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 20,
+      "timing": {
+        "wallMs": {
+          "n": 20,
+          "p50": 559.9466665000655,
+          "p95": 1209.5430194000248,
+          "medianCI95": [
+            545.1626459999243,
+            624.7947494999971
+          ]
+        },
+        "providerMs": {
+          "n": 20,
+          "p50": 558.4258540000301,
+          "p95": 1208.4102003500798,
+          "medianCI95": [
+            542.5018749999581,
+            623.1544794999063
+          ]
+        },
+        "processingMs": {
+          "n": 20,
+          "p50": 1.3242080000927672,
+          "p95": 3.5776896001538265,
+          "medianCI95": [
+            1.0922295001801103,
+            2.06637499993667
+          ]
+        }
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "latency",
+      "arm": "unsigned",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 20,
+      "timing": {
+        "wallMs": {
+          "n": 20,
+          "p50": 636.5621879999526,
+          "p95": 1251.5554607503002,
+          "medianCI95": [
+            580.0115834998433,
+            763.8910410000244
+          ]
+        },
+        "providerMs": {
+          "n": 20,
+          "p50": 634.8747084999923,
+          "p95": 1246.8655996999473,
+          "medianCI95": [
+            577.0220625001239,
+            760.5047709998908
+          ]
+        },
+        "processingMs": {
+          "n": 20,
+          "p50": 1.6874794999603182,
+          "p95": 5.016428250144236,
+          "medianCI95": [
+            1.4722090000286698,
+            2.7464999997755513
+          ]
+        }
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "latency",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "correct": 20,
+      "timing": {
+        "wallMs": {
+          "n": 20,
+          "p50": 586.974146499997,
+          "p95": 1639.6929842998866,
+          "medianCI95": [
+            553.6115200001514,
+            760.4649164999137
+          ]
+        },
+        "providerMs": {
+          "n": 20,
+          "p50": 585.3000834999839,
+          "p95": 1637.7333773999019,
+          "medianCI95": [
+            550.4070414999733,
+            758.6869584999513
+          ]
+        },
+        "processingMs": {
+          "n": 20,
+          "p50": 1.843792000086978,
+          "p95": 8.086729500151707,
+          "medianCI95": [
+            1.6740630000131205,
+            3.6524800000479445
+          ]
+        }
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "transport",
+      "arm": "direct",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 10,
+      "byModality": {
+        "image": {
+          "attempted": 5,
+          "correct": 5
+        },
+        "json": {
+          "attempted": 5,
+          "correct": 5
+        }
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "transport",
+      "arm": "signed",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 10,
+        "verified": 10,
+        "taskBound": 10,
+        "policyBound": 10,
+        "requestBound": 10,
+        "expectedBindingsVerified": 10,
+        "submittedBodiesCovered": 10,
+        "outputBindingEligible": 10,
+        "outputHashMatch": 10,
+        "editedOutputDetected": 10
+      },
+      "correct": 10,
+      "byModality": {
+        "image": {
+          "attempted": 5,
+          "correct": 5
+        },
+        "json": {
+          "attempted": 5,
+          "correct": 5
+        }
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "privacy",
+      "arm": "signed",
+      "expected": 10,
+      "attempted": 10,
+      "unattempted": 0,
+      "runtimeSuccess": 10,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 10,
+        "verified": 10,
+        "taskBound": 10,
+        "policyBound": 10,
+        "requestBound": 10,
+        "expectedBindingsVerified": 10,
+        "submittedBodiesCovered": 10,
+        "outputBindingEligible": 10,
+        "outputHashMatch": 10,
+        "editedOutputDetected": 10
+      },
+      "correct": null,
+      "answerAvailable": 10,
+      "answerContainsMarker": 0,
+      "rawOutputContainsMarker": 0,
+      "signedMarkerLeak": 0
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "agent",
+      "arm": "signed",
+      "expected": 2,
+      "attempted": 2,
+      "unattempted": 0,
+      "runtimeSuccess": 2,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 4
+      },
+      "receipts": {
+        "present": 2,
+        "verified": 2,
+        "taskBound": 2,
+        "policyBound": 2,
+        "requestBound": 2,
+        "expectedBindingsVerified": 2,
+        "submittedBodiesCovered": 2,
+        "outputBindingEligible": 2,
+        "outputHashMatch": 2,
+        "editedOutputDetected": 2
+      },
+      "correct": 2
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "crew",
+      "arm": "signed",
+      "expected": 2,
+      "attempted": 2,
+      "unattempted": 0,
+      "runtimeSuccess": 2,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 8
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 1,
+      "chainClosed": 2,
+      "childExecuted": 2
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "citations",
+      "arm": "prompt-only",
+      "expected": 60,
+      "attempted": 60,
+      "unattempted": 0,
+      "runtimeSuccess": 60,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 60
+      },
+      "receipts": {
+        "present": 60,
+        "verified": 60,
+        "taskBound": 60,
+        "policyBound": 60,
+        "requestBound": 60,
+        "expectedBindingsVerified": 60,
+        "submittedBodiesCovered": 60,
+        "outputBindingEligible": 60,
+        "outputHashMatch": 60,
+        "editedOutputDetected": 60
+      },
+      "correct": null,
+      "citations": {
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 60,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1.0,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 60
+        },
+        "formatValid": 52,
+        "usable": 52,
+        "judgeAttempted": 52,
+        "judgeRuntimeSuccess": 52,
+        "judgeValid": 52,
+        "usableJudgeValid": 52,
+        "judgeAbstained": 0,
+        "emptyClaimJudgments": 0,
+        "answerCorrect": 48,
+        "usableAnswerCorrect": 48,
+        "strictSuccess": 42,
+        "judgeInvalid": 0,
+        "unjudgedOrInvalidPerExpected": 8,
+        "usableUnjudgedOrInvalid": 0,
+        "formatInvalidOrUnavailable": 8,
+        "answerCorrectPerExpected": 0.8,
+        "strictSuccessPerExpected": 0.7,
+        "answerCorrectAmongValidJudgments": 0.9230769230769231,
+        "claims": {
+          "claims": 111,
+          "supported": 107,
+          "cited": 110,
+          "supportedAndCited": 106,
+          "relevantCitations": 158,
+          "totalCitations": 169,
+          "support": 0.963963963963964,
+          "citedCompleteness": 0.990990990990991,
+          "supportedAndCitedCompleteness": 0.954954954954955,
+          "citationPrecision": 0.9349112426035503
+        },
+        "measurementStatus": "measured-with-fixed-denominator"
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "citations",
+      "arm": "contract",
+      "expected": 60,
+      "attempted": 60,
+      "unattempted": 0,
+      "runtimeSuccess": 52,
+      "runtimeFailure": 8,
+      "runtimeSuccessPerExpected": 0.8666666666666667,
+      "errorKinds": {
+        "provider_execution": 2,
+        "tripwire-violated": 6
+      },
+      "httpStatuses": {
+        "200": 58,
+        "None": 2
+      },
+      "receipts": {
+        "present": 60,
+        "verified": 60,
+        "taskBound": 60,
+        "policyBound": 60,
+        "requestBound": 60,
+        "expectedBindingsVerified": 60,
+        "submittedBodiesCovered": 60,
+        "outputBindingEligible": 52,
+        "outputHashMatch": 52,
+        "editedOutputDetected": 52
+      },
+      "correct": null,
+      "citations": {
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 52,
+        "runtimeFailure": 8,
+        "runtimeSuccessPerExpected": 0.8666666666666667,
+        "errorKinds": {
+          "provider_execution": 2,
+          "tripwire-violated": 6
+        },
+        "httpStatuses": {
+          "200": 58,
+          "None": 2
+        },
+        "formatValid": 52,
+        "usable": 52,
+        "judgeAttempted": 52,
+        "judgeRuntimeSuccess": 52,
+        "judgeValid": 52,
+        "usableJudgeValid": 52,
+        "judgeAbstained": 1,
+        "emptyClaimJudgments": 0,
+        "answerCorrect": 48,
+        "usableAnswerCorrect": 48,
+        "strictSuccess": 41,
+        "judgeInvalid": 0,
+        "unjudgedOrInvalidPerExpected": 8,
+        "usableUnjudgedOrInvalid": 0,
+        "formatInvalidOrUnavailable": 8,
+        "answerCorrectPerExpected": 0.8,
+        "strictSuccessPerExpected": 0.6833333333333333,
+        "answerCorrectAmongValidJudgments": 0.9230769230769231,
+        "claims": {
+          "claims": 111,
+          "supported": 109,
+          "cited": 108,
+          "supportedAndCited": 107,
+          "relevantCitations": 147,
+          "totalCitations": 161,
+          "support": 0.9819819819819819,
+          "citedCompleteness": 0.972972972972973,
+          "supportedAndCitedCompleteness": 0.963963963963964,
+          "citationPrecision": 0.9130434782608695
+        },
+        "measurementStatus": "measured-with-fixed-denominator"
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "latency",
+      "arm": "direct",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 20,
+      "timing": {
+        "wallMs": {
+          "n": 20,
+          "p50": 1958.5273545000236,
+          "p95": 3724.5637217499207,
+          "medianCI95": [
+            1590.3570414998103,
+            2793.503729499993
+          ]
+        },
+        "providerMs": {
+          "n": 20,
+          "p50": 1955.2476454999996,
+          "p95": 3723.5308125000106,
+          "medianCI95": [
+            1586.6840210000519,
+            2790.9568955000723
+          ]
+        },
+        "processingMs": {
+          "n": 20,
+          "p50": 2.1289584999904037,
+          "p95": 6.132283349777572,
+          "medianCI95": [
+            1.3581054999958724,
+            3.1034169998019934
+          ]
+        }
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "latency",
+      "arm": "unsigned",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 19,
+      "timing": {
+        "wallMs": {
+          "n": 19,
+          "p50": 1792.7350000001024,
+          "p95": 5497.3672587000765,
+          "medianCI95": [
+            1605.7567920000292,
+            2453.248750000028
+          ]
+        },
+        "providerMs": {
+          "n": 19,
+          "p50": 1790.0249159999657,
+          "p95": 5495.638649699953,
+          "medianCI95": [
+            1603.9852080000564,
+            2451.4534160001203
+          ]
+        },
+        "processingMs": {
+          "n": 19,
+          "p50": 2.246082999743521,
+          "p95": 4.15171300002839,
+          "medianCI95": [
+            1.696415999904275,
+            2.5160419999156147
+          ]
+        }
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "latency",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "correct": 20,
+      "timing": {
+        "wallMs": {
+          "n": 20,
+          "p50": 1936.8526670000283,
+          "p95": 3390.086200849632,
+          "medianCI95": [
+            1642.3712085000006,
+            2438.1476455001393
+          ]
+        },
+        "providerMs": {
+          "n": 20,
+          "p50": 1933.8393124999711,
+          "p95": 3385.097293399986,
+          "medianCI95": [
+            1640.0746250001248,
+            2435.551750499988
+          ]
+        },
+        "processingMs": {
+          "n": 20,
+          "p50": 2.8192295000189915,
+          "p95": 5.3328844996402065,
+          "medianCI95": [
+            2.183936999877915,
+            3.6011660000076517
+          ]
+        }
+      }
+    }
+  ],
+  "overlappingJudgeFailureCounts": {
+    "irrelevantCitation": 31,
+    "uncitedClaim": 9,
+    "incorrectAnswer": 14,
+    "unsupportedClaim": 8,
+    "abstained": 2
+  },
+  "judgeModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "judgeEnv": {
+    "at": "2026-11-03T18:01:11.807Z",
+    "cohort": "free",
+    "stage": "judge",
+    "judgeModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "revision": "9b4f792a0c0f57bbec52eed9efa7bdb7bfe9619d",
+    "harnessHash": "346aab817cb101bf36c0a7252e01277682b95f65989a681ee94e4be7c0ecd38e",
+    "concurrency": 4,
+    "parserHash": "588b2002f2f8a4abf482a358ec90609234fb0245df478b59362e2b4e587852d4",
+    "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "candidateHash": "aeaa929f2c18a166cd7349fb7169c2012b921b0fd07d814550d58a763423c0ea",
+    "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+    "pricing": {
+      "prompt": "0",
+      "completion": "0"
+    },
+    "endpoints": [
+      {
+        "name": "Nvidia | nvidia/nemotron-3-ultra-550b-a55b-20260604:free",
+        "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "model_name": "NVIDIA: Nemotron 3 Ultra",
+        "context_length": 1000000,
+        "pricing": {
+          "prompt": "0",
+          "completion": "0",
+          "discount": 0
+        },
+        "provider_name": "Nvidia",
+        "tag": "nvidia",
+        "service_tier": null,
+        "quantization": "unknown",
+        "max_completion_tokens": 65536,
+        "max_prompt_tokens": null,
+        "supported_parameters": [
+          "reasoning",
+          "include_reasoning",
+          "temperature",
+          "max_tokens",
+          "seed",
+          "top_p",
+          "tools",
+          "tool_choice",
+          "reasoning_effort"
+        ],
+        "supports_tool_choice": {
+          "none": true,
+          "auto": true,
+          "required": true,
+          "function": true
+        },
+        "status": 0,
+        "uptime_last_30m": 100,
+        "uptime_last_5m": 100,
+        "uptime_last_1d": 99.86111111111111,
+        "supports_implicit_caching": false,
+        "native_tools": {},
+        "supports_voice_cloning": false,
+        "supports_multiple_audio_references": false,
+        "supports_image_reference": false,
+        "supports_diarization": false,
+        "latency_last_30m": null,
+        "throughput_last_30m": null
+      }
+    ],
+    "generation": {
+      "temperature": 0,
+      "max_tokens": 4096,
+      "reasoning": {
+        "max_tokens": 1024
+      }
+    },
+    "normalization": "Only a single surrounding JSON markdown fence may be removed. Candidate outputs and candidate format scores are never normalized or rewritten.",
+    "scope": "Exploratory fixed free judge, sanity-checked on two synthetic examples; not human calibrated. Initial Xing attempt retained separately and not pooled.",
+    "priorCollector": {
+      "at": "2026-11-03T17:52:41.384Z",
+      "cohort": "free",
+      "stage": "judge",
+      "judgeModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "revision": "8e906909d454100b1be451bac82b23e8e8d35c20",
+      "harnessHash": "9ba324e40f1cfb4a55e198bc381c71f1c3dd34fc87ff49adb959819d6c66496c",
+      "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+      "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+      "candidateHash": "aeaa929f2c18a166cd7349fb7169c2012b921b0fd07d814550d58a763423c0ea",
+      "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+      "pricing": {
+        "prompt": "0",
+        "completion": "0"
+      },
+      "endpoints": [
+        {
+          "name": "Nvidia | nvidia/nemotron-3-ultra-550b-a55b-20260604:free",
+          "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "model_name": "NVIDIA: Nemotron 3 Ultra",
+          "context_length": 1000000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Nvidia",
+          "tag": "nvidia",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 65536,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "seed",
+            "top_p",
+            "tools",
+            "tool_choice",
+            "reasoning_effort"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": true,
+            "function": true
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "generation": {
+        "temperature": 0,
+        "max_tokens": 4096,
+        "reasoning": {
+          "max_tokens": 1024
+        }
+      },
+      "normalization": "Only a single surrounding JSON markdown fence may be removed. Candidate outputs and candidate format scores are never normalized or rewritten.",
+      "scope": "Exploratory fixed free judge, sanity-checked on two synthetic examples; not human calibrated. Initial Xing attempt retained separately and not pooled."
+    }
+  },
+  "judgeProbes": [
+    {
+      "id": "supported",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "synthetic",
+      "suite": "judge-probe",
+      "arm": "probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 8090.579166,
+      "calls": [
+        {
+          "bodyHash": "810a459edaa1c0cf001d89f4648582dc80e7720a417d30823014541008be6121",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 8085.139708000001,
+          "costUsd": 0,
+          "promptTokens": 254,
+          "completionTokens": 293,
+          "reasoningTokens": 251,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728361-GC2R4njRAL6W1Cy1GeeQ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "contradicted",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "synthetic",
+      "suite": "judge-probe",
+      "arm": "probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 8039.870791000001,
+      "calls": [
+        {
+          "bodyHash": "4a3634b5ae1fcdeae94bc339df573a2752edda15ee5cebc721b3a4c08f3fe6b7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 8034.987083000002,
+          "costUsd": 0,
+          "promptTokens": 254,
+          "completionTokens": 531,
+          "reasoningTokens": 489,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728369-q10Vkr9Z04b4xfxadw3C",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": false,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": false,
+      "abstained": false
+    }
+  ],
+  "wrappedJudgeRows": 0,
+  "expected": 428,
+  "recorded": 428,
+  "runtimeSuccess": 416,
+  "warmupRows": 12,
+  "stopped": null,
+  "judgeStopped": null,
+  "statusCounts": {
+    "200": 452,
+    "None": 2
+  },
+  "lengthLimitedCalls": 7,
+  "acceptedHttp200Errors": 1,
+  "citationRequestPairs": {
+    "bothArmsSubmitted": 120,
+    "identicalBodyHashes": 120
+  },
+  "accounting": {
+    "requestsAcrossStages": 784,
+    "reportedCostUsd": 0,
+    "unreportedCosts": 50,
+    "requestCap": 900,
+    "inferencePriceGuard": "zero-priced :free models and endpoints only"
+  },
+  "limitations": [
+    "Separate exploratory free-model cohort; do not pool with the earlier paid cohort.",
+    "Provider-default reasoning is included; output allowances differ from paid results.",
+    "Free-tier queueing and availability limit latency generalization; 20 trials per arm are descriptive.",
+    "Processing is residual wall time including harness hashing, ledger writes and JSON work, not pure SDK overhead.",
+    "Fixed free judge is not human validated; its judgments are exploratory and not official ALCE scores.",
+    "Synthetic non-disclosure prompts are not an adversarial privacy evaluation.",
+    "16x16 solid-color images are narrow transport fixtures, not a general vision benchmark."
+  ],
+  "collectionRestarts": [
+    {
+      "at": "2026-11-03T17:05:55.746850+00:00",
+      "stage": "full",
+      "recordedRows": 202,
+      "reason": "Provider transport failed; evaluation halted and reservation retained: fetch failed",
+      "failedCase": {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "citations",
+        "arm": "contract",
+        "id": "78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88"
+      },
+      "action": "Read-only key endpoint reachable; restart same harness and ledger, preserve failed row, continue remaining cases.",
+      "keyUsageUsd": 0.04546433,
+      "freeRequestsRemaining": 725
+    },
+    {
+      "at": "2026-11-03T17:14:13.265824+00:00",
+      "stage": "full",
+      "recordedRows": 206,
+      "reason": "Provider transport failed; evaluation halted and reservation retained: The operation was aborted due to timeout",
+      "failedCase": {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "citations",
+        "arm": "contract",
+        "id": "0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263"
+      },
+      "action": "Restart same zero-cost harness and ledger after second isolated Dots transport failure; preserve failed rows and continue remaining cases."
+    }
+  ],
+  "formatDiagnostics": {
+    "version": "free-format-diagnostics/v1",
+    "scope": "Post-hoc aggregate diagnosis only; no score changes or heldout prompt tuning.",
+    "categoriesAreMutuallyExclusive": true,
+    "notes": [
+      "Empty citation lists are not automatically classified as justified abstentions.",
+      "Length-limited counts overlap format categories.",
+      "No generated text, questions, document IDs, or source contents are exported."
+    ],
+    "groups": [
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "arm": "contract",
+        "cases": 60,
+        "categories": {
+          "valid": 52,
+          "empty-citation-list": 4,
+          "transport-unavailable": 2,
+          "unused-source-id": 1,
+          "empty-content": 1
+        },
+        "lengthLimited": 0,
+        "emptyContentFinishReasons": {
+          "content_filter": 1
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "arm": "prompt-only",
+        "cases": 60,
+        "categories": {
+          "valid": 52,
+          "unused-source-id": 3,
+          "empty-content": 2,
+          "empty-citation-list": 3
+        },
+        "lengthLimited": 1,
+        "emptyContentFinishReasons": {
+          "length": 1,
+          "content_filter": 1
+        }
+      },
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "arm": "contract",
+        "cases": 60,
+        "categories": {
+          "valid": 56,
+          "empty-content": 2,
+          "empty-citation-list": 1,
+          "unused-source-id": 1
+        },
+        "lengthLimited": 2,
+        "emptyContentFinishReasons": {
+          "length": 2
+        }
+      },
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "arm": "prompt-only",
+        "cases": 60,
+        "categories": {
+          "valid": 53,
+          "invalid-json": 1,
+          "empty-content": 3,
+          "unused-source-id": 3
+        },
+        "lengthLimited": 4,
+        "emptyContentFinishReasons": {
+          "length": 3
+        }
+      }
+    ]
+  }
+}

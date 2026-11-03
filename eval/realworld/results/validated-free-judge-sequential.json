@@ -1,0 +1,1369 @@
+{
+  "version": "free-judge/v2",
+  "env": {
+    "at": "2026-11-03T17:52:41.384Z",
+    "cohort": "free",
+    "stage": "judge",
+    "judgeModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "revision": "8e906909d454100b1be451bac82b23e8e8d35c20",
+    "harnessHash": "9ba324e40f1cfb4a55e198bc381c71f1c3dd34fc87ff49adb959819d6c66496c",
+    "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "candidateHash": "aeaa929f2c18a166cd7349fb7169c2012b921b0fd07d814550d58a763423c0ea",
+    "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+    "pricing": {
+      "prompt": "0",
+      "completion": "0"
+    },
+    "endpoints": [
+      {
+        "name": "Nvidia | nvidia/nemotron-3-ultra-550b-a55b-20260604:free",
+        "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "model_name": "NVIDIA: Nemotron 3 Ultra",
+        "context_length": 1000000,
+        "pricing": {
+          "prompt": "0",
+          "completion": "0",
+          "discount": 0
+        },
+        "provider_name": "Nvidia",
+        "tag": "nvidia",
+        "service_tier": null,
+        "quantization": "unknown",
+        "max_completion_tokens": 65536,
+        "max_prompt_tokens": null,
+        "supported_parameters": [
+          "reasoning",
+          "include_reasoning",
+          "temperature",
+          "max_tokens",
+          "seed",
+          "top_p",
+          "tools",
+          "tool_choice",
+          "reasoning_effort"
+        ],
+        "supports_tool_choice": {
+          "none": true,
+          "auto": true,
+          "required": true,
+          "function": true
+        },
+        "status": 0,
+        "uptime_last_30m": 100,
+        "uptime_last_5m": 100,
+        "uptime_last_1d": 99.86111111111111,
+        "supports_implicit_caching": false,
+        "native_tools": {},
+        "supports_voice_cloning": false,
+        "supports_multiple_audio_references": false,
+        "supports_image_reference": false,
+        "supports_diarization": false,
+        "latency_last_30m": null,
+        "throughput_last_30m": null
+      }
+    ],
+    "generation": {
+      "temperature": 0,
+      "max_tokens": 4096,
+      "reasoning": {
+        "max_tokens": 1024
+      }
+    },
+    "normalization": "Only a single surrounding JSON markdown fence may be removed. Candidate outputs and candidate format scores are never normalized or rewritten.",
+    "scope": "Exploratory fixed free judge, sanity-checked on two synthetic examples; not human calibrated. Initial Xing attempt retained separately and not pooled."
+  },
+  "probes": [
+    {
+      "id": "supported",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "synthetic",
+      "suite": "judge-probe",
+      "arm": "probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 8090.579166,
+      "calls": [
+        {
+          "bodyHash": "810a459edaa1c0cf001d89f4648582dc80e7720a417d30823014541008be6121",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 8085.139708000001,
+          "costUsd": 0,
+          "promptTokens": 254,
+          "completionTokens": 293,
+          "reasoningTokens": 251,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728361-GC2R4njRAL6W1Cy1GeeQ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "contradicted",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "synthetic",
+      "suite": "judge-probe",
+      "arm": "probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 8039.870791000001,
+      "calls": [
+        {
+          "bodyHash": "4a3634b5ae1fcdeae94bc339df573a2752edda15ee5cebc721b3a4c08f3fe6b7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 8034.987083000002,
+          "costUsd": 0,
+          "promptTokens": 254,
+          "completionTokens": 531,
+          "reasoningTokens": 489,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728369-q10Vkr9Z04b4xfxadw3C",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": false,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": false,
+      "abstained": false
+    }
+  ],
+  "rows": [
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 14542.097208,
+      "calls": [
+        {
+          "bodyHash": "4fc430b0e4d3b6758eb8c03bf14c0e4be1dc0b54e76f5d3e6bee0facf079d753",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 14540.357333,
+          "costUsd": 0,
+          "promptTokens": 1298,
+          "completionTokens": 1088,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728377-cbpsBva4fZD4qTPDQH7a",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 21197.215000000004,
+      "calls": [
+        {
+          "bodyHash": "036beba495c89b3b17773f7d26aa437585a772a57039d17fc068b9d50fd3e121",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 21195.095333,
+          "costUsd": 0,
+          "promptTokens": 1298,
+          "completionTokens": 1088,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728392-KBSYrykUHcXwK2I6OPBv",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 9794.716041,
+      "calls": [
+        {
+          "bodyHash": "78d021f5e2b31863b161b2a0c14203eb074f6ca453df33fd2b7cd00b8ea66846",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 9793.248375000003,
+          "costUsd": 0,
+          "promptTokens": 1400,
+          "completionTokens": 1111,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728413-jyRVX2iTrRS0S9TEy0gC",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 22332.00179200001,
+      "calls": [
+        {
+          "bodyHash": "aa6d8687a78857049c5567cfd29fb40a02e5d456515b6230423d0f5115d58f7c",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 22330.857582999997,
+          "costUsd": 0,
+          "promptTokens": 1399,
+          "completionTokens": 1111,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728423-vimZvQCEjs8ivdUPvZub",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c549851f6690c6c49625c027d1f7dbd6f575c24f2908a6d86b3a5d2e3337bfe1",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 17225.511667,
+      "calls": [
+        {
+          "bodyHash": "d2509266456553395cd3bfad35fe2d2f0c75346d652d85fa471b124261c81747",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 17220.273625,
+          "costUsd": 0,
+          "promptTokens": 1288,
+          "completionTokens": 1134,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728445-GlMphukk1e98zSSDir34",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:e9f4efbdc34d6bd62ea03bc406dc0de16a024a1dc242a25a3a4a311a176a102d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 13289.856249999997,
+      "calls": [
+        {
+          "bodyHash": "8823b962f395949ee1398bfa141b3cb77a5111c25ff3f413818344f49548fad7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 13287.668291000009,
+          "costUsd": 0,
+          "promptTokens": 1209,
+          "completionTokens": 848,
+          "reasoningTokens": 806,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728462-72VjoVrWxKnEgoJry4Gl",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:e9f4efbdc34d6bd62ea03bc406dc0de16a024a1dc242a25a3a4a311a176a102d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 64351.27287500001,
+      "calls": [
+        {
+          "bodyHash": "8823b962f395949ee1398bfa141b3cb77a5111c25ff3f413818344f49548fad7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 64347.675625,
+          "costUsd": 0,
+          "promptTokens": 1209,
+          "completionTokens": 1065,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728476-dputMbSCp13sjQKOOyua",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:80ba7ba08e57cd28baeb404b3c13790ba653c6586ccda17ea689ef714c881e2d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 73304.860334,
+      "calls": [
+        {
+          "bodyHash": "9ce0cb0dccec647784026652fe0f035e391be9264e8060954443e78a0ae2bb4b",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 73302.62733399999,
+          "costUsd": 0,
+          "promptTokens": 1345,
+          "completionTokens": 1065,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728540-pwNPK1UIZNLGoqbWT8Wr",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:57562184b74c36848d3a3b702e4c61d3dfb981528d8b8de71440c6cc3b3397f2",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 18626.085583000007,
+      "calls": [
+        {
+          "bodyHash": "2a801ae4c90ab04f4fd90c5c3071adef01030b2580f1dff3f11a14b0759644d7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 18625.077332999994,
+          "costUsd": 0,
+          "promptTokens": 1165,
+          "completionTokens": 1088,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728613-qxtVLuf3joLQ3gzT4V3D",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:57562184b74c36848d3a3b702e4c61d3dfb981528d8b8de71440c6cc3b3397f2",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 23054.932040999993,
+      "calls": [
+        {
+          "bodyHash": "3f7e59c02ff59899608ec5f9b3e86d373d4c45fb77021bd0593ba94b99b62676",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 23053.70091699995,
+          "costUsd": 0,
+          "promptTokens": 1203,
+          "completionTokens": 1111,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728632-bkvHWoXqmys5n2MHhks5",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 19353.89058299997,
+      "calls": [
+        {
+          "bodyHash": "a376c134a094f19cddafdbb4a5068e26c9ef2cd004e95c546b528de2903b7a38",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 19352.880292000016,
+          "costUsd": 0,
+          "promptTokens": 1166,
+          "completionTokens": 1111,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728655-jINvh7BVdl7aMLslzkEe",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 16137.184584000031,
+      "calls": [
+        {
+          "bodyHash": "aa1c67ecaa3a937ebc989254a2845613ff740a2370db27e8f974b54638fccb3d",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 16136.266041000024,
+          "costUsd": 0,
+          "promptTokens": 1202,
+          "completionTokens": 1157,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728674-NY7eBVunzO6z6Xtnof5a",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:bb1bf50580114b6d2d741697f600bb3071d0639ae36b714401c60b80ddb22549",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 7116.738416999986,
+      "calls": [
+        {
+          "bodyHash": "98adada5e223c9ec04faceda138664ab1c318f47477f1e7474ae0fb3ee48a21d",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 7115.735000000044,
+          "costUsd": 0,
+          "promptTokens": 2409,
+          "completionTokens": 337,
+          "reasoningTokens": 295,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728690-85iI3q66uGVTRFXNAN95",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:bb1bf50580114b6d2d741697f600bb3071d0639ae36b714401c60b80ddb22549",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 9969.781750000024,
+      "calls": [
+        {
+          "bodyHash": "98adada5e223c9ec04faceda138664ab1c318f47477f1e7474ae0fb3ee48a21d",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 9968.748457999958,
+          "costUsd": 0,
+          "promptTokens": 2409,
+          "completionTokens": 533,
+          "reasoningTokens": 491,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728697-BfuhEOZRHLSfi3O0Onti",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 23978.838583000004,
+      "calls": [
+        {
+          "bodyHash": "f6f4e54ffdb93466c6286c491408d5bfae95acbead89752188c1b78f95dda72d",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 23977.581666000013,
+          "costUsd": 0,
+          "promptTokens": 1559,
+          "completionTokens": 1134,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728707-4sKD1ID4FS4o4cRdsq3D",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 15599.684750000015,
+      "calls": [
+        {
+          "bodyHash": "356385a4848a0c3b23bb9f9dc20b0faca1cba70fc8790fb5b8cce77f7f5addc3",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 15597.336624999996,
+          "costUsd": 0,
+          "promptTokens": 1549,
+          "completionTokens": 1088,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728731-Ze93ygAgUf1Xd5ZeFuOv",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:950d8d3392dbe4cc08b71f38acbb29ae7086afb443ed95cd17f64e2a95fe3ce0",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 13703.785083999974,
+      "calls": [
+        {
+          "bodyHash": "39dd95e44f3280981ec9cb593717fd3b62ed4173ddd9ad41732591c632135ff7",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 13702.397750000004,
+          "costUsd": 0,
+          "promptTokens": 1398,
+          "completionTokens": 767,
+          "reasoningTokens": 702,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728747-yRibpHPI3lEuHK8ouSxx",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:950d8d3392dbe4cc08b71f38acbb29ae7086afb443ed95cd17f64e2a95fe3ce0",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 17317.014582999982,
+      "calls": [
+        {
+          "bodyHash": "34ad3b0dc040be4034c921735d17fc10155db4662186823d36bdc4a930be759b",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 17315.691124999954,
+          "costUsd": 0,
+          "promptTokens": 1443,
+          "completionTokens": 1134,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728761-nxMy5OBb0JsbsYRQwSK5",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:487662ff1dc1769809e333c5727e8656c16d17317b37ff029dff4e1b69ac1081",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 19989.907917000004,
+      "calls": [
+        {
+          "bodyHash": "086562af72fa6945707bc6ca9e21913ab6db6fffc237a3cd252419c6b05bd1c9",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 19988.337540999986,
+          "costUsd": 0,
+          "promptTokens": 1344,
+          "completionTokens": 1111,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728778-0NvLuBZNvttPQwoY9xiv",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:487662ff1dc1769809e333c5727e8656c16d17317b37ff029dff4e1b69ac1081",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 9404.789292000001,
+      "calls": [
+        {
+          "bodyHash": "504ab530e4439409e1857eaabed48dc7c8bf3566e30aa1f2133b8ea6ebc31817",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 9401.225334000017,
+          "costUsd": 0,
+          "promptTokens": 1340,
+          "completionTokens": 484,
+          "reasoningTokens": 419,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728798-VFkGavbKkDWasu1whuxr",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d0dda82ee56b74fcb9523df9deb087ce692af12d48279b6bd4e0c7a6517af33d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 17104.12266599998,
+      "calls": [
+        {
+          "bodyHash": "703de49896e46c1af04ee5f9136d944c84c8d8e4cb5e3a41f225cf8752401514",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 17100.708667,
+          "costUsd": 0,
+          "promptTokens": 1822,
+          "completionTokens": 1157,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728807-ZcaCyVrMHGEwE0burzIE",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d0dda82ee56b74fcb9523df9deb087ce692af12d48279b6bd4e0c7a6517af33d",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "error": null,
+      "wallMs": 26212.876208,
+      "calls": [
+        {
+          "bodyHash": "fbf9d5a43530e75585c4fad9faf9ee51537e2d7af9db2fe2548a9db67d5990cf",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 26211.40712499997,
+          "costUsd": 0,
+          "promptTokens": 1821,
+          "completionTokens": 1088,
+          "reasoningTokens": 1023,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728825-FBJ30rUx3ynjItEggmKO",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 2
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 2,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:2a4df0dbea68a274665ef90e224eafe7c6cd0f9d2b293c5b57951ad4fd88eaf2",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "error": null,
+      "wallMs": 13471.034083000035,
+      "calls": [
+        {
+          "bodyHash": "1ddebad5010e1e7758b1e410f2a5edbb4730dc3facc432da5c906d5e154ca0de",
+          "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "status": 200,
+          "httpMs": 13469.65716599999,
+          "costUsd": 0,
+          "promptTokens": 1207,
+          "completionTokens": 719,
+          "reasoningTokens": 677,
+          "provider": "Nvidia",
+          "observedModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "generationId": "gen-1793728851-yGAySZl7oHc9NqEWSgN9",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 3,
+          "relevantCitations": 3
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false
+    }
+  ],
+  "stopped": null,
+  "budget": {
+    "mode": "free-only",
+    "limitUsd": 0,
+    "confirmedUsd": 0,
+    "requests": 593,
+    "maxRequests": 900,
+    "unreportedCosts": 49,
+    "remainingAtStartupMinusRequests": 453
+  }
+}
