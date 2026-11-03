@@ -1,5 +1,7 @@
 # C2 integration provenance and author-review record
 
+> **Historical synthetic-case record, superseded as the main C2 case.** Lakshman required real-world data and selected public records of actual disputes. The [current case and provenance](C2-PUBLIC-RECORD-CASE.md) uses four actual decisions and 16 live reviews. This earlier record is retained for provenance; its proposed/implemented synthetic scenarios are separate technical controls in Appendix B. The current [reference draft](C2-REFERENCE-DRAFT.md) has been replaced accordingly.
+
 Date: November 3, 2026. GSD quick task: `261103-mbs`. Baseline: `759e939`; measured refund revision: `f8a6914`.
 
 ## Authorization and assistance

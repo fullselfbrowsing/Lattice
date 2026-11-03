@@ -1,5 +1,7 @@
 # C2 research and design for a travel refund dispute
 
+> **Historical synthetic-case record, superseded as the main C2 case.** Lakshman required real-world data and selected public records of actual disputes. The [current case and provenance](C2-PUBLIC-RECORD-CASE.md) uses four actual decisions and 16 live reviews. This earlier record is retained for provenance; its proposed/implemented synthetic scenarios are separate technical controls in Appendix B. The current [reference draft](C2-REFERENCE-DRAFT.md) has been replaced accordingly.
+
 **Recommendation:** use an **illustrative travel-refund review after conflicting chatbot advice**, motivated by *Moffatt v. Air Canada*, as the main business case. Use Klarna to establish the broader commercial relevance of AI-assisted refunds and Zurich as a contrasting claims-support application. None of these organizations is represented as a Lattice user.
 
 **Status, November 3, 2026:** research/design and a live free-model demonstration are ready for author review. This remains a research brief, not manuscript prose or a company field study. C2 evidence is now integrated in the manuscript as a workflow figure and evidence/results tables; author narrative and review remain pending. A separate [AI-generated reference draft](C2-REFERENCE-DRAFT.md) is available for author rewriting, with [provenance](C2-INTEGRATION-PROVENANCE.md). Implementation mappings below were checked at repository revision `0c9f64f`.

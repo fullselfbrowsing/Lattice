@@ -1,0 +1,58 @@
+\clearpage
+\section{Earlier synthetic workflow controls}\label{sec:synthetic-refund-case}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  x=1mm,y=1mm,font=\footnotesize,
+  stage/.style={draw,rounded corners=2pt,align=center,text width=144mm,minimum height=15mm,inner sep=3pt},
+  branch/.style={stage,text width=42mm,minimum height=24mm},
+  flow/.style={-{Stealth[length=2mm]},semithick}
+]
+\node[stage] (intake) at (0,0) {\textbf{Application: retain synthetic case evidence}\\Booking, customer request, versioned terms; company promise and prior history where supplied};
+\node[stage,fill=blue!5] (run) at (0,-22) {\textbf{Lattice: live model recommendation}\\Pinned free model $\rightarrow$ format check $\rightarrow$ signed receipt; retain exact request and output};
+\node[stage] (verify) at (0,-44) {\textbf{Application: verify retained run evidence}\\Signature, input/output hashes and expected task, execution-policy and request bindings};
+\node[stage] (rules) at (0,-64) {\textbf{Application: compare recommendation with business rules}\\Check booking identity, eligibility, prior refund, conflict and required authority};
+\node[branch] (employee) at (-50,-92) {\textbf{Routine path}\\Live: approve USD 180\\Simulated employee\\approval: USD 180};
+\node[branch] (manager) at (0,-92) {\textbf{Disputed path}\\Live: escalate, USD 0\\Simulated manager\\approval: USD 240};
+\node[branch] (other) at (50,-92) {\textbf{Other outcomes}\\Deny or request evidence;\\hold on failed checks\\USD 0 payment};
+\node[stage,text width=92mm] (payment) at (-25,-119) {\textbf{Application: simulated payment}\\Check approval role and amount; block duplicate attempt};
+\node[stage] (review) at (0,-143) {\textbf{Export case bundle $\rightarrow$ independent verification process}\\Recheck run commitments and simulated approval/payment record links; no model re-execution};
+\draw[flow] (intake) -- (run);
+\draw[flow] (run) -- (verify);
+\draw[flow] (verify) -- (rules);
+\draw[flow] (rules.south) -- ++(0,-4) -| (employee.north);
+\draw[flow] (rules.south) -- (manager.north);
+\draw[flow] (rules.south) -- ++(0,-4) -| (other.north);
+\draw[flow] (verify.east) -- ++(6,0) |- (other.east);
+\draw[flow] (employee.south) -- ++(0,-5) -| (payment.north);
+\draw[flow] (manager.south) -- ++(0,-5) -| (payment.north);
+\draw[flow] (payment.south) -- ++(0,-4) -| (review.north);
+\draw[flow] (other.south) -- (other.south |- review.north);
+\end{tikzpicture}
+\caption{Earlier synthetic workflow, retained as a technical control. Recommendations are live model outputs; all staff approvals and payments are simulated. The disputed case's earlier denial is scripted backstory. Failed-check holds were exercised in separate controls; none occurred in the live cohort. Verification checks retained evidence, not actual employee identity or settlement (Table~\ref{tab:refund-evidence}); measured outcomes appear in Table~\ref{tab:refund-results}. Diagram prepared with OpenAI Codex; drafting model/version unconfirmed, pending author disclosure review.}
+\label{fig:refund-workflow}
+\end{figure}
+
+\begin{table}[!htbp]
+\centering
+\caption{Evidence and responsibility in the synthetic refund workflow}
+\label{tab:refund-evidence}
+\footnotesize\setstretch{1.05}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{29mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Step / responsible role & Retained evidence & Implemented check & Remaining boundary \\
+\midrule
+Intake / application operator & Booking, request, versioned terms; company promise and prior history for the dispute & Compare exact artifact values with signed input hashes and expected fixture inventory & No proof of source authenticity, truthful history or complete real-world capture \\[4pt]
+Run / Lattice operator & Task, execution policy, serialized request, output and issuer-signed receipt & Signature plus expected task, execution-policy and request bindings & Business terms are separately hashed inputs; no proof of remote request consumption or issuer honesty \\[4pt]
+Recommendation / application & Action, amount, authority, conflict flag, rule IDs and source list & Format invariant; separate application comparison of decision fields with business rules & Format does not enforce required-source coverage; citation entailment and fairness are untested \\[4pt]
+Review / employee or manager fixture & Approval role, amount, reason, case ID and recommendation hash; denial-review event & Role/amount guards and linkage to the recommendation & Simulated approval is not authentication of a person or proof of delegated authority \\[4pt]
+Payment / payment-service fixture & Approval link, amount, outcome and duplicate-attempt result & Approval/amount checks; in-memory duplicate guard; record-link checks & No real settlement, durable transaction concurrency or independently authenticated payment event \\[4pt]
+Audit / separate verifier process & Trusted public key, exported run evidence and simulated application records & Recompute commitments; check expected inventory and approval/payment links & Requires trusted expectations; retained-output verification is not re-execution, correctness or regulatory compliance \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+\input{refund-results.tex}
+\FloatBarrier

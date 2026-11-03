@@ -101,7 +101,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent Organizations remain responsible for reviewing and justifying AI-assisted business decisions, yet a retained answer alone may not establish the integrity of the evidence behind it. Motivated by an illustrative refund dispute, this design-science study develops five requirements and four principles for verifiable run-level evidence and instantiates them in Lattice, an open-source runtime. Signed results can carry receipts that bind outputs and selected execution information; optional commitments cover tasks, policies, and serialized provider requests. Historical controlled evaluation tested tamper detection, retained-output verification, policy checks, and signing overhead; separate hosted cohorts examine execution and answer quality. These evaluations do not establish improved managerial decisions or reduced dispute-resolution costs. Verification checks recorded commitments, not provider honesty, decision correctness, fairness, or human authorization. Stored-output verification is not model re-execution, and request commitments do not prove remote consumption. The contribution is a design for producing evidence during execution, with explicit limits on what that evidence supports. Its usefulness to managers and auditors remains to be evaluated.
+\noindent Organizations remain responsible for reviewing and justifying AI-assisted business decisions, yet a retained answer alone may not establish the integrity of the evidence behind it. Motivated by accountability in refund disputes, this design-science study develops five requirements and four principles for verifiable run-level evidence and instantiates them in Lattice, an open-source runtime. Signed results can carry receipts that bind outputs and selected execution information; optional commitments cover tasks, policies, and serialized provider requests. Historical controlled evaluation tested tamper detection, retained-output verification, policy checks, and signing overhead; separate hosted cohorts examine execution and answer quality, including retrospective review of four actual public refund-dispute records. These evaluations do not establish improved managerial decisions or reduced dispute-resolution costs. Verification checks recorded commitments, not provider honesty, decision correctness, fairness, or human authorization. Stored-output verification is not model re-execution, and request commitments do not prove remote consumption. The contribution is a design for producing evidence during execution, with explicit limits on what that evidence supports. Its usefulness to managers and auditors remains to be evaluated.
 \end{abstract}
 % Confirm abstract and keyword limits against the JITCAR author instructions.
 
@@ -124,7 +124,7 @@ The study makes three contributions: requirements and principles for run-level e
 
 A valid receipt establishes integrity of the signed commitments. It does not establish that an issuing runtime or provider acted honestly, that a decision was correct or fair, or that an employee authorized it. Those questions require additional evidence and organizational judgment. Verification of retained outputs is also distinct from re-executing a model. These boundaries matter when deciding how much reliance to place on a record during review.
 
-Section~\ref{sec:background} reviews related work; Section~\ref{sec:method} explains the research approach. Sections~\ref{sec:requirements}, \ref{sec:refund-case} and~\ref{sec:artifact} present requirements, the synthetic refund workflow and the artifact. Section~\ref{sec:evaluation} evaluates it, Section~\ref{sec:discussion} discusses implications and limitations, and Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:background} reviews related work; Section~\ref{sec:method} explains the research approach. Sections~\ref{sec:requirements}, \ref{sec:refund-case} and~\ref{sec:artifact} present requirements, the public-record refund review and the artifact. Section~\ref{sec:evaluation} evaluates it, Section~\ref{sec:discussion} discusses implications and limitations, and Section~\ref{sec:conclusion} concludes.
 
 % =====================================================================
 \section{Background and Related Work}\label{sec:background}
@@ -191,8 +191,8 @@ DSRM activity & This study \\
 1. Problem identification & Accountability gap between governance expectations and model-run records (Sect.~\ref{sec:intro}, \ref{sec:background}) \\
 2. Objectives of a solution & Design requirements DR1--DR5 (Sect.~\ref{sec:requirements}) \\
 3. Design and development & Design principles DP1--DP4 instantiated in Lattice (Sect.~\ref{sec:artifact}) \\
-4. Demonstration & Runnable scenarios: a support work inbox whose message, call transcript, policy, and photo inputs are text fixtures; a single-agent loop; and a multi-agent crew \\
-5. Evaluation & Offline, artificial evaluation against DR1--DR5; planned practitioner study (Sect.~\ref{sec:evaluation}) \\
+4. Demonstration & Retrospective review of four actual public refund disputes (Sect.~\ref{sec:refund-case}); runnable controlled scenarios: a support work inbox whose message, call transcript, policy, and photo inputs are text fixtures; a single-agent loop; and a multi-agent crew \\
+5. Evaluation & Controlled and hosted evaluation against DR1--DR5; public-record review; planned practitioner study (Sect.~\ref{sec:evaluation}) \\
 6. Communication & This article; open-source artifact and evaluation harness \\
 \bottomrule
 \end{tabularx}
@@ -229,59 +229,8 @@ We formulate four design principles (DPs), following the convention that a princ
 
 % =====================================================================
 \clearpage
-\section{Synthetic Refund Demonstration}\label{sec:refund-case}
-
-\begin{figure}[!htbp]
-\centering
-\begin{tikzpicture}[
-  x=1mm,y=1mm,font=\footnotesize,
-  stage/.style={draw,rounded corners=2pt,align=center,text width=144mm,minimum height=15mm,inner sep=3pt},
-  branch/.style={stage,text width=42mm,minimum height=24mm},
-  flow/.style={-{Stealth[length=2mm]},semithick}
-]
-\node[stage] (intake) at (0,0) {\textbf{Application: retain synthetic case evidence}\\Booking, customer request, versioned terms; company promise and prior history where supplied};
-\node[stage,fill=blue!5] (run) at (0,-22) {\textbf{Lattice: live model recommendation}\\Pinned free model $\rightarrow$ format check $\rightarrow$ signed receipt; retain exact request and output};
-\node[stage] (verify) at (0,-44) {\textbf{Application: verify retained run evidence}\\Signature, input/output hashes and expected task, execution-policy and request bindings};
-\node[stage] (rules) at (0,-64) {\textbf{Application: compare recommendation with business rules}\\Check booking identity, eligibility, prior refund, conflict and required authority};
-\node[branch] (employee) at (-50,-92) {\textbf{Routine path}\\Live: approve USD 180\\Simulated employee\\approval: USD 180};
-\node[branch] (manager) at (0,-92) {\textbf{Disputed path}\\Live: escalate, USD 0\\Simulated manager\\approval: USD 240};
-\node[branch] (other) at (50,-92) {\textbf{Other outcomes}\\Deny or request evidence;\\hold on failed checks\\USD 0 payment};
-\node[stage,text width=92mm] (payment) at (-25,-119) {\textbf{Application: simulated payment}\\Check approval role and amount; block duplicate attempt};
-\node[stage] (review) at (0,-143) {\textbf{Export case bundle $\rightarrow$ independent verification process}\\Recheck run commitments and simulated approval/payment record links; no model re-execution};
-\draw[flow] (intake) -- (run);
-\draw[flow] (run) -- (verify);
-\draw[flow] (verify) -- (rules);
-\draw[flow] (rules.south) -- ++(0,-4) -| (employee.north);
-\draw[flow] (rules.south) -- (manager.north);
-\draw[flow] (rules.south) -- ++(0,-4) -| (other.north);
-\draw[flow] (verify.east) -- ++(6,0) |- (other.east);
-\draw[flow] (employee.south) -- ++(0,-5) -| (payment.north);
-\draw[flow] (manager.south) -- ++(0,-5) -| (payment.north);
-\draw[flow] (payment.south) -- ++(0,-4) -| (review.north);
-\draw[flow] (other.south) -- (other.south |- review.north);
-\end{tikzpicture}
-\caption{Executed synthetic refund workflow. Recommendations are live model outputs; all staff approvals and payments are simulated. The disputed case's earlier denial is scripted backstory. Failed-check holds were exercised in separate controls; none occurred in the live cohort. Verification checks retained evidence, not actual employee identity or settlement (Table~\ref{tab:refund-evidence}); measured outcomes appear in Table~\ref{tab:refund-results}. Diagram prepared with OpenAI Codex; drafting model/version unconfirmed, pending author disclosure review.}
-\label{fig:refund-workflow}
-\end{figure}
-
-\begin{table}[!htbp]
-\centering
-\caption{Evidence and responsibility in the synthetic refund workflow}
-\label{tab:refund-evidence}
-\footnotesize\setstretch{1.05}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{29mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
-\toprule
-Step / responsible role & Retained evidence & Implemented check & Remaining boundary \\
-\midrule
-Intake / application operator & Booking, request, versioned terms; company promise and prior history for the dispute & Compare exact artifact values with signed input hashes and expected fixture inventory & No proof of source authenticity, truthful history or complete real-world capture \\[4pt]
-Run / Lattice operator & Task, execution policy, serialized request, output and issuer-signed receipt & Signature plus expected task, execution-policy and request bindings & Business terms are separately hashed inputs; no proof of remote request consumption or issuer honesty \\[4pt]
-Recommendation / application & Action, amount, authority, conflict flag, rule IDs and source list & Format invariant; separate application comparison of decision fields with business rules & Format does not enforce required-source coverage; citation entailment and fairness are untested \\[4pt]
-Review / employee or manager fixture & Approval role, amount, reason, case ID and recommendation hash; denial-review event & Role/amount guards and linkage to the recommendation & Simulated approval is not authentication of a person or proof of delegated authority \\[4pt]
-Payment / payment-service fixture & Approval link, amount, outcome and duplicate-attempt result & Approval/amount checks; in-memory duplicate guard; record-link checks & No real settlement, durable transaction concurrency or independently authenticated payment event \\[4pt]
-Audit / separate verifier process & Trusted public key, exported run evidence and simulated application records & Recompute commitments; check expected inventory and approval/payment links & Requires trusted expectations; retained-output verification is not re-execution, correctness or regulatory compliance \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\section{Retrospective Review of Actual Refund Disputes}\label{sec:refund-case}
+\input{public-refund-case.tex}
 \FloatBarrier
 
 % =====================================================================
@@ -430,8 +379,8 @@ Table~\ref{tab:overhead} and Figure~\ref{fig:overhead} report latency over \Over
 \InputIfFileExists{validated-free.tex}{}{}
 
 \FloatBarrier
-\subsection{Synthetic refund demonstration: measured evidence}\label{sec:eval-refund}
-\input{refund-results.tex}
+\subsection{Retrospective public-record review}\label{sec:eval-public-refund}
+\input{public-refund-results.tex}
 \FloatBarrier
 
 \subsection{Planned naturalistic evaluation with developers and auditors}\label{sec:eval-study}
@@ -482,7 +431,7 @@ Future research can replace unsalted hashes with salted or keyed commitments, bi
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 
-Organizations need evidence with which responsible people can review and justify AI-assisted decisions. The illustrative refund dispute makes that need concrete: a manager must relate a recommendation to the information and policy behind it, while separately establishing how an employee authorized the outcome. This study addresses the run-level evidence needed within that broader organizational review process. It develops five design requirements and four principles and instantiates them in Lattice.
+Organizations need evidence with which responsible people can review and justify AI-assisted decisions. The public refund-dispute records make that need concrete: a manager must relate a recommendation to the information and policy behind it, while separately establishing how an employee authorized the outcome. This study addresses the run-level evidence needed within that broader organizational review process. It develops five design requirements and four principles and instantiates them in Lattice.
 
 The historical controlled evaluation provides evidence about technical behavior: where rejection was required, single-receipt tamper attempts were rejected, retained outputs matched signed hashes, routing policies were not violated, and signing added milliseconds per run (Table~\ref{tab:eval-map}). Separate hosted cohorts examine execution and answer quality. Later task, policy, and serialized-request commitments address identified gaps, but historical timings do not measure those extensions and request commitments do not prove remote consumption. Checking a stored output against its signed hash is verification of retained evidence, not re-execution of the model.
 
@@ -494,7 +443,7 @@ The personal-data evaluation uses the pii-masking-300k dataset by Ai4Privacy \ci
 
 \section*{Declarations}
 \paragraph{Funding} This research was self-funded and received no specific grant from any funding agency. Any publication charges incurred upon acceptance will be covered by R. Neouchi's research account at the Naveen Jindal School of Management, The University of Texas at Dallas.
-\paragraph{Generative AI use} During the preparation of this work, R. Neouchi used Claude (Claude Opus 5.5, Anthropic) to identify candidate journals, suggest a revision plan and manuscript structure, and identify literature for review. He reviewed its suggestions, and this use did not generate manuscript text. L. Turlapati used Claude Code, Cursor, Grok Bot, and OpenAI Codex as coding assistants. The author-reported models used across these tools were Claude Opus 5.5, Fable 5.1, GPT-6 Astra, GPT-6.1 Sol, Grok 4.7, and Composer 2.5. Documented Codex assistance also included evaluation implementation and analysis, report preparation, manuscript revision planning, drafting and editing evaluation-related manuscript text, editorial revision of the introduction, abstract, and conclusion, and preparation of the refund workflow diagram and evidence tables. The authors take responsibility for the content of this publication.
+\paragraph{Generative AI use} During the preparation of this work, R. Neouchi used Claude (Claude Opus 5.5, Anthropic) to identify candidate journals, suggest a revision plan and manuscript structure, and identify literature for review. He reviewed its suggestions, and this use did not generate manuscript text. L. Turlapati used Claude Code, Cursor, Grok Bot, and OpenAI Codex as coding assistants. The author-reported models used across these tools were Claude Opus 5.5, Fable 5.1, GPT-6 Astra, GPT-6.1 Sol, Grok 4.7, and Composer 2.5. Documented Codex assistance also included evaluation implementation and analysis, report preparation, manuscript revision planning, drafting and editing evaluation-related manuscript text, editorial revision of the introduction, abstract, and conclusion, and preparation of the refund workflow diagrams and evidence tables. Codex also assisted source acquisition, protocol and rubric preparation, implementation, and analysis for the retrospective public-record evaluation. The authors take responsibility for the content of this publication.
 \paragraph{Competing interests} Lakshman Turlapati is the author and maintainer of Lattice and is affiliated with Full Self Browsing, which publishes Lattice. Rabih Neouchi declares no competing interests.
 \paragraph{Data and code availability} The artifact and the evaluation harness, including the result files the tables are generated from, are available at \url{https://github.com/fullselfbrowsing/Lattice}. \todo{Push the evaluation branch and archive a tagged release with a DOI (e.g., Zenodo) before submission.}
 \paragraph{Author contributions} \todo{CRediT statement, e.g., Conceptualization: L.T., R.N.; Software: L.T.; Methodology: L.T., R.N.; Writing: L.T.; Supervision: R.N.}
@@ -514,6 +463,8 @@ Provider calls were mocked. No API credential was read from the environment. Reg
 % \documentclass[pdflatex,sn-apa]{sn-jnl}.
 
 \InputIfFileExists{eval-tables.tex}{}{\par\noindent Generated evaluation tables were not present when this file was compiled.\par}
+
+\input{refund-synthetic-appendix.tex}
 
 \bibliographystyle{apalike}
 \bibliography{refs}

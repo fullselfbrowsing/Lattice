@@ -6,6 +6,7 @@
 # `make tectonic` requires only Tectonic, which fetches packages on demand.
 #
 # Generated inputs (do not edit; see README.md):
+#   public-refund-results.tex                    paper/scripts/public-refund-tables.mjs
 #   refund-results.tex                           paper/scripts/refund-tables.mjs
 #   numbers.tex, eval-tables.tex, Fig2.png-Fig4.png   eval/scripts/06-report.py
 #   realworld.tex, realworld-matrix.tex, rw-*.pdf     eval/realworld/scripts/05-charts.py

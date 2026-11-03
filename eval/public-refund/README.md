@@ -2,6 +2,12 @@
 
 This cohort corrects the earlier substitution of invented scenarios for the requested real-world data. It uses **actual published dispute decisions**, with exact PDF page text as Lattice input. The original [synthetic cohort](../refund/README.md) remains a separate technical control.
 
+## Completed results
+
+All 16 planned reviews completed with USD 0 added spend. The frozen full-rubric score was **14/16**. A separately documented source-rubric correction accepts a valid supporting page omitted by the original annotation, yielding **15/16** without changing frozen labels/results or rerunning inference. The remaining response failed the format contract. Terminal signatures verified for 16/16 runs; successful-output evidence packages verified for 15/16. See the [interpretation and audit](results/interpretation.md) and [machine-readable correction](results/rubric-audit.json); independent author validation remains pending.
+
+Measured harness revision: `3330ca2`. Original results were committed at `efefcf2` before the correction. Regenerate only the manuscript table with `node paper/scripts/public-refund-tables.mjs`; `--check` validates the presentation. The reproduction commands below are for a deliberately managed reproduction, not a request to rerun the completed frozen cohort.
+
 ## Data and selection
 
 Four records were selected before inference for their relevance to travel-refund evidence and availability as primary documents: [Moffatt v. Air Canada](https://www.middletemple.org.uk/sites/default/files/civicrm/persist/contribute/files/2024bccrt149.pdf), [DRN-4377241](https://www.financial-ombudsman.org.uk/decision/DRN-4377241.pdf), [DRN-4148727](https://www.financial-ombudsman.org.uk/decision/DRN-4148727.pdf), and [DRN-3785437](https://www.financial-ombudsman.org.uk/decision/DRN-3785437.pdf). Selection was purposive, not random. The first is a primary judgment hosted by Middle Temple; the others are published by the Financial Ombudsman Service. These documents describe actual disputes, but are not the original company systems, customer attachments or complete evidentiary files.

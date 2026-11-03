@@ -14,6 +14,7 @@ Do not type numbers into the narrative by hand, and do not edit these files. Rer
 |---|---|
 | `numbers.tex`, `eval-tables.tex`, `Fig2.png`, `Fig3.png`, `Fig4.png` | `eval/scripts/06-report.py`, from `eval/results/*.json` |
 | `validated.tex`, `validated-pii.pdf`, `validated-latency.pdf` | `eval/realworld/scripts/16-validated-report.py`, from the versioned validated result files; missing measurements are explicit |
+| `public-refund-results.tex` | `paper/scripts/public-refund-tables.mjs`, from frozen `eval/public-refund/results` plus its separately disclosed rubric audit |
 | `refund-results.tex` | `paper/scripts/refund-tables.mjs`, from frozen `eval/refund/results`; read-only verification before rendering |
 | `bench/results.json` | `scripts/bench-receipts.mjs` (run by `pnpm bench:receipts`) |
 | the `bench-table`, `bench-prose`, and `bench-platform` blocks in `ieee/main.tex` | `scripts/render-bench-table.mjs`, from `bench/results.json` (also run by `pnpm bench:receipts`) |
@@ -26,16 +27,22 @@ The latency results (`tab:overhead`, `tab:size`, `tab:chain`, `Fig2.png`, `Fig3.
 
 ## Refund case materials
 
-The [C2 reference draft](research/C2-REFERENCE-DRAFT.md) is explicitly AI-generated reference text for the authors to rewrite, not manuscript narrative. The workflow figure and evidence table are in `main.tex`, before the artifact section; the refund results table is included within Evaluation. C2 remains **evidence integrated; author narrative and review pending**.
+The main C2 case uses **four actual published refund-dispute decisions**, with 18 exact PDF pages supplied to 16 live free-model reviews. See the [case/provenance record](research/C2-PUBLIC-RECORD-CASE.md) and [results with rubric audit](../eval/public-refund/results/interpretation.md). The [approximately 800-word C2 reference draft](research/C2-REFERENCE-DRAFT.md) is explicitly AI-generated for author rewriting and remains outside `main.tex`. C2 is **actual public-record evidence integrated; author narrative and review pending**.
 
-From the repository root, regenerate only the refund presentation:
+`public-refund-case.tex` contains the main TikZ workflow and evidence table, before the artifact section. `public-refund-results.tex` is included within Evaluation. The earlier invented-case figure, evidence table and unchanged results are separately retained in `refund-synthetic-appendix.tex`; do not pool their denominators with the actual-record cohort.
+
+From the repository root, regenerate only the actual-record presentation:
 
 ```sh
-node paper/scripts/refund-tables.mjs
-node paper/scripts/refund-tables.mjs --check
+node paper/scripts/public-refund-tables.mjs
+node paper/scripts/public-refund-tables.mjs --check
 ```
 
-This script rechecks all saved evaluation bundles against the frozen protocol, code/fixture hashes, public key and recorded scores before generating the table. It performs no inference and does not rewrite any evaluation result. It requires the existing Lattice build to match the frozen code hashes; if that build has changed, restore/reproduce the measured revision in an isolated checkout instead of changing the hashes. Keep the 18 scoped controls and the separate offline wrong-answer control distinct from the 32 live runs. Tool/model-version confirmation and final declarations remain open under A1/P5.
+The script reads the frozen summary and verification results, validates the separately recorded rubric correction against the saved grades and source manifest, and writes only the presentation. It reports the original 14/16 full passes and the corrected 15/16 separately. It performs no inference and changes no frozen code, labels or results. Full source PDFs, page text and exact request exports remain local; published bundles contain outputs, receipts and fingerprints, so full independent package verification requires those retained bytes.
+
+The historical synthetic presentation remains reproducible with `node paper/scripts/refund-tables.mjs --check`. That script checks the frozen code/build/fixture/protocol/bundle hashes, public key and original scores without inference. Do not restore or overwrite frozen hashes if the current build differs; reproduce the measured revision in an isolated checkout. Its 18 scoped checks and separate offline wrong-answer control differ from the current cohort's 10 checks on one live bundle.
+
+Human usefulness and real approval/payment execution remain untested. Source/rubric validation, drafting-tool model/version confirmation and final declarations remain open under A1/P5.
 
 ## Build
 
