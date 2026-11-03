@@ -159,3 +159,40 @@ it, and the generated text differ.
   without `mustCiteOptions`. The ASQA counts are in `datasets.json` and
   `citations.json`: the structured default accepts 0 of 948 and
   `inline: true` accepts 4.
+## Free model cohort
+
+`validated-free-*` records a separate zero-cost OpenRouter cohort. It does not
+replace or pool the incomplete paid `validated-*` run. The runner accepts only
+pinned catalog `:free` IDs with zero model and endpoint prices, rejects fallback
+and extension settings, and stops if any response reports a nonzero charge.
+Free request counts persist separately in `.context/free-request-ledger.json`;
+the paid budget and unresolved reservations remain unchanged.
+
+The free cohort uses Nemotron 3.5 Super VL and Dots 3 Note Preview. Gemma 4 31B
+was unavailable in the first development smoke (HTTP 429); that recording is
+preserved. Free models use provider-default reasoning with 1024-token caps for
+simple tasks and 4096 for citations, agents and judging. These higher caps were
+selected on development cases before heldout inference. Each target model has
+10 transport fixtures, 10 privacy cases, 2 agents, 2 crews, all 60 frozen citation
+questions in each arm, and 20 latency trials per arm plus 2 warmups.
+
+```bash
+export OPENROUTER_KEY_FILE=/path/to/credential-file
+EVAL_COHORT=free EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
+EVAL_COHORT=free EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
+EVAL_COHORT=free EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.mjs
+python eval/realworld/scripts/18-free-report.py
+```
+
+Use the evaluation Python environment described below. Existing artifacts can
+resume only under the same runtime/harness/guard hashes. Preserve prior runs
+under distinct names before changing their configuration. The free request cap
+is 900 across all stages; the account's daily remainder can stop earlier. Each
+HTTP call is paced at least 3.2 seconds after the preceding call began. There
+are no automatic free HTTP retries, paid fallbacks, or quota bypasses. Measured
+wall time includes pacing; the free report subtracts its recorded duration.
+
+Citation judging uses a fixed free Xing 4.0 model and remains exploratory,
+without human validation. Invalid answers and provider errors remain visible;
+missing judgments are unknown rather than zero quality. Free-tier queueing and
+small timing samples do not establish production latency.
