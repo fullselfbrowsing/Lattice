@@ -96,6 +96,7 @@ def markdown(report):
              f"over {report['accounting']['requestsAcrossStages']} requests. "
              f"{report['accounting']['unreportedCosts']} responses did not report a cost; they used verified zero-priced routes.", "",
              f"Evaluation stop: {report['stopped'] or 'none'}. Judge stop: {report['judgeStopped'] or 'none'}.", "",
+             f"Collection restarts: {len(report.get('collectionRestarts', []))}; failed rows and free request counts were retained. Details are in validated-free-resumes.json when present.", "",
              "## Runtime and transport", "", "| Model | Suite | Arm | Recorded / planned | Runtime success | Correct |", "|---|---|---|---:|---:|---:|"]
     for g in report["groups"]:
         lines.append(f"| {g['model']} | {g['suite']} | {g['arm']} | {g['attempted']}/{g['expected']} | {g['runtimeSuccess']} | {g['correct'] if g['correct'] is not None else '—'} |")
@@ -186,6 +187,9 @@ def latex(report):
     lines.append("Residual time includes harness hashing, ledger writes and JSON processing, and is not pure SDK overhead. "
                  "The JSON report includes bootstrap median intervals and p95 values. Small samples and free-tier queueing "
                  "limit latency generalization. Solid-color images and short policy tools are narrow runtime fixtures.")
+    if report.get("collectionRestarts"):
+        lines.append(f"Collection restarted {len(report['collectionRestarts'])} time(s) after guarded stops, using the same "
+                     "harness and free request ledger. Failed cases were retained rather than rerun or replaced; the restart log is included with the results.")
     lines.append(r"Recorded revision \texttt{" + metrics.tex_escape(report["env"]["revision"][:12]) +
                  r"}; full code, harness, model, endpoint and dataset provenance is retained in the free-cohort JSON artifacts.")
     lines.append(r"\FloatBarrier")
@@ -221,6 +225,8 @@ def main():
     judge = json.loads(judge_path.read_text()) if judge_path.exists() else {}
     ledger = json.loads((ROOT / ".context/free-request-ledger.json").read_text())
     report = summarize(full, judge, ledger)
+    resumes_path = RESULTS / "validated-free-resumes.json"
+    report["collectionRestarts"] = json.loads(resumes_path.read_text()) if resumes_path.exists() else []
     (RESULTS / "validated-free-summary.json").write_text(json.dumps(report, indent=2) + "\n")
     (RESULTS / "validated-free-summary.md").write_text(markdown(report))
     fragment = latex(report)
