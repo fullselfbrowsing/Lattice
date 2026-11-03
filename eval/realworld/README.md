@@ -184,7 +184,7 @@ EVAL_COHORT=free EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.
 python eval/realworld/scripts/18-free-report.py
 ```
 
-Use the evaluation Python environment described below. Existing artifacts can
+Use the evaluation Python environment described above. Existing artifacts can
 resume only under the same runtime/harness/guard hashes. Preserve prior runs
 under distinct names before changing their configuration. The free request cap
 is 900 across all stages; the account's daily remainder can stop earlier. Each

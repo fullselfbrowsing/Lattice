@@ -75,6 +75,7 @@ def summarize(full, judge, ledger):
             "limitations": ["Separate exploratory free-model cohort; do not pool with the earlier paid cohort.",
                             "Provider-default reasoning is included; output allowances differ from paid results.",
                             "Free-tier queueing and availability limit latency generalization; 20 trials per arm are descriptive.",
+                            "Processing is residual wall time including harness hashing, ledger writes and JSON work, not pure SDK overhead.",
                             "Fixed free judge is not human validated; its judgments are exploratory and not official ALCE scores.",
                             "Synthetic non-disclosure prompts are not an adversarial privacy evaluation.",
                             "16x16 solid-color images are narrow transport fixtures, not a general vision benchmark."]}
@@ -133,6 +134,14 @@ def main():
         assert timing["runtimeFailure"] == 1 and timing["timing"]["wallMs"]["p50"] == 1000
         assert timing["timing"]["wallMs"]["n"] == 1
         assert all(g["citations"]["strictSuccess"] is None for g in result["groups"] if g["suite"] == "citations")
+        full["rows"].append({**row, "suite": "citations", "arm": "prompt-only", "formatValid": True, "usableAnswer": True})
+        judge = {"rows": [{"id": "test/model:free:0", "targetModel": "test/model:free", "arm": "prompt-only",
+                           "ok": True, "judgeValid": True, "answerCorrect": True, "abstained": False,
+                           "claims": [{"supported": True, "cited": True, "citationCount": 1, "relevantCitations": 1}]}]}
+        result = summarize(full, judge, {"entries": [], "maxRequests": 900})
+        cited = next(g["citations"] for g in result["groups"] if g["suite"] == "citations" and g["arm"] == "prompt-only")
+        assert cited["strictSuccess"] == 1 and cited["strictSuccessPerExpected"] == 1 / 60
+        assert cited["unjudgedOrInvalidPerExpected"] == 59
         print("free-report self-test passed")
         return
     full = json.loads((RESULTS / "validated-free-full.json").read_text())
