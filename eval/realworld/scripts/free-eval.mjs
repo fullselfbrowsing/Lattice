@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from "
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
-export const FREE_MODELS = ["nvidia/nemotron-3.5-super-vl:free", "google/gemma-4-31b-it:free"];
-export const FREE_JUDGE = "dots-studio/dots-3-note-preview:free";
+export const FREE_MODELS = ["nvidia/nemotron-3.5-super-vl:free", "dots-studio/dots-3-note-preview:free"];
+export const FREE_JUDGE = "xingchen-agi/xing4.0-29b-a4b:free";
 export const FREE_COUNTS = { transport: 10, privacy: 10, agents: 2, citations: 60, latency: 20, warmups: 2 };
 
 export function evaluationPaths(root, cache, cohort, stage) {

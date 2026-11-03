@@ -20,3 +20,7 @@ Pin `nvidia/nemotron-3.5-super-vl:free` and `google/gemma-4-31b-it:free` based o
 Publish a separate local free-cohort summary and reproduction instructions, with free-tier availability and judge limitations. Do not pool paid/free model results or treat new measurements as completion of the old cohort. Verify original paid artifacts/ledger are unchanged, run focused harness tests, scan output for the credential, update GSD state, and commit locally. No push, PR posting, merging, or publication.
 
 Sources checked 2026-11-03: OpenRouter models/endpoints/key APIs; official free variant and limits documentation. Key reported 1,000 daily free requests remaining. Free variants have zero inference price but limited availability. Only public benchmark passages and synthetic fixtures are transmitted.
+
+## Development-only adjustment before heldout inference
+
+The first smoke run (18 cases, 21 requests, zero reported cost) found all 9 Gemma calls rate-limited and Nemotron exhausting 64/128-token caps with empty visible output. Preserve it as `validated-free-smoke-development-1.json`. Replace unavailable Gemma with `dots-studio/dots-3-note-preview:free`; the fixed exploratory judge becomes `xingchen-agi/xing4.0-29b-a4b:free`. Raise bounded free-cohort output allowance to 1024 for simple tasks and 4096 for citations/agents/judging, retaining provider-default reasoning. Run a fresh development smoke; require a correct JSON fixture for each model. No heldout prompts or outcomes have been used for these adjustments.

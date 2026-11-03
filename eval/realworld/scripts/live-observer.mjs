@@ -16,7 +16,7 @@ return async function observedFetch(url, init = {}) {
   active.lastBody = init.body;
   const body = JSON.parse(init.body);
   const maximum = body.max_tokens ?? body.max_completion_tokens;
-  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 1024) throw new Error("Every inference call needs a bounded token cap.");
+  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > (freeOnly ? 4096 : 1024)) throw new Error("Every inference call needs a bounded token cap.");
   if (!MODELS.includes(body.model) || body.tools?.some((tool) => tool.type !== "function")) throw new Error("Unpriced model or server-side tool.");
   if (body.plugins || body.web_search_options) throw new Error("Unpriced server-side extension.");
   const model = modelCatalog.get(body.model);
@@ -52,6 +52,7 @@ return async function observedFetch(url, init = {}) {
       bodyHash: sha(init.body), model: body.model, status: response.status,
       httpMs: performance.now() - started, costUsd: typeof actualCost === "number" ? actualCost : null,
       promptTokens: parsed?.usage?.prompt_tokens ?? null, completionTokens: parsed?.usage?.completion_tokens ?? null,
+      ...(freeOnly ? { reasoningTokens: parsed?.usage?.completion_tokens_details?.reasoning_tokens ?? null } : {}),
       provider: parsed?.provider ?? null, observedModel: parsed?.model ?? null, generationId: parsed?.id ?? null,
       finishReason: parsed?.choices?.[0]?.finish_reason ?? null, attempt,
       errorCode: parsed?.error?.code ?? null, errorMessage: parsed?.error?.message ? scrub(parsed.error.message).slice(0, 200) : null,

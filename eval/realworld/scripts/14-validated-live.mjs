@@ -147,7 +147,7 @@ async function direct(body) {
   const parsed = await response.json();
   return { ok: response.ok, text: parsed?.choices?.[0]?.message?.content ?? "" };
 }
-const generation = (maxOutputTokens = 256) => ({ temperature: 0, maxOutputTokens });
+const generation = (maxOutputTokens = 256) => ({ temperature: 0, maxOutputTokens: FREE ? (maxOutputTokens >= 512 ? 4096 : 1024) : maxOutputTokens });
 const intent = (task, artifacts = [], max = 256) => ({ task, artifacts, outputs: { answer: "text" }, generation: generation(max) });
 
 function png(rgb) {
@@ -341,7 +341,7 @@ try {
     paidLedgerHash: FREE ? sha(readFileSync(resolve(ROOT, ".context/hosted-budget.json"))) : null,
     scope: FREE ? "Exploratory free-model cohort; separate from paid results. Free-tier queueing and provider variability limit latency generalization; fixed free judge is not human validated." : "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
     smokeGate: FREE ? "Complete smoke coverage, successful JSON transport for each model, verified receipt bindings/crew closure, no marker leakage. Model answer, tool-use and format errors remain measured outcomes." : "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
-    tokenCaps: { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
+    tokenCaps: FREE ? { latency: 1024, transport: 1024, privacy: 1024, citations: 4096, agent: 4096, crew: 4096, judge: 4096 } : { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
   if (existsSync(OUT)) {
     const existing = readJSON(OUT);
     if (existing.env.codeHash !== codeHash || existing.env.harnessHash !== harnessHash || existing.env.observerHash !== observerHash || (FREE && existing.env.freeGuardHash !== freeGuardHash)) throw new Error("Existing results have different code; archive them before a new run.");
@@ -362,7 +362,7 @@ try {
       || (r.arm !== "direct" && r.suite !== "crew" && (!r.receipt.present || !r.receipt.verified
         || (r.receipt.outputBindingEligible && (!r.receipt.outputHashMatch || !r.receipt.editedOutputDetected)) || !r.receipt.taskBound
         || !r.receipt.policyBound || !r.receipt.requestBound || !r.receipt.submittedBodiesCovered || !r.receipt.expectedBindingsVerified)));
-    if (smoke.env.codeHash !== codeHash || (FREE && (smoke.env.harnessHash !== harnessHash || smoke.env.observerHash !== observerHash || smoke.env.freeGuardHash !== freeGuardHash || MODELS.some((m) => !smoke.rows.some((r) => r.model === m && r.suite === "transport" && r.modality === "json" && r.ok)))) || !coverage || failed || smoke.stopped) {
+    if (smoke.env.codeHash !== codeHash || (FREE && (smoke.env.harnessHash !== harnessHash || smoke.env.observerHash !== observerHash || smoke.env.freeGuardHash !== freeGuardHash || MODELS.some((m) => !smoke.rows.some((r) => r.model === m && r.suite === "transport" && r.modality === "json" && r.correct)))) || !coverage || failed || smoke.stopped) {
       throw new Error("A complete smoke run with transport, receipt and execution checks passing on the same runtime build is required.");
     }
   }
