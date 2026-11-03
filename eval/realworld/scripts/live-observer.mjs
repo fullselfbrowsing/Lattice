@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import { BudgetExceeded, requestCostBound } from "./budget.mjs";
+import { assertFreeRequest } from "./free-eval.mjs";
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 /** Observe exact submissions and reserve cost before network egress. */
 export function createObservedFetch({ BASE, MODELS, modelCatalog, endpointCatalog, budget,
-  getActive, getStopped, setStopped, scrub = String, fetch = globalThis.fetch }) {
+  getActive, getStopped, setStopped, scrub = String, fetch = globalThis.fetch, freeOnly = false }) {
 return async function observedFetch(url, init = {}) {
   if (getStopped()) throw new BudgetExceeded(getStopped());
   const active = getActive();
@@ -19,9 +20,16 @@ return async function observedFetch(url, init = {}) {
   if (!MODELS.includes(body.model) || body.tools?.some((tool) => tool.type !== "function")) throw new Error("Unpriced model or server-side tool.");
   if (body.plugins || body.web_search_options) throw new Error("Unpriced server-side extension.");
   const model = modelCatalog.get(body.model);
+  if (freeOnly) assertFreeRequest(body, model, endpointCatalog[body.model]);
   const bound = requestCostBound(model, endpointCatalog[body.model], maximum);
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const attempts = freeOnly ? 1 : 2;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     if (getStopped()) throw new BudgetExceeded(getStopped());
+    if (freeOnly) {
+      const before = performance.now();
+      await budget.pace();
+      active.pacingMs = (active.pacingMs ?? 0) + performance.now() - before;
+    }
     let reservation;
     try { reservation = budget.reserve(body.model, bound); }
     catch (error) { setStopped(error.message); throw error; }
@@ -58,7 +66,10 @@ return async function observedFetch(url, init = {}) {
     if ([401, 402, 403].includes(response.status)) {
       setStopped("Provider refused the request with HTTP " + response.status);
     }
-    if ((response.status === 429 || response.status >= 500) && attempt === 0 && !getStopped()) {
+    if (freeOnly && response.status === 429 && /free-models-per-day|daily|per day/i.test(call.errorMessage ?? "")) {
+      setStopped("Free daily quota reached; no paid fallback attempted.");
+    }
+    if ((response.status === 429 || response.status >= 500) && attempt + 1 < attempts && !getStopped()) {
       const retryAfter = response.headers.get("retry-after");
       const requested = retryAfter === null ? 10000 : /^\d+(?:\.\d+)?$/.test(retryAfter)
         ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
