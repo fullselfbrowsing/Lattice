@@ -110,7 +110,8 @@ def markdown(report):
         if g["suite"] == "citations":
             c = g["citations"]
             lines.append(f"| {g['model']} | {g['arm']} | {c['formatValid']} | {c['usable']} | {c['judgeValid']}/{c['judgeAttempted']} | {c['strictSuccess'] if c['strictSuccess'] is not None else 'unmeasured'} |")
-    lines += ["", f"Fixed exploratory judge: `{report['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
+    lines += ["", "Strict success requires a usable, correct, non-abstaining answer with at least one factual claim; every claim must be supported and cited, and every listed citation for that claim must be relevant.", "",
+              f"Fixed exploratory judge: `{report['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
               f"The replacement judge passed {sum(p.get('judgeValid') is True for p in report['judgeProbes'])} synthetic supported/contradicted probes; this is not human calibration. {report['wrappedJudgeRows']} judge replies required removal of a single outer JSON fence. Candidate answers were never normalized. The initial rate-limited Xing attempt is preserved separately and not pooled. Collector hashes distinguish sequential and bounded concurrent grading with the same model, rubric and generation settings.", "",
               f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} completed citation request pairs had identical body hashes. The contract validates format after generation; it neither repairs output nor verifies entailment. Differences in generated answer quality across these arms do not establish that the contract improved generation.", "",
               "## Latency", "", "Medians below use successful, correct non-warmup cases. Wall time excludes recorded request pacing. JSON includes bootstrap median intervals and p95; these small free-tier samples do not estimate production latency.", "",
@@ -192,8 +193,8 @@ def latex(report):
             cited.append([names.get(model, model), "Prompt" if arm == "prompt-only" else "Contract",
                           f"{c['formatValid']}/60", f"{c['usable']}/60", f"{c['judgeValid']}/{c['judgeAttempted']}",
                           f"{c['strictSuccess']}/60" if c['strictSuccess'] is not None else "unknown"])
-    lines.append(metrics.tex_table("Free-cohort citation outcomes. Judge is valid/attempted judgments; strict means an answer "
-                                   "judged correct with every factual claim supported and cited. Missing judgments remain unknown.",
+    lines.append(metrics.tex_table("Free-cohort citation outcomes. Judge is valid/attempted judgments; strict means a non-abstaining answer "
+                                   "judged correct with at least one claim, every claim supported and cited, and every citation relevant. Missing judgments remain unknown.",
                                    "free-citations", ["Model", "Arm", "Format", "Usable", "Judge", "Strict"], cited))
     judge_name = "Nemotron 3 Ultra" if report.get("judgeModel", "").startswith("nvidia/nemotron-3-ultra") else "Xing 4.0"
     lines.append(f"The fixed free {judge_name} judge is exploratory and has not been calibrated against human annotations. "
