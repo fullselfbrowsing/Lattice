@@ -171,7 +171,7 @@ the paid budget and unresolved reservations remain unchanged.
 The free cohort uses Nemotron 3.5 Super VL and Dots 3 Note Preview. Gemma 4 31B
 was unavailable in the first development smoke (HTTP 429); that recording is
 preserved. Free models use provider-default reasoning with 1024-token caps for
-simple tasks and 4096 for citations, agents and judging. These higher caps were
+simple tasks and 4096 for citations and agents. These higher caps were
 selected on development cases before heldout inference. Each target model has
 10 transport fixtures, 10 privacy cases, 2 agents, 2 crews, all 60 frozen citation
 questions in each arm, and 20 latency trials per arm plus 2 warmups.
@@ -180,7 +180,7 @@ questions in each arm, and 20 latency trials per arm plus 2 warmups.
 export OPENROUTER_KEY_FILE=/path/to/credential-file
 EVAL_COHORT=free EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
 EVAL_COHORT=free EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
-EVAL_COHORT=free EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.mjs
+node eval/realworld/scripts/20-free-judge.mjs
 python eval/realworld/scripts/19-free-format-analysis.py
 python eval/realworld/scripts/18-free-report.py
 ```
@@ -193,8 +193,15 @@ HTTP call is paced at least 3.2 seconds after the preceding call began. There
 are no automatic free HTTP retries, paid fallbacks, or quota bypasses. Measured
 wall time includes pacing; the free report subtracts its recorded duration.
 
-Citation judging uses a fixed free Xing 4.0 model and remains exploratory,
-without human validation. Invalid answers and provider errors remain visible;
+Citation judging uses the fixed free Nemotron 3 Ultra model with temperature
+zero, a 4096-token output cap and a 1024-token reasoning allowance. The initial
+Xing 4.0 attempt was rate-limited and is preserved separately, without pooling
+its labels. The replacement passed two synthetic supported/contradicted probes;
+it remains exploratory, without human validation. Up to four independent judge
+requests share one paced queue. The initial sequential collection is retained,
+and collector hashes distinguish the scheduling revision. The parser may remove
+one outer JSON fence from a judge response; candidate outputs and their format
+scores are unchanged. Invalid answers and provider errors remain visible;
 missing judgments are unknown rather than zero quality. Free-tier queueing and
 small timing samples do not establish production latency.
 

@@ -67,12 +67,16 @@ def summarize(full, judge, ledger):
             citation_pairs.setdefault((row["model"], row["id"]), {})[row["arm"]] = [c["bodyHash"] for c in row["calls"]]
     paired = [pair for pair in citation_pairs.values() if len(pair) == 2]
     return {"version": "free-report/v1", "env": env, "groups": groups,
+            "judgeModel": judge.get("env", {}).get("judgeModel", env.get("judgeModel")),
+            "judgeEnv": judge.get("env"), "judgeProbes": judge.get("probes", []),
+            "wrappedJudgeRows": sum(r.get("judgeWrappedJson") is True for r in judge.get("rows", [])),
             "expected": sum(g["expected"] for g in groups), "recorded": len(rows),
             "runtimeSuccess": metrics.tally(rows, "ok"),
             "warmupRows": sum(r["suite"] == "latency-warmup" for r in full["rows"]),
             "stopped": full.get("stopped"), "judgeStopped": judge.get("stopped"),
             "statusCounts": dict(Counter(str(c["status"]) for c in calls)),
             "lengthLimitedCalls": sum(c.get("finishReason") == "length" for c in calls),
+            "acceptedHttp200Errors": sum(r.get("ok") is True and any(c.get("status") == 200 and c.get("errorCode") for c in r["calls"]) for r in rows),
             "citationRequestPairs": {"bothArmsSubmitted": len(paired),
                                      "identicalBodyHashes": sum(p["prompt-only"] == p["contract"] for p in paired)},
             "accounting": {"requestsAcrossStages": len(ledger["entries"]),
@@ -94,7 +98,7 @@ def markdown(report):
              f"An additional {report['warmupRows']} warmup rows are excluded from those totals.", "",
              f"Reported inference cost across development smoke, evaluation and judging: **${report['accounting']['reportedCostUsd']:.6f}** "
              f"over {report['accounting']['requestsAcrossStages']} requests. "
-             f"{report['accounting']['unreportedCosts']} responses did not report a cost; they used verified zero-priced routes.", "",
+             f"{report['accounting']['unreportedCosts']} requests did not return a cost; they used verified zero-priced routes.", "",
              f"Evaluation stop: {report['stopped'] or 'none'}. Judge stop: {report['judgeStopped'] or 'none'}.", "",
              f"Collection restarts: {len(report.get('collectionRestarts', []))}; failed rows and free request counts were retained. Details are in validated-free-resumes.json when present.", "",
              "## Runtime and transport", "", "| Model | Suite | Arm | Recorded / planned | Runtime success | Correct |", "|---|---|---|---:|---:|---:|"]
@@ -106,7 +110,8 @@ def markdown(report):
         if g["suite"] == "citations":
             c = g["citations"]
             lines.append(f"| {g['model']} | {g['arm']} | {c['formatValid']} | {c['usable']} | {c['judgeValid']}/{c['judgeAttempted']} | {c['strictSuccess'] if c['strictSuccess'] is not None else 'unmeasured'} |")
-    lines += ["", f"Fixed exploratory judge: `{report['env']['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
+    lines += ["", f"Fixed exploratory judge: `{report['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
+              f"The replacement judge passed {sum(p.get('judgeValid') is True for p in report['judgeProbes'])} synthetic supported/contradicted probes; this is not human calibration. {report['wrappedJudgeRows']} judge replies required removal of a single outer JSON fence. Candidate answers were never normalized. The initial rate-limited Xing attempt is preserved separately and not pooled. Collector hashes distinguish sequential and bounded concurrent grading with the same model, rubric and generation settings.", "",
               f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} completed citation request pairs had identical body hashes. The contract validates format after generation; it neither repairs output nor verifies entailment. Differences in generated answer quality across these arms do not establish that the contract improved generation.", "",
               "## Latency", "", "Medians below use successful, correct non-warmup cases. Wall time excludes recorded request pacing. JSON includes bootstrap median intervals and p95; these small free-tier samples do not estimate production latency.", "",
               "| Model | Arm | Eligible / 20 | Wall median ms | HTTP median ms | Processing median ms |", "|---|---|---:|---:|---:|---:|"]
@@ -134,7 +139,13 @@ def markdown(report):
             finishes.update(group.get("emptyContentFinishReasons", {}))
         lines += ["", "Empty-response finish reasons: " + ", ".join(f"`{k}`: {v}" for k, v in sorted(finishes.items())) +
                   ". Token exhaustion and content filtering are distinct outcomes; filtered responses should not be treated as JSON-repair opportunities."]
+    lines += ["", "## Next experiments", "",
+              "1. On a separate development set, compare explicit reasoning allowances and output budgets against the current provider defaults. Record visible-answer completion, token use and supported-answer quality together; a larger budget alone is not evidence of improvement.",
+              "2. Define and evaluate an explicit abstention result, then validate citation-list and inline-marker consistency. Keep supported answers, justified abstentions, filtering and transport failures separate. Do not silently repair or rescore the frozen answers.",
+              "3. Calibrate the support judge with blinded human labels before using it to rank models or claim quality gains. The synthetic probes check basic behavior only; a same-vendor judge may introduce bias.",
+              "4. Confirm the HTTP-200 error-envelope fix with the existing offline regressions and a new independently recorded cohort when needed. Measure provider availability separately from task quality, and use more timing trials for production latency claims."]
     lines += ["", "## Provenance and limits", "", f"Measured revision: `{report['env']['revision']}`. Runtime hash: `{report['env']['codeHash']}`.", "",
+              f"The measured runtime accepted {report['acceptedHttp200Errors']} upstream error envelope inside HTTP 200 as empty output. The task-answer check excluded it from latency statistics. A subsequent adapter fix rejects error envelopes in ordinary and streaming responses; the recorded verdict is retained rather than rewritten.", "",
               "All request bodies are hashed before egress without mutation. Catalog and endpoint prices, model IDs, generation limits, harness hashes and dataset manifests are recorded in the JSON artifacts. The paid ledger was never opened for writes by the free runner.", ""]
     lines += ["- " + item for item in report["limitations"]]
     lines += ["", "[OpenRouter free variants](https://openrouter.ai/docs/guides/routing/model-variants/free) document zero-cost access and separate availability limits. [Rate-limit documentation](https://openrouter.ai/docs/api/reference/limits) describes the daily free-request quota.", ""]
@@ -184,9 +195,28 @@ def latex(report):
     lines.append(metrics.tex_table("Free-cohort citation outcomes. Judge is valid/attempted judgments; strict means an answer "
                                    "judged correct with every factual claim supported and cited. Missing judgments remain unknown.",
                                    "free-citations", ["Model", "Arm", "Format", "Usable", "Judge", "Strict"], cited))
-    lines.append("The fixed free Xing 4.0 judge is exploratory and has not been calibrated against human annotations. "
+    judge_name = "Nemotron 3 Ultra" if report.get("judgeModel", "").startswith("nvidia/nemotron-3-ultra") else "Xing 4.0"
+    lines.append(f"The fixed free {judge_name} judge is exploratory and has not been calibrated against human annotations. "
                  "These support judgments are neither human accuracy labels nor official ALCE scores. "
-                 "Invalid or unavailable answers remain in the 60-question denominator.")
+                 "Invalid or unavailable answers remain in the 60-question denominator. An initial Xing judge attempt was rate-limited "
+                 "and is retained separately, not pooled. The replacement passed two synthetic supported/contradicted probes. "
+                 "Judge replies may have one outer JSON fence removed; candidate answers are unchanged. Independent judgments "
+                 "use a shared rate limiter and at most four concurrent requests; collector hashes record the scheduling transition.")
+    if report.get("formatDiagnostics"):
+        categories = Counter()
+        finishes = Counter()
+        for group in report["formatDiagnostics"]["groups"]:
+            categories.update(group["categories"])
+            finishes.update(group.get("emptyContentFinishReasons", {}))
+        descriptions = {"empty-content": "empty responses", "empty-citation-list": "empty citation lists",
+                        "unused-source-id": "unused source identifiers", "transport-unavailable": "unavailable responses",
+                        "invalid-json": "invalid JSON outputs"}
+        failures = [f"{count} {descriptions.get(category, category)}"
+                    for category, count in sorted(categories.items()) if category != "valid"]
+        lines.append("Post-hoc format diagnostics found " + ", ".join(failures) + ". "
+                     f"Among empty responses, {finishes.get('length', 0)} ended at the token limit and "
+                     f"{finishes.get('content_filter', 0)} were filtered. These diagnoses do not change scores. "
+                     "Empty citation lists are not automatically justified abstentions; filtered outputs are not JSON-repair opportunities.")
     times = []
     for model in models:
         for arm in ("direct", "unsigned", "signed"):
@@ -199,6 +229,9 @@ def latex(report):
     lines.append("Residual time includes harness hashing, ledger writes and JSON processing, and is not pure SDK overhead. "
                  "The JSON report includes bootstrap median intervals and p95 values. Small samples and free-tier queueing "
                  "limit latency generalization. Solid-color images and short policy tools are narrow runtime fixtures.")
+    lines.append(f"The measured runtime accepted {report['acceptedHttp200Errors']} upstream HTTP-200 error envelope as empty text. "
+                 "The answer check excluded it from latency statistics. The adapter was subsequently corrected to reject such envelopes "
+                 "in ordinary and streaming responses; the original measurement is retained.")
     if report.get("collectionRestarts"):
         lines.append(f"Collection restarted {len(report['collectionRestarts'])} times after guarded stops, using the same "
                      "harness and free request ledger. Failed cases were retained rather than rerun or replaced; the restart log is included with the results.")
