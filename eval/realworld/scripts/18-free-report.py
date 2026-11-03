@@ -122,6 +122,13 @@ def markdown(report):
         crew = next(g for g in groups if g["suite"] == "crew")
         privacy = next(g for g in groups if g["suite"] == "privacy")
         lines.append(f"- `{model}`: {bound}/{present} terminal receipts verified with expected bindings; {crew['chainClosed']}/{crew['attempted']} crew chains closed. Privacy answers available {privacy['answerAvailable']}/{privacy['expected']}; answer marker leaks {privacy['answerContainsMarker']}, raw-output marker leaks {privacy['rawOutputContainsMarker']}, signed marker leaks {privacy['signedMarkerLeak']}.")
+    if report.get("formatDiagnostics"):
+        lines += ["", "## Post-hoc format diagnosis", "", "Counts below explain failures without changing their scores. Empty citation lists are not automatically treated as justified abstentions.", "",
+                  "| Model | Arm | Failure category | Count |", "|---|---|---|---:|"]
+        for group in report["formatDiagnostics"]["groups"]:
+            for category, count in sorted(group["categories"].items()):
+                if category != "valid":
+                    lines.append(f"| {group['model']} | {group['arm']} | {category} | {count} |")
     lines += ["", "## Provenance and limits", "", f"Measured revision: `{report['env']['revision']}`. Runtime hash: `{report['env']['codeHash']}`.", "",
               "All request bodies are hashed before egress without mutation. Catalog and endpoint prices, model IDs, generation limits, harness hashes and dataset manifests are recorded in the JSON artifacts. The paid ledger was never opened for writes by the free runner.", ""]
     lines += ["- " + item for item in report["limitations"]]
@@ -188,7 +195,7 @@ def latex(report):
                  "The JSON report includes bootstrap median intervals and p95 values. Small samples and free-tier queueing "
                  "limit latency generalization. Solid-color images and short policy tools are narrow runtime fixtures.")
     if report.get("collectionRestarts"):
-        lines.append(f"Collection restarted {len(report['collectionRestarts'])} time(s) after guarded stops, using the same "
+        lines.append(f"Collection restarted {len(report['collectionRestarts'])} times after guarded stops, using the same "
                      "harness and free request ledger. Failed cases were retained rather than rerun or replaced; the restart log is included with the results.")
     lines.append(r"Recorded revision \texttt{" + metrics.tex_escape(report["env"]["revision"][:12]) +
                  r"}; full code, harness, model, endpoint and dataset provenance is retained in the free-cohort JSON artifacts.")
@@ -227,6 +234,8 @@ def main():
     report = summarize(full, judge, ledger)
     resumes_path = RESULTS / "validated-free-resumes.json"
     report["collectionRestarts"] = json.loads(resumes_path.read_text()) if resumes_path.exists() else []
+    diagnostics_path = RESULTS / "validated-free-format-analysis.json"
+    report["formatDiagnostics"] = json.loads(diagnostics_path.read_text()) if diagnostics_path.exists() else None
     (RESULTS / "validated-free-summary.json").write_text(json.dumps(report, indent=2) + "\n")
     (RESULTS / "validated-free-summary.md").write_text(markdown(report))
     fragment = latex(report)

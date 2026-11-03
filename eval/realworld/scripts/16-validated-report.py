@@ -541,7 +541,7 @@ def report_text(summary):
         tex_escape(limitations.replace(f"ALCE: {ALCE_URL}. Pinned subset source: {hf}.", "Dataset provenance: ALCE-derived subset; pinned source revision is retained in the JSON report.").replace("\n\n", " ")),
         *((r"\begin{figure}[t]\centering\includegraphics[width=\linewidth]{validated-latency.pdf}"
             r"\caption{Latency: medians, bootstrap 95\% median intervals, and p95 crosses.}\end{figure}",) if has_latency else ()),
-        r"\begin{figure}[t]\centering\includegraphics[width=\linewidth]{validated-pii.pdf}"
+        r"\begin{figure}[t]\centering\includegraphics[width=\linewidth,height=.85\textheight,keepaspectratio]{validated-pii.pdf}"
         r"\caption{Heldout PII exact-span precision and exact/overlap F1. Values measure agreement with corpus annotations. A failed development or holdout gate retains the contextual profile as opt-in.}\end{figure}",
         r"\FloatBarrier",
     ]) + "\n"
