@@ -126,6 +126,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function assertNoOpenAIError(payload: unknown): void {
+  if (isRecord(payload) && payload.error !== undefined && payload.error !== null) {
+    throw new Error("OpenAI-compatible provider returned an error payload.");
+  }
+}
+
 function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
   if (
     typeof value === "string" ||
@@ -536,6 +542,7 @@ function createOpenAICompatibleAdapter(
         model?: unknown;
         usage?: unknown;
       };
+      assertNoOpenAIError(body);
       const observedModel = observedModelFromResponse(body);
       const choice = firstOpenAIChoice(body);
       const message = openAIMessageFromChoice(choice);
@@ -656,6 +663,10 @@ async function* streamOpenAICompatibleResponse(input: {
     throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
   }
 
+  if (response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    assertNoOpenAIError(await response.clone().json());
+  }
+
   const textParts: string[] = [];
   const rawChunks: unknown[] = [];
   const nativeToolCalls = new Map<number, AccumulatedOpenAIToolCall>();
@@ -673,6 +684,7 @@ async function* streamOpenAICompatibleResponse(input: {
     }
 
     const chunk = parseJsonObject(data);
+    assertNoOpenAIError(chunk);
     rawChunks.push(chunk);
     const chunkObservedModel = observedModelFromResponse(chunk);
     if (chunkObservedModel !== undefined) {

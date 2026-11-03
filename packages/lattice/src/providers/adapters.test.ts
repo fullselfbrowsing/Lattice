@@ -25,6 +25,41 @@ function makeFakeFetch(body: unknown, status = 200): typeof fetch {
     })) as unknown as typeof fetch;
 }
 
+describe("OpenAI-shaped error envelopes", () => {
+  const request = { task: "Reply pong", artifacts: [], outputs: ["answer"] };
+  const factories = [
+    ["compatible", (fetchImpl: typeof fetch) => createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake", fetch: fetchImpl })],
+    ["OpenAI", (fetchImpl: typeof fetch) => createOpenAIProvider({ model: "test", fetch: fetchImpl })],
+  ] as const;
+
+  it.each(factories)("%s rejects an HTTP-200 error even with partial choices", async (_name, create) => {
+    const provider = create(makeFakeFetch({ error: { code: 502, message: "upstream failed" },
+      choices: [{ message: { content: "partial" } }] }));
+    await expect(provider.execute!(request)).rejects.toThrow("error payload");
+  });
+
+  it.each(factories)("%s accepts a normal response with a null error field", async (_name, create) => {
+    const provider = create(makeFakeFetch({ error: null, choices: [{ message: { content: "pong" } }] }));
+    expect((await provider.execute!(request)).rawOutputs.answer).toBe("pong");
+  });
+
+  it("rejects a JSON error response to a streaming request", async () => {
+    const provider = createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake",
+      fetch: makeFakeFetch({ error: { code: 502, message: "upstream failed" } }) });
+    await expect(collectStream(await provider.executeStream!(request))).rejects.toThrow("error payload");
+  });
+
+  it("fails a stream after an error event instead of completing partial output", async () => {
+    const fixture = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "partial" } }] }),
+      sseData({ error: { code: 502, message: "upstream failed" } }),
+      sseData("[DONE]"),
+    ]);
+    const provider = createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake", fetch: fixture.fetch });
+    await expect(collectStream(await provider.executeStream!(request))).rejects.toThrow("error payload");
+  });
+});
+
 const encoder = new TextEncoder();
 
 function sseData(payload: unknown): string {
