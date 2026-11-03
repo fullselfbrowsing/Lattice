@@ -2,7 +2,7 @@
 
 **Highest priority:** [JITCAR submission checklist](JITCAR-TODO.md). The complete-draft cutoff is November 6, 2026; otherwise the authors switch to ISF or BISE. Target submission on November 13, ahead of the verified November 15 deadline for [The Post AI Enterprise](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/). The call gives no closing time or time zone. Start with the AI-provenance audit before manuscript revision.
 
-`main.tex` is the Information Systems Frontiers draft. It uses the article class with author-year citations (`natbib`, `apalike`) and a design-science frame. Figure 1 is drawn with TikZ (`tikz`, libraries `arrows.meta` and `positioning`). Springer Nature's `sn-jnl` class is not vendored: the template download page is script-rendered, so this build could not fetch `sn-jnl.cls`. Before submission, port the body into `\documentclass[pdflatex,sn-apa]{sn-jnl}`.
+`main.tex` is the Information Systems Frontiers draft. It uses the article class with author-year citations (`natbib`, `apalike`) and a design-science frame. The refund workflow and run life-cycle figures are drawn with TikZ (`tikz`, libraries `arrows.meta` and `positioning`). Springer Nature's `sn-jnl` class is not vendored: the template download page is script-rendered, so this build could not fetch `sn-jnl.cls`. Before submission, port the body into `\documentclass[pdflatex,sn-apa]{sn-jnl}`.
 
 `ieee/main.tex` is the IEEE conference version. It vendors `IEEEtran.cls` and `IEEEtran.bst`. Under pdfLaTeX, text and math use `mathptmx`; under XeTeX or LuaTeX (including Tectonic), they use the TeX Gyre Termes, Heros, and Cursor fonts and TeX Gyre Termes Math. See `ieee/README.md`.
 
@@ -14,6 +14,7 @@ Do not type numbers into the narrative by hand, and do not edit these files. Rer
 |---|---|
 | `numbers.tex`, `eval-tables.tex`, `Fig2.png`, `Fig3.png`, `Fig4.png` | `eval/scripts/06-report.py`, from `eval/results/*.json` |
 | `validated.tex`, `validated-pii.pdf`, `validated-latency.pdf` | `eval/realworld/scripts/16-validated-report.py`, from the versioned validated result files; missing measurements are explicit |
+| `refund-results.tex` | `paper/scripts/refund-tables.mjs`, from frozen `eval/refund/results`; read-only verification before rendering |
 | `bench/results.json` | `scripts/bench-receipts.mjs` (run by `pnpm bench:receipts`) |
 | the `bench-table`, `bench-prose`, and `bench-platform` blocks in `ieee/main.tex` | `scripts/render-bench-table.mjs`, from `bench/results.json` (also run by `pnpm bench:receipts`) |
 | `realworld.tex`, `realworld-matrix.tex`, `rw-latency.pdf`, `rw-pii.pdf`, `rw-bytes.pdf` | `eval/realworld/scripts/05-charts.py`, from `eval/realworld/results` |
@@ -22,6 +23,19 @@ Do not type numbers into the narrative by hand, and do not edit these files. Rer
 The real-world generators write the same fragments and PDFs into `paper/` and `paper/ieee/`, so each paper builds on its own. The papers include the PDF figures only. The `rw-*.png` previews stay in `eval/realworld/results`.
 
 The latency results (`tab:overhead`, `tab:size`, `tab:chain`, `Fig2.png`, `Fig3.png`, and the `\Eval*` macros) come from the original measurement run on an Intel Xeon host, recorded in `eval/results/env-latency.json`. The functional results (tamper, replay, policy, verifier checks, test counts, and the `\EvalFunc*` macros) were re-run without re-measuring latency and are recorded in `eval/results/env-functional.json`. `eval/run-all.sh` and `pnpm bench:receipts` re-measure latency on the host that runs them, so running them replaces the Xeon numbers.
+
+## Refund case materials
+
+The [C2 reference draft](research/C2-REFERENCE-DRAFT.md) is explicitly AI-generated reference text for the authors to rewrite, not manuscript narrative. The workflow figure and evidence table are in `main.tex`, before the artifact section; the refund results table is included within Evaluation. C2 remains **evidence integrated; author narrative and review pending**.
+
+From the repository root, regenerate only the refund presentation:
+
+```sh
+node paper/scripts/refund-tables.mjs
+node paper/scripts/refund-tables.mjs --check
+```
+
+This script rechecks all saved evaluation bundles against the frozen protocol, code/fixture hashes, public key and recorded scores before generating the table. It performs no inference and does not rewrite any evaluation result. It requires the existing Lattice build to match the frozen code hashes; if that build has changed, restore/reproduce the measured revision in an isolated checkout instead of changing the hashes. Keep the 18 scoped controls and the separate offline wrong-answer control distinct from the 32 live runs. Tool/model-version confirmation and final declarations remain open under A1/P5.
 
 ## Build
 
