@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
-stopped_at: JITCAR C2 research and synthetic travel-refund case design ready; author narrative and C4 execution pending
-last_updated: "2026-11-03T21:06:08.730582Z"
-last_activity: 2026-11-03 - Completed quick task 261103-ks3: C2 primary-source research and travel-refund walkthrough design
+stopped_at: JITCAR C2 live free-model evidence complete; author narrative and C4 incorporation pending
+last_updated: "2026-11-03T21:33:07.456596Z"
+last_activity: 2026-11-03 - Completed quick task 261103-l1v: 32 live refund reviews, 28 strict passes, 32 verified evidence packages, zero added spend
 progress:
   total_phases: 6
   completed_phases: 6
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Target submission November 13; The Post AI Enterprise deadline verified as November 15, with closing time/time zone unspecified. A7 still needs general author instructions and portal checks. C1 is revised, awaiting author review. [C2 research and synthetic travel-refund case design](../paper/research/C2-REFUND-CASE.md) are ready; next work is author narrative/incorporation and the C4 offline demonstration. Full A1 provenance and P5 declaration checks remain open.
+**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Target submission November 13; The Post AI Enterprise deadline verified as November 15, with closing time/time zone unspecified. A7 still needs general author instructions and portal checks. C1 is revised, awaiting author review. C2 research and [live refund demonstration evidence](../eval/refund/results/summary.md) are ready: 32 runs, 28 full-rubric passes, 32 verified evidence packages and zero added spend. Next work is author narrative and C2/C4 incorporation. Full A1 provenance and P5 declaration checks remain open.
 
 ## Current Position
 
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
-Status: Submission preparation is the highest priority; C1 awaits author review, C2 research/design ready with incorporation pending, C3–C8 pending
-Last activity: 2026-11-03 - Completed quick task 261103-ks3: C2 primary-source research and travel-refund walkthrough design
+Status: Submission preparation is the highest priority; C1 awaits review, C2 live evidence ready with incorporation pending, C4 case execution complete, remaining C3–C8 work pending
+Last activity: 2026-11-03 - Completed quick task 261103-l1v: live refund demonstration and fresh-process verification
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-03 | Execute live free-model refund workflow | 32/32 planned reviews; 28 full-rubric passes, all decision fields/rules matched, 32 verified evidence packages, 18 scoped checks plus wrong-answer control passed. 34 zero-cost calls; no account spend. Measured `f8a6914`, results `430c493`. See [quick task 261103-l1v](./quick/261103-l1v-execute-a-frozen-synthetic-refund-workfl/261103-l1v-SUMMARY.md). |
 | 2026-11-03 | Research C2 business case | Compared Moffatt, Klarna and Zurich primary sources; selected a synthetic travel-refund dispute and designed paths, evidence table, diagram and offline checks. Case execution/manuscript incorporation pending; no inference or PDF change. Implementation `8b18e8a`. See [quick task 261103-ks3](./quick/261103-ks3-research-c2-real-world-business-cases-an/261103-ks3-SUMMARY.md). |
 | 2026-11-03 | JITCAR introduction and declarations | Revised the 663-word introduction around an illustrative refund dispute; aligned abstract/conclusion/keywords and author-reported funding/AI declarations. PDF builds and visual checks pass; C1 awaits author review. Implementation `77be0c4`. See [quick task 261103-kcv](./quick/261103-kcv-reframe-the-human-written-jitcar-introdu/261103-kcv-SUMMARY.md). |
 | 2026-11-03 | Verify JITCAR special-issue call | Verified The Post AI Enterprise call, November 15 date and 2027 milestones; added theme mapping and preserved November 13 submission target. General author instructions returned HTTP 403; requirements and portal selection remain pending. See [quick task 261103-i1a](./quick/261103-i1a-verify-jitcar-post-ai-enterprise-call-an/261103-i1a-SUMMARY.md). |
