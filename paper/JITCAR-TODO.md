@@ -36,22 +36,24 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 ## What we can already reuse
 
-- The current [ISF manuscript](main.tex) already has organizational motivation, DSRM/FEDS framing, five design requirements, four design principles, evaluation, implications for practice, and a proposed practitioner study. The eight JITCAR changes below remain **pending adaptation**, rather than being marked complete because related material exists.
+- The current [working manuscript](main.tex) already has DSRM/FEDS framing, five design requirements, four design principles, evaluation, implications for practice, and a proposed practitioner study. C1's organizational framing was revised Nov 3 and awaits author review; C2–C8 remain pending adaptation. The manuscript still uses the existing ISF-oriented format pending A7/P6.
 - The [free-model report](../eval/realworld/results/validated-free-summary.md) records 428 planned cases, 40/40 artifact transport checks, 4/4 single-agent cases, 3/4 crew cases, and 324 verified terminal receipts. Citation format passed 213/240; strict citation quality passed 166/240 under an exploratory automated judge without human calibration.
 - The free cohort added $0 account spend. Its residual timing includes harness work and is not a pure SDK-overhead measurement. Its results must remain separate from earlier paid and historical cohorts.
-- The manuscript currently contains red TODOs for practitioner-study approval/IRB, the archive DOI, author contributions, and ethics. Its funding and competing-interest statements also need author confirmation.
+- The manuscript currently contains red TODOs for practitioner-study approval/IRB, the archive DOI, author contributions, and ethics. Funding and a combined AI declaration were updated Nov 3 from author-supplied facts; final declaration review and competing-interest confirmation remain pending.
 - `paper/refs.bib` contains 77 entries, of which **22 lack an explicit DOI field**. Lack of a DOI field does not prove a DOI exists or that the reference is defective.
 
 ## A — Author decisions and external dependencies
 
 ### A1 — Audit AI use and establish the writing approach
 
-**Owner:** Codex inventories available evidence; Lakshman and Prof. Neouchi confirm authorship. **Due:** start Nov 3; resolve the writing approach before substantive manuscript revision and by Nov 6. **Status:** pending.
+**Owner:** Codex inventories available evidence; Lakshman and Prof. Neouchi confirm authorship. **Due:** start Nov 3; resolve the writing approach before substantive manuscript revision and by Nov 6. **Status:** partly complete — original Introduction confirmed human-written; section-level inventory and evaluation-text review remain pending.
+
+**Author confirmations received Nov 3:** Lakshman confirmed the original Introduction was human-written and authorized editorial revision. He named Claude Code, Cursor and Grok Bot in addition to documented Codex assistance, and reported these models across the tools: Claude Opus 5.5, Fable 5.1, GPT-6 Astra, GPT-6.1 Sol, Grok 4.7 and Composer 2.5. Tool-to-model mappings and session dates were not supplied and are not inferred. Prof. Neouchi's note, supplied by Lakshman, identifies Claude Opus 5.5 for journal selection, revision/structure planning and literature suggestions, with reviewed suggestions and no manuscript text generated in that use. The C1 edit is AI-assisted revision of the confirmed human-written introduction, with associated abstract/conclusion edits. These facts do not establish the origin of every other section.
 
 - [ ] Inventory every manuscript section, abstract, table narrative, figure, appendix, and declaration as human-drafted, AI-drafted, AI-edited, or unknown. Link supporting session records, commits, or author confirmation; do not infer authorship from writing style or a commit author alone.
 - [ ] Record tool name, actual model/version where known, dates, task, affected text, and subsequent human work. Mark unavailable versions as unknown and request records; do not invent them.
 - [ ] Separate manuscript drafting from coding assistance, data analysis, reference assistance, and models evaluated as research subjects or judges.
-- [ ] Include this session's known AI assistance: evaluation code/reporting, free-evaluation LaTeX fragments, associated manuscript edits, and submission planning. Trace the earlier introduction and other sections separately; the available session does not establish their full drafting history.
+- [x] Record the known assistance: evaluation code/reporting, free-evaluation LaTeX prose and associated manuscript edits, submission planning, and the C1 introduction/abstract/conclusion revision. Preserve the author's confirmation about the original Introduction; continue the remaining section-level inventory separately.
 - [ ] Compare the inventory with the current publisher policy; obtain guidance from Prof. Neouchi and, if needed, the journal about already AI-drafted passages. Authors determine and carry out the required original writing. Copyediting or disclosure alone must not be represented as automatically resolving prohibited drafting.
 - [ ] Preserve the inventory and supporting records privately; turn confirmed facts into the eventual disclosure under P5.
 
@@ -63,6 +65,8 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 **Owner:** Lakshman sends; Codex can check the existing card against A1. **Due:** Nov 3, with a follow-up Nov 5 if needed. **Depends on:** enough A1 evidence to describe use accurately. **Status:** pending.
 
+**Nov 3 update:** Lakshman supplied Prof. Neouchi's note about his AI use and funding. This establishes those reported facts; the original draft card and sent-message date have not been inspected. It does not settle the review of AI-generated evaluation passages.
+
 - [ ] Locate the existing draft card and verify recipient, subject, attachments, and factual description of AI use.
 - [ ] Include or link the provenance inventory and the relevant publisher policy; clearly identify facts still being checked.
 - [ ] Lakshman presses Send and retains the sent message. Record the response or follow-up date privately.
@@ -71,11 +75,11 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 ### A3 — Obtain written venue acceptance, funding wording, and review commitment
 
-**Owner:** Lakshman requests; Prof. Neouchi decides. **Due:** request Nov 3; venue decision by Nov 6; final funding wording by Nov 12. **Status:** pending.
+**Owner:** Lakshman requests; Prof. Neouchi decides. **Due:** request Nov 3; venue decision by Nov 6; final funding wording by Nov 12. **Status:** partly complete — funding facts received; venue/rating and review commitment pending.
 
 - [ ] Identify the ranking scheme and edition behind the reported JITCAR **C rating**; ask for explicit written acceptance of that venue for this project.
 - [ ] Confirm ISF versus BISE as the fallback and the Nov 6 cutoff.
-- [ ] Obtain exact funding wording, including whether institutional, employer, in-kind, or author-paid support applies. Do not retain “No funding” without confirmation.
+- [x] Obtain funding facts and agreed draft wording. The research was self-funded, with no specific agency grant; any publication charges upon acceptance will be covered from Prof. Neouchi's Naveen Jindal School of Management research account. The manuscript uses prospective wording rather than implying a payment already occurred. Final support reconciliation remains under A4/P5.
 - [ ] Agree that the review copy arrives Nov 9 and request comments by Nov 11, leaving Nov 12 for resolution. These are proposed review dates until he agrees.
 
 **Done when:** written venue acceptance, a review slot, and confirmed funding wording are retained; final wording may close Nov 12.
@@ -143,13 +147,16 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ### C1 — Reframe the introduction around the organizational problem
 
-**Target:** Nov 4. **Depends on:** A1, A7, and the C2 case choice.
+**Target:** Nov 4. **Depends on:** A1, A7, and the C2 case choice. **Status:** revised, awaiting author review (Nov 3).
 
-- [ ] Lead with a concrete accountability problem: an organization must reconstruct and justify an AI-assisted refund decision across providers, policies, tools, and human review.
-- [ ] Identify the decision owner, affected stakeholders, current process, consequences of missing evidence, and the gap in existing approaches.
-- [ ] Tie the problem to verified special-issue themes and articulate a business-relevant research question and contribution.
-- [ ] Remove unsupported universal claims about conventional traces; distinguish mutable logs from appropriately secured alternatives.
-- [ ] Align the abstract, conclusion, keywords, and section roadmap with the revised purpose.
+- [x] Lead with a concrete accountability problem: an organization must reconstruct and justify an AI-assisted refund decision across providers, policies, tools, and human review.
+- [x] Identify the decision owner, affected stakeholders, illustrative process, consequences of missing evidence, and the gap in existing approaches.
+- [x] Tie the problem to verified special-issue themes and articulate a business-relevant research question and contribution.
+- [x] Remove unsupported universal claims about conventional traces; distinguish mutable logs from appropriately secured alternatives.
+- [x] Align the abstract, conclusion, keywords, and section roadmap with the revised purpose.
+- [ ] Authors review the revision and confirm the framing and claims. The complete business case remains C2; full manuscript AI provenance and author-instruction checks remain open under A1/A7.
+
+**Revision evidence:** the introduction is approximately 663 words excluding citations, with an explicitly illustrative refund dispute and Lattice introduced only after the organizational problem. The research question asks how business processes can produce verifiable evidence for organizational review at acceptable operational cost. Managerial usefulness remains a design objective; correctness, fairness, honesty and human authorization require additional evidence. Funding and combined AI-use wording are included for final declaration review under P5.
 
 **Done when:** a reader can identify the organizational problem, case, research question, contribution, and special-issue fit without understanding the SDK.
 
@@ -157,7 +164,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 **Target:** choose Nov 4; integrate Nov 5. **Depends on:** A5 and A7.
 
-- [ ] Select **refund approval** as the working case unless existing evidence makes another business process stronger. Use claims triage only if suitable process evidence and permissions already exist.
+- [x] Select **refund approval** as the working case. C1 uses an illustrative refund dispute, as authorized Nov 3. The full walkthrough remains pending; a real FSB case would still require the facts and permissions under A5.
 - [ ] Describe actors, incoming evidence, policy, decision authority, escalation, and expected business outcome. Separate documented facts from scenario assumptions.
 - [ ] Walk through intake → evidence preparation → policy/provider selection → model/tool execution → proposed decision → human approval/escalation → stored evidence → independent verification.
 - [ ] Include one ordinary path and one exception, such as conflicting policy evidence or a decision requiring human escalation.
@@ -291,7 +298,10 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 **Owner:** each author confirms personal facts; Codex checks consistency and formatting. **Due:** Nov 12. **Depends on:** A1–A6 and P3.
 
+**Nov 3 draft prepared:** `main.tex` includes the self-funded/conditional publication-cost statement and a combined declaration distinguishing Prof. Neouchi's planning-only Claude use from Lakshman's coding tools and Codex's evaluation prose and editorial assistance. Model names are author-reported; tool-to-model mappings are not invented. This records known use without claiming that all manuscript text was human-written or that disclosure alone resolves the publisher's drafting restriction.
+
 - [ ] AI-use disclosure and methods details covering confirmed tools/versions, purposes, affected work, records retained, and author responsibility.
+- [ ] Both authors confirm accuracy and originality of the content, references and retained model/tool details, and verify tool terms are suitable for publication. Resolve the existing AI-generated evaluation passages under A1 before treating the disclosure as submission-ready.
 - [ ] CRediT roles agreed by both authors; no unverified allocation of original drafting, analysis, supervision, or funding acquisition.
 - [ ] Funding statement using Prof. Neouchi's approved wording and reconciled support facts.
 - [ ] Competing interests including relevant Voyza/FSB relationships and each author's own declaration.
