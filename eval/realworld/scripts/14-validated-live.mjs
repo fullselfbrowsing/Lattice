@@ -336,7 +336,7 @@ try {
     ...(FREE ? { quota, endpointCatalog, freePolicy: "Pinned :free catalog entries and zero endpoint prices; no model fallbacks/extensions; at most 900 requests across stages, 3200ms minimum spacing, no HTTP retries. Separate paid ledger remains untouched." } : {}),
     models: MODELS.map((id) => ({ id, pricing: modelCatalog.get(id).pricing, contextLength: modelCatalog.get(id).context_length })),
     citationManifest: existsSync(manifestPath) ? readJSON(manifestPath) : null,
-    timing: (FREE ? "pacingMs is recorded separately and excluded from processingMs; subtract pacingMs from wallMs for comparisons. " : "") + "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
+    timing: FREE ? "wallMs includes HTTP and pacing; processingMs excludes HTTP and pacing. Subtract pacingMs from wallMs for comparisons." : "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
     requestBinding: "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
     paidLedgerHash: FREE ? sha(readFileSync(resolve(ROOT, ".context/hosted-budget.json"))) : null,
     scope: FREE ? "Exploratory free-model cohort; separate from paid results. Free-tier queueing and provider variability limit latency generalization; fixed free judge is not human validated." : "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
@@ -350,7 +350,7 @@ try {
   } else out = { version: "validated-live/v1", env, rows: [] };
   save();
   if (STAGE === "full") {
-    const smoke = readJSON(resolve(ROOT, "eval/realworld/results/validated-smoke.json"));
+    const smoke = readJSON(evaluationPaths(ROOT, CACHE, COHORT, "smoke").out);
     const coverage = MODELS.every((model) => [
       ["transport", "direct", 2], ["transport", "signed", 2], ["privacy", "signed", 1],
       ["agent", "signed", 1], ["crew", "signed", 1], ["citations", "prompt-only", 1], ["citations", "contract", 1],
