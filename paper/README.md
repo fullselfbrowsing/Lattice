@@ -1,5 +1,7 @@
 # Lattice papers
 
+**Highest priority:** [JITCAR submission checklist](JITCAR-TODO.md). The complete-draft cutoff is November 6, 2026; otherwise the authors switch to ISF or BISE. The package target is November 13, ahead of the user-supplied November 15 deadline. Start with the AI-provenance audit before manuscript revision.
+
 `main.tex` is the Information Systems Frontiers draft. It uses the article class with author-year citations (`natbib`, `apalike`) and a design-science frame. Figure 1 is drawn with TikZ (`tikz`, libraries `arrows.meta` and `positioning`). Springer Nature's `sn-jnl` class is not vendored: the template download page is script-rendered, so this build could not fetch `sn-jnl.cls`. Before submission, port the body into `\documentclass[pdflatex,sn-apa]{sn-jnl}`.
 
 `ieee/main.tex` is the IEEE conference version. It vendors `IEEEtran.cls` and `IEEEtran.bst`. Under pdfLaTeX, text and math use `mathptmx`; under XeTeX or LuaTeX (including Tectonic), they use the TeX Gyre Termes, Heros, and Cursor fonts and TeX Gyre Termes Math. See `ieee/README.md`.

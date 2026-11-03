@@ -1,0 +1,323 @@
+# JITCAR submission checklist
+
+**Priority: P0 — highest priority.** Updated November 3, 2026. This submission takes precedence over optional runtime development and further model experiments in this workspace.
+
+**Next working item: A1, the manuscript AI-provenance audit.** Work through the checklist one item at a time with Lakshman; initiate author-owned requests early so replies can arrive while manuscript work proceeds. A checked item requires the evidence specified below. Creating this checklist does not complete any submission item.
+
+## Dates and decision rules
+
+| Date | Required outcome | Decision owner |
+| --- | --- | --- |
+| Tue Nov 3 | Start AI-provenance audit; identify the exact call for papers; initiate professor and permission requests | Lakshman, with Codex support |
+| Wed Nov 4 | Agree case scope; settle the organizational problem and requirements; decide whether practitioner feedback is feasible | Lakshman and Prof. Neouchi |
+| Thu Nov 5 | Complete the case, evaluation synthesis, IS literature synthesis, and managerial implications in the working draft | Authors, with Codex evidence and editing support |
+| Fri Nov 6 | Complete all eight content changes and apply the draft go/no-go gate below | Lakshman and Prof. Neouchi |
+| Mon–Thu Nov 9–12 | Prof. Neouchi reviews; authors resolve comments and finalize declarations, references, and permissions | Authors |
+| Fri Nov 13 | Submission package complete, checked, and approved; target submission that day | Corresponding author |
+| Sun Nov 15 | JITCAR deadline supplied by Lakshman; exact closing time/time zone and special issue remain to be confirmed | Corresponding author |
+
+Internal dates use America/Chicago. Nov 6 means end of that day unless Lakshman specifies an earlier meeting. The official deadline is not independently verified yet; A7 closes that gap. The Nov 13 target provides a buffer, not permission to leave essential work until Nov 15.
+
+**Nov 6 gate:** a complete draft has all eight content changes incorporated, a coherent abstract and conclusion, an end-to-end case, accurate evaluation claims, a resolved authorship approach, and a readable compiled PDF. Administrative items scheduled for Nov 13 may remain only with an owner, due date, and viable resolution. No core argument, case, or evaluation section may remain a placeholder.
+
+If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman instructed. Record the chosen venue with Prof. Neouchi and verify its current fit, author instructions, and AI policy. Do not move the cutoff automatically or treat switching venues as resolving permissions or authorship issues. Do not submit simultaneously to multiple journals.
+
+## What we can already reuse
+
+- The current [ISF manuscript](main.tex) already has organizational motivation, DSRM/FEDS framing, five design requirements, four design principles, evaluation, implications for practice, and a proposed practitioner study. The eight JITCAR changes below remain **pending adaptation**, rather than being marked complete because related material exists.
+- The [free-model report](../eval/realworld/results/validated-free-summary.md) records 428 planned cases, 40/40 artifact transport checks, 4/4 single-agent cases, 3/4 crew cases, and 324 verified terminal receipts. Citation format passed 213/240; strict citation quality passed 166/240 under an exploratory automated judge without human calibration.
+- The free cohort added $0 account spend. Its residual timing includes harness work and is not a pure SDK-overhead measurement. Its results must remain separate from earlier paid and historical cohorts.
+- The manuscript currently contains red TODOs for practitioner-study approval/IRB, the archive DOI, author contributions, and ethics. Its funding and competing-interest statements also need author confirmation.
+- `paper/refs.bib` contains 77 entries, of which **22 lack an explicit DOI field**. Lack of a DOI field does not prove a DOI exists or that the reference is defective.
+
+## A — Author decisions and external dependencies
+
+### A1 — Audit AI use and establish the writing approach
+
+**Owner:** Codex inventories available evidence; Lakshman and Prof. Neouchi confirm authorship. **Due:** start Nov 3; resolve the writing approach before substantive manuscript revision and by Nov 6. **Status:** pending.
+
+- [ ] Inventory every manuscript section, abstract, table narrative, figure, appendix, and declaration as human-drafted, AI-drafted, AI-edited, or unknown. Link supporting session records, commits, or author confirmation; do not infer authorship from writing style or a commit author alone.
+- [ ] Record tool name, actual model/version where known, dates, task, affected text, and subsequent human work. Mark unavailable versions as unknown and request records; do not invent them.
+- [ ] Separate manuscript drafting from coding assistance, data analysis, reference assistance, and models evaluated as research subjects or judges.
+- [ ] Include this session's known AI assistance: evaluation code/reporting, free-evaluation LaTeX fragments, associated manuscript edits, and submission planning. Trace the earlier introduction and other sections separately; the available session does not establish their full drafting history.
+- [ ] Compare the inventory with the current publisher policy; obtain guidance from Prof. Neouchi and, if needed, the journal about already AI-drafted passages. Authors determine and carry out the required original writing. Copyediting or disclosure alone must not be represented as automatically resolving prohibited drafting.
+- [ ] Preserve the inventory and supporting records privately; turn confirmed facts into the eventual disclosure under P5.
+
+**Done when:** both authors have reviewed a section-level inventory and a documented approach to acceptable manuscript authorship, with no unsupported claim that all text is human-written.
+
+**Policy verified Nov 3:** Taylor & Francis expressly disallows AI first drafts of manuscripts or sections and requires disclosure of the tool/version and use. It permits specified assistance, including verified coding and reference support. This task list is planning material, not manuscript text. [Publisher guidance](https://authorservices.taylorandfrancis.com/editorial-policies/using-ai-in-your-research-and-manuscript-preparations/).
+
+### A2 — Send the existing generative-AI email to Prof. Neouchi
+
+**Owner:** Lakshman sends; Codex can check the existing card against A1. **Due:** Nov 3, with a follow-up Nov 5 if needed. **Depends on:** enough A1 evidence to describe use accurately. **Status:** pending.
+
+- [ ] Locate the existing draft card and verify recipient, subject, attachments, and factual description of AI use.
+- [ ] Include or link the provenance inventory and the relevant publisher policy; clearly identify facts still being checked.
+- [ ] Lakshman presses Send and retains the sent message. Record the response or follow-up date privately.
+
+**Done when:** the message is actually sent and its date recorded. A draft card is not a sent message. This checklist task does not send it.
+
+### A3 — Obtain written venue acceptance, funding wording, and review commitment
+
+**Owner:** Lakshman requests; Prof. Neouchi decides. **Due:** request Nov 3; venue decision by Nov 6; final funding wording by Nov 12. **Status:** pending.
+
+- [ ] Identify the ranking scheme and edition behind the reported JITCAR **C rating**; ask for explicit written acceptance of that venue for this project.
+- [ ] Confirm ISF versus BISE as the fallback and the Nov 6 cutoff.
+- [ ] Obtain exact funding wording, including whether institutional, employer, in-kind, or author-paid support applies. Do not retain “No funding” without confirmation.
+- [ ] Agree that the review copy arrives Nov 9 and request comments by Nov 11, leaving Nov 12 for resolution. These are proposed review dates until he agrees.
+
+**Done when:** written venue acceptance, a review slot, and confirmed funding wording are retained; final wording may close Nov 12.
+
+### A4 — Disclose affiliations, relationships, and API expenditure
+
+**Owner:** Lakshman supplies facts; both authors confirm their own interests; Codex reconciles records. **Due:** facts by Nov 4; final wording Nov 12. **Status:** pending.
+
+- [ ] Describe Lakshman's Voyza and Full Self Browsing relationships: role, employment, ownership/equity if any, and relevance to the artifact and case. Do not infer the relationship merely from a project name.
+- [ ] Confirm each author's affiliations and relevant financial/nonfinancial interests; explicitly verify Prof. Neouchi's declaration.
+- [ ] Reconcile actual API charges, payer, credits/free services, and any institutional reimbursement against invoices/account records and the experiment ledger.
+- [ ] Distinguish billed cost from budget reservations. The earlier paid ledger records $0.04482533 confirmed and $9.58954493 conservatively charged/reserved; the latter is **not** an actual-spend figure. The free follow-up had zero account-usage increase. Reconcile remaining uncertainty before stating a study-wide total.
+- [ ] Supply consistent facts to funding, competing interests, methods/cost reporting, and any required acknowledgements.
+
+**Done when:** both authors approve accurate declarations and the cost statement has a documented basis.
+
+### A5 — Secure FSB case-publication permission or use the fallback
+
+**Owner:** Lakshman obtains permission from the authorized rights holder; Codex inventories proposed material. **Due:** request Nov 3; decision Nov 5. **Status:** pending.
+
+- [ ] List the proposed organization name, process description, screenshots, logs, operational facts, quotations, and data to publish.
+- [ ] Obtain written permission covering those specific materials, anonymization, and journal/repository publication where applicable. Author affiliation alone is not permission for every company artifact.
+- [ ] Document confidentiality restrictions and remove personal or customer information from publishable materials.
+- [ ] If permission is absent by Nov 5, use a clearly labeled synthetic refund-approval demonstration. Remove unsupported real-company claims and restricted material; do not present the demonstration as a field deployment.
+
+**Done when:** approved case wording/materials are identified, or the draft consistently uses the permissible demonstration fallback.
+
+### A6 — Resolve Ai4Privacy permission or remove it from the submission
+
+**Owner:** Lakshman requests permission; authors decide retention; Codex maps dependent claims and files. **Due:** request Nov 3; retain/drop decision Nov 5; implement by Nov 6. **Status:** pending.
+
+- [ ] Check the exact dataset revision and license against research use, affiliation, external API processing, and intended publication/repository materials.
+- [ ] Request written permission from Ai4Privacy covering the actual uses. Preserve the request and response; do not assume aggregate reporting resolves every license restriction.
+- [ ] If written permission is unavailable by the decision date, drop Ai4Privacy-dependent results, tables, figures, narrative claims, and citation from the submission package; update generators so those results are not silently reintroduced.
+- [ ] Check alternative evidence, such as Gretel or synthetic fixtures, for its own terms and limitations. Do not relabel another dataset's results or pool unlike cohorts.
+- [ ] Audit supplementary files and archive contents. Preserve private provenance of the original experiment while excluding restricted data from publication.
+
+**Done when:** a documented permission basis exists for every included use, or the entire submission is free of Ai4Privacy-dependent material.
+
+### A7 — Verify the exact special issue and submission requirements
+
+**Owner:** Lakshman provides the call/deadline email; Codex verifies official instructions. **Due:** Nov 3–4, before C1 is finalized. **Status:** awaiting source.
+
+- [ ] Save the call's title, URL, themes, guest editors, deadline, closing time/time zone, and required portal special-issue selection.
+- [ ] Verify article type, case expectations, word/page limits, abstract/keyword limits, citation style, anonymization, template, and file requirements.
+- [ ] Create a short map from the actual special-issue themes to the proposed problem, case, and contribution. Do not substitute a different JITCAR special issue found through search.
+
+**Done when:** the intended call and submission rules are verified and available to guide C1–C8 and P6. Until then, Nov 15 remains the user-supplied planning deadline.
+
+## C — Eight content changes due Nov 6
+
+For all eight: **authors own the argument and original manuscript drafting**; Codex supports evidence checks, analysis, formatting, and permitted editing under A1. Every item remains pending until incorporated and reviewed.
+
+### C1 — Reframe the introduction around the organizational problem
+
+**Target:** Nov 4. **Depends on:** A1, A7, and the C2 case choice.
+
+- [ ] Lead with a concrete accountability problem: an organization must reconstruct and justify an AI-assisted refund decision across providers, policies, tools, and human review.
+- [ ] Identify the decision owner, affected stakeholders, current process, consequences of missing evidence, and the gap in existing approaches.
+- [ ] Tie the problem to verified special-issue themes and articulate a business-relevant research question and contribution.
+- [ ] Remove unsupported universal claims about conventional traces; distinguish mutable logs from appropriately secured alternatives.
+- [ ] Align the abstract, conclusion, keywords, and section roadmap with the revised purpose.
+
+**Done when:** a reader can identify the organizational problem, case, research question, contribution, and special-issue fit without understanding the SDK.
+
+### C2 — Add one end-to-end business case
+
+**Target:** choose Nov 4; integrate Nov 5. **Depends on:** A5 and A7.
+
+- [ ] Select **refund approval** as the working case unless existing evidence makes another business process stronger. Use claims triage only if suitable process evidence and permissions already exist.
+- [ ] Describe actors, incoming evidence, policy, decision authority, escalation, and expected business outcome. Separate documented facts from scenario assumptions.
+- [ ] Walk through intake → evidence preparation → policy/provider selection → model/tool execution → proposed decision → human approval/escalation → stored evidence → independent verification.
+- [ ] Include one ordinary path and one exception, such as conflicting policy evidence or a decision requiring human escalation.
+- [ ] Show what an auditor can establish from retained artifacts and receipts, and what remains an issuer claim or requires external evidence.
+- [ ] Add a compact process figure and an evidence table connecting each step to actor, control, artifact, and verification outcome.
+- [ ] Report only measured outcomes. Proposed savings, ROI, or reduced dispute time remain hypotheses unless supported by observations.
+
+**Done when:** the case can be followed from business request to accountable decision and audit, with its real/synthetic status explicit throughout.
+
+### C3 — Tighten design science and requirements derivation
+
+**Target:** Nov 4–5. **Depends on:** C1/C2 scope.
+
+- [ ] Map organizational needs and verified primary-source provisions to design requirements, principles, artifact mechanisms, evaluation measures, and limits.
+- [ ] Verify relevant EU AI Act provisions and applicability rather than treating every refund assistant as a high-risk system or claiming legal compliance from receipts alone.
+- [ ] Map the NIST AI RMF's relevant functions/outcomes to specific requirements; distinguish a voluntary framework from legal duties.
+- [ ] Refine DR1–DR5 and DP1–DP4 where needed, with testable success criteria. Replace undefined “negligible overhead” with measured scope or an explicit criterion.
+- [ ] Align the DSRM/FEDS account with work actually performed; identify artificial evaluation, demonstration, and planned naturalistic evaluation accurately.
+
+**Done when:** one traceability table connects sources → requirements → design → evidence, and the contribution is expressed beyond Lattice's implementation details.
+
+### C4 — Strengthen and consolidate the evaluation
+
+**Target:** Nov 5. **Depends on:** C2, C3, A6.
+
+- [ ] **Overhead:** distinguish controlled component benchmarks, hosted end-to-end latency, provider time, and harness-inclusive residual time. Report environment, revision, baseline, sample count, uncertainty, failures, and measurement limits.
+- [ ] **Tamper detection:** map attacks to the threat model; report altered/missing artifacts, receipt/signature changes, replay/binding mismatches, and chain omissions where actually tested. Include unmodified controls and explain unsupported threats such as a dishonest issuer or unwitnessed external effects.
+- [ ] **Case walkthrough:** execute or reproduce the C2 demonstration and record evidence for the normal and exception paths. Connect results to the requirements table.
+- [ ] **Practitioner feedback decision by Nov 4:** include feedback only if the institutional determination, recruitment/consent, and actual collection permit it. Otherwise use an explicit future-work plan and limitation; do not treat a plan as completed evaluation.
+- [ ] **Quality:** distinguish format enforcement, citation support, answer correctness, and abstention. Retain the exploratory judge's limitations and the fact that identical paired requests do not establish generation improvement from post-generation contract checks.
+- [ ] Preserve frozen cohorts, denominators, failed runs, measured revisions, and the later HTTP-200 error-envelope fix. Avoid selectively rerunning failures or rewriting historical verdicts.
+- [ ] Choose a compact set of tables that support the paper's claims; move detailed cohorts and diagnostics to supplements/appendices as allowed.
+
+**Done when:** each main claim has appropriate evidence and a stated limit, and the case adds organizational meaning to the technical tests. New paid inference is not required; any additional model run must use the authorized free-only controls unless Lakshman changes that instruction.
+
+### C5 — Add a dedicated Managerial Implications section
+
+**Target:** Nov 5. **Depends on:** C2–C4.
+
+- [ ] Specify who owns approval policy, signing keys, evidence retention, access, incident review, and independent verification.
+- [ ] Explain adoption choices: when receipts help, what evidence must be retained, integration and operating costs, and when additional controls are necessary.
+- [ ] Describe a staged pilot and useful management measures such as evidence completeness, exception escalation, verification outcomes, and review effort.
+- [ ] Separate demonstrated benefits from proposed benefits and avoid treating technical integrity as factual correctness or organizational compliance.
+
+**Done when:** a manager can identify concrete decisions, responsibilities, costs, and limitations using the case as context.
+
+### C6 — Expand related work into a focused IS literature review
+
+**Target:** Nov 4–5. **Depends on:** C1 and C3 scope.
+
+- [ ] Organize the review around organizational AI governance/accountability, sociotechnical controls and human oversight, audit evidence/provenance, and relevant DSR knowledge.
+- [ ] Have authors read and synthesize the primary works; document the search scope and inclusion approach without calling it a systematic review unless its method supports that label.
+- [ ] Build a comparison matrix of research problem, organizational context, mechanism, evidence, limitations, and the present study's contribution.
+- [ ] Explain the gap and transferable contribution; reduce a product-by-product catalog where it does not advance the argument.
+- [ ] Verify every added source and feed new references into P2.
+
+**Done when:** the review supports the research question and requirements through an explicit synthesis, with accurate citations and a defensible novelty claim.
+
+### C7 — Move product specifics to an appendix
+
+**Target:** Nov 6. **Depends on:** C3/C4 and A7 length rules.
+
+- [ ] Move package versions, runtime requirements, install commands, exhaustive API details, software-test counts, and full environment inventories into a reproducibility appendix or permitted supplement.
+- [ ] Keep the conceptual mechanism, research method, essential experimental context, and evidence needed to assess claims in the main text.
+- [ ] Retain exact revisions, commands, dataset provenance, and links in the appendix; update cross-references after moving material.
+- [ ] Regenerate generated fragments through their scripts rather than editing numerical output by hand.
+
+**Done when:** the main paper reads as organizational research, and the appendix still enables reproduction.
+
+### C8 — Choose a business-facing title
+
+**Target:** provisional Nov 4; final Nov 6. **Depends on:** C1/C2 and A7.
+
+- [ ] Prepare a short list emphasizing the business problem and contribution; avoid leading with SDK branding or unexplained cryptographic terminology.
+- [ ] Check that “case study,” “deployment,” and other evidence-strength terms match what was actually done.
+- [ ] Authors choose the title and align abstract, keywords, and submission metadata.
+
+**Working direction for discussion:** “Making AI-Assisted Business Decisions Auditable” with a subtitle identifying the refund-approval case only if supported by the final case design.
+
+**Done when:** both authors accept one accurate title that conveys the organizational relevance.
+
+## P — Review and submission package due Nov 13
+
+### P1 — Obtain and resolve Prof. Neouchi's review
+
+**Owner:** Lakshman coordinates; Prof. Neouchi reviews; authors resolve. **Dates:** review copy Nov 9, requested comments Nov 11, resolution Nov 12. **Depends on:** Nov 6 gate passing for JITCAR.
+
+- [ ] Provide the compiled draft, case evidence, provenance inventory, declaration questions, and a short list of decisions needing his attention.
+- [ ] Track every comment with a disposition and manuscript location; distinguish substantive concerns from copyedits.
+- [ ] Obtain both authors' final approval of the revised manuscript, venue, declarations, and submission.
+
+**Done when:** review comments are resolved or explicitly accepted as limitations, with final author approval recorded.
+
+### P2 — Resolve the 22 missing DOI fields and audit all references
+
+**Owner:** Codex checks metadata; authors validate source relevance. **Dates:** begin Nov 4, finish Nov 10; final pass Nov 12.
+
+- [ ] For each of the 22 entries, verify exact title/authors/year/version against the publisher or authoritative registry and resolve any candidate DOI.
+- [ ] Add a verified DOI when one exists; otherwise record “no DOI found/applicable” with a suitable stable official URL, version, and access date where required. Never manufacture a DOI.
+- [ ] Check existing DOIs too, eliminate duplicate or obsolete records, and reconcile every citation with the final retained bibliography, including C6 additions and A6 removals.
+- [ ] Check that the selected bibliography style actually prints required identifiers and that author names, capitalization, pages, and dates render correctly.
+
+**Initial inventory:** `crosby2009`, `sculley2015`, `euaiact2024`, `iso42001`, `dsse`, `slsa`, `mcp`, `otel`, `lattice`, `latticeissue21`, `gretelfinance`, `presidio`, `llmguard`, `litellm`, `portkey`, `openllmetry`, `langchain`, `cosign`, `intoto`, `bindschaedler2026afr`, `ardebili2026novafabric`, `alce`.
+
+**Done when:** every cited item has verified metadata and a documented identifier outcome; the expected result is not necessarily 22 new DOIs.
+
+### P3 — Resolve IRB, ethics, and all red TODOs
+
+**Owner:** authors obtain/confirm institutional decisions; Codex inventories and replaces resolved placeholders. **Dates:** scope decision Nov 4; final text Nov 12.
+
+- [ ] Decide whether any proposed practitioner activity, identifiable operational data, or quotations require institutional review; obtain the relevant determination before recruitment or collection.
+- [ ] If no participant study is conducted, accurately state the scope of the reported work and label the practitioner study as future work. Do not invent an IRB approval or exemption number.
+- [ ] Resolve every visible TODO: practitioner-study approval/IRB, ethics, contribution statement (P5), and archive DOI (P4).
+- [ ] Search manuscript, generated fragments, appendices, declarations, and compiled PDF for TODO/TBD/placeholder markers and unresolved references.
+
+**Done when:** ethics statements describe the actual study and the submission contains no unresolved red TODOs or placeholder assertions.
+
+### P4 — Prepare the reproducibility archive and Zenodo DOI
+
+**Owner:** Codex prepares/checks; Lakshman authorizes and performs publication steps as agreed. **Dates:** prepare Nov 10–11; DOI resolved by Nov 12. **Depends on:** A5/A6 permissions and stable results.
+
+- [ ] Select the exact code/data/result revision to archive; distinguish the measured revision from subsequent fixes.
+- [ ] Inventory distributable source, scripts, aggregate results, documentation, licenses, and environment instructions; exclude credentials, private records, and restricted datasets.
+- [ ] Prepare a tagged release/archive and repository changes needed for reproducibility. Review concrete contents before pushing or publishing.
+- [ ] Obtain a real DOI through the chosen archive workflow, verify its landing page and metadata, and update data/code availability. A reserved identifier and a published accessible archive must be distinguished accurately.
+- [ ] Check anonymous-review requirements before adding repository or archive links that identify authors.
+
+**Done when:** the availability statement matches accessible, permitted artifacts and the DOI's actual state.
+
+### P5 — Finalize declarations and author information
+
+**Owner:** each author confirms personal facts; Codex checks consistency and formatting. **Due:** Nov 12. **Depends on:** A1–A6 and P3.
+
+- [ ] AI-use disclosure and methods details covering confirmed tools/versions, purposes, affected work, records retained, and author responsibility.
+- [ ] CRediT roles agreed by both authors; no unverified allocation of original drafting, analysis, supervision, or funding acquisition.
+- [ ] Funding statement using Prof. Neouchi's approved wording and reconciled support facts.
+- [ ] Competing interests including relevant Voyza/FSB relationships and each author's own declaration.
+- [ ] Ethics, consent, case permission, data/code availability, and acknowledgements as applicable.
+- [ ] Accurate author bios, names, affiliations, ORCIDs, corresponding-author details, and any required title page.
+
+**Done when:** both authors approve the declarations and the manuscript, title page, portal fields, and cover letter agree.
+
+### P6 — Build and validate the final PDF and source package
+
+**Owner:** Codex prepares and checks; authors review. **Due:** Nov 13. **Depends on:** P1–P5 and A7.
+
+- [ ] Apply the verified JITCAR template/style and length rules, including anonymized and identified versions if required. The present `paper/main.tex` is an ISF draft, not a verified JITCAR submission template.
+- [ ] Build the PDF and a self-contained LaTeX zip containing `.tex`, `.bib`, figures, permitted supplementary material, and required class/style files.
+- [ ] Compile from a clean extraction; confirm no local absolute paths, missing assets, secrets, private `.context` files, or restricted data are included.
+- [ ] Inspect all pages for clipped figures, unreadable tables, broken references, typography issues, and accidental identifying details where anonymization is required.
+- [ ] Check every number against generated results and all claims against their evidence; verify title, abstract, keywords, declarations, and DOI links.
+- [ ] Prepare any required cover letter and submission metadata from author-provided text, consistent with the AI-use approach.
+
+**Done when:** the exact package proposed for submission builds cleanly, passes visual/content checks, and both authors approve it.
+
+### P7 — Submit through the verified Routledge/Taylor & Francis portal
+
+**Owner:** corresponding author. **Target:** Nov 13; official outer deadline Nov 15, subject to A7 confirmation. **Depends on:** P6 and final author approval.
+
+- [ ] Enter the verified journal portal and select the correct special issue and article type.
+- [ ] Upload the approved PDF, LaTeX zip, `.bib`, and any other files the portal actually requires.
+- [ ] Complete author, funding, competing-interest, ethics, AI-use, and other declarations using approved facts.
+- [ ] Inspect the portal-generated submission proof and resolve conversion errors before final submission.
+- [ ] Submit and retain the manuscript ID, timestamp, confirmation email, and exact submitted package.
+
+**Done when:** submission is confirmed by the portal and the corresponding author has the receipt. An uploaded draft is not a completed submission.
+
+## How we will work through this
+
+1. **Start A1:** build the authorship inventory and identify the existing email card; obtain A7's call source alongside it.
+2. **Resolve the external dependencies:** A2–A6 requests and factual questions, with Nov 5 fallback decisions. Track waiting replies while working on items that do not depend on them.
+3. **Work through C1–C8 in order**, choosing the C2 case before finalizing C1. For each item: inspect current material, agree the needed change, carry out permitted work, verify the result, and update its checkbox/status.
+4. **Apply the Nov 6 decision**, record JITCAR go/no-go, and follow the agreed venue path.
+5. **Work through P1–P7**, starting reference and archive preparation early enough to avoid compressing all packaging into Nov 13.
+
+Optional runtime enhancements, broader model comparisons, new benchmark datasets, and a full practitioner study without an approved feasible protocol are outside the Nov 6 critical path. Preserve them as future work rather than allowing them to displace a complete, accurate draft.
+
+## Decision log
+
+| Date | Decision or open question | Owner / next action |
+| --- | --- | --- |
+| Nov 3 | Submission preparation is the highest-priority workspace task | Track progress here and in `.planning/STATE.md` |
+| Nov 3 | Nov 6 complete-draft cutoff; otherwise ISF or BISE | Lakshman and Prof. Neouchi choose fallback if triggered |
+| Nov 3 | Nov 13 package target; Nov 15 user-supplied deadline | A7 verifies exact call and time |
+| Nov 3 | Eight content changes remain pending despite reusable existing sections | Work through C1–C8 |
+| Nov 3 | Refund approval is the recommended working case; real/synthetic status is undecided | A5 and C2 |
+| Nov 3 | First substantive task is AI provenance, before manuscript rewriting | A1 |
