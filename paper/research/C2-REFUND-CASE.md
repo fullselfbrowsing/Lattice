@@ -2,7 +2,9 @@
 
 **Recommendation:** use an **illustrative travel-refund review after conflicting chatbot advice**, motivated by *Moffatt v. Air Canada*, as the main business case. Use Klarna to establish the broader commercial relevance of AI-assisted refunds and Zurich as a contrasting claims-support application. None of these organizations is represented as a Lattice user.
 
-**Status, November 3, 2026:** primary-source research and proposed walkthrough ready for author review. This is a research/design brief, not manuscript prose or an executed case study. C2 incorporation and C4 demonstration results remain pending. Implementation mappings below were checked at repository revision `0c9f64f`.
+**Status, November 3, 2026:** research/design and a live free-model demonstration are ready for author review. This remains a research brief, not manuscript prose or a company field study. C2 manuscript incorporation remains pending. Implementation mappings below were checked at repository revision `0c9f64f`.
+
+**Execution update:** at the user's request, the [live refund demonstration](../../eval/refund/results/summary.md) ran eight synthetic scenarios through Lattice with two free models and two repetitions: 32/32 planned runs, 28/32 full-rubric passes, and 32/32 verified run-evidence packages. All decision fields and decisive-rule selections matched; the four strict failures omitted a required customer-request reference. The account-spend delta was USD 0. The [interpretation](../../eval/refund/results/interpretation.md) distinguishes live recommendations from simulated approvals/payments and identifies untested controls. Frozen measured revision: `f8a6914`. The design below is retained as the proposal; the results report governs claims about what was actually executed.
 
 ## Why this case is the strongest fit
 
@@ -139,7 +141,7 @@ Useful measures: expected evidence items available, detected mutations by class,
 ## Author incorporation and next actions
 
 1. Authors confirm the case choice and write the original C2 narrative from the verified sources and their own argument. Place the business setting/actors before the artifact description and the executed demonstration in evaluation. Cross-reference the existing C1 opening.
-2. Implement and run the frozen offline demonstration under C4; populate an actual results table, preserving contrary outcomes. Keep simulated review/authorization separate from human feedback.
+2. Incorporate the completed live free-model demonstration and scoped offline controls from the linked report under C4, preserving all four source-reference omissions. The user's subsequent instruction authorized live calls instead of stopping at offline fixtures. Keep simulated review/authorization separate from human feedback; untested provider failover, real authorization and secured-log comparison remain outside this cohort.
 3. Adapt the figure and evidence table with author review and accurate AI disclosure. C3 can then derive requirements for integrity, completeness, binding and review responsibilities; C5 can discuss key ownership, retention and escalation.
 4. Keep the original-source and tool-use record. This brief provides research assistance and scenario design. Taylor & Francis prohibits AI first-drafting of manuscript sections; disclosure alone does not change that restriction. The previously identified AI-generated evaluation passages remain an A1 authorship-review item. [S5](#s5-publisher-guidance)
 
