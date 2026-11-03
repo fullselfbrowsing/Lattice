@@ -1,0 +1,22 @@
+---
+mode: quick
+description: Run isolated zero-cost OpenRouter evaluations with pinned free models
+---
+
+# Free model evaluation
+
+User authorized using free models instead of further paid calls. Keep the current PR branch. Execute inline under the GSD quick workflow; no delegation is needed.
+
+## 1. Guard and isolate free inference
+
+Add an explicit free cohort to the existing measured harness. Require catalog-listed `:free` IDs, zero model/endpoint prices, no model fallbacks or paid extensions, and a separate persisted request ledger. Preserve `.context/hosted-budget.json` byte-for-byte. Pace serial requests below 20/minute; stop on quota exhaustion, transport failure, or any nonzero reported charge. Test these guards offline before inference.
+
+## 2. Run the separate cohort
+
+Pin `nvidia/nemotron-3.5-super-vl:free` and `google/gemma-4-31b-it:free` based on catalog image/tool support. Fixed exploratory judge: `dots-studio/dots-3-note-preview:free`. Record catalogs and exact request hashes. Use existing development smoke cases before the frozen evaluation set. Each target model gets 10 transport fixtures (5 image/5 JSON), 10 privacy cases, 2 single-agent and 2 crew cases, all 60 frozen citation questions in both arms, and 20 matched latency trials per arm plus 2 warmups. Cap this cohort at 900 requests across stages, subject to the account's remaining daily quota. Keep all failures and report explicit denominators. Do not change prompts based on heldout outcomes.
+
+## 3. Report and verify
+
+Publish a separate local free-cohort summary and reproduction instructions, with free-tier availability and judge limitations. Do not pool paid/free model results or treat new measurements as completion of the old cohort. Verify original paid artifacts/ledger are unchanged, run focused harness tests, scan output for the credential, update GSD state, and commit locally. No push, PR posting, merging, or publication.
+
+Sources checked 2026-11-03: OpenRouter models/endpoints/key APIs; official free variant and limits documentation. Key reported 1,000 daily free requests remaining. Free variants have zero inference price but limited availability. Only public benchmark passages and synthetic fixtures are transmitted.
