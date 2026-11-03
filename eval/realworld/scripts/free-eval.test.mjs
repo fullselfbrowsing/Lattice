@@ -3,12 +3,22 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertFreeRequest, FreeRequestLedger } from "./free-eval.mjs";
+import { assertFreeRequest, FreeRequestLedger, evaluationPaths } from "./free-eval.mjs";
 import { createObservedFetch } from "./live-observer.mjs";
 
 const model = { id: "test/model:free", context_length: 1000, pricing: { prompt: "0", completion: "0" } };
 const endpoints = [{ pricing: { prompt: "0", completion: "0", discount: 0 } }];
 const body = { model: model.id, max_tokens: 16, messages: [{ role: "user", content: "pong" }] };
+
+test("free and paid stages never share result, private data or ledger paths", () => {
+  for (const stage of ["smoke", "full", "judge"]) {
+    const paid = evaluationPaths("/repo", "/cache", "paid", stage);
+    const free = evaluationPaths("/repo", "/cache", "free", stage);
+    for (const key of ["out", "private", "ledger"]) assert.notEqual(paid[key], free[key]);
+    assert.equal(free.out, `/repo/eval/realworld/results/validated-free-${stage}.json`);
+  }
+  assert.throws(() => evaluationPaths("/repo", "/cache", "unknown", "smoke"));
+});
 
 test("free guard rejects paid routes, missing prices, paid endpoints and optional charges", () => {
   assert.doesNotThrow(() => assertFreeRequest(body, model, endpoints));

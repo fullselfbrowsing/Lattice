@@ -1,10 +1,18 @@
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export const FREE_MODELS = ["nvidia/nemotron-3.5-super-vl:free", "google/gemma-4-31b-it:free"];
 export const FREE_JUDGE = "dots-studio/dots-3-note-preview:free";
 export const FREE_COUNTS = { transport: 10, privacy: 10, agents: 2, citations: 60, latency: 20, warmups: 2 };
+
+export function evaluationPaths(root, cache, cohort, stage) {
+  if (!["paid", "free"].includes(cohort) || !["smoke", "full", "judge"].includes(stage)) throw new Error("Invalid evaluation profile.");
+  const prefix = cohort === "free" ? "validated-free" : "validated";
+  return { out: resolve(root, "eval/realworld/results", prefix + "-" + stage + ".json"),
+    private: resolve(cache, prefix + "-" + stage + "-private.json"),
+    ledger: resolve(root, cohort === "free" ? ".context/free-request-ledger.json" : ".context/hosted-budget.json") };
+}
 
 function zeroPrices(pricing) {
   if (!pricing || pricing.prompt == null || pricing.completion == null) throw new Error("Free model prices are missing.");

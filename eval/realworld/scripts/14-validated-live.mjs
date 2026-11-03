@@ -8,7 +8,7 @@ import * as L from "../../../packages/lattice/dist/index.js";
 import { fingerprintArtifactValue } from "../../../packages/lattice/dist/storage.js";
 import { EvaluationBudget } from "./budget.mjs";
 import { createObservedFetch } from "./live-observer.mjs";
-import { FREE_MODELS, FREE_JUDGE, FREE_COUNTS, FreeRequestLedger, assertFreeModel } from "./free-eval.mjs";
+import { FREE_MODELS, FREE_JUDGE, FREE_COUNTS, FreeRequestLedger, assertFreeModel, evaluationPaths } from "./free-eval.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const CACHE = process.env.REALWORLD_CACHE ?? resolve(ROOT, ".context/eval-cache");
@@ -27,9 +27,10 @@ const ALLOWED_MODELS = [...new Set([...MODELS, JUDGE_MODEL])];
 const COUNTS = FREE ? FREE_COUNTS : { transport: 20, privacy: 20, agents: 5, citations: 60, latency: 50, warmups: 5 };
 const STAGE = process.env.EVAL_STAGE ?? "smoke";
 if (!["smoke", "full", "judge"].includes(STAGE)) throw new Error("EVAL_STAGE must be smoke, full or judge.");
-const OUT = resolve(ROOT, "eval/realworld/results/validated-" + STAGE + ".json");
-const PRIVATE = resolve(CACHE, PREFIX + "-" + STAGE + "-private.json");
-const BUDGET_PATH = resolve(ROOT, FREE ? ".context/free-request-ledger.json" : ".context/hosted-budget.json");
+const paths = evaluationPaths(ROOT, CACHE, COHORT, STAGE);
+const OUT = paths.out;
+const PRIVATE = paths.private;
+const BUDGET_PATH = paths.ledger;
 const LOCK = BUDGET_PATH + ".lock";
 mkdirSync(dirname(LOCK), { recursive: true });
 try { mkdirSync(LOCK); } catch { throw new Error("Another budgeted evaluation owns the lock; inspect before removing it."); }
@@ -342,8 +343,9 @@ try {
     smokeGate: FREE ? "Complete smoke coverage, successful JSON transport for each model, verified receipt bindings/crew closure, no marker leakage. Model answer, tool-use and format errors remain measured outcomes." : "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
     tokenCaps: { latency: 16, transport: 64, privacy: 128, citations: 512, agent: 512, crew: 512, judge: 768 } };
   if (existsSync(OUT)) {
-    out = readJSON(OUT);
-    if (out.env.codeHash !== codeHash || out.env.harnessHash !== harnessHash || out.env.observerHash !== observerHash || (FREE && out.env.freeGuardHash !== freeGuardHash)) throw new Error("Existing results have different code; archive them before a new run.");
+    const existing = readJSON(OUT);
+    if (existing.env.codeHash !== codeHash || existing.env.harnessHash !== harnessHash || existing.env.observerHash !== observerHash || (FREE && existing.env.freeGuardHash !== freeGuardHash)) throw new Error("Existing results have different code; archive them before a new run.");
+    out = existing;
     if (existsSync(PRIVATE)) privateRows = readJSON(PRIVATE);
   } else out = { version: "validated-live/v1", env, rows: [] };
   save();
