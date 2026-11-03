@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
 stopped_at: JITCAR priority checklist ready; next A1 manuscript AI-provenance audit
-last_updated: "2026-11-03T18:55:05.013740Z"
-last_activity: 2026-11-03 - Completed quick task 261103-htb: highest-priority JITCAR checklist; manuscript work and author decisions pending
+last_updated: "2026-11-03T19:00:23.459987Z"
+last_activity: 2026-11-03 - Completed quick task 261103-i1a: official JITCAR call verified; general author requirements pending
 progress:
   total_phases: 6
   completed_phases: 6
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Submission package target November 13; November 15 deadline awaits exact call verification. Next: A1 manuscript AI-provenance audit.
+**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Target submission November 13; The Post AI Enterprise deadline verified as November 15, with closing time/time zone unspecified. A7 still needs general author instructions and portal checks. Next: A1 manuscript AI-provenance audit.
 
 ## Current Position
 
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
 Status: Submission preparation is the highest priority; eight content changes remain pending
-Last activity: 2026-11-03 - Completed quick task 261103-htb: highest-priority JITCAR checklist; manuscript work and author decisions pending
+Last activity: 2026-11-03 - Completed quick task 261103-i1a: official JITCAR call verified; general author requirements pending
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-03 | Verify JITCAR special-issue call | Verified The Post AI Enterprise call, November 15 date and 2027 milestones; added theme mapping and preserved November 13 submission target. General author instructions returned HTTP 403; requirements and portal selection remain pending. See [quick task 261103-i1a](./quick/261103-i1a-verify-jitcar-post-ai-enterprise-call-an/261103-i1a-SUMMARY.md). |
 | 2026-11-03 | Highest-priority JITCAR submission checklist | Created 22 work items with owners, due dates, dependencies, completion criteria, Nov 6 fallback gate, and Nov 13 package target. Confirmed 22 bibliography entries lack DOI fields and verified publisher AI guidance. Checklist complete; submission work pending. See [quick task 261103-htb](./quick/261103-htb-create-highest-priority-jitcar-submissio/261103-htb-SUMMARY.md). |
 | 2026-11-03 | Separate free-model evaluation | 428/428 cases, 213/213 valid exploratory judgments, 166/240 strict citation passes; 784 free requests and zero added spend. HTTP-200 error envelopes now rejected. Paid data preserved, reports/PDFs rebuilt. See [quick task 261103-ego](./quick/261103-ego-run-isolated-zero-cost-openrouter-evalua/261103-ego-SUMMARY.md). |
 | 2026-10-27 | Runtime and evaluation improvements | Native artifact transport, generation controls, execution-bound receipts, terminal agent receipts, one-to-one PII scoring and frozen holdout; contextual promotion rejected. Paid coverage 213/1,020; USD 0.0448 confirmed and USD 9.5895 conservatively charged/reserved. Reports and both PDFs rebuilt. See [quick task 261027-kqr](./quick/261027-kqr-implement-approved-runtime-and-evaluatio/261027-kqr-SUMMARY.md). |
@@ -165,10 +166,10 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 Last session: 2026-11-03
 Stopped at: JITCAR checklist ready for sequential work; next A1 manuscript AI-provenance audit
-Resume: Read paper/JITCAR-TODO.md; begin A1 under /gsd:quick and obtain the exact special-issue call for A7
+Resume: Read paper/JITCAR-TODO.md; begin A1 under /gsd:quick and complete A7 general author requirements/portal checks
 
 ## Operator Next Steps
 
-- Begin A1 manuscript AI-provenance audit and locate the existing professor email draft; verify the special-issue call through A7.
+- Begin A1 manuscript AI-provenance audit and locate the existing professor email draft; complete general author instructions and portal checks through A7; the special-issue call is verified.
 - Work through the submission checklist with Lakshman one item at a time, tracking author-only decisions and external replies.
 - Defer optional runtime milestones and further model experiments behind the November submission priority.

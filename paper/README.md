@@ -1,6 +1,6 @@
 # Lattice papers
 
-**Highest priority:** [JITCAR submission checklist](JITCAR-TODO.md). The complete-draft cutoff is November 6, 2026; otherwise the authors switch to ISF or BISE. The package target is November 13, ahead of the user-supplied November 15 deadline. Start with the AI-provenance audit before manuscript revision.
+**Highest priority:** [JITCAR submission checklist](JITCAR-TODO.md). The complete-draft cutoff is November 6, 2026; otherwise the authors switch to ISF or BISE. Target submission on November 13, ahead of the verified November 15 deadline for [The Post AI Enterprise](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/). The call gives no closing time or time zone. Start with the AI-provenance audit before manuscript revision.
 
 `main.tex` is the Information Systems Frontiers draft. It uses the article class with author-year citations (`natbib`, `apalike`) and a design-science frame. Figure 1 is drawn with TikZ (`tikz`, libraries `arrows.meta` and `positioning`). Springer Nature's `sn-jnl` class is not vendored: the template download page is script-rendered, so this build could not fetch `sn-jnl.cls`. Before submission, port the body into `\documentclass[pdflatex,sn-apa]{sn-jnl}`.
 

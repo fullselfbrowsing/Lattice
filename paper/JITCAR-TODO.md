@@ -14,9 +14,21 @@
 | Fri Nov 6 | Complete all eight content changes and apply the draft go/no-go gate below | Lakshman and Prof. Neouchi |
 | Mon–Thu Nov 9–12 | Prof. Neouchi reviews; authors resolve comments and finalize declarations, references, and permissions | Authors |
 | Fri Nov 13 | Submission package complete, checked, and approved; target submission that day | Corresponding author |
-| Sun Nov 15 | JITCAR deadline supplied by Lakshman; exact closing time/time zone and special issue remain to be confirmed | Corresponding author |
+| Sun Nov 15 | Verified full-paper deadline for The Post AI Enterprise; closing time and time zone unspecified | Corresponding author |
 
-Internal dates use America/Chicago. Nov 6 means end of that day unless Lakshman specifies an earlier meeting. The official deadline is not independently verified yet; A7 closes that gap. The Nov 13 target provides a buffer, not permission to leave essential work until Nov 15.
+Internal dates use America/Chicago. Nov 6 means end of that day unless Lakshman specifies an earlier meeting. The [official call](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/) confirms November 15, 2026. It gives no closing time or time zone. Following Lakshman's preference, do not count on any part of November 15 being available; this is a conservative planning rule, not a publisher-confirmed midnight deadline. Submit on November 13. If that target slips, obtain clarification from Dr. Deepak Khazanchi before relying on the remaining submission window.
+
+The call also lists the following 2027 milestones:
+
+| Date | Milestone |
+| --- | --- |
+| January 15 | Initial decisions |
+| March 15 | Revised manuscripts due |
+| April 15 | Second revision round |
+| May 15 | Provisional or final decisions |
+| June 15 | Final manuscript due if minor revisions are required |
+
+These are the published schedule, not guaranteed turnaround dates. [Official call](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/).
 
 **Nov 6 gate:** a complete draft has all eight content changes incorporated, a coherent abstract and conclusion, an end-to-end case, accurate evaluation claims, a resolved authorship approach, and a readable compiled PDF. Administrative items scheduled for Nov 13 may remain only with an owner, due date, and viable resolution. No core argument, case, or evaluation section may remain a placeholder.
 
@@ -105,13 +117,25 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 ### A7 — Verify the exact special issue and submission requirements
 
-**Owner:** Lakshman provides the call/deadline email; Codex verifies official instructions. **Due:** Nov 3–4, before C1 is finalized. **Status:** awaiting source.
+**Owner:** Codex verifies official instructions; Lakshman supplied the call page, with no editor deadline email. **Due:** Nov 3–4, before C1 is finalized. **Status:** partly complete — call verified Nov 3; general author requirements and portal selection pending.
 
-- [ ] Save the call's title, URL, themes, guest editors, deadline, closing time/time zone, and required portal special-issue selection.
+- [x] Verify the call, title, dates, guest editors, and themes from the [official page](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/). Guest editors: Deepak Khazanchi, Christian Haas, Dawn Owens, and Xiaodan Yu. Closing time/time zone are not stated; no deadline email exists in the author's records.
+- [ ] Confirm the exact special-issue option in the submission portal. The call links the journal's [Routledge submission portal](https://rp.tandfonline.com/submission/create?journalCode=UTCA); it returned HTTP 403 on Nov 3. A link alone does not verify the selectable issue label.
 - [ ] Verify article type, case expectations, word/page limits, abstract/keyword limits, citation style, anonymization, template, and file requirements.
-- [ ] Create a short map from the actual special-issue themes to the proposed problem, case, and contribution. Do not substitute a different JITCAR special issue found through search.
+- [x] Map relevant themes to the proposed paper, below. This is an initial fit assessment for author review, not a claim of editorial acceptance.
 
-**Done when:** the intended call and submission rules are verified and available to guide C1–C8 and P6. Until then, Nov 15 remains the user-supplied planning deadline.
+The [general JITCAR author instructions](https://www.tandfonline.com/action/authorSubmission?show=instructions&journalCode=utca20) remain the source for manuscript requirements. Automated access returned HTTP 403 on Nov 3; a browser fallback was unavailable. Do not infer length, formatting, anonymization, or file rules from another journal. Read these instructions through an available browser or an author-provided copy before closing A7.
+
+| Relevant call emphasis, paraphrased | Proposed paper connection — author assessment |
+| --- | --- |
+| Organizational governance and audit | Use the refund case to show who must justify a decision and what evidence they need |
+| Human judgment alongside AI recommendations | Define approval authority, escalation, and the limits of relying on a valid receipt |
+| Agent-system design and reliability | Connect requirements to mechanisms and measured failure behavior |
+| Evaluation of decision quality | Keep answer support, integrity, and managerial utility distinct |
+
+The call welcomes several research methods and seeks organizational and managerial substance beyond technical description. These proposed connections follow its scope; they are not findings of the current study. [Official call](https://think.taylorandfrancis.com/special_issues/the-post-ai-enterprise/).
+
+**Done when:** the intended call, manuscript rules, and portal selection are verified and available to guide C1–C8 and P6. Deadline time-zone clarification is needed only if the authors intend to rely on a later window than the November 13 submission target; otherwise preserve “unspecified.”
 
 ## C — Eight content changes due Nov 6
 
@@ -291,7 +315,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ### P7 — Submit through the verified Routledge/Taylor & Francis portal
 
-**Owner:** corresponding author. **Target:** Nov 13; official outer deadline Nov 15, subject to A7 confirmation. **Depends on:** P6 and final author approval.
+**Owner:** corresponding author. **Target:** Nov 13; verified official date Nov 15, with closing time/time zone unspecified. Do not rely on submitting during Nov 15. **Depends on:** P6 and final author approval.
 
 - [ ] Enter the verified journal portal and select the correct special issue and article type.
 - [ ] Upload the approved PDF, LaTeX zip, `.bib`, and any other files the portal actually requires.
@@ -303,7 +327,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ## How we will work through this
 
-1. **Start A1:** build the authorship inventory and identify the existing email card; obtain A7's call source alongside it.
+1. **Start A1:** build the authorship inventory and identify the existing email card; complete A7's general author requirements and portal checks alongside it. The call source and date are verified.
 2. **Resolve the external dependencies:** A2–A6 requests and factual questions, with Nov 5 fallback decisions. Track waiting replies while working on items that do not depend on them.
 3. **Work through C1–C8 in order**, choosing the C2 case before finalizing C1. For each item: inspect current material, agree the needed change, carry out permitted work, verify the result, and update its checkbox/status.
 4. **Apply the Nov 6 decision**, record JITCAR go/no-go, and follow the agreed venue path.
@@ -317,7 +341,8 @@ Optional runtime enhancements, broader model comparisons, new benchmark datasets
 | --- | --- | --- |
 | Nov 3 | Submission preparation is the highest-priority workspace task | Track progress here and in `.planning/STATE.md` |
 | Nov 3 | Nov 6 complete-draft cutoff; otherwise ISF or BISE | Lakshman and Prof. Neouchi choose fallback if triggered |
-| Nov 3 | Nov 13 package target; Nov 15 user-supplied deadline | A7 verifies exact call and time |
+| Nov 3 | Nov 13 submission target; Nov 15, 2026 date verified from the official call; no closing time/time zone supplied | Do not rely on any part of Nov 15; ask Dr. Khazanchi if a later window becomes necessary |
+| Nov 3 | The Post AI Enterprise call verified; no editor deadline email exists | A7 still requires accessible general author instructions and the portal selection |
 | Nov 3 | Eight content changes remain pending despite reusable existing sections | Work through C1–C8 |
 | Nov 3 | Refund approval is the recommended working case; real/synthetic status is undecided | A5 and C2 |
 | Nov 3 | First substantive task is AI provenance, before manuscript rewriting | A1 |
