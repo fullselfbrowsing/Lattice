@@ -61,6 +61,11 @@ def summarize(full, judge, ledger):
                 groups.append(result)
     rows = [r for r in full["rows"] if r["suite"] in expected]
     calls = [c for r in full["rows"] for c in r["calls"]]
+    citation_pairs = {}
+    for row in rows:
+        if row["suite"] == "citations" and row["calls"]:
+            citation_pairs.setdefault((row["model"], row["id"]), {})[row["arm"]] = [c["bodyHash"] for c in row["calls"]]
+    paired = [pair for pair in citation_pairs.values() if len(pair) == 2]
     return {"version": "free-report/v1", "env": env, "groups": groups,
             "expected": sum(g["expected"] for g in groups), "recorded": len(rows),
             "runtimeSuccess": metrics.tally(rows, "ok"),
@@ -68,6 +73,8 @@ def summarize(full, judge, ledger):
             "stopped": full.get("stopped"), "judgeStopped": judge.get("stopped"),
             "statusCounts": dict(Counter(str(c["status"]) for c in calls)),
             "lengthLimitedCalls": sum(c.get("finishReason") == "length" for c in calls),
+            "citationRequestPairs": {"bothArmsSubmitted": len(paired),
+                                     "identicalBodyHashes": sum(p["prompt-only"] == p["contract"] for p in paired)},
             "accounting": {"requestsAcrossStages": len(ledger["entries"]),
                            "reportedCostUsd": sum(e["costUsd"] or 0 for e in ledger["entries"]),
                            "unreportedCosts": sum(e["costUsd"] is None for e in ledger["entries"]),
@@ -99,6 +106,7 @@ def markdown(report):
             c = g["citations"]
             lines.append(f"| {g['model']} | {g['arm']} | {c['formatValid']} | {c['usable']} | {c['judgeValid']}/{c['judgeAttempted']} | {c['strictSuccess'] if c['strictSuccess'] is not None else 'unmeasured'} |")
     lines += ["", f"Fixed exploratory judge: `{report['env']['judgeModel']}`. Invalid/unavailable outputs stay in the 60-question denominator. Unjudged quality is unknown. Sources and frozen question manifest match the prior evaluation protocol; no heldout prompt tuning or automatic repair was used.", "",
+              f"{report['citationRequestPairs']['identicalBodyHashes']}/{report['citationRequestPairs']['bothArmsSubmitted']} completed citation request pairs had identical body hashes. The contract validates format after generation; it neither repairs output nor verifies entailment. Differences in generated answer quality across these arms do not establish that the contract improved generation.", "",
               "## Latency", "", "Medians below use successful, correct non-warmup cases. Wall time excludes recorded request pacing. JSON includes bootstrap median intervals and p95; these small free-tier samples do not estimate production latency.", "",
               "| Model | Arm | Eligible / 20 | Wall median ms | HTTP median ms | Processing median ms |", "|---|---|---:|---:|---:|---:|"]
     for g in report["groups"]:
