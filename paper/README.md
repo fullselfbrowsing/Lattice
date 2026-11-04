@@ -48,7 +48,7 @@ Human usefulness and real approval/payment execution remain untested. Source/rub
 
 The manuscript retains DR1–DR5 and DP1–DP4, with a retrospective traceability table connecting organizational needs, exact governance provisions, mechanisms, existing evidence and limits. See the [source/provenance map](research/C3-SOURCE-MAP.md). EU AI Act applicability is conditional; NIST AI RMF 1.0 is voluntary. Source versions and access limitations are explicit.
 
-The separate [611-word AI-generated explanatory reference](research/C3-REFERENCE-DRAFT.md) remains outside manuscript inputs for author rewriting. **C3 evidence mapping and editorial revision complete; author narrative and review pending.** The original C3 authorship and current drafting model/version remain unconfirmed. This documentation pass adds no inference, runtime changes or measurements; C4 consolidation remains separate.
+Sections 3 and 4 of `main.tex` now carry Claude's rewritten narrative, with the applicability of the EU AI Act corrected for the Digital Omnibus dates. The Codex [explanatory reference](research/C3-REFERENCE-DRAFT.md) is superseded. **C3 is reviewed (Nov 4)**; see the [C3 review record](research/C3-REVIEW.md). The text is AI-drafted, so the publisher first-draft rule and the A1/P5 checks still apply before submission.
 
 ## Build
 

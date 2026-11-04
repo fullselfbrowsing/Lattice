@@ -4,6 +4,9 @@ Date: November 4, 2026. GSD quick task: `261104-fdc`. Baseline: `fd5c055`. This 
 
 ## Source versions and applicability
 
+> **Review corrections (Claude, Nov 4; see [C3-REVIEW.md](C3-REVIEW.md)).** A fresh fetch matched every snapshot below. The consolidated text includes the **Digital Omnibus on AI**. Under its amended **Article 113(c)**, Articles 6–27, including 12, 13, 14, 19 and 26, apply from **2 December 2027** (Annex III) and **2 August 2028** (Annex I). The statement "No implementation-date claim is needed" is therefore withdrawn, and the manuscript now gives these dates. **Annex III 8(a)** also covers use "in a similar way in alternative dispute resolution", not only judicial authorities. **Article 50(1)** (AI-interaction disclosure) is the obligation that already applies to a refund chatbot. The NIST locators and design-science references are verified as listed.
+
+
 **EU AI Act.** The European Commission's AI Act Service Desk identifies its article text as based on the **27 July 2026 consolidated version** of Regulation (EU) 2024/1689. We read the article bodies, rather than treating the site's explanatory summaries as legislation. The [consolidated EUR-Lex link](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:02024R1689-20260727) returned a JavaScript verification page during planning; the Commission's official article reproductions were accessible and were retrieved November 4. The manuscript states the version identified by that site, without claiming independent authentication of the inaccessible consolidation. The original 2024 Act bibliography entry is retained; a separate 2026 Commission entry identifies the source actually consulted. No implementation-date claim is needed for this mapping.
 
 | Provision and primary URL | Paraphrase of relevant content | Interpretation and limit |
