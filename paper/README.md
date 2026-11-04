@@ -12,6 +12,7 @@ Do not type numbers into the narrative by hand, and do not edit these files. Rer
 
 | File in `paper/` | Generator |
 |---|---|
+| `c4-evidence.tex`, `c4-evidence.json` | `paper/scripts/c4-tables.mjs`, from saved timing, quality and integrity results; `--check` is read-only |
 | `numbers.tex`, `eval-tables.tex`, `Fig2.png`, `Fig3.png`, `Fig4.png` | `eval/scripts/06-report.py`, from `eval/results/*.json` |
 | `validated.tex`, `validated-pii.pdf`, `validated-latency.pdf` | `eval/realworld/scripts/16-validated-report.py`, from the versioned validated result files; missing measurements are explicit |
 | `public-refund-results.tex` | `paper/scripts/public-refund-tables.mjs`, from frozen `eval/public-refund/results` plus its separately disclosed rubric audit |
@@ -27,7 +28,7 @@ The latency results (`tab:overhead`, `tab:size`, `tab:chain`, `Fig2.png`, `Fig3.
 
 ## Refund case materials
 
-The main C2 case uses **four actual published refund-dispute decisions**, with 18 exact PDF pages supplied to 16 live free-model reviews. See the [case/provenance record](research/C2-PUBLIC-RECORD-CASE.md) and [results with rubric audit](../eval/public-refund/results/interpretation.md). Section 5 of `main.tex` now contains the case narrative, and Section 7.11 contains its results discussion. Claude drafted both at Lakshman's direction (see the [C2 review record](research/C2-REVIEW.md)), replacing the superseded [Codex reference draft](research/C2-REFERENCE-DRAFT.md). C2 is **reviewed (Nov 4)**. The text is AI-drafted, so publisher policy and the A1/P5 authorship and disclosure checks still apply before submission.
+The main C2 case uses **four actual published refund-dispute decisions**, with 18 exact PDF pages supplied to 16 live free-model reviews. See the [case/provenance record](research/C2-PUBLIC-RECORD-CASE.md) and [results with rubric audit](../eval/public-refund/results/interpretation.md). Section 5 of `main.tex` now contains the case narrative, and the public-record evaluation subsection contains its results discussion. Claude drafted both at Lakshman's direction (see the [C2 review record](research/C2-REVIEW.md)), replacing the superseded [Codex reference draft](research/C2-REFERENCE-DRAFT.md). C2 is **reviewed (Nov 4)**. The text is AI-drafted, so publisher policy and the A1/P5 authorship and disclosure checks still apply before submission.
 
 `public-refund-case.tex` contains the main TikZ workflow and evidence table, before the artifact section. `public-refund-results.tex` is included within Evaluation. The earlier invented-case figure, evidence table and unchanged results are separately retained in `refund-synthetic-appendix.tex`; do not pool their denominators with the actual-record cohort.
 
@@ -49,6 +50,16 @@ Human usefulness and real approval/payment execution remain untested. Source/rub
 The manuscript retains DR1–DR5 and DP1–DP4, with a retrospective traceability table connecting organizational needs, exact governance provisions, mechanisms, existing evidence and limits. See the [source/provenance map](research/C3-SOURCE-MAP.md). EU AI Act applicability is conditional; NIST AI RMF 1.0 is voluntary. Source versions and access limitations are explicit.
 
 Sections 3 and 4 of `main.tex` now carry Claude's rewritten narrative, with the applicability of the EU AI Act corrected for the Digital Omnibus dates. The Codex [explanatory reference](research/C3-REFERENCE-DRAFT.md) is superseded. **C3 is reviewed (Nov 4)**; see the [C3 review record](research/C3-REVIEW.md). The text is AI-drafted, so the publisher first-draft rule and the A1/P5 checks still apply before submission.
+
+## C4 evaluation consolidation
+
+The main evaluation now separates requirements, integrity, retained evidence, answer quality, disclosure and cost, with three generated summary tables. Detailed technical explanations/plots are in `evaluation-details.tex`; unchanged local, hosted, paid and free report fragments are included in the historical-cohort appendix. The unapproved practitioner protocol is in `practitioner-proposal.tex` and remains future work.
+
+Use `node paper/scripts/c4-tables.mjs` to regenerate presentation only and `node paper/scripts/c4-tables.mjs --check` to verify it without writes. This generator validates saved percentile/count aggregates against retained rows and records source hashes in `c4-evidence.json`; it performs no inference, benchmark or bootstrap rerun. Do not run `eval/run-all.sh` or the benchmark commands to update the presentation, because they replace measurements.
+
+See the [C4 evidence map](research/C4-EVIDENCE-MAP.md) for denominator definitions, measured revisions, uncertainty and provenance, and the [separate AI-generated reference](research/C4-REFERENCE-DRAFT.md) for author rewriting. Hosted residual time includes harness work; signed-log parity and accepted repeat presentations are explicit. C2 corrections and the reviewed C3 narrative are preserved.
+
+**C4 evidence and presentation consolidation complete; author review and A6 clearance pending.** Ai4Privacy-dependent material is retained in this working draft with a visible permission/removal TODO; its move to an appendix does not resolve permission. Final appendix/supplement requirements also remain part of A7. This pass adds no runtime/API changes, inference or new experimental measurements.
 
 ## Build
 

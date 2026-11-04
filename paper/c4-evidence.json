@@ -1,0 +1,1625 @@
+{
+  "version": "c4-presentation/v1",
+  "inputs": {
+    "eval/realworld/results/validated-free-summary.json": "71c1058eb737096cf513204ac11daeaaedeb0e2eebb6d6106e4d50f39dafac95",
+    "eval/realworld/results/validated-free-full.json": "aeaa929f2c18a166cd7349fb7169c2012b921b0fd07d814550d58a763423c0ea",
+    "eval/realworld/results/validated-summary.json": "c15192eb2dc3a2371c1fb6105586ba4f999caf38068fd0a1794079d6eb4a7474",
+    "eval/results/overhead.json": "12f2bc03408de1949354f9b300ebc41d6cee0354c5bf471ed17e9acd7cf3f1da",
+    "eval/results/env-latency.json": "7bc1040104c4b290468b3cbaa6b78cef69275fa9534969329e8d81ac3386b277",
+    "eval/results/env-functional.json": "99dd41b7aee99a3f64919e1f6e0ff3ca2ea4b3a59c6b0d9cb4e8ef8b3d9674f8",
+    "eval/results/tamper.json": "4f5bf9ffb803e448c052b356fcd6ca76c25febc88a76a0c984b9e7e6d314b55a",
+    "eval/results/v16.json": "32a461d9c35a7392940d6bffce8e43260e3fb3ff682487e96a5b189ae021ccc2",
+    "eval/realworld/results/accountability.json": "f171064d154eb0c8eef2e59dc4f86275061db6937f67cf2d54df46be4527afc3",
+    "eval/public-refund/results/controls.json": "b2173cca4c0e5cb52b6412ef364e8af786f514be019dff6f884632cc1656eb34",
+    "eval/public-refund/results/summary.json": "6cd8e50e47332cbf5f82de73562c0ad028fa3f59777e82864f2b6f4b2ef3fbaa",
+    "eval/refund/results/controls.json": "b216c3fd38ea8dd959f791098267813a457a6a11fc4225459fd00d55dbc9ed03"
+  },
+  "controlled": {
+    "env": {
+      "node": "v24.22.1",
+      "v8": "13.6.233.17-node.58",
+      "platform": "linux 6.12.94+",
+      "arch": "x64",
+      "cpu": "Intel(R) Xeon(R) Processor",
+      "cores": 4,
+      "totalMemGB": 15.6,
+      "latticeVersion": "1.6.0",
+      "date": "2026-10-26T18:11:44.232Z",
+      "gitCommit": "ae99fb5a3de3bb149542a0f61c55140661ef7600",
+      "firstCommit": "d4f740c5d68adcda6b49d29f92406fd99e7ab8a1 2026-04-21T23:42:17-05:00"
+    },
+    "trials": 1000,
+    "warmup": 100,
+    "summary": [
+      {
+        "config": "text-1KB",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.0662117019915022,
+        "p50": 0.05802700016647577,
+        "p95": 0.10000099986791611,
+        "p99": 0.1375199998728931,
+        "min": 0.04393799975514412,
+        "max": 2.03302099974826
+      },
+      {
+        "config": "text-1KB",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.08505521500157193,
+        "p50": 0.07682200009003282,
+        "p95": 0.12841300014406443,
+        "p99": 0.17859499994665384,
+        "min": 0.06172800017520785,
+        "max": 0.5571539998054504
+      },
+      {
+        "config": "text-1KB",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 0.3593631190108135,
+        "p50": 0.29125400027260184,
+        "p95": 0.7493590000085533,
+        "p99": 1.025772999972105,
+        "min": 0.21879300009459257,
+        "max": 3.7508470001630485
+      },
+      {
+        "config": "text-1KB",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.1860743439984508,
+        "p50": 0.17201899969950318,
+        "p95": 0.27617499977350235,
+        "p99": 0.4542679996229708,
+        "min": 0.1390069997869432,
+        "max": 0.7927939998917282
+      },
+      {
+        "config": "text-10KB",
+        "payloadBytes": 10240,
+        "artifacts": 1,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.08120673999330029,
+        "p50": 0.07574799982830882,
+        "p95": 0.10945699969306588,
+        "p99": 0.18575199972838163,
+        "min": 0.06677700020372868,
+        "max": 0.27068799966946244
+      },
+      {
+        "config": "text-10KB",
+        "payloadBytes": 10240,
+        "artifacts": 1,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.09612940400233493,
+        "p50": 0.0920290001668036,
+        "p95": 0.1197820003144443,
+        "p99": 0.15551699977368116,
+        "min": 0.08070399984717369,
+        "max": 0.2579139997251332
+      },
+      {
+        "config": "text-10KB",
+        "payloadBytes": 10240,
+        "artifacts": 1,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 0.33412442900193856,
+        "p50": 0.2869270001538098,
+        "p95": 0.6482350002042949,
+        "p99": 0.8454669998027384,
+        "min": 0.2428749999962747,
+        "max": 1.2691909996792674
+      },
+      {
+        "config": "text-10KB",
+        "payloadBytes": 10240,
+        "artifacts": 1,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.17245065199397505,
+        "p50": 0.16015600040555,
+        "p95": 0.2677859999239445,
+        "p99": 0.3704979997128248,
+        "min": 0.14024499990046024,
+        "max": 0.7744599999859929
+      },
+      {
+        "config": "text-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 1,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.3255108329975046,
+        "p50": 0.31548399990424514,
+        "p95": 0.3867949997074902,
+        "p99": 0.4640020001679659,
+        "min": 0.27380899991840124,
+        "max": 0.5245729996822774
+      },
+      {
+        "config": "text-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 1,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.336385780993849,
+        "p50": 0.3262519999407232,
+        "p95": 0.39151200000196695,
+        "p99": 0.4847919996827841,
+        "min": 0.2836389997974038,
+        "max": 1.4214910003356636
+      },
+      {
+        "config": "text-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 1,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 0.8377233740002848,
+        "p50": 0.777712999843061,
+        "p95": 1.285036999732256,
+        "p99": 1.5881189997307956,
+        "min": 0.5476179998368025,
+        "max": 7.604864999651909
+      },
+      {
+        "config": "text-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 1,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.20479796100175007,
+        "p50": 0.179388000164181,
+        "p95": 0.35987400030717254,
+        "p99": 0.47560600005090237,
+        "min": 0.15065500000491738,
+        "max": 1.655163999646902
+      },
+      {
+        "config": "text-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 1,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 3.6889493729956446,
+        "p50": 3.528619999997318,
+        "p95": 4.948108000215143,
+        "p99": 6.601894000079483,
+        "min": 3.0171570000238717,
+        "max": 7.414375999942422
+      },
+      {
+        "config": "text-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 1,
+        "measure": "run",
+        "n": 1000,
+        "mean": 3.676620554003399,
+        "p50": 3.493791999761015,
+        "p95": 5.067197000142187,
+        "p99": 6.430432999972254,
+        "min": 2.9923519999720156,
+        "max": 12.674873999785632
+      },
+      {
+        "config": "text-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 1,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 5.796668906006031,
+        "p50": 5.591789999976754,
+        "p95": 7.672172000166029,
+        "p99": 9.61595300026238,
+        "min": 4.58765699993819,
+        "max": 14.57472199993208
+      },
+      {
+        "config": "text-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 1,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.28513807100104166,
+        "p50": 0.22066199965775013,
+        "p95": 0.4341699997894466,
+        "p99": 0.6009680000133812,
+        "min": 0.18050400028005242,
+        "max": 5.302170000039041
+      },
+      {
+        "config": "image-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 2,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.06453742599766701,
+        "p50": 0.061613999772816896,
+        "p95": 0.08270899998024106,
+        "p99": 0.10047100018709898,
+        "min": 0.052244999911636114,
+        "max": 0.17717300029471517
+      },
+      {
+        "config": "image-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 2,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.09124697299767286,
+        "p50": 0.0831229998730123,
+        "p95": 0.12633899971842766,
+        "p99": 0.1577350003644824,
+        "min": 0.07067999988794327,
+        "max": 0.26031099958345294
+      },
+      {
+        "config": "image-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 2,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 0.49593907399103043,
+        "p50": 0.4220969998277724,
+        "p95": 0.8245909996330738,
+        "p99": 1.2128039998933673,
+        "min": 0.36342900013551116,
+        "max": 3.654987999703735
+      },
+      {
+        "config": "image-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 2,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.17843999100476504,
+        "p50": 0.1674069999717176,
+        "p95": 0.2138139996677637,
+        "p99": 0.41478999983519316,
+        "min": 0.15120799979195,
+        "max": 1.2189879999496043
+      },
+      {
+        "config": "image-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 2,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.08423707399889827,
+        "p50": 0.07820699969306588,
+        "p95": 0.11569599993526936,
+        "p99": 0.14954600017517805,
+        "min": 0.06824300019070506,
+        "max": 1.1433190000243485
+      },
+      {
+        "config": "image-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 2,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.09263160799909383,
+        "p50": 0.0877329995855689,
+        "p95": 0.12349599972367287,
+        "p99": 0.1655620001256466,
+        "min": 0.07243000017479062,
+        "max": 0.6470530000515282
+      },
+      {
+        "config": "image-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 2,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 1.8555232139960862,
+        "p50": 1.4415210001170635,
+        "p95": 4.804224000312388,
+        "p99": 6.500923999585211,
+        "min": 1.1688879998400807,
+        "max": 7.786678999662399
+      },
+      {
+        "config": "image-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 2,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.24131655499478802,
+        "p50": 0.1967889997176826,
+        "p95": 0.4203949999064207,
+        "p99": 0.90856400039047,
+        "min": 0.16143299965187907,
+        "max": 2.5816250001080334
+      },
+      {
+        "config": "multimodal-5art",
+        "payloadBytes": 618496,
+        "artifacts": 5,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.0975885719996877,
+        "p50": 0.09242499992251396,
+        "p95": 0.12422800017520785,
+        "p99": 0.1997859999537468,
+        "min": 0.08000099984928966,
+        "max": 0.8562680003233254
+      },
+      {
+        "config": "multimodal-5art",
+        "payloadBytes": 618496,
+        "artifacts": 5,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.12672926599532366,
+        "p50": 0.1190820001065731,
+        "p95": 0.17030399991199374,
+        "p99": 0.22171599976718426,
+        "min": 0.09941399982199073,
+        "max": 0.6960080000571907
+      },
+      {
+        "config": "multimodal-5art",
+        "payloadBytes": 618496,
+        "artifacts": 5,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 1.7554566260036082,
+        "p50": 1.4364120000973344,
+        "p95": 3.646712999790907,
+        "p99": 7.873507000040263,
+        "min": 1.1238270001485944,
+        "max": 9.694534000009298
+      },
+      {
+        "config": "multimodal-5art",
+        "payloadBytes": 618496,
+        "artifacts": 5,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.21251887300238012,
+        "p50": 0.1878969999961555,
+        "p95": 0.2735349996946752,
+        "p99": 0.6643689996562898,
+        "min": 0.1651349999010563,
+        "max": 4.7194869997911155
+      },
+      {
+        "config": "text-x1",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.0550452320096083,
+        "p50": 0.05044500017538667,
+        "p95": 0.07672599982470274,
+        "p99": 0.1468990002758801,
+        "min": 0.03863500012084842,
+        "max": 0.3981770002283156
+      },
+      {
+        "config": "text-x1",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.07720917499810458,
+        "p50": 0.07023400021716952,
+        "p95": 0.1062699998728931,
+        "p99": 0.13769999984651804,
+        "min": 0.05538100004196167,
+        "max": 0.23632200015708804
+      },
+      {
+        "config": "text-x1",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 0.31348904900066554,
+        "p50": 0.284512999933213,
+        "p95": 0.5155600002035499,
+        "p99": 0.7564230002462864,
+        "min": 0.19573399983346462,
+        "max": 3.0246900003403425
+      },
+      {
+        "config": "text-x1",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.1823042539958842,
+        "p50": 0.16627700021490455,
+        "p95": 0.26093300012871623,
+        "p99": 0.49443199997767806,
+        "min": 0.13547899993136525,
+        "max": 1.2971640001051128
+      },
+      {
+        "config": "text-x10",
+        "payloadBytes": 10240,
+        "artifacts": 10,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.17747607500292362,
+        "p50": 0.16642600018531084,
+        "p95": 0.22727100038900971,
+        "p99": 0.49147600028663874,
+        "min": 0.1489729997701943,
+        "max": 0.6333659999072552
+      },
+      {
+        "config": "text-x10",
+        "payloadBytes": 10240,
+        "artifacts": 10,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.21658222200162708,
+        "p50": 0.2069000001065433,
+        "p95": 0.2647970002144575,
+        "p99": 0.4343420001678169,
+        "min": 0.18458300037309527,
+        "max": 0.7466159998439252
+      },
+      {
+        "config": "text-x10",
+        "payloadBytes": 10240,
+        "artifacts": 10,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 1.3744828759990633,
+        "p50": 1.3070640000514686,
+        "p95": 1.9253409998491406,
+        "p99": 2.5004679998382926,
+        "min": 1.0420940001495183,
+        "max": 3.9195760004222393
+      },
+      {
+        "config": "text-x10",
+        "payloadBytes": 10240,
+        "artifacts": 10,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.19826799899572506,
+        "p50": 0.18841399997472763,
+        "p95": 0.24612800031900406,
+        "p99": 0.4248080002143979,
+        "min": 0.1629780000075698,
+        "max": 0.6882319999858737
+      },
+      {
+        "config": "text-x50",
+        "payloadBytes": 51200,
+        "artifacts": 50,
+        "measure": "plain",
+        "n": 1000,
+        "mean": 0.5520992559934966,
+        "p50": 0.5352630000561476,
+        "p95": 0.6306590000167489,
+        "p99": 0.9189059999771416,
+        "min": 0.4960070000961423,
+        "max": 1.817698999773711
+      },
+      {
+        "config": "text-x50",
+        "payloadBytes": 51200,
+        "artifacts": 50,
+        "measure": "run",
+        "n": 1000,
+        "mean": 0.7697618600027636,
+        "p50": 0.7458529998548329,
+        "p95": 0.8821640000678599,
+        "p99": 1.011939000338316,
+        "min": 0.6638319999910891,
+        "max": 1.5206380002200603
+      },
+      {
+        "config": "text-x50",
+        "payloadBytes": 51200,
+        "artifacts": 50,
+        "measure": "runSig",
+        "n": 1000,
+        "mean": 6.1185094789974395,
+        "p50": 5.888319999910891,
+        "p95": 7.531341999769211,
+        "p99": 13.557111999951303,
+        "min": 4.836444000247866,
+        "max": 22.49520400026813
+      },
+      {
+        "config": "text-x50",
+        "payloadBytes": 51200,
+        "artifacts": 50,
+        "measure": "verify",
+        "n": 1000,
+        "mean": 0.2343627769947052,
+        "p50": 0.2167829996906221,
+        "p95": 0.3505130000412464,
+        "p99": 0.5102399997413158,
+        "min": 0.1866389997303486,
+        "max": 2.3821910000406206
+      },
+      {
+        "config": "micro",
+        "payloadBytes": 0,
+        "artifacts": 1,
+        "measure": "createReceipt",
+        "n": 5000,
+        "mean": 0.06478018640503287,
+        "p50": 0.05899599986150861,
+        "p95": 0.07682200009003282,
+        "p99": 0.2108789999037981,
+        "min": 0.05348900007084012,
+        "max": 1.7096530003473163
+      },
+      {
+        "config": "micro",
+        "payloadBytes": 0,
+        "artifacts": 1,
+        "measure": "verifyReceipt",
+        "n": 5000,
+        "mean": 0.13122536459807307,
+        "p50": 0.12371300021186471,
+        "p95": 0.15301600005477667,
+        "p99": 0.2945599998347461,
+        "min": 0.11495000030845404,
+        "max": 3.62979600019753
+      },
+      {
+        "config": "micro",
+        "payloadBytes": 0,
+        "artifacts": 1,
+        "measure": "receiptCid",
+        "n": 5000,
+        "mean": 0.05537791659953073,
+        "p50": 0.05000000027939677,
+        "p95": 0.06735299993306398,
+        "p99": 0.18317800015211105,
+        "min": 0.04342000000178814,
+        "max": 2.178044999949634
+      }
+    ],
+    "sizes": [
+      {
+        "config": "text-1KB",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "receiptEnvelopeBytes": 1183,
+        "payloadCanonicalBytes": 737,
+        "ratio": 1.15527
+      },
+      {
+        "config": "text-10KB",
+        "payloadBytes": 10240,
+        "artifacts": 1,
+        "receiptEnvelopeBytes": 1183,
+        "payloadCanonicalBytes": 737,
+        "ratio": 0.11553
+      },
+      {
+        "config": "text-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 1,
+        "receiptEnvelopeBytes": 1183,
+        "payloadCanonicalBytes": 737,
+        "ratio": 0.01155
+      },
+      {
+        "config": "text-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 1,
+        "receiptEnvelopeBytes": 1183,
+        "payloadCanonicalBytes": 737,
+        "ratio": 0.00116
+      },
+      {
+        "config": "image-100KB",
+        "payloadBytes": 102400,
+        "artifacts": 2,
+        "receiptEnvelopeBytes": 1271,
+        "payloadCanonicalBytes": 804,
+        "ratio": 0.01241
+      },
+      {
+        "config": "image-1000KB",
+        "payloadBytes": 1024000,
+        "artifacts": 2,
+        "receiptEnvelopeBytes": 1271,
+        "payloadCanonicalBytes": 804,
+        "ratio": 0.00124
+      },
+      {
+        "config": "multimodal-5art",
+        "payloadBytes": 618496,
+        "artifacts": 5,
+        "receiptEnvelopeBytes": 1539,
+        "payloadCanonicalBytes": 1005,
+        "ratio": 0.00249
+      },
+      {
+        "config": "text-x1",
+        "payloadBytes": 1024,
+        "artifacts": 1,
+        "receiptEnvelopeBytes": 1183,
+        "payloadCanonicalBytes": 737,
+        "ratio": 1.15527
+      },
+      {
+        "config": "text-x10",
+        "payloadBytes": 10240,
+        "artifacts": 10,
+        "receiptEnvelopeBytes": 1987,
+        "payloadCanonicalBytes": 1340,
+        "ratio": 0.19404
+      },
+      {
+        "config": "text-x50",
+        "payloadBytes": 51200,
+        "artifacts": 50,
+        "receiptEnvelopeBytes": 5559,
+        "payloadCanonicalBytes": 4020,
+        "ratio": 0.10857
+      }
+    ],
+    "uncertainty": "Saved percentiles only; no CI for signing delta."
+  },
+  "hosted": {
+    "revision": "07cd9006b0fceaeacd81a8a6e38b66bb1b673c69",
+    "node": "v24.14.1",
+    "hostRecorded": false,
+    "latency": [
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "suite": "latency",
+        "arm": "direct",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 0,
+          "verified": 0,
+          "taskBound": 0,
+          "policyBound": 0,
+          "requestBound": 0,
+          "expectedBindingsVerified": 0,
+          "submittedBodiesCovered": 0,
+          "outputBindingEligible": 0,
+          "outputHashMatch": 0,
+          "editedOutputDetected": 0
+        },
+        "correct": 20,
+        "timing": {
+          "wallMs": {
+            "n": 20,
+            "p50": 559.9466665000655,
+            "p95": 1209.5430194000248,
+            "medianCI95": [
+              545.1626459999243,
+              624.7947494999971
+            ]
+          },
+          "providerMs": {
+            "n": 20,
+            "p50": 558.4258540000301,
+            "p95": 1208.4102003500798,
+            "medianCI95": [
+              542.5018749999581,
+              623.1544794999063
+            ]
+          },
+          "processingMs": {
+            "n": 20,
+            "p50": 1.3242080000927672,
+            "p95": 3.5776896001538265,
+            "medianCI95": [
+              1.0922295001801103,
+              2.06637499993667
+            ]
+          }
+        }
+      },
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "suite": "latency",
+        "arm": "unsigned",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 0,
+          "verified": 0,
+          "taskBound": 0,
+          "policyBound": 0,
+          "requestBound": 0,
+          "expectedBindingsVerified": 0,
+          "submittedBodiesCovered": 0,
+          "outputBindingEligible": 0,
+          "outputHashMatch": 0,
+          "editedOutputDetected": 0
+        },
+        "correct": 20,
+        "timing": {
+          "wallMs": {
+            "n": 20,
+            "p50": 636.5621879999526,
+            "p95": 1251.5554607503002,
+            "medianCI95": [
+              580.0115834998433,
+              763.8910410000244
+            ]
+          },
+          "providerMs": {
+            "n": 20,
+            "p50": 634.8747084999923,
+            "p95": 1246.8655996999473,
+            "medianCI95": [
+              577.0220625001239,
+              760.5047709998908
+            ]
+          },
+          "processingMs": {
+            "n": 20,
+            "p50": 1.6874794999603182,
+            "p95": 5.016428250144236,
+            "medianCI95": [
+              1.4722090000286698,
+              2.7464999997755513
+            ]
+          }
+        }
+      },
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "suite": "latency",
+        "arm": "signed",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 20,
+          "verified": 20,
+          "taskBound": 20,
+          "policyBound": 20,
+          "requestBound": 20,
+          "expectedBindingsVerified": 20,
+          "submittedBodiesCovered": 20,
+          "outputBindingEligible": 20,
+          "outputHashMatch": 20,
+          "editedOutputDetected": 20
+        },
+        "correct": 20,
+        "timing": {
+          "wallMs": {
+            "n": 20,
+            "p50": 586.974146499997,
+            "p95": 1639.6929842998866,
+            "medianCI95": [
+              553.6115200001514,
+              760.4649164999137
+            ]
+          },
+          "providerMs": {
+            "n": 20,
+            "p50": 585.3000834999839,
+            "p95": 1637.7333773999019,
+            "medianCI95": [
+              550.4070414999733,
+              758.6869584999513
+            ]
+          },
+          "processingMs": {
+            "n": 20,
+            "p50": 1.843792000086978,
+            "p95": 8.086729500151707,
+            "medianCI95": [
+              1.6740630000131205,
+              3.6524800000479445
+            ]
+          }
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "latency",
+        "arm": "direct",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 0,
+          "verified": 0,
+          "taskBound": 0,
+          "policyBound": 0,
+          "requestBound": 0,
+          "expectedBindingsVerified": 0,
+          "submittedBodiesCovered": 0,
+          "outputBindingEligible": 0,
+          "outputHashMatch": 0,
+          "editedOutputDetected": 0
+        },
+        "correct": 20,
+        "timing": {
+          "wallMs": {
+            "n": 20,
+            "p50": 1958.5273545000236,
+            "p95": 3724.5637217499207,
+            "medianCI95": [
+              1590.3570414998103,
+              2793.503729499993
+            ]
+          },
+          "providerMs": {
+            "n": 20,
+            "p50": 1955.2476454999996,
+            "p95": 3723.5308125000106,
+            "medianCI95": [
+              1586.6840210000519,
+              2790.9568955000723
+            ]
+          },
+          "processingMs": {
+            "n": 20,
+            "p50": 2.1289584999904037,
+            "p95": 6.132283349777572,
+            "medianCI95": [
+              1.3581054999958724,
+              3.1034169998019934
+            ]
+          }
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "latency",
+        "arm": "unsigned",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 0,
+          "verified": 0,
+          "taskBound": 0,
+          "policyBound": 0,
+          "requestBound": 0,
+          "expectedBindingsVerified": 0,
+          "submittedBodiesCovered": 0,
+          "outputBindingEligible": 0,
+          "outputHashMatch": 0,
+          "editedOutputDetected": 0
+        },
+        "correct": 19,
+        "timing": {
+          "wallMs": {
+            "n": 19,
+            "p50": 1792.7350000001024,
+            "p95": 5497.3672587000765,
+            "medianCI95": [
+              1605.7567920000292,
+              2453.248750000028
+            ]
+          },
+          "providerMs": {
+            "n": 19,
+            "p50": 1790.0249159999657,
+            "p95": 5495.638649699953,
+            "medianCI95": [
+              1603.9852080000564,
+              2451.4534160001203
+            ]
+          },
+          "processingMs": {
+            "n": 19,
+            "p50": 2.246082999743521,
+            "p95": 4.15171300002839,
+            "medianCI95": [
+              1.696415999904275,
+              2.5160419999156147
+            ]
+          }
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "latency",
+        "arm": "signed",
+        "expected": 20,
+        "attempted": 20,
+        "unattempted": 0,
+        "runtimeSuccess": 20,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 20
+        },
+        "receipts": {
+          "present": 20,
+          "verified": 20,
+          "taskBound": 20,
+          "policyBound": 20,
+          "requestBound": 20,
+          "expectedBindingsVerified": 20,
+          "submittedBodiesCovered": 20,
+          "outputBindingEligible": 20,
+          "outputHashMatch": 20,
+          "editedOutputDetected": 20
+        },
+        "correct": 20,
+        "timing": {
+          "wallMs": {
+            "n": 20,
+            "p50": 1936.8526670000283,
+            "p95": 3390.086200849632,
+            "medianCI95": [
+              1642.3712085000006,
+              2438.1476455001393
+            ]
+          },
+          "providerMs": {
+            "n": 20,
+            "p50": 1933.8393124999711,
+            "p95": 3385.097293399986,
+            "medianCI95": [
+              1640.0746250001248,
+              2435.551750499988
+            ]
+          },
+          "processingMs": {
+            "n": 20,
+            "p50": 2.8192295000189915,
+            "p95": 5.3328844996402065,
+            "medianCI95": [
+              2.183936999877915,
+              3.6011660000076517
+            ]
+          }
+        }
+      }
+    ],
+    "intervals": "Reused saved 95% bootstrap median intervals, 10000 resamples; no recomputation.",
+    "paidLatencyAttempted": 0,
+    "paidLatencyPlanned": 450
+  },
+  "quality": {
+    "revision": "07cd9006b0fceaeacd81a8a6e38b66bb1b673c69",
+    "citations": [
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "suite": "citations",
+        "arm": "prompt-only",
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 60,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 60
+        },
+        "receipts": {
+          "present": 60,
+          "verified": 60,
+          "taskBound": 60,
+          "policyBound": 60,
+          "requestBound": 60,
+          "expectedBindingsVerified": 60,
+          "submittedBodiesCovered": 60,
+          "outputBindingEligible": 60,
+          "outputHashMatch": 60,
+          "editedOutputDetected": 60
+        },
+        "correct": null,
+        "citations": {
+          "expected": 60,
+          "attempted": 60,
+          "unattempted": 0,
+          "runtimeSuccess": 60,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 60
+          },
+          "formatValid": 53,
+          "usable": 53,
+          "judgeAttempted": 53,
+          "judgeRuntimeSuccess": 53,
+          "judgeValid": 53,
+          "usableJudgeValid": 53,
+          "judgeAbstained": 0,
+          "emptyClaimJudgments": 0,
+          "answerCorrect": 51,
+          "usableAnswerCorrect": 51,
+          "strictSuccess": 39,
+          "judgeInvalid": 0,
+          "unjudgedOrInvalidPerExpected": 7,
+          "usableUnjudgedOrInvalid": 0,
+          "formatInvalidOrUnavailable": 7,
+          "answerCorrectPerExpected": 0.85,
+          "strictSuccessPerExpected": 0.65,
+          "answerCorrectAmongValidJudgments": 0.9622641509433962,
+          "claims": {
+            "claims": 140,
+            "supported": 140,
+            "cited": 137,
+            "supportedAndCited": 137,
+            "relevantCitations": 199,
+            "totalCitations": 217,
+            "support": 1,
+            "citedCompleteness": 0.9785714285714285,
+            "supportedAndCitedCompleteness": 0.9785714285714285,
+            "citationPrecision": 0.9170506912442397
+          },
+          "measurementStatus": "measured-with-fixed-denominator"
+        }
+      },
+      {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "suite": "citations",
+        "arm": "contract",
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 56,
+        "runtimeFailure": 4,
+        "runtimeSuccessPerExpected": 0.9333333333333333,
+        "errorKinds": {
+          "tripwire-violated": 4
+        },
+        "httpStatuses": {
+          "200": 60
+        },
+        "receipts": {
+          "present": 60,
+          "verified": 60,
+          "taskBound": 60,
+          "policyBound": 60,
+          "requestBound": 60,
+          "expectedBindingsVerified": 60,
+          "submittedBodiesCovered": 60,
+          "outputBindingEligible": 56,
+          "outputHashMatch": 56,
+          "editedOutputDetected": 56
+        },
+        "correct": null,
+        "citations": {
+          "expected": 60,
+          "attempted": 60,
+          "unattempted": 0,
+          "runtimeSuccess": 56,
+          "runtimeFailure": 4,
+          "runtimeSuccessPerExpected": 0.9333333333333333,
+          "errorKinds": {
+            "tripwire-violated": 4
+          },
+          "httpStatuses": {
+            "200": 60
+          },
+          "formatValid": 56,
+          "usable": 56,
+          "judgeAttempted": 56,
+          "judgeRuntimeSuccess": 56,
+          "judgeValid": 56,
+          "usableJudgeValid": 56,
+          "judgeAbstained": 1,
+          "emptyClaimJudgments": 0,
+          "answerCorrect": 52,
+          "usableAnswerCorrect": 52,
+          "strictSuccess": 44,
+          "judgeInvalid": 0,
+          "unjudgedOrInvalidPerExpected": 4,
+          "usableUnjudgedOrInvalid": 0,
+          "formatInvalidOrUnavailable": 4,
+          "answerCorrectPerExpected": 0.8666666666666667,
+          "strictSuccessPerExpected": 0.7333333333333333,
+          "answerCorrectAmongValidJudgments": 0.9285714285714286,
+          "claims": {
+            "claims": 146,
+            "supported": 143,
+            "cited": 144,
+            "supportedAndCited": 141,
+            "relevantCitations": 219,
+            "totalCitations": 236,
+            "support": 0.9794520547945206,
+            "citedCompleteness": 0.9863013698630136,
+            "supportedAndCitedCompleteness": 0.9657534246575342,
+            "citationPrecision": 0.9279661016949152
+          },
+          "measurementStatus": "measured-with-fixed-denominator"
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "citations",
+        "arm": "prompt-only",
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 60,
+        "runtimeFailure": 0,
+        "runtimeSuccessPerExpected": 1,
+        "errorKinds": {},
+        "httpStatuses": {
+          "200": 60
+        },
+        "receipts": {
+          "present": 60,
+          "verified": 60,
+          "taskBound": 60,
+          "policyBound": 60,
+          "requestBound": 60,
+          "expectedBindingsVerified": 60,
+          "submittedBodiesCovered": 60,
+          "outputBindingEligible": 60,
+          "outputHashMatch": 60,
+          "editedOutputDetected": 60
+        },
+        "correct": null,
+        "citations": {
+          "expected": 60,
+          "attempted": 60,
+          "unattempted": 0,
+          "runtimeSuccess": 60,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 60
+          },
+          "formatValid": 52,
+          "usable": 52,
+          "judgeAttempted": 52,
+          "judgeRuntimeSuccess": 52,
+          "judgeValid": 52,
+          "usableJudgeValid": 52,
+          "judgeAbstained": 0,
+          "emptyClaimJudgments": 0,
+          "answerCorrect": 48,
+          "usableAnswerCorrect": 48,
+          "strictSuccess": 42,
+          "judgeInvalid": 0,
+          "unjudgedOrInvalidPerExpected": 8,
+          "usableUnjudgedOrInvalid": 0,
+          "formatInvalidOrUnavailable": 8,
+          "answerCorrectPerExpected": 0.8,
+          "strictSuccessPerExpected": 0.7,
+          "answerCorrectAmongValidJudgments": 0.9230769230769231,
+          "claims": {
+            "claims": 111,
+            "supported": 107,
+            "cited": 110,
+            "supportedAndCited": 106,
+            "relevantCitations": 158,
+            "totalCitations": 169,
+            "support": 0.963963963963964,
+            "citedCompleteness": 0.990990990990991,
+            "supportedAndCitedCompleteness": 0.954954954954955,
+            "citationPrecision": 0.9349112426035503
+          },
+          "measurementStatus": "measured-with-fixed-denominator"
+        }
+      },
+      {
+        "model": "dots-studio/dots-3-note-preview:free",
+        "suite": "citations",
+        "arm": "contract",
+        "expected": 60,
+        "attempted": 60,
+        "unattempted": 0,
+        "runtimeSuccess": 52,
+        "runtimeFailure": 8,
+        "runtimeSuccessPerExpected": 0.8666666666666667,
+        "errorKinds": {
+          "provider_execution": 2,
+          "tripwire-violated": 6
+        },
+        "httpStatuses": {
+          "200": 58,
+          "None": 2
+        },
+        "receipts": {
+          "present": 60,
+          "verified": 60,
+          "taskBound": 60,
+          "policyBound": 60,
+          "requestBound": 60,
+          "expectedBindingsVerified": 60,
+          "submittedBodiesCovered": 60,
+          "outputBindingEligible": 52,
+          "outputHashMatch": 52,
+          "editedOutputDetected": 52
+        },
+        "correct": null,
+        "citations": {
+          "expected": 60,
+          "attempted": 60,
+          "unattempted": 0,
+          "runtimeSuccess": 52,
+          "runtimeFailure": 8,
+          "runtimeSuccessPerExpected": 0.8666666666666667,
+          "errorKinds": {
+            "provider_execution": 2,
+            "tripwire-violated": 6
+          },
+          "httpStatuses": {
+            "200": 58,
+            "None": 2
+          },
+          "formatValid": 52,
+          "usable": 52,
+          "judgeAttempted": 52,
+          "judgeRuntimeSuccess": 52,
+          "judgeValid": 52,
+          "usableJudgeValid": 52,
+          "judgeAbstained": 1,
+          "emptyClaimJudgments": 0,
+          "answerCorrect": 48,
+          "usableAnswerCorrect": 48,
+          "strictSuccess": 41,
+          "judgeInvalid": 0,
+          "unjudgedOrInvalidPerExpected": 8,
+          "usableUnjudgedOrInvalid": 0,
+          "formatInvalidOrUnavailable": 8,
+          "answerCorrectPerExpected": 0.8,
+          "strictSuccessPerExpected": 0.6833333333333333,
+          "answerCorrectAmongValidJudgments": 0.9230769230769231,
+          "claims": {
+            "claims": 111,
+            "supported": 109,
+            "cited": 108,
+            "supportedAndCited": 107,
+            "relevantCitations": 147,
+            "totalCitations": 161,
+            "support": 0.9819819819819819,
+            "citedCompleteness": 0.972972972972973,
+            "supportedAndCitedCompleteness": 0.963963963963964,
+            "citationPrecision": 0.9130434782608695
+          },
+          "measurementStatus": "measured-with-fixed-denominator"
+        }
+      }
+    ],
+    "judge": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "requestPairs": {
+      "bothArmsSubmitted": 120,
+      "identicalBodyHashes": 120
+    }
+  },
+  "integrity": {
+    "historicalRevision": "a8c1496661463333da8d1ac81fe97fa77e255b3b",
+    "attackCases": 3570,
+    "attackRejected": 3570,
+    "chainSummary": [
+      {
+        "mutation": "swap-adjacent-links",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 0,
+        "chainVerifierReason": "tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent"
+      },
+      {
+        "mutation": "drop-middle-link",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 1,
+        "chainVerifierReason": "orphan-link"
+      },
+      {
+        "mutation": "splice-foreign-link",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 1,
+        "chainVerifierReason": "orphan-link"
+      },
+      {
+        "mutation": "truncate-tail",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 0,
+        "chainVerifierReason": "tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent"
+      },
+      {
+        "mutation": "truncate-tail-expectedCount",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 1,
+        "chainVerifierReason": "count-mismatch"
+      },
+      {
+        "mutation": "replace-root",
+        "n": 50,
+        "perReceiptRejectRate": 0,
+        "chainVerifierRejectRate": 1,
+        "chainVerifierReason": "orphan-link"
+      }
+    ],
+    "matchedRevision": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+    "matched": {
+      "json-log": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 21,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 0,
+          "unsupported": 3
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      },
+      "signed-canonical-log": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 0,
+          "rejected": 21,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 3,
+          "unsupported": 0
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      },
+      "lattice-receipt": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 0,
+          "rejected": 21,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 3,
+          "unsupported": 0
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      }
+    },
+    "signedArmDecisionParity": true,
+    "publicControls": [
+      {
+        "name": "intact-control",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": true,
+          "problems": []
+        }
+      },
+      {
+        "name": "changed-page",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "unexpected-page:0",
+            "page-hash-mismatch:0"
+          ]
+        }
+      },
+      {
+        "name": "missing-page",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "page-count-mismatch",
+            "page-missing:8"
+          ]
+        }
+      },
+      {
+        "name": "changed-output",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "output-hash-mismatch"
+          ]
+        }
+      },
+      {
+        "name": "changed-request",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": false,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "execution-binding-mismatch"
+          ]
+        }
+      },
+      {
+        "name": "changed-task",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "input-binding-mismatch"
+          ]
+        }
+      },
+      {
+        "name": "wrong-case",
+        "passed": true,
+        "observed": {
+          "signature": true,
+          "taskBound": true,
+          "policyBound": true,
+          "requestBound": true,
+          "outputBound": true,
+          "evidenceOkay": false,
+          "problems": [
+            "case-mismatch"
+          ]
+        }
+      },
+      {
+        "name": "missing-receipt",
+        "passed": true,
+        "observed": {
+          "signature": false,
+          "evidenceOkay": false,
+          "problems": [
+            "receipt-missing"
+          ]
+        }
+      },
+      {
+        "name": "forged-signature",
+        "passed": true,
+        "observed": {
+          "signature": false,
+          "evidenceOkay": false,
+          "problems": [
+            "signature-invalid"
+          ]
+        }
+      },
+      {
+        "name": "untrusted-key",
+        "passed": true,
+        "observed": {
+          "signature": false,
+          "evidenceOkay": false,
+          "problems": [
+            "key-not-found"
+          ]
+        }
+      }
+    ],
+    "scriptedWrongButSigned": {
+      "signature": true,
+      "evidenceOkay": true,
+      "strict": false
+    }
+  },
+  "macros": {
+    "CfourFreeRecorded": 428,
+    "CfourFreeExpected": 428,
+    "CfourPaidAttempted": 213,
+    "CfourPaidExpected": 1020,
+    "CfourPublicSignatures": 16,
+    "CfourPublicPackages": 15,
+    "CfourPublicPlanned": 16,
+    "CfourFreeStrict": 166,
+    "CfourFreeCitationPlanned": 240,
+    "CfourPublicFrozen": 14
+  },
+  "noNewExperiments": true
+}
