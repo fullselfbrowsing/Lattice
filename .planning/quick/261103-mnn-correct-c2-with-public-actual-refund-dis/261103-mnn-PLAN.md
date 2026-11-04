@@ -2,7 +2,7 @@
 type: quick
 id: 261103-mnn
 date: 2026-11-03
-status: in_progress
+status: complete
 ---
 
 # Correct C2 using public records of actual disputes
