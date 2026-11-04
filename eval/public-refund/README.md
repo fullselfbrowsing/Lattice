@@ -4,7 +4,7 @@ This cohort corrects the earlier substitution of invented scenarios for the requ
 
 ## Completed results
 
-All 16 planned reviews completed with USD 0 added spend. The frozen full-rubric score was **14/16**. A separately documented source-rubric correction accepts a valid supporting page omitted by the original annotation, yielding **15/16** without changing frozen labels/results or rerunning inference. The remaining response failed the format contract. Terminal signatures verified for 16/16 runs; successful-output evidence packages verified for 15/16. See the [interpretation and audit](results/interpretation.md) and [machine-readable correction](results/rubric-audit.json); independent author validation remains pending.
+All 16 planned reviews completed with USD 0 added spend. The frozen full-rubric score was **14/16**. A complete two-way source audit (November 4) corrected three page annotations. One correction gains a pass, one removes a pass and one changes nothing, so the audited score is also **14/16**. Frozen labels and results are unchanged and no inference was rerun. An earlier one-sided correction reporting 15/16 is superseded. The remaining response failed the format contract. Terminal signatures verified for 16/16 runs; successful-output evidence packages verified for 15/16. See the [interpretation and audit](results/interpretation.md), the [complete source audit](results/source-audit.json) and the superseded [first correction](results/rubric-audit.json). Author confirmation remains part of A1/P5.
 
 Measured harness revision: `3330ca2`. Original results were committed at `efefcf2` before the correction. Regenerate only the manuscript table with `node paper/scripts/public-refund-tables.mjs`; `--check` validates the presentation. The reproduction commands below are for a deliberately managed reproduction, not a request to rerun the completed frozen cohort.
 
@@ -17,7 +17,7 @@ The [source manifest](source-manifest.json) records URLs, PDF hashes and page-te
 ## Frozen design
 
 - Four disputes × two pinned free models × two repetitions = **16 planned runs**, no development inference.
-- Five source-based questions per dispute: 80 planned answer instances. Labels and accepted supporting pages are in [cases.mjs](cases.mjs), prepared with Codex and checked against the PDFs before execution. Independent author validation remains pending. Labels and accepted-page lists are excluded from prompts.
+- Five source-based questions per dispute: 80 planned answer instances. Labels and accepted supporting pages are in [cases.mjs](cases.mjs), prepared with Codex and checked against the PDFs before execution. Claude completed a two-way source audit on November 4 ([source-audit.json](results/source-audit.json)); `cases.mjs` is frozen and unchanged. Labels and accepted-page lists are excluded from prompts.
 - Exact factual values, accepted supporting-page coverage and full-rubric run success are reported separately. Null distinguishes absence of settlement evidence from proof of nonpayment. Approximate amounts are explicitly asked as approximate; directions to pay are not reported as completed payments.
 - Supporting-page coverage tests whether a designated source page is cited. It does not establish entailment of every generated sentence. Free-text review notes, legal correctness and human usefulness are not graded.
 - Responses are constrained to a review packet. There are no invented approvals, payment fixtures or financial side effects.

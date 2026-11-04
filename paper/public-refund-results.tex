@@ -13,7 +13,7 @@ Usable structured responses & 8/8 & 7/8 \\
 All factual answers correct & 8/8 & 7/8 \\
 All supporting-page checks, frozen whitelist & 8/8 & 6/8 \\
 Full rubric, frozen page whitelist & 8/8 & 6/8 \\
-Full rubric, documented rubric correction & 8/8 & 7/8 \\
+Full rubric, complete source audit & 8/8 & 6/8 \\
 Correct individual answers & 40/40 & 35/40 \\
 Valid terminal receipt signatures & 8/8 & 8/8 \\
 Locally reverified evidence packages & 8/8 & 7/8 \\
@@ -23,10 +23,10 @@ Locally reverified evidence packages & 8/8 & 7/8 \\
 \textit{Data and design.} 4 actual published decisions (18 pages), 2 models, 2 repetitions: 16 planned reviews and 80 answer instances. Full decision text, including outcomes, was supplied. This is retrospective document review, not prediction of adjudication or a representative customer sample. Measured revision: \code{3330ca2}. No development inference, retries or post-freeze repairs.
 
 \smallskip
-\textit{Scoring.} Five questions per case assess recorded amounts, process facts and evidence limits. Exact values and accepted supporting-page IDs are scored separately; free-text review notes are not graded for entailment or legal correctness. The rubric was prepared with Codex and awaits independent author validation. Frozen full-rubric results by case: Moffatt 4/4; DRN-4377241 4/4; DRN-4148727 3/4; DRN-3785437 3/4. All planned runs remain in denominators.
+\textit{Scoring.} Five questions per case assess recorded amounts, process facts and evidence limits. Exact values and accepted supporting-page IDs are scored separately; free-text review notes are not graded for entailment or legal correctness. The rubric was prepared with Codex and audited against the source pages with Claude; author confirmation remains open. Frozen full-rubric results by case: Moffatt 4/4; DRN-4377241 4/4; DRN-4148727 3/4; DRN-3785437 3/4. All planned runs remain in denominators.
 
 \smallskip
-\textit{Failures and rubric audit.} The frozen rubric gave 14/16 full passes. One Dots response validly cited DRN-4148727 page 1, which states the outcome; the original whitelist accepted only page 2. Accepting both pages yields 15/16, reported separately without changing the frozen results or rerunning inference. The remaining Dots response contained two JSON objects and failed the format contract. Its failure receipt verifies, but carries no successful-output commitment. Unusable responses count as nonpassing, without repair or partial-answer credit.
+\textit{Failures and rubric audit.} The frozen rubric gave 14/16 full passes. A complete source audit re-read all 75 graded answer/page pairs and found page-annotation errors in both directions. DRN-4148727 page~1 also states the outcome, so one Dots run gains a pass. Moffatt page~4 records two fares summing to CAD~1,640.36 but not the CAD~1,630.36 total the tribunal states on pages~7--8, so one Dots run that cited only page~4 loses its pass. Page~5 also states the 90-day window, which changes no score. The audited result is 14/16, re-derived from saved grades without rerunning inference; an earlier one-sided correction reporting 15/16 is superseded. The remaining Dots failure contained two JSON objects and failed the format contract. Its failure receipt verifies, but carries no successful-output commitment. Unusable responses count as nonpassing, without repair or partial-answer credit.
 
 \smallskip
 \textit{Evidence.} 15/16 local packages reverified in a fresh process, including complete page content, output hashes, expected task/policy/request bindings and page presence in the serialized request. Published bundles contain outputs, receipts and fingerprints; full source pages and requests remain local. 10/10 scoped integrity checks passed on one eligible live bundle, including an intact control; these are separate from the case denominator.

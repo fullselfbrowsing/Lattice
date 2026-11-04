@@ -1,0 +1,74 @@
+{
+  "kind": "complete-two-directional-source-rubric-audit",
+  "date": "2026-11-04",
+  "reviewer": "Claude (Claude Code, Claude Opus 5.5) at Lakshman Turlapati's direction. Author confirmation of these judgments remains part of A1/P5.",
+  "relationToEarlierAudit": "rubric-audit.json (2026-11-03) is retained unchanged. It applied only one correction, which favored a model. This audit applies the same standard to all 75 graded answer/page pairs, in both directions, and supersedes that file for presentation.",
+  "standard": "A cited page supports an answer only if that page itself states the recorded value. For a null settlement answer, the page containing the order or direction is acceptable because its terms leave payment unrecorded. Pages that only restate an investigator's recommendation or a party's offer do not support a question about the final direction.",
+  "sourceRecheck": {
+    "date": "2026-11-04",
+    "pdfsRedownloaded": 4,
+    "pdfSha256Matched": 4,
+    "pageTextSha256Matched": 18,
+    "extractor": "Poppler pdftotext 26.06.0 -layout, form-feed split, trimmed (same as prepare.mjs)",
+    "visualCheck": "Moffatt pages 4 and 8 rendered and read; fare and total figures confirmed against the image, not only the extracted text.",
+    "unavailable": "The official CRT decision page and the CanLII HTML refused automated access (HTTP 403). The Middle Temple PDF carries the CanLII page stamp '2024 BCCRT 149 (CanLII)' on every page."
+  },
+  "answerPairsChecked": 75,
+  "corrections": [
+    {
+      "caseId": "drn-4148727",
+      "question": "complaint_upheld",
+      "direction": "valid page omitted from whitelist",
+      "frozenAcceptedPages": [2],
+      "auditedAccepted": [{ "value": false, "pages": [1, 2] }],
+      "evidence": [
+        { "page": 1, "textSha256": "4aae90b1421d5009865315fc8353f095b88787ae241f210e36634832d0831fbe", "locator": "What I've decided - and why", "excerpt": "I do not uphold it." },
+        { "page": 2, "textSha256": "4ffd023402078a32855e7ab4d37ca0f9488fd374c6e94e83ea6052ec7bd0dcf3", "locator": "My final decision", "excerpt": "I do not uphold this complaint." }
+      ],
+      "affectedRows": [{ "id": "drn-4148727:dots-studio/dots-3-note-preview:free:1", "frozenStrict": false, "auditedStrict": true }]
+    },
+    {
+      "caseId": "moffatt",
+      "question": "paid_total_minor",
+      "direction": "whitelisted page does not state the labelled value; valid page omitted",
+      "frozenAcceptedPages": [4, 7],
+      "auditedAccepted": [
+        { "value": 163036, "pages": [7, 8], "basis": "Total stated by the tribunal, paras. 34 (p. 7) and 40 (p. 8)." },
+        { "value": 164036, "pages": [4, 8], "basis": "Sum of the two fares recorded at para. 18 (p. 4): 794.98 + 845.38; the same components appear at paras. 38-39 (p. 8). No response gave this value." }
+      ],
+      "evidence": [
+        { "page": 4, "textSha256": "57dbc827cb6392b8a539e84e55cb383b40f42763a99388d16d99433729f75ecf", "locator": "para. 18", "excerpt": "for $794.98 ... for $845.38" },
+        { "page": 7, "textSha256": "1c25de0349062fcc37f06a23617c28c1ac249f4298c2a5c5199615e02a2719f5", "locator": "para. 34", "excerpt": "In reality, they paid $1,630.36" },
+        { "page": 8, "textSha256": "7e7bffada5b4a691fd9d97ae57961850e79778eaad8bc031ffde061693a8691a", "locator": "para. 40", "excerpt": "Since they paid $1,630.36" }
+      ],
+      "affectedRows": [{ "id": "moffatt:dots-studio/dots-3-note-preview:free:1", "frozenStrict": true, "auditedStrict": false }]
+    },
+    {
+      "caseId": "moffatt",
+      "question": "chatbot_window_days",
+      "direction": "valid page omitted from whitelist",
+      "frozenAcceptedPages": [4],
+      "auditedAccepted": [{ "value": 90, "pages": [4, 5] }],
+      "evidence": [
+        { "page": 5, "textSha256": "65ad2cca231d6992763f3c86ec358eae8bd60b0c6a760bedefa718347c0f1262", "locator": "paras. 20-21", "excerpt": "the 90-day window" }
+      ],
+      "affectedRows": []
+    }
+  ],
+  "recordInconsistency": {
+    "caseId": "moffatt",
+    "finding": "The decision's stated total paid (CAD 1,630.36, paras. 34 and 40) is CAD 10.00 less than the sum of the two fares it records (CAD 794.98 + 845.38 = 1,640.36, para. 18; components repeated at paras. 38-39). Damages of CAD 650.88 and the CAD 812.02 order are computed from the stated total. The published record cannot settle which figure reflects the actual charges.",
+    "frozenLabel": 163036,
+    "modelObservation": "One Dots review note (moffatt:dots-studio/dots-3-note-preview:free:0) flagged the discrepancy and kept the stated figure. The other three Moffatt reviews and the frozen rubric did not mention it. Review notes are not scored."
+  },
+  "unchangedChecks": "74 of the 75 graded answer/page pairs cite a page that states the recorded value. The exception is the Moffatt paid_total_minor answer that cites only page 4. Numeric pairs were checked programmatically against the retained page text; boolean, label and null pairs were read manually. Direction questions in DRN-4377241 correctly exclude page 1, where the same amounts appear as the bank's offer or the investigator's recommendation.",
+  "planned": 16,
+  "frozenStrict": 14,
+  "auditedStrict": 14,
+  "models": [
+    { "model": "nvidia/nemotron-3.5-super-vl:free", "planned": 8, "frozenStrict": 8, "auditedStrict": 8, "frozenCitedAnswers": 40, "auditedCitedAnswers": 40 },
+    { "model": "dots-studio/dots-3-note-preview:free", "planned": 8, "frozenStrict": 6, "auditedStrict": 6, "frozenCitedAnswers": 34, "auditedCitedAnswers": 34 }
+  ],
+  "noNewInference": true,
+  "frozenFilesUnchanged": "Labels and whitelists in cases.mjs, frozen outputs and scores are unchanged. Audited counts are re-derived from the saved per-answer grades by paper/scripts/public-refund-tables.mjs."
+}

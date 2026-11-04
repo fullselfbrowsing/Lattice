@@ -2,16 +2,24 @@
 
 The cohort used the full extracted pages of four actual public dispute decisions. It completed 16 live free-model reviews at measured revision `3330ca2`, with 16 reported-zero request costs and USD 0 added account usage. No booking, company rule, approval or payment event was invented for these reviews. Earlier synthetic tests remain separate.
 
-## Frozen versus corrected source coverage
+## Frozen versus audited source coverage
 
-| Model | Usable responses / planned | Frozen full rubric | Source-rubric correction | Valid receipt signatures | Successful-output evidence packages |
-| --- | --- | --- | --- | --- | --- |
-| Nemotron 3.5 Super VL | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
-| Dots 3 Note Preview | 7/8 | 6/8 | 7/8 | 8/8 | 7/8 |
+| Model | Usable responses / planned | Frozen full rubric | One-sided correction (Nov 3, superseded) | Complete source audit (Nov 4) | Valid receipt signatures | Successful-output evidence packages |
+| --- | --- | --- | --- | --- | --- | --- |
+| Nemotron 3.5 Super VL | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
+| Dots 3 Note Preview | 7/8 | 6/8 | 7/8 | 6/8 | 8/8 | 7/8 |
 
-The frozen [summary](summary.json) gives 14/16 full passes. A post-run source audit identified an annotation omission: for `complaint_upheld` in DRN-4148727, the rubric accepted only page 2, while page 1 also explicitly states the ombudsman's own non-upholding conclusion. The Dots response cited page 1 and had the correct value. This was a valid source reference, not a model factual or citation error. The [audit record](rubric-audit.json) records the source-page hash, locator, short supporting excerpt, original/corrected page sets and affected row.
+The frozen [summary](summary.json) gives 14/16 full passes. On November 3, a post-run audit found that the `complaint_upheld` whitelist for DRN-4148727 accepted only page 2, although page 1 also states the ombudsman's conclusion. The Dots response citing page 1 was correct. That [one-sided correction](rubric-audit.json) produced 15/16 and is kept unchanged as a historical record.
 
-Allowing pages 1 or 2 yields **15/16** full passes, or 8/8 Nemotron and 7/8 Dots. This is a disclosed post-hoc annotation correction, not a new experiment. Original prompts, labels, code, raw outputs and frozen scores remain unchanged. Independent author validation of the full rubric remains pending. Source-page coverage is narrower than semantic entailment of every generated sentence.
+On November 4, Claude re-checked all four PDFs against the manifest and re-read all 75 graded answer/page pairs. The standard was the one that justified the first correction: the cited page must state the recorded value. The [complete audit](source-audit.json) applies that standard in both directions:
+
+- **DRN-4148727 `complaint_upheld`:** the page-1 correction holds. One Dots run gains a pass.
+- **Moffatt `paid_total_minor`:** the whitelist accepted page 4, but that page records only the two fares, CAD 794.98 and 845.38, which sum to **CAD 1,640.36**. The labelled CAD 1,630.36 is the total the tribunal states at paragraphs 34 (page 7) and 40 (page 8), and page 8 was missing from the whitelist. One Dots run cited only page 4, so it loses its pass.
+- **Moffatt `chatbot_window_days`:** page 5 (paragraphs 20–21) also states the 90-day window. No score changes.
+
+The audited result is **14/16** (Nemotron 8/8, Dots 6/8). The 15/16 figure applied only the correction that favored the models and is superseded for presentation. Original prompts, labels, code, raw outputs and frozen scores remain unchanged. `paper/scripts/public-refund-tables.mjs` re-derives the audited counts from the saved per-answer grades and asserts the affected rows. Author confirmation of the audit belongs to A1/P5. Source-page coverage is narrower than semantic entailment of every generated sentence.
+
+**The record is internally inconsistent.** Damages and the CAD 812.02 order are calculated from the stated CAD 1,630.36, which is CAD 10.00 less than the sum of the fares the decision itself records. The published decision cannot show which figure matches the actual charges. One Dots review note flagged the discrepancy without any question asking about it. The rubric did not flag it, and review notes are not scored.
 
 ## The actual format failure
 
@@ -23,6 +31,6 @@ All 10 scoped integrity checks passed on one eligible live bundle: one intact co
 
 ## What the actual-record review adds
 
-All four Moffatt reviews correctly distinguished the recorded total paid, the chatbot's application window, the conflicting webpage restriction, the CAD 812.02 order and the absence of subsequent settlement evidence. All four DRN-4377241 reviews correctly identified the agent-controlled email inbox and separated the directed flight refund, fees and compensation. The case records, amounts and observed model outputs are real; no inference is made that Lattice was deployed at those companies or influenced the historical dispute.
+All four Moffatt reviews correctly distinguished the total the tribunal recorded as paid, the chatbot's application window, the conflicting webpage restriction, the CAD 812.02 order and the absence of subsequent settlement evidence. All four DRN-4377241 reviews correctly identified the agent-controlled email inbox and separated the directed flight refund, fees and compensation. The case records, amounts and observed model outputs are real; no inference is made that Lattice was deployed at those companies or influenced the historical dispute.
 
 The full decisions, including outcomes, were model inputs. This is source-grounded record review, not prediction of adjudication. Cases were selected purposively, repeated runs are dependent, and public records may have appeared in training. Original company exhibits and live staff workflows were unavailable. Managerial usefulness, legal correctness, financial outcomes and comparative effectiveness remain untested.

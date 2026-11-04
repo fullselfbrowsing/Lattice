@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "../..");
 const s = JSON.parse(readFileSync(resolve(root, "eval/public-refund/results/summary.json"), "utf8"));
 const verified = JSON.parse(readFileSync(resolve(root, "eval/public-refund/results/verification.json"), "utf8"));
 const audit = JSON.parse(readFileSync(resolve(root, "eval/public-refund/results/rubric-audit.json"), "utf8"));
+const full = JSON.parse(readFileSync(resolve(root, "eval/public-refund/results/source-audit.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(resolve(root, "eval/public-refund/source-manifest.json"), "utf8"));
 assert.equal(s.planned, PROTOCOL.plannedRuns);
 assert.equal(s.evidenceComplete, verified.rows.filter((r) => r.evidenceOkay).length);
@@ -32,6 +33,33 @@ for (const model of audit.models) {
   assert.equal(rows.filter((entry) => entry.strict).length, model.correctedStrict);
   assert.equal(rows.reduce((n, entry) => n + entry.answers.filter((answer) => answer.citation).length, 0), model.correctedCitedAnswers);
 }
+// The complete audit re-grades only the questions it lists, using the saved per-answer grades.
+assert.equal(full.frozenStrict, s.strictPass);
+for (const fix of full.corrections) {
+  const source = manifest.sources.find((entry) => entry.id === fix.caseId);
+  for (const item of fix.evidence) assert.equal(source.pages.find((page) => page.page === item.page).textSha256, item.textSha256);
+}
+const auditedRows = verified.rows.map((entry) => {
+  const caseId = entry.id.split(":")[0];
+  const answers = entry.grade.answers.map((answer) => {
+    const fix = full.corrections.find((c) => c.caseId === caseId && c.question === answer.id);
+    if (!fix) return answer;
+    const accepted = fix.auditedAccepted.filter((a) => a.value === answer.value);
+    return { ...answer, fact: accepted.length > 0,
+      citation: accepted.some((a) => a.pages.some((page) => answer.sources.includes(`${caseId}-p${page}`))) };
+  });
+  return { ...entry, answers, strict: entry.grade.format && answers.every((a) => a.fact) && answers.every((a) => a.citation) };
+});
+assert.equal(auditedRows.filter((entry) => entry.strict).length, full.auditedStrict);
+assert.deepEqual(auditedRows.filter((entry, i) => entry.strict !== verified.rows[i].strict).map((entry) => entry.id).sort(),
+  full.corrections.flatMap((c) => c.affectedRows.map((r) => r.id)).sort());
+assert.equal(auditedRows.reduce((n, e) => n + e.answers.filter((a) => a.fact).length, 0), s.models.reduce((n, x) => n + x.factualAnswers, 0));
+for (const model of full.models) {
+  const rows = auditedRows.filter((entry) => entry.id.includes(`:${model.model}:`));
+  assert.equal(rows.length, model.planned);
+  assert.equal(rows.filter((entry) => entry.strict).length, model.auditedStrict);
+  assert.equal(rows.reduce((n, entry) => n + entry.answers.filter((answer) => answer.citation).length, 0), model.auditedCitedAnswers);
+}
 const m = PROTOCOL.models.map((id) => s.models.find((m) => m.model === id));
 assert.ok(m.every(Boolean));
 const row = (name, field, denom = "planned") => `${name} & ${m.map((x) => `${x[field]}/${x[denom]}`).join(" & ")} \\\\`;
@@ -50,7 +78,7 @@ ${row("Usable structured responses", "runtimeSuccess")}
 ${row("All factual answers correct", "factualRuns")}
 ${row("All supporting-page checks, frozen whitelist", "citationRuns")}
 ${row("Full rubric, frozen page whitelist", "strictPass")}
-Full rubric, documented rubric correction & ${audit.models.map((x) => `${x.correctedStrict}/${x.planned}`).join(" & ")} \\
+Full rubric, complete source audit & ${PROTOCOL.models.map((id) => full.models.find((x) => x.model === id)).map((x) => `${x.auditedStrict}/${x.planned}`).join(" & ")} \\
 ${row("Correct individual answers", "factualAnswers", "plannedAnswers")}
 ${row("Valid terminal receipt signatures", "signatures")}
 ${row("Locally reverified evidence packages", "evidenceComplete")}
@@ -60,10 +88,10 @@ ${row("Locally reverified evidence packages", "evidenceComplete")}
 \textit{Data and design.} ${CASES.length} actual published decisions (18 pages), ${PROTOCOL.models.length} models, ${PROTOCOL.repetitions} repetitions: ${s.planned} planned reviews and ${m.reduce((n, x) => n + x.plannedAnswers, 0)} answer instances. Full decision text, including outcomes, was supplied. This is retrospective document review, not prediction of adjudication or a representative customer sample. Measured revision: \code{${s.measuredRevision.slice(0, 7)}}. No development inference, retries or post-freeze repairs.
 
 \smallskip
-\textit{Scoring.} Five questions per case assess recorded amounts, process facts and evidence limits. Exact values and accepted supporting-page IDs are scored separately; free-text review notes are not graded for entailment or legal correctness. The rubric was prepared with Codex and awaits independent author validation. Frozen full-rubric results by case: Moffatt ${s.byCase[0].strictPass}/${s.byCase[0].planned}; DRN-4377241 ${s.byCase[1].strictPass}/${s.byCase[1].planned}; DRN-4148727 ${s.byCase[2].strictPass}/${s.byCase[2].planned}; DRN-3785437 ${s.byCase[3].strictPass}/${s.byCase[3].planned}. All planned runs remain in denominators.
+\textit{Scoring.} Five questions per case assess recorded amounts, process facts and evidence limits. Exact values and accepted supporting-page IDs are scored separately; free-text review notes are not graded for entailment or legal correctness. The rubric was prepared with Codex and audited against the source pages with Claude; author confirmation remains open. Frozen full-rubric results by case: Moffatt ${s.byCase[0].strictPass}/${s.byCase[0].planned}; DRN-4377241 ${s.byCase[1].strictPass}/${s.byCase[1].planned}; DRN-4148727 ${s.byCase[2].strictPass}/${s.byCase[2].planned}; DRN-3785437 ${s.byCase[3].strictPass}/${s.byCase[3].planned}. All planned runs remain in denominators.
 
 \smallskip
-\textit{Failures and rubric audit.} The frozen rubric gave ${audit.frozenStrict}/${audit.planned} full passes. One Dots response validly cited DRN-4148727 page 1, which states the outcome; the original whitelist accepted only page 2. Accepting both pages yields ${audit.correctedStrict}/${audit.planned}, reported separately without changing the frozen results or rerunning inference. The remaining Dots response contained two JSON objects and failed the format contract. Its failure receipt verifies, but carries no successful-output commitment. Unusable responses count as nonpassing, without repair or partial-answer credit.
+\textit{Failures and rubric audit.} The frozen rubric gave ${full.frozenStrict}/${full.planned} full passes. A complete source audit re-read all ${full.answerPairsChecked} graded answer/page pairs and found page-annotation errors in both directions. DRN-4148727 page~1 also states the outcome, so one Dots run gains a pass. Moffatt page~4 records two fares summing to CAD~1,640.36 but not the CAD~1,630.36 total the tribunal states on pages~7--8, so one Dots run that cited only page~4 loses its pass. Page~5 also states the 90-day window, which changes no score. The audited result is ${full.auditedStrict}/${full.planned}, re-derived from saved grades without rerunning inference; an earlier one-sided correction reporting ${audit.correctedStrict}/${audit.planned} is superseded. The remaining Dots failure contained two JSON objects and failed the format contract. Its failure receipt verifies, but carries no successful-output commitment. Unusable responses count as nonpassing, without repair or partial-answer credit.
 
 \smallskip
 \textit{Evidence.} ${s.evidenceComplete}/${s.planned} local packages reverified in a fresh process, including complete page content, output hashes, expected task/policy/request bindings and page presence in the serialized request. Published bundles contain outputs, receipts and fingerprints; full source pages and requests remain local. ${s.controlsPassed}/${s.controlsTotal} scoped integrity checks passed on one eligible live bundle, including an intact control; these are separate from the case denominator.
