@@ -2,7 +2,7 @@
 type: quick
 id: 261104-fdc
 date: 2026-11-04
-status: in_progress
+status: complete
 ---
 
 # C3 governance sources, requirements and evidence
