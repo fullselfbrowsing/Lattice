@@ -1,0 +1,21 @@
+\begin{table}[!htbp]
+\centering
+\caption{Proposed organizational responsibilities; not evaluated in deployment}
+\label{tab:managerial-responsibilities}
+\begingroup\footnotesize\setstretch{1.05}\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Proposed owner & Decisions and retained records & Assessment boundary \\
+\midrule
+Business-process owner & Own the applicable approval policy, authority limits, exceptions, escalation and customer contestation. Retain the policy version and reasons for exceptions. & DR3: execution-policy checks are separate from business authorization. Effective escalation and customer redress were not evaluated. \\[5pt]
+Reviewing employee and authorizing manager & Inspect supporting sources, resolve conflicting amounts or advice, and record the final authorization separately from the recommendation. Obtain payment evidence separately. & DR2/DR3: source-based rubric agreement is not independent factual truth. The refund review observed neither human authorization nor payment. \\[5pt]
+Application operator and security/key custodian & Configure signing, manage trusted keys and verification expectations, and define the response to absent receipts or signing failures. Retain failure records and escalation decisions. & DR1/DR3: trusted-key attribution is not organizational authority. Signing is configured; the default error response does not itself stop business action. \\[5pt]
+Data owner & Define retention, access, deletion and retrieval arrangements for source material, requests, outputs and related business records. Keep the content needed for later checks available under those arrangements. & DR2/DR4: hashes cannot recover missing content or ensure privacy. The experiments did not assess lawful retention, access controls or retrieval after deletion. \\[5pt]
+Independent reviewer & Check signatures, expected commitments and retained-evidence completeness. Examine approval and payment records independently of the issuing application's assertions. & DR1/DR2/DR5: verification does not establish issuer honesty or external effects. Independent-review accuracy, effort and cost remain unmeasured. \\
+\bottomrule
+\end{tabularx}
+\par\smallskip\noindent\begin{minipage}{\textwidth}
+Role assignments are proposals derived from the requirements (Table~\ref{tab:governance-trace}), the refund evidence boundaries (Table~\ref{tab:public-refund-evidence}) and the evaluation (Section~\ref{sec:evaluation}). A separate verifier process in the experiment is not evidence of organizational independence. The organization must assign accountable people and assess integration, storage, key administration and review effort; no acceptance threshold or organizational benefit was measured. Table prepared with OpenAI Codex; session model/version unconfirmed, pending author review.
+\end{minipage}
+\endgroup
+\end{table}
