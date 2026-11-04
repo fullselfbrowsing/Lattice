@@ -27,7 +27,7 @@ The latency results (`tab:overhead`, `tab:size`, `tab:chain`, `Fig2.png`, `Fig3.
 
 ## Refund case materials
 
-The main C2 case uses **four actual published refund-dispute decisions**, with 18 exact PDF pages supplied to 16 live free-model reviews. See the [case/provenance record](research/C2-PUBLIC-RECORD-CASE.md) and [results with rubric audit](../eval/public-refund/results/interpretation.md). The [approximately 800-word C2 reference draft](research/C2-REFERENCE-DRAFT.md) is explicitly AI-generated for author rewriting and remains outside `main.tex`. C2 is **actual public-record evidence integrated; author narrative and review pending**.
+The main C2 case uses **four actual published refund-dispute decisions**, with 18 exact PDF pages supplied to 16 live free-model reviews. See the [case/provenance record](research/C2-PUBLIC-RECORD-CASE.md) and [results with rubric audit](../eval/public-refund/results/interpretation.md). Section 5 of `main.tex` now contains the case narrative, and Section 7.11 contains its results discussion. Claude drafted both at Lakshman's direction (see the [C2 review record](research/C2-REVIEW.md)), replacing the superseded [Codex reference draft](research/C2-REFERENCE-DRAFT.md). C2 is **reviewed (Nov 4)**. The text is AI-drafted, so publisher policy and the A1/P5 authorship and disclosure checks still apply before submission.
 
 `public-refund-case.tex` contains the main TikZ workflow and evidence table, before the artifact section. `public-refund-results.tex` is included within Evaluation. The earlier invented-case figure, evidence table and unchanged results are separately retained in `refund-synthetic-appendix.tex`; do not pool their denominators with the actual-record cohort.
 
@@ -38,7 +38,7 @@ node paper/scripts/public-refund-tables.mjs
 node paper/scripts/public-refund-tables.mjs --check
 ```
 
-The script reads the frozen summary and verification results, validates the separately recorded rubric correction against the saved grades and source manifest, and writes only the presentation. It reports the original 14/16 full passes and the corrected 15/16 separately. It performs no inference and changes no frozen code, labels or results. Full source PDFs, page text and exact request exports remain local; published bundles contain outputs, receipts and fingerprints, so full independent package verification requires those retained bytes.
+The script reads the frozen summary and verification results. It validates both the superseded one-sided correction (`rubric-audit.json`, 15/16) and the complete two-way source audit (`source-audit.json`, 14/16) against the saved grades and source-page hashes, and writes only the presentation. It reports the frozen and fully audited results side by side. It performs no inference and changes no frozen code, labels or results. Full source PDFs, page text and exact request exports remain local; published bundles contain outputs, receipts and fingerprints, so full independent package verification requires those retained bytes.
 
 The historical synthetic presentation remains reproducible with `node paper/scripts/refund-tables.mjs --check`. That script checks the frozen code/build/fixture/protocol/bundle hashes, public key and original scores without inference. Do not restore or overwrite frozen hashes if the current build differs; reproduce the measured revision in an isolated checkout. Its 18 scoped checks and separate offline wrong-answer control differ from the current cohort's 10 checks on one live bundle.
 
