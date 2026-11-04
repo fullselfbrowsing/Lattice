@@ -55,9 +55,14 @@ See [STUDY-PROTOCOL.md](STUDY-PROTOCOL.md) for prepared study materials. No part
   `LICENSE.md` at the pinned revision grants them for academic research and
   non-commercial use when Ai4Privacy is acknowledged. Redistribution and
   commercial use need a written licence or a prior discussion with
-  licensing@ai4privacy.com. Neither was requested. One author's primary
-  affiliation is Full Self Browsing; the paper discloses that and publishes
-  aggregate scores only. Gretel and ASQA are Apache-2.0.
+  licensing@ai4privacy.com. In an October 22 reply supplied by the author,
+  Michael Anthony confirmed that the described English-validation detector
+  evaluation falls within academic terms: aggregate metrics only, no
+  redistributed records or derived annotations, and acknowledgment of
+  Ai4Privacy. See the [permission record](../../paper/research/AI4PRIVACY-PERMISSION.md)
+  for the exact scope and date provenance. One author's primary affiliation
+  is Full Self Browsing; the paper discloses that. Keep raw caches and local
+  span exports outside publication archives. Gretel and ASQA are Apache-2.0.
 
 Environment variables: `NODE_BIN` (default `node` on `PATH`), `PYTHON`,
 `REALWORLD_CACHE`, `CMP_DIR`, `COSIGN_BIN`, `LATTICE_SPANS` (default
