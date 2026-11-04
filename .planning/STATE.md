@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
-stopped_at: JITCAR C3 evidence mapping and editorial revision complete; author narrative and review pending; C4 next
-last_updated: "2026-11-04"
-last_activity: 2026-11-04 - Completed quick task 261104-fdc: C3 governance and evidence mapping; author review pending
+stopped_at: JITCAR C3 reviewed (sources verified, AI Act applicability corrected, Sections 3-4 narrative integrated); C4 next
+last_updated: "2026-11-04T19:30:00.000000+00:00"
+last_activity: 2026-11-04 - Completed quick task 261104-h3r: C3 source review and design-science narrative integration
 progress:
   total_phases: 6
   completed_phases: 6
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** Developers can run one capability-first task across mixed text, image, audio, video, file, JSON, and tool artifacts while Lattice reliably chooses, packages, routes, and explains the underlying model work.
-**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Target submission November 13; The Post AI Enterprise deadline verified as November 15, with closing time/time zone unspecified. A7 still needs general author instructions and portal checks. C1 is revised, awaiting author review. **C2 reviewed November 4** ([review record](../paper/research/C2-REVIEW.md)): all four public decisions re-verified byte for byte (18/18 page hashes), every factual claim traced to its paragraph or page, and the Moffatt order kept distinct from proof of settlement. The two-way rubric audit gives 14/16 both frozen and audited; the one-sided 15/16 is superseded. The audit also recorded the decision's CAD 10 internal inconsistency on the total paid. Claude's Moffatt-centered narrative is integrated in Sections 5 and 7.11 of the manuscript and disclosed; the PDF is now 63 pages after C3. That text is an AI first draft of manuscript sections, which the Taylor & Francis guidance does not allow, so the authors must decide under A1/P5. **C3 evidence mapping and editorial revision complete; author narrative and review pending.** The retrospective source/design/evidence table and existing-text revisions are integrated; a separate 611-word AI-generated reference remains outside manuscript inputs. C4 consolidation is next, as a separate task. Full A1 provenance and P5 declaration checks remain open.
+**Current focus:** P0 JITCAR submission preparation. Follow [the submission checklist](../paper/JITCAR-TODO.md) one item at a time. Complete-draft cutoff November 6; otherwise ISF or BISE. Target submission November 13; The Post AI Enterprise deadline verified as November 15, with closing time/time zone unspecified. A7 still needs general author instructions and portal checks. C1 is revised and awaits author review. **C2 reviewed** ([record](../paper/research/C2-REVIEW.md)): the two-way audit gives 14/16 and Sections 5 and 7.11 are Claude-drafted. **C3 reviewed November 4** ([record](../paper/research/C3-REVIEW.md)): the AI Act, NIST and DSR sources are verified. Applicability is corrected for the Digital Omnibus: Art. 113 defers the high-risk duties to Dec 2, 2027 for Annex III, Annex III 8(a) covers ADR, and Art. 50(1) is in force. The Sections 3–4 narrative is Claude-drafted, and the 64-page PDF is verified. The Claude-drafted sections from C2 and C3 conflict with the Taylor & Francis first-draft rule, so the authors must decide under A1/P5. **C4 (evaluation consolidation) is next** and has not started.
 
 ## Current Position
 
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
-Status: Submission preparation is the highest priority; C1 awaits review, C2 technical review recorded (author approval and first-draft decision pending), C3 evidence mapping/editorial revision complete (author narrative/review pending), C4 consolidation next; remaining C4–C8 work pending
-Last activity: 2026-11-04 - Completed quick task 261104-fdc: C3 governance and evidence mapping
+Status: Submission preparation is the highest priority; C1 awaits review, C2 and C3 reviewed (AI-drafted narrative awaits author first-draft decision), C4 next, remaining C4–C8 work pending
+Last activity: 2026-11-04 - Completed quick task 261104-h3r: C3 review and narrative integration
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-04 | Review C3 design-science sources and narrative | Re-fetched 10 Commission AI Act pages and the NIST PDF (matching Codex snapshots); verified 8 NIST outcomes and their printed pages and 9 DSR references via Crossref. Found that the Digital Omnibus-amended Art. 113 defers Arts. 6–27 to Dec 2, 2027 (Annex III), that Annex III 8(a) covers ADR and that Art. 50(1) is in force, and added these to Section 4 and the Table 3 caption. Sections 3–4 narrative redrafted by Claude with DR/DP identifiers and evidence preserved; C2 sections unchanged. 64-page PDF, 0 overfull boxes, 0 undefined references; 549+510+23 protected files unchanged. C3 reviewed; T&F first-draft decision open; C4 next. See [quick task 261104-h3r](./quick/261104-h3r-review-c3-design-science-sources-and-nar/261104-h3r-SUMMARY.md). |
 | 2026-11-04 | Ground C3 design requirements in governance and evidence | Retrospective mapping of conditional AI Act provisions and voluntary NIST AI RMF outcomes to DR1–DR5/DP1–DP4, scoped assessments and limits. Added Table 3 and separate 611-word AI-generated reference; 63-page PDF verified with no final overfull boxes or undefined references. All 549 protected files and both C2 narrative sections unchanged. No inference/runtime changes. Implementation `10edb21`. C3 editorial work complete; author narrative/review and C2/A1/P5 remain open; C4 next. See [quick task 261104-fdc](./quick/261104-fdc-ground-c3-design-requirements-in-verifie/261104-fdc-SUMMARY.md). |
 | 2026-11-04 | Review C2 sources, rubric and narrative | Re-downloaded 4 PDFs (hashes and 18/18 page hashes match) and traced every claim to a paragraph or page; the order-versus-settlement distinction is confirmed. The one-sided rubric correction is valid but incomplete: the two-way audit of 75 pairs gives 14/16 (15/16 superseded) and records Moffatt's CAD 10 internal inconsistency. Claude's Moffatt-centered Section 5 and 7.11 text is integrated and disclosed in a 61-page PDF with 0 overfull boxes and 0 undefined references; 510+23 protected files unchanged. C2 reviewed; T&F first-draft decision open (A1/P5); C3 next. See [quick task 261104-exq](./quick/261104-exq-review-c2-sources-rubric-and-narrative/261104-exq-SUMMARY.md). |
 | 2026-11-03 | Correct C2 with actual public dispute records | Four primary decisions, 18 source pages, 16 live free reviews; frozen 14/16 full passes, separately corrected 15/16 after source annotation audit; one format failure, 16 signatures, 15 complete packages, 10 scoped checks, USD 0 added spend. Main figure/tables and reference replaced; synthetic control moved to appendix; 57-page PDF verified. Measured `3330ca2`, frozen results `efefcf2`, integration `54e947f`. C2 author narrative/rubric review pending; C3 unstarted. See [quick task 261103-mnn](./quick/261103-mnn-correct-c2-with-public-actual-refund-dis/261103-mnn-SUMMARY.md). |
