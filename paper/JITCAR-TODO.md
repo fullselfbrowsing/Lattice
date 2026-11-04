@@ -2,7 +2,7 @@
 
 **Priority: P0 — highest priority.** Updated November 4, 2026. This submission takes precedence over optional runtime development and further model experiments in this workspace.
 
-**Current working item: C5. Editorial revision and responsibility table complete; author narrative and review pending.** See the [C5 evidence/provenance note](research/C5-EVIDENCE-MAP.md) and [AI-generated reference draft](research/C5-REFERENCE-DRAFT.md). C4 evidence/presentation consolidation remains complete with author review and A6 clearance pending. C6 IS literature review is next as a separate task. **C3 reviewed Nov 4:** Claude re-verified every cited AI Act provision, NIST outcome and DSR reference. Claude also corrected the Act's applicability: under the Digital Omnibus amendment to Article 113, high-risk duties apply to Annex III systems only from December 2, 2027; Annex III 8(a) covers ADR; and Article 50(1) is the obligation in force today. Claude then rewrote the Section 3 and Section 4 narrative; see the [C3 review](research/C3-REVIEW.md). Like C2's, this text is an AI first draft of manuscript sections, so it awaits the authors' publisher-policy decision under A1/P5. **C2 reviewed Nov 4.** Claude re-verified the four public decisions byte for byte and checked every factual claim against its page or paragraph. Claude also audited the rubric in both directions: the one-sided 15/16 correction is superseded, and the frozen and audited scores are both 14/16. Claude rewrote the narrative with Moffatt at the center and integrated it into Section 5 and the public-record evaluation subsection; see the [C2 review](research/C2-REVIEW.md). That narrative is an AI first draft of manuscript sections, which Taylor & Francis guidance does not allow. Resolving this is an open author action under A1/P5. C1 awaits author review, and A1 and other author-owned dependencies stay open. Work through the checklist one item at a time with Lakshman.
+**Current working item: C5. Editorial revision and responsibility table complete; author narrative and review pending.** See the [C5 evidence/provenance note](research/C5-EVIDENCE-MAP.md) and [AI-generated reference draft](research/C5-REFERENCE-DRAFT.md). C4 evidence/presentation consolidation remains complete with author review pending. **Ai4Privacy permission is granted, confirmed by Lakshman Nov 4; A6 now tracks the permission record, scope and attribution.** C6 IS literature review is next as a separate task. **C3 reviewed Nov 4:** Claude re-verified every cited AI Act provision, NIST outcome and DSR reference. Claude also corrected the Act's applicability: under the Digital Omnibus amendment to Article 113, high-risk duties apply to Annex III systems only from December 2, 2027; Annex III 8(a) covers ADR; and Article 50(1) is the obligation in force today. Claude then rewrote the Section 3 and Section 4 narrative; see the [C3 review](research/C3-REVIEW.md). Like C2's, this text is an AI first draft of manuscript sections, so it awaits the authors' publisher-policy decision under A1/P5. **C2 reviewed Nov 4.** Claude re-verified the four public decisions byte for byte and checked every factual claim against its page or paragraph. Claude also audited the rubric in both directions: the one-sided 15/16 correction is superseded, and the frozen and audited scores are both 14/16. Claude rewrote the narrative with Moffatt at the center and integrated it into Section 5 and the public-record evaluation subsection; see the [C2 review](research/C2-REVIEW.md). That narrative is an AI first draft of manuscript sections, which Taylor & Francis guidance does not allow. Resolving this is an open author action under A1/P5. C1 awaits author review, and A1 and other author-owned dependencies stay open. Work through the checklist one item at a time with Lakshman.
 
 ## Dates and decision rules
 
@@ -111,17 +111,20 @@ If the draft is incomplete on Nov 6, switch to **ISF or BISE**, as Lakshman inst
 
 **Done when:** the final material inventory has a documented publication basis and real, retrospective and synthetic evidence remain clearly distinguished.
 
-### A6 — Resolve Ai4Privacy permission or remove it from the submission
+### A6 — Document the granted Ai4Privacy permission
 
-**Owner:** Lakshman requests permission; authors decide retention; Codex maps dependent claims and files. **Due:** request Nov 3; retain/drop decision Nov 5; implement by Nov 6. **Status:** pending.
+**Owner:** Lakshman retains the permission record; authors confirm its terms; Codex reconciles the submission materials. **Due:** document scope/attribution before final packaging. **Status:** permission granted, confirmed by Lakshman Nov 4; permission record and terms review pending.
 
-- [ ] Check the exact dataset revision and license against research use, affiliation, external API processing, and intended publication/repository materials.
-- [ ] Request written permission from Ai4Privacy covering the actual uses. Preserve the request and response; do not assume aggregate reporting resolves every license restriction.
-- [ ] If written permission is unavailable by the decision date, drop Ai4Privacy-dependent results, tables, figures, narrative claims, and citation from the submission package; update generators so those results are not silently reintroduced.
-- [ ] Check alternative evidence, such as Gretel or synthetic fixtures, for its own terms and limitations. Do not relabel another dataset's results or pool unlike cohorts.
-- [ ] Audit supplementary files and archive contents. Preserve private provenance of the original experiment while excluding restricted data from publication.
+**Nov 4 confirmation:** Lakshman reported “Ai4Privacy permission was granted!” This resolves the outstanding permission request. The grant date, grantor, written wording, scope and acknowledgment conditions have not yet been supplied in this workspace; the confirmation date is not an inferred grant date. See the [permission record](research/AI4PRIVACY-PERMISSION.md).
 
-**Done when:** a documented permission basis exists for every included use, or the entire submission is free of Ai4Privacy-dependent material.
+- [x] Obtain permission from Ai4Privacy: grant confirmed by Lakshman on Nov 4.
+- [ ] Retain the permission correspondence privately and record its grantor, date and required acknowledgment wording.
+- [ ] Reconcile the grant with the exact dataset revision, research use, affiliation, external API processing and intended publication/repository materials. Record the actual terms without inferring additional rights.
+- [ ] Audit supplementary and archive contents against the permission. Preserve experiment provenance; adjust any material outside the granted scope before publication.
+
+The earlier automatic drop-if-permission-unavailable fallback is superseded by the confirmed grant. Dataset-dependent results remain retained; the remaining work concerns documentation and matching the final materials to the actual permission.
+
+**Done when:** the permission record and conditions are retained and reflected in every included use and the final acknowledgment.
 
 ### A7 — Verify the exact special issue and submission requirements
 
@@ -201,7 +204,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 ### C4 — Strengthen and consolidate the evaluation
 
-**Target:** Nov 5. **Depends on:** C2, C3, A6. **Status:** evidence and presentation consolidation complete; author review and A6 clearance pending (Nov 4).
+**Target:** Nov 5. **Depends on:** C2, C3, A6. **Status:** evidence and presentation consolidation complete; author review pending; Ai4Privacy permission granted, with A6 documentation/terms review pending (Nov 4).
 
 - [x] **Overhead:** distinguish controlled component benchmarks, hosted end-to-end latency, provider time, and harness-inclusive residual time. Report environment, revision, baseline, sample count, uncertainty, failures, and measurement limits.
 - [x] **Tamper detection:** map attacks to the threat model; report altered/missing artifacts, receipt/signature changes, replay/binding mismatches, and chain omissions where actually tested. Include unmodified controls and explain unsupported threats such as a dishonest issuer or unwitnessed external effects.
@@ -216,7 +219,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 **Implementation:** three generated main tables distinguish threat coverage, hosted timing distributions and answer-quality outcomes. The historical 3,570-attack denominator explicitly excludes 70 accepted repeat presentations; the signed-log comparison reports parity. Detailed technical and hosted reports moved to appendices without changing their generated contents. Practitioner evaluation remains future work. The concurrent C2 correction pass is preserved; C4 made no inference calls, new measurements or runtime changes.
 
 - [ ] Authors review the revised evaluation and the separate reference narrative; confirm section provenance and declarations under A1/P5.
-- [ ] Resolve A6 before submission: Ai4Privacy-dependent material remains in the working draft with a visible permission/removal TODO. Appendix placement does not authorize use. Verify venue appendix/supplement rules under A7 before packaging.
+- [ ] Finish A6 documentation before submission: permission is granted; retain the record, confirm scope/attribution and reconcile supplementary/archive contents. The manuscript TODO now tracks those details. Verify venue appendix/supplement rules under A7 before packaging.
 
 **Done when:** each main claim has appropriate evidence and a stated limit, and the case adds organizational meaning to the technical tests. New paid inference is not required; any additional model run must use the authorized free-only controls unless Lakshman changes that instruction.
 
@@ -230,7 +233,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 - [x] Separate demonstrated technical behavior from proposed organizational benefits and avoid treating technical integrity as factual correctness or organizational compliance.
 - [ ] Authors verify/rewrite the reference narrative and review the revised section/table, proposed role assignments and pilot criteria. Resolve provenance and publisher-policy decisions under A1/P5 before submission.
 
-**Implementation:** the former practical-implications subsection is now a dedicated Managerial Implications section before the Conclusion. The [responsibility table](managerial-responsibilities.tex) connects the refund case to DR1–DR5; the [evidence/provenance note](research/C5-EVIDENCE-MAP.md) separates findings from proposals. The [692-word AI-generated reference](research/C5-REFERENCE-DRAFT.md) remains outside manuscript inputs. C2–C4 and frozen results are preserved; no runtime/API changes, inference, experiment or recruitment is part of C5. A6 permission and prior author reviews remain open.
+**Implementation:** the former practical-implications subsection is now a dedicated Managerial Implications section before the Conclusion. The [responsibility table](managerial-responsibilities.tex) connects the refund case to DR1–DR5; the [evidence/provenance note](research/C5-EVIDENCE-MAP.md) separates findings from proposals. The [692-word AI-generated reference](research/C5-REFERENCE-DRAFT.md) remains outside manuscript inputs. C2–C4 and frozen results are preserved; no runtime/API changes, inference, experiment or recruitment is part of C5. Ai4Privacy permission is granted; A6 documentation/terms review and prior author reviews remain open.
 
 **Done when:** a manager can identify concrete decisions, responsibilities, costs, and limitations using the case as context, and the authors have reviewed and accepted the narrative.
 
@@ -287,7 +290,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 - [ ] For each of the 22 entries, verify exact title/authors/year/version against the publisher or authoritative registry and resolve any candidate DOI.
 - [ ] Add a verified DOI when one exists; otherwise record “no DOI found/applicable” with a suitable stable official URL, version, and access date where required. Never manufacture a DOI.
-- [ ] Check existing DOIs too, eliminate duplicate or obsolete records, and reconcile every citation with the final retained bibliography, including C6 additions and A6 removals.
+- [ ] Check existing DOIs too, eliminate duplicate or obsolete records, and reconcile every citation with the final retained bibliography, including C6 additions and any changes required by the A6 permission terms.
 - [ ] Check that the selected bibliography style actually prints required identifiers and that author names, capitalization, pages, and dates render correctly.
 
 **Initial inventory:** `crosby2009`, `sculley2015`, `euaiact2024`, `iso42001`, `dsse`, `slsa`, `mcp`, `otel`, `lattice`, `latticeissue21`, `gretelfinance`, `presidio`, `llmguard`, `litellm`, `portkey`, `openllmetry`, `langchain`, `cosign`, `intoto`, `bindschaedler2026afr`, `ardebili2026novafabric`, `alce`.
@@ -361,7 +364,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 ## How we will work through this
 
 1. **Continue A1:** complete the remaining authorship inventory and identify the existing email card; complete A7's general author requirements and portal checks alongside it. The original Introduction provenance, call source and deadline date are verified.
-2. **Resolve the external dependencies:** A2–A6 requests and factual questions, with Nov 5 fallback decisions. Track waiting replies while working on items that do not depend on them.
+2. **Resolve the external dependencies:** remaining A2–A5 requests and factual questions, with Nov 5 fallback decisions; complete A6 documentation for the granted Ai4Privacy permission. Track waiting replies while working on independent items.
 3. **Work through C1–C8 in order**, choosing the C2 case before finalizing C1. For each item: inspect current material, agree the needed change, carry out permitted work, verify the result, and update its checkbox/status.
 4. **Apply the Nov 6 decision**, record JITCAR go/no-go, and follow the agreed venue path.
 5. **Work through P1–P7**, starting reference and archive preparation early enough to avoid compressing all packaging into Nov 13.

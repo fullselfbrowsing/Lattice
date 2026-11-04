@@ -59,7 +59,7 @@ Use `node paper/scripts/c4-tables.mjs` to regenerate presentation only and `node
 
 See the [C4 evidence map](research/C4-EVIDENCE-MAP.md) for denominator definitions, measured revisions, uncertainty and provenance, and the [separate AI-generated reference](research/C4-REFERENCE-DRAFT.md) for author rewriting. Hosted residual time includes harness work; signed-log parity and accepted repeat presentations are explicit. C2 corrections and the reviewed C3 narrative are preserved.
 
-**C4 evidence and presentation consolidation complete; author review and A6 clearance pending.** Ai4Privacy-dependent material is retained in this working draft with a visible permission/removal TODO; its move to an appendix does not resolve permission. Final appendix/supplement requirements also remain part of A7. This pass adds no runtime/API changes, inference or new experimental measurements.
+**C4 evidence and presentation consolidation complete; author review pending.** Ai4Privacy permission was granted, as confirmed by Lakshman on Nov 4. The [permission record](research/AI4PRIVACY-PERMISSION.md) tracks the remaining correspondence, scope and attribution details; the manuscript TODO now concerns that documentation rather than an unanswered permission request. Final appendix/supplement requirements also remain part of A7. This pass adds no runtime/API changes, inference or new experimental measurements.
 
 ## C5 managerial implications
 
@@ -67,7 +67,7 @@ The dedicated Managerial Implications section before the Conclusion revises the 
 
 See the [C5 evidence/provenance note](research/C5-EVIDENCE-MAP.md) for claim support and proposed pilot measures. The [692-word AI-generated reference draft](research/C5-REFERENCE-DRAFT.md), including retrospective inspection, shadow operation and a conditional limited pilot, remains outside manuscript inputs for author rewriting. It does not approve recruitment or replace the existing practitioner protocol.
 
-**C5 editorial revision and responsibility table complete; author narrative and review pending.** Original practical-implications authorship and the session model/version remain unconfirmed. A1/P5, Ai4Privacy A6 and previous author review items remain open. C2–C4 text and saved evidence are preserved; C6 has not started.
+**C5 editorial revision and responsibility table complete; author narrative and review pending.** Original practical-implications authorship and the session model/version remain unconfirmed. A1/P5 and previous author review items remain open. Ai4Privacy permission is granted; A6 retains only the permission-record and terms-review work. C2–C4 text and saved evidence are preserved; C6 has not started.
 
 ## Build
 
