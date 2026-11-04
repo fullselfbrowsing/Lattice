@@ -10,11 +10,11 @@ Measure & Nemotron 3.5 Super VL & Dots 3 Note Preview \\
 \midrule
 Attempted reviews & 8/8 & 8/8 \\
 Usable structured responses & 8/8 & 7/8 \\
-All factual answers correct & 8/8 & 7/8 \\
+All answer values match the frozen rubric & 8/8 & 7/8 \\
 All supporting-page checks, frozen whitelist & 8/8 & 6/8 \\
 Full rubric, frozen page whitelist & 8/8 & 6/8 \\
 Full rubric, complete source audit & 8/8 & 6/8 \\
-Correct individual answers & 40/40 & 35/40 \\
+Individual answer values matching the frozen rubric & 40/40 & 35/40 \\
 Valid terminal receipt signatures & 8/8 & 8/8 \\
 Locally reverified evidence packages & 8/8 & 7/8 \\
 \bottomrule
@@ -26,10 +26,10 @@ Locally reverified evidence packages & 8/8 & 7/8 \\
 \textit{Scoring.} Five questions per case assess recorded amounts, process facts and evidence limits. Exact values and accepted supporting-page IDs are scored separately; free-text review notes are not graded for entailment or legal correctness. The rubric was prepared with Codex and audited against the source pages with Claude; author confirmation remains open. Frozen full-rubric results by case: Moffatt 4/4; DRN-4377241 4/4; DRN-4148727 3/4; DRN-3785437 3/4. All planned runs remain in denominators.
 
 \smallskip
-\textit{Failures and rubric audit.} The frozen rubric gave 14/16 full passes. A complete source audit re-read all 75 graded answer/page pairs and found page-annotation errors in both directions. DRN-4148727 page~1 also states the outcome, so one Dots run gains a pass. Moffatt page~4 records two fares summing to CAD~1,640.36 but not the CAD~1,630.36 total the tribunal states on pages~7--8, so one Dots run that cited only page~4 loses its pass. Page~5 also states the 90-day window, which changes no score. The audited result is 14/16, re-derived from saved grades without rerunning inference; an earlier one-sided correction reporting 15/16 is superseded. The remaining Dots failure contained two JSON objects and failed the format contract. Its failure receipt verifies, but carries no successful-output commitment. Unusable responses count as nonpassing, without repair or partial-answer credit.
+\textit{Failures and rubric audit.} The frozen rubric gave 14/16 full passes. A complete source audit re-read all 75 graded answer/page pairs and found page-annotation errors in both directions. DRN-4148727 page~1 also states the outcome, so one Dots run gains a pass. Moffatt page~4 records two fares summing to CAD~1,640.36 but not the CAD~1,630.36 total the tribunal states on pages~7--8, so one Dots run that cited only page~4 loses its pass. Page~5 also states the 90-day window, which changes no score. The audited result is 14/16, re-derived from saved grades without rerunning inference; an earlier one-sided correction reporting 15/16 is superseded. The remaining Dots failure contained two JSON objects and failed the format contract. Its failure receipt verifies and commits to the task, policy and request; Lattice adds an output commitment only to successful runs. Unusable responses count as nonpassing, without repair or partial-answer credit.
 
 \smallskip
-\textit{Evidence.} 15/16 local packages reverified in a fresh process, including complete page content, output hashes, expected task/policy/request bindings and page presence in the serialized request. Published bundles contain outputs, receipts and fingerprints; full source pages and requests remain local. 10/10 scoped integrity checks passed on one eligible live bundle, including an intact control; these are separate from the case denominator.
+\textit{Evidence.} 15/16 local packages reverified in a fresh process, including complete page content, output hashes (successful runs only), expected task/policy/request bindings and page presence in the serialized request. Published bundles contain outputs, receipts and fingerprints; full source pages and requests remain local. 10/10 scoped integrity checks passed on one eligible live bundle, including an intact control; these are separate from the case denominator.
 
 \smallskip
 \textit{Cost and scope.} 16 inference requests; 16 reported zero cost, 0 unknown and 0 nonzero. Added account usage: USD 0. Temperature 0, output cap 4096 tokens; reasoning settings omitted. Model IDs: \path{nvidia/nemotron-3.5-super-vl:free} and \path{dots-studio/dots-3-note-preview:free}. No company deployment, human review, approval or payment execution was observed. The cases are public and may have appeared in training; repeated runs do not establish unseen-case generalization.

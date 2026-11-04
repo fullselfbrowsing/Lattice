@@ -12,7 +12,7 @@ The completed application reviews published records retrospectively. Full decisi
 
 | Record | Primary document and location | Why it matters | Boundary |
 | --- | --- | --- | --- |
-| Moffatt v. Air Canada, 2024 BCCRT 149 | [Tribunal judgment hosted by Middle Temple](https://www.middletemple.org.uk/sites/default/files/civicrm/persist/contribute/files/2024bccrt149.pdf), nine pages; paragraphs 14–17, 27–32 and 44 | Conflicting chatbot/webpage advice, absent contractual evidence and an order totaling CAD 812.02 | The total includes damages, interest and fees; it is not solely a ticket refund. The decision supplies no subsequent settlement evidence. Chatbot architecture and tampering are not established. The stated total paid (CAD 1,630.36, paras. 34, 40) is CAD 10 less than the recorded fares (794.98 + 845.38 = 1,640.36, para. 18). |
+| Moffatt v. Air Canada, 2024 BCCRT 149 | [Tribunal judgment hosted by Middle Temple](https://www.middletemple.org.uk/sites/default/files/civicrm/persist/contribute/files/2024bccrt149.pdf), nine pages; paragraphs 14–17, 27–32 and 44 | Conflicting chatbot/webpage advice, absent contractual evidence and an order totaling CAD 812.02 | The total includes damages, interest and fees; it is not solely a ticket refund. The decision supplies no subsequent settlement evidence. Chatbot architecture and tampering are not established. The stated total paid (CAD 1,630.36, paras. 34, 40) is CAD 10 less than the recorded fares (794.98 + 845.38 = 1,640.36, para. 18). Para. 38 reports a bereavement-fare cost of CAD 474.23, but its components sum to CAD 464.23. The tribunal's amounts are reported as published. |
 | DRN-4377241 | [Financial Ombudsman decision](https://www.financial-ombudsman.org.uk/decision/DRN-4377241.pdf), four pages; pages 1, 3–4 | Travel-agent-controlled email prevented customer verification; distinguishes a GBP 77.44 refund, GBP 19.41 bank fees and conditional GBP 100 compensation | Directions to pay are not observed completed payments. Publication date is unconfirmed; the acceptance deadline is not treated as the issue date. |
 | DRN-4148727 | [Financial Ombudsman decision](https://www.financial-ombudsman.org.uk/decision/DRN-4148727.pdf), two pages | Distinguishes an approximately GBP 126 earlier refund, GBP 958 later airline payment to the agent and GBP 150 bank compensation | The amount described as approximate remains approximate. The complaint is not upheld; that outcome appears on both pages. |
 | DRN-3785437 | [Financial Ombudsman decision](https://www.financial-ombudsman.org.uk/decision/DRN-3785437.pdf), three pages | A GBP 74.62 ticket, GBP 13 requested taxes and a temporary credit subsequently reversed | The GBP 73 administration fee is per person per flight, not an observed refund. The final complaint outcome and actual transaction states remain distinct. |
@@ -29,10 +29,10 @@ The [protocol](../../eval/public-refund/results/protocol.json) froze code, sourc
 | --- | --- | --- |
 | Planned / attempted reviews | 8/8 | 8/8 |
 | Usable structured responses | 8/8 | 7/8 |
-| All factual checks | 8/8 | 7/8 |
+| All answer values match the frozen rubric | 8/8 | 7/8 |
 | Full rubric, frozen | 8/8 | 6/8 |
 | Full rubric, complete source audit | 8/8 | 6/8 |
-| Correct factual answer instances | 40/40 | 35/40 |
+| Individual answer values matching the frozen rubric | 40/40 | 35/40 |
 | Valid terminal signatures | 8/8 | 8/8 |
 | Complete successful-output packages | 8/8 | 7/8 |
 
