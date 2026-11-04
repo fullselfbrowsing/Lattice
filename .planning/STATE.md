@@ -4,8 +4,8 @@ milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
 stopped_at: JITCAR C3 reviewed (sources verified, AI Act applicability corrected, Sections 3-4 narrative integrated); C4 next
-last_updated: "2026-11-04T19:30:00.000000+00:00"
-last_activity: 2026-11-04 - Completed quick task 261104-h3r: C3 source review and design-science narrative integration
+last_updated: "2026-11-04T19:45:00.000000+00:00"
+last_activity: 2026-11-04 - Completed quick task 261104-i85: C2 correction pass (second Moffatt inconsistency, rubric-agreement wording, success-only output commitments)
 progress:
   total_phases: 6
   completed_phases: 6
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-04 | Finish C2 correction pass | Added Moffatt's second arithmetic inconsistency (para. 38: CAD 474.23 reported vs 464.23 from components), keeping the tribunal's amounts as published; the recomputation appears only in the review record, labelled. Renamed the value rows to "match the frozen rubric". Clarified that only successful runs receive output commitments (Sections 5.3, 6, 7.11 and table notes). 64-page PDF, 0 overfull boxes, 0 undefined references; frozen 23/23 and protected 510/510 unchanged; scores unchanged. Implementation `41ddfc6`. See [quick task 261104-i85](./quick/261104-i85-finish-c2-correction-pass/261104-i85-SUMMARY.md). |
 | 2026-11-04 | Review C3 design-science sources and narrative | Re-fetched 10 Commission AI Act pages and the NIST PDF (matching Codex snapshots); verified 8 NIST outcomes and their printed pages and 9 DSR references via Crossref. Found that the Digital Omnibus-amended Art. 113 defers Arts. 6–27 to Dec 2, 2027 (Annex III), that Annex III 8(a) covers ADR and that Art. 50(1) is in force, and added these to Section 4 and the Table 3 caption. Sections 3–4 narrative redrafted by Claude with DR/DP identifiers and evidence preserved; C2 sections unchanged. 64-page PDF, 0 overfull boxes, 0 undefined references; 549+510+23 protected files unchanged. C3 reviewed; T&F first-draft decision open; C4 next. See [quick task 261104-h3r](./quick/261104-h3r-review-c3-design-science-sources-and-nar/261104-h3r-SUMMARY.md). |
 | 2026-11-04 | Ground C3 design requirements in governance and evidence | Retrospective mapping of conditional AI Act provisions and voluntary NIST AI RMF outcomes to DR1–DR5/DP1–DP4, scoped assessments and limits. Added Table 3 and separate 611-word AI-generated reference; 63-page PDF verified with no final overfull boxes or undefined references. All 549 protected files and both C2 narrative sections unchanged. No inference/runtime changes. Implementation `10edb21`. C3 editorial work complete; author narrative/review and C2/A1/P5 remain open; C4 next. See [quick task 261104-fdc](./quick/261104-fdc-ground-c3-design-requirements-in-verifie/261104-fdc-SUMMARY.md). |
 | 2026-11-04 | Review C2 sources, rubric and narrative | Re-downloaded 4 PDFs (hashes and 18/18 page hashes match) and traced every claim to a paragraph or page; the order-versus-settlement distinction is confirmed. The one-sided rubric correction is valid but incomplete: the two-way audit of 75 pairs gives 14/16 (15/16 superseded) and records Moffatt's CAD 10 internal inconsistency. Claude's Moffatt-centered Section 5 and 7.11 text is integrated and disclosed in a 61-page PDF with 0 overfull boxes and 0 undefined references; 510+23 protected files unchanged. C2 reviewed; T&F first-draft decision open (A1/P5); C3 next. See [quick task 261104-exq](./quick/261104-exq-review-c2-sources-rubric-and-narrative/261104-exq-SUMMARY.md). |
