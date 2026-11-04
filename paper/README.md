@@ -44,6 +44,12 @@ The historical synthetic presentation remains reproducible with `node paper/scri
 
 Human usefulness and real approval/payment execution remain untested. Source/rubric validation, drafting-tool model/version confirmation and final declarations remain open under A1/P5.
 
+## C3 requirements and source mapping
+
+The manuscript retains DR1–DR5 and DP1–DP4, with a retrospective traceability table connecting organizational needs, exact governance provisions, mechanisms, existing evidence and limits. See the [source/provenance map](research/C3-SOURCE-MAP.md). EU AI Act applicability is conditional; NIST AI RMF 1.0 is voluntary. Source versions and access limitations are explicit.
+
+The separate [611-word AI-generated explanatory reference](research/C3-REFERENCE-DRAFT.md) remains outside manuscript inputs for author rewriting. **C3 evidence mapping and editorial revision complete; author narrative and review pending.** The original C3 authorship and current drafting model/version remain unconfirmed. This documentation pass adds no inference, runtime changes or measurements; C4 consolidation remains separate.
+
 ## Build
 
 With a TeX Live installation:
