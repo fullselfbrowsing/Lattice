@@ -77,6 +77,14 @@ The [source map](research/C6-SOURCE-MAP.md) records the focused narrative search
 
 The [874-word AI-generated reference](research/C6-REFERENCE-DRAFT.md) remains outside manuscript inputs. **C6 source mapping and editorial revision complete; author reading, synthesis and review pending.** Original Section 2 authorship and the session model/version are unconfirmed; A1/P5 remain open. C2–C5 text and evidence and Ai4Privacy documentation are preserved. C7/C8 remain separate; no runtime/API changes, inference or new experiments were made.
 
+## C7 reproducibility appendix
+
+The artifact section now keeps the conceptual lifecycle and principle/mechanism table, verification boundaries and integration choices. API options, provider inventory, receipt/agent/crew details and the full original limitations are consolidated in [the Appendix A input](reproducibility-details.tex). Existing environment macros and numerical tables remain intact. The [relocation/provenance map](research/C7-RELOCATION-MAP.md) identifies every moved passage and its retained main-text boundary.
+
+The appendix distinguishes source baseline `73a47cf` from experimentally measured revisions, and saved-result presentation commands from commands that replace measurements. C7 runs only the read-only C4 and public-record presentation checks and the PDF build; no inference, new experiments or frozen-build changes are needed. The historical synthetic controls remain unchanged.
+
+**C7 product-detail relocation complete; author review and venue-format confirmation pending.** Appendix A stays inside the working PDF until A7 confirms journal length and appendix/supplement rules. Original authorship and session model/version remain unconfirmed; A1/P5 and previous author reviews stay open. C2–C6 evidence, C6 technical background and Ai4Privacy documentation are unchanged. C8 and template migration remain separate tasks.
+
 ## Build
 
 With a TeX Live installation:
