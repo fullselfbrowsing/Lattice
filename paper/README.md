@@ -67,7 +67,15 @@ The dedicated Managerial Implications section before the Conclusion revises the 
 
 See the [C5 evidence/provenance note](research/C5-EVIDENCE-MAP.md) for claim support and proposed pilot measures. The [692-word AI-generated reference draft](research/C5-REFERENCE-DRAFT.md), including retrospective inspection, shadow operation and a conditional limited pilot, remains outside manuscript inputs for author rewriting. It does not approve recruitment or replace the existing practitioner protocol.
 
-**C5 editorial revision and responsibility table complete; author narrative and review pending.** Original practical-implications authorship and the session model/version remain unconfirmed. A1/P5 and previous author review items remain open. A6 written confirmation and scope reconciliation are complete for the current evaluation; final archive/source-package checks remain under P4/P6. C2–C4 text and saved evidence are preserved; C6 has not started.
+**C5 editorial revision and responsibility table complete; author narrative and review pending.** Original practical-implications authorship and the session model/version remain unconfirmed. A1/P5 and previous author review items remain open. A6 written confirmation and scope reconciliation are complete for the current evaluation; final archive/source-package checks remain under P4/P6. C2–C4 text and saved evidence are preserved; C6 status is recorded below.
+
+## C6 focused IS literature review
+
+Section 2 now organizes existing related work around organizational accountability/governance, delegation/oversight, auditing/provenance, secure records and the bounded design contribution. The [six-row synthesis table](is-literature-table.tex) distinguishes source evidence from our design interpretation; the detailed systems comparison and chronology are retained in [Technical Background and Comparison](technical-background.tex). The discussion preserves signed-log parity and treats organizational usefulness as untested.
+
+The [source map](research/C6-SOURCE-MAP.md) records the focused narrative search, claim locators, verified DOI/metadata, access limits and a study-level matrix. Baird/Maruping, Rinta-Kahila et al. and Grisold et al. are the three additions. Baird/Maruping, Berente and Papagiannidis remain abstract/overview-level readings in this pass. Three existing bibliography entries now use final issue years, with citation keys preserved.
+
+The [874-word AI-generated reference](research/C6-REFERENCE-DRAFT.md) remains outside manuscript inputs. **C6 source mapping and editorial revision complete; author reading, synthesis and review pending.** Original Section 2 authorship and the session model/version are unconfirmed; A1/P5 remain open. C2–C5 text and evidence and Ai4Privacy documentation are preserved. C7/C8 remain separate; no runtime/API changes, inference or new experiments were made.
 
 ## Build
 

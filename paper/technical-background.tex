@@ -1,0 +1,33 @@
+\section{Technical Background and Comparison}\label{app:technical-background}
+
+The following comparison uses the cited preprints as accessed on November 5, 2026; it is not a survey of every current release. \emph{TrustTrack} is a vision paper that argues for verifiable identity, policy commitments, and tamper-resistant behavioral logs in multi-agent systems \citep{li2025trusttrack}. \emph{Sello} (``Notarized Agents'') inverts the trust boundary: the service that receives an agent's call signs a receipt, encrypts it to the agent's owner, and publishes it to a witness-cosigned Merkle log, reducing reliance on the agent or its operator while retaining the receiver and log assumptions \citep{figuera2026sello}. \emph{Janus} places a signed, hash-chained log on the effect path of agentic LLMs, so that a step's proposal and verdict are durable before its effect is released. Its gates are pure functions of the log and can be re-derived offline, and it is evaluated under crash injection and with a lending workflow \citep{arslan2026janus}. Two further systems are run in the comparison of Section~\ref{sec:realworld} but are not tabulated here: Agent Flight Recorder, which keeps tamper-evident audit trails of tool-using agents with on-chain anchoring \citep{bindschaedler2026afr}, and NovaFabric, which seals tamper-evident, replayable evidence for autonomous agent runs \citep{ardebili2026novafabric}.
+
+Table~\ref{tab:compare} compares these systems with the artifact presented here. Lattice combines issuer-side receipts for signed calls, terminal single-agent results, and crews; deterministic routing with a signed selected route; redaction before signing; and content commitments. Lattice still lacks Sello's receiver-side attestation and transparency log and Janus's effect gating and crash-consistency evaluation. Its current optional task, policy, and request bindings remain issuer claims (Section~\ref{sec:artifact}). The project repository records receipt type definitions and signing dependencies \citep{lattice} in commit \texttt{fa6d5a1}, dated 11 May 2026, before the Sello (June 2026) and Janus (September 2026) preprints appeared. Audience, nonce, and expiry binding, chain verification, chain closure, and the later execution-binding extensions were added in October 2026, after both. This repository chronology does not establish independent invention or priority over the wider literature.
+
+
+\begin{table}[!htbp]
+\centering
+\caption{Comparison of run-level and agent-level accountability approaches (based on each system's published description; Section~\ref{sec:realworld} reports what was measured)}
+\label{tab:compare}
+\begingroup\footnotesize\setstretch{1.05}\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{29mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Feature & TrustTrack & Sello & Janus & Lattice (this study) \\
+\midrule
+Unit of record & Agent behavior & Agent action at receiving service & Agent step (proposal, verdict, effect) & Model run or terminal agent result; optional task, policy, and request bindings \\
+Who signs & Protocol participants (design) & Receiving service & Agent runtime, validators, humans & Issuing runtime (self-attested) \\
+Tamper evidence & Proposed & Signature and witness-cosigned Merkle log & Signed hash chain & Signature over canonical JSON; parent links; crew chains list their members \\
+Third-party transparency log & Not specified & Yes & Not described & No \\
+Deterministic, recorded routing across providers & Not described & Not described & Not described & Yes; selected route signed, policy hash supported, candidates and rationale outside receipt \\
+Redaction before signing & Not specified & Encryption to owner & Not a focus & Yes, masked before signing (Sect.~\ref{sec:eval-min}) \\
+Signed output binding & Not specified & Signed receipt over the action & Signed hash chain; verdicts re-derived offline & Successful-output hash, checked against retained bytes \\
+Effect gating & Not described & Not described & Yes & No; output invariants run after generation and fail the run \\
+Implementation & None (blueprint) & Reference implementation & Implementation & Open-source library and command-line tool \\
+Evaluation & Use cases & Cryptographic microbenchmarks & Crash injection, 100M-event verification, model experiment & Tamper suite, output binding, policy checks, overhead (Sect.~\ref{sec:evaluation}) \\
+\bottomrule
+\end{tabularx}
+\par\smallskip\noindent\begin{minipage}{\textwidth}
+``Not described'' is limited to the cited source. Published designs and authors' reported experiments are not results of our comparison harness. Lattice mechanisms depend on configuration and verifier expectations; its recorded comparison with a signed-log baseline shows parity on the scoped integrity checks.
+\end{minipage}
+\endgroup
+\end{table}
