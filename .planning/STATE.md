@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
-stopped_at: C8 working title selected and aligned; coauthor approval and venue checks pending
-last_updated: "2026-11-06T04:07:37.731655+00:00"
-last_activity: 2026-11-05 - Completed C8 title/metadata alignment (ae0aa67); coauthor approval and A7 pending
+stopped_at: Author rewrite set up on local author-rewrite branch; authors to write Sections 3, 4, 5 and 7.7; gate decision and JITCAR instructions pending
+last_updated: "2026-11-06T08:48:35.738480+00:00"
+last_activity: 2026-11-06 - Set up author rewrite (092f455 records, 425ef89 stubs on author-rewrite); working branch stays complete for the Nov 6 gate
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
 Status: Submission preparation is the highest priority; C1 awaits review, C2/C3 technically reviewed, C4 evidence/presentation complete, C5 editorial/table work complete with author narrative/review pending; A1/P5 open; A6 written confirmation/scope documented, final package checks under P4/P6; C6 editorial/source work complete with author reading/synthesis/review pending; C7 relocation complete with author review/A7 pending; C8 working title aligned with coauthor approval/venue checks pending
-Last activity: 2026-11-05 - Completed quick task 261105-unn: selected business-facing title and PDF metadata; 77-page PDF verified
+Last activity: 2026-11-06 - Completed quick task 261106-2fh: author rewrite branch with 18 stubs; records corrected; working branch unchanged
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-06 | [261106-2fh](quick/261106-2fh-set-up-author-rewrite-branch-and-records/261106-2fh-SUMMARY.md) set up author rewrite | Withdrew the editor-agreement advice; added the rewrite guide and checklist notes. Local `author-rewrite` branch has 18 stubs for the Section 3, 4, 5 and 7.7 narrative; working branch stays complete for the Nov 6 gate. Nothing pushed. |
 | 2026-11-05 | [261105-p6k](quick/261105-p6k-review-c4-c7-evidence-claims-sources-and/261105-p6k-SUMMARY.md) review C1 and C4–C7 | Results recomputed from raw data and unchanged. Cost range, eight comparison-table cells and five citation or reference details corrected; no narrative rewritten. C8 next. |
 | 2026-11-05 | Adopt C8 working title | Applied Lakshman's selected business-facing title; aligned PDF title/six-keyword metadata; added title-decision/provenance record. Abstract, visible keywords and research body unchanged; 621 protected files and latest factual review preserved. 77-page PDF verified, 0 overfull/undefined, 7 existing underfull; affected pages inspected. Implementation `ae0aa67`. Coauthor approval, A1/P5/A7 and prior reviews pending. See [quick task 261105-unn](./quick/261105-unn-adopt-c8-business-facing-working-title-a/261105-unn-SUMMARY.md). |
 | 2026-11-05 | Relocate C7 product specifics | Condensed artifact/limitations; retained conceptual figure/table and evidence boundaries; moved five full paragraphs, four mechanism descriptions and twelve limitation entries to Appendix A. Baseline/reproduction notes and relocation map added. 77-page PDF verified, 0 overfull/undefined, 7 existing underfull; 618 protected files and C2–C6 evidence unchanged. Implementation `9e56e4b`. Author review, A1/P5/A7 pending; C8 next. See [quick task 261105-lqy](./quick/261105-lqy-relocate-c7-product-specifics-into-the-r/261105-lqy-SUMMARY.md). |
