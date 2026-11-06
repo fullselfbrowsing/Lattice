@@ -89,6 +89,10 @@ The appendix distinguishes source baseline `73a47cf` from experimentally measure
 
 The [C4–C7 review](research/C4-C7-REVIEW.md) recomputes the evaluation from raw data, tests the managerial, literature and appendix claims, and lists items for the authors. Measured results are unchanged. No narrative was rewritten.
 
+## Author rewrite
+
+The narrative of Sections 3, 4, 5 and 7.7 is being rewritten by the authors on the local `author-rewrite` branch, following the [rewrite guide](research/AUTHOR-REWRITE.md). The working branch stays complete until that work is merged.
+
 ## C8 working title
 
 **Verifiable Evidence for AI-Assisted Business Decisions: A Design Science Study** is Lakshman's selected working title. The visible title and PDF title metadata match; the unchanged six keywords also populate PDF metadata. The abstract and research body are unchanged. See the [title-decision record](research/C8-TITLE-DECISION.md) for all three candidates, rationale and assistance provenance.
