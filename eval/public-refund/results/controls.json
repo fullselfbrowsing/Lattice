@@ -1,0 +1,144 @@
+{
+  "source": "moffatt:nvidia/nemotron-3.5-super-vl:free:0",
+  "rows": [
+    {
+      "name": "intact-control",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      }
+    },
+    {
+      "name": "changed-page",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "unexpected-page:0",
+          "page-hash-mismatch:0"
+        ]
+      }
+    },
+    {
+      "name": "missing-page",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "page-count-mismatch",
+          "page-missing:8"
+        ]
+      }
+    },
+    {
+      "name": "changed-output",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "output-hash-mismatch"
+        ]
+      }
+    },
+    {
+      "name": "changed-request",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": false,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "execution-binding-mismatch"
+        ]
+      }
+    },
+    {
+      "name": "changed-task",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "input-binding-mismatch"
+        ]
+      }
+    },
+    {
+      "name": "wrong-case",
+      "passed": true,
+      "observed": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": false,
+        "problems": [
+          "case-mismatch"
+        ]
+      }
+    },
+    {
+      "name": "missing-receipt",
+      "passed": true,
+      "observed": {
+        "signature": false,
+        "evidenceOkay": false,
+        "problems": [
+          "receipt-missing"
+        ]
+      }
+    },
+    {
+      "name": "forged-signature",
+      "passed": true,
+      "observed": {
+        "signature": false,
+        "evidenceOkay": false,
+        "problems": [
+          "signature-invalid"
+        ]
+      }
+    },
+    {
+      "name": "untrusted-key",
+      "passed": true,
+      "observed": {
+        "signature": false,
+        "evidenceOkay": false,
+        "problems": [
+          "key-not-found"
+        ]
+      }
+    }
+  ],
+  "scope": "One intact control and nine mutations/trust checks, on one eligible live bundle. Not ten independent live cases."
+}

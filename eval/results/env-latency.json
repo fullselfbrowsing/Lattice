@@ -1,0 +1,13 @@
+{
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "platform": "linux 6.12.94+",
+  "arch": "x64",
+  "cpu": "Intel(R) Xeon(R) Processor",
+  "cores": 4,
+  "totalMemGB": 15.6,
+  "latticeVersion": "1.6.0",
+  "date": "2026-10-26T18:11:44.232Z",
+  "gitCommit": "ae99fb5a3de3bb149542a0f61c55140661ef7600",
+  "firstCommit": "d4f740c5d68adcda6b49d29f92406fd99e7ab8a1 2026-04-21T23:42:17-05:00"
+}

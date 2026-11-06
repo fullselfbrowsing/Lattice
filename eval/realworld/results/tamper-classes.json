@@ -1,0 +1,96 @@
+{
+  "classes": [
+    "byte-flip",
+    "truncate",
+    "swap",
+    "other-key"
+  ],
+  "definition": "detected=true means the system's check rejects the mutated artifact. null means that class was not applied. Truncation of a hash chain that leaves a valid prefix is not detection.",
+  "tools": [
+    {
+      "tool": "json-log",
+      "measured": true,
+      "mutations": {
+        "byte-flip": false,
+        "truncate": false,
+        "swap": false,
+        "other-key": null
+      },
+      "detected": 0,
+      "applicable": 3,
+      "note": "Edits stay valid JSON. byte-flip changes one response character, truncate drops the last record, swap exchanges two responses. None of those have a check."
+    },
+    {
+      "tool": "hash-chain",
+      "measured": true,
+      "mutations": {
+        "byte-flip": true,
+        "truncate": false,
+        "swap": true,
+        "other-key": false
+      },
+      "detected": 2,
+      "applicable": 4,
+      "note": "other-key here is a rebuilt chain over the swapped bodies. There is no external anchor, so the rebuilt chain verifies. Truncation of the tail leaves a valid prefix."
+    },
+    {
+      "tool": "opentelemetry-genai",
+      "measured": true,
+      "mutations": {
+        "byte-flip": false,
+        "truncate": false,
+        "swap": false,
+        "other-key": null
+      },
+      "detected": 0,
+      "applicable": 3,
+      "note": "In-process GenAI spans have no signature. A changed, dropped, or swapped transcript still parses."
+    },
+    {
+      "tool": "novafabric-hmac",
+      "measured": true,
+      "mutations": {
+        "byte-flip": true,
+        "truncate": false,
+        "swap": true,
+        "other-key": true
+      },
+      "detected": 3,
+      "applicable": 4,
+      "note": "Truncate keeps a valid prefix. other-key is a re-sign with a different shared secret, checked with the original secret."
+    },
+    {
+      "tool": "lattice-receipt",
+      "measured": true,
+      "mutations": {
+        "byte-flip": true,
+        "truncate": true,
+        "swap": true,
+        "other-key": true
+      },
+      "detected": 4,
+      "applicable": 4,
+      "note": "Each class is a single signed receipt. other-key is a receipt signed by a second key and checked against the first key set."
+    },
+    {
+      "tool": "agent-flight-recorder",
+      "measured": true,
+      "mutations": {
+        "byte-flip": true,
+        "truncate": true,
+        "swap": null,
+        "other-key": null
+      },
+      "detected": 2,
+      "applicable": 2,
+      "note": "Plain AFR archive. MockAnchor. Swap and other-key were not applied to the CBOR body."
+    }
+  ],
+  "priorSingleByteEdit": {
+    "sello": true,
+    "janus": true,
+    "cosign": true,
+    "in-toto": true,
+    "nova-capsule": true
+  }
+}

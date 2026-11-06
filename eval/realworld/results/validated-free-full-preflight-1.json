@@ -1,0 +1,245 @@
+{
+  "version": "validated-live/v1",
+  "env": {
+    "at": "2026-11-03T16:32:19.972Z",
+    "revision": "f00f62a379d34008c9621bb39556b3074683207b",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "09c3064e4704aabd765c86770832fe9d700c09bb28087018a35f7d9364cdebbe",
+    "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "node": "v24.14.1",
+    "stage": "full",
+    "cohort": "free",
+    "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "counts": {
+      "transport": 10,
+      "privacy": 10,
+      "agents": 2,
+      "citations": 60,
+      "latency": 20,
+      "warmups": 2
+    },
+    "judgeModel": "xingchen-agi/xing4.0-29b-a4b:free",
+    "quota": {
+      "used": 32,
+      "limit": 1000,
+      "remaining": 968
+    },
+    "endpointCatalog": {
+      "nvidia/nemotron-3.5-super-vl:free": [
+        {
+          "name": "Nvidia | nvidia/nemotron-3.5-super-vl-20261015:free",
+          "model_id": "nvidia/nemotron-3.5-super-vl:free",
+          "model_name": "NVIDIA: Nemotron 3.5 Super VL",
+          "context_length": 1000000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Nvidia",
+          "tag": "nvidia",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "max_prompt_tokens": 868928,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "seed",
+            "top_p",
+            "tools",
+            "tool_choice",
+            "response_format",
+            "structured_outputs"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": true,
+            "function": true
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "dots-studio/dots-3-note-preview:free": [
+        {
+          "name": "AtlasCloud | dots-studio/dots-3-note-preview-20260813:free",
+          "model_id": "dots-studio/dots-3-note-preview:free",
+          "model_name": "Dots Studio: Dots3-Note Preview",
+          "context_length": 512000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "AtlasCloud",
+          "tag": "atlas-cloud/fp8",
+          "service_tier": null,
+          "quantization": "fp8",
+          "max_completion_tokens": 460800,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "xingchen-agi/xing4.0-29b-a4b:free": [
+        {
+          "name": "Phala | xingchen-agi/xing4.0-29b-a4b-20261015:free",
+          "model_id": "xingchen-agi/xing4.0-29b-a4b:free",
+          "model_name": "XingChen: Xing4.0 29B A4B",
+          "context_length": 262144,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Phala",
+          "tag": "phala",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 235929,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ]
+    },
+    "freePolicy": "Pinned :free catalog entries and zero endpoint prices; no model fallbacks/extensions; at most 900 requests across stages, 3200ms minimum spacing, no HTTP retries. Separate paid ledger remains untouched.",
+    "models": [
+      {
+        "id": "nvidia/nemotron-3.5-super-vl:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 1000000
+      },
+      {
+        "id": "dots-studio/dots-3-note-preview:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 512000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "pacingMs is recorded separately and excluded from processingMs; subtract pacingMs from wallMs for comparisons. wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
+    "requestBinding": "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
+    "paidLedgerHash": "6705196b1bd6c6da6148e832e5d8c3cec7c2bd7a9c1a4abff15ab36013d4b6f3",
+    "scope": "Exploratory free-model cohort; separate from paid results. Free-tier queueing and provider variability limit latency generalization; fixed free judge is not human validated.",
+    "smokeGate": "Complete smoke coverage, successful JSON transport for each model, verified receipt bindings/crew closure, no marker leakage. Model answer, tool-use and format errors remain measured outcomes.",
+    "tokenCaps": {
+      "latency": 1024,
+      "transport": 1024,
+      "privacy": 1024,
+      "citations": 4096,
+      "agent": 4096,
+      "crew": 4096,
+      "judge": 4096
+    }
+  },
+  "rows": [],
+  "budget": {
+    "mode": "free-only",
+    "limitUsd": 0,
+    "confirmedUsd": 0,
+    "requests": 45,
+    "maxRequests": 900,
+    "unreportedCosts": 9,
+    "remainingAtStartupMinusRequests": 968
+  },
+  "stopped": "A complete smoke run with transport, receipt and execution checks passing on the same runtime build is required."
+}

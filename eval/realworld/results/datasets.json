@@ -1,0 +1,312 @@
+{
+  "lattice": {
+    "version": "1.6.0",
+    "commit": "ae99fb5a3de3bb149542a0f61c55140661ef7600"
+  },
+  "datasets": {
+    "ai4privacy": {
+      "id": "ai4privacy/pii-masking-300k",
+      "file": "data/validation/1english_openpii_8k.jsonl",
+      "revision": "c8c77895a005822682b66ab547fc0422579bc1d3",
+      "revisionSource": "pinned download",
+      "license": "Ai4Privacy 2024: academic research and non-commercial use with acknowledgement. Redistribution, uploading, sharing, and derivative works require a written license from licensing@ai4privacy.com. The set is synthetic and watermarked.",
+      "local_lines": 7946
+    },
+    "gretel": {
+      "id": "gretelai/synthetic_pii_finance_multilingual",
+      "file": "data/English_test-00000-of-00001.parquet",
+      "revision": "7b844d16738527a04264f50214cb426a4cea0897",
+      "revisionSource": "pinned download",
+      "license": "apache-2.0",
+      "rows": 2891
+    },
+    "asqa": {
+      "id": "din0s/asqa",
+      "file": "data/dev-00000-of-00001-58a9a40c6e69f07b.parquet",
+      "revision": "084060f16b46f3165318f760b2339208b19a0bde",
+      "revisionSource": "pinned download",
+      "license": "apache-2.0",
+      "rows": 948,
+      "note": "ASQA dev long answers are scored with mustCite. The check is syntactic. It does not judge whether a citation supports the claim."
+    }
+  },
+  "unit": "One prediction per document per detector. The detector returns a single match. A match is a true positive when that substring overlaps a gold span of the mapped type. A gold document with no overlapping match is a false negative. A match that overlaps no gold span of that type is a false positive.",
+  "inScopeMap": [
+    "EMAIL/email -> email",
+    "SOCIALNUMBER/ssn -> us-ssn",
+    "TEL/phone -> us-phone",
+    "credit card labels -> credit-card"
+  ],
+  "ai4privacy": {
+    "docs": 7946,
+    "labelCounts": {
+      "USERNAME": 2786,
+      "TIME": 3766,
+      "BOD": 2317,
+      "IDCARD": 2656,
+      "SEX": 2010,
+      "DRIVERLICENSE": 2420,
+      "DATE": 1702,
+      "STREET": 1910,
+      "GIVENNAME1": 2019,
+      "LASTNAME1": 2416,
+      "COUNTRY": 1565,
+      "BUILDING": 1943,
+      "CITY": 2017,
+      "STATE": 2002,
+      "POSTCODE": 1907,
+      "IP": 2166,
+      "PASSPORT": 2424,
+      "EMAIL": 2612,
+      "TEL": 1997,
+      "SOCIALNUMBER": 2554,
+      "SECADDRESS": 859,
+      "PASS": 1620,
+      "LASTNAME2": 634,
+      "LASTNAME3": 200,
+      "TITLE": 1926,
+      "GIVENNAME2": 539,
+      "GEOCOORD": 216,
+      "CARDISSUER": 1
+    },
+    "types": {
+      "email": {
+        "tp": 1501,
+        "fp": 71,
+        "fn": 32,
+        "docs": 7946,
+        "goldDocs": 1533,
+        "precision": 0.9548346055979644,
+        "recall": 0.9791258969341161
+      },
+      "us-ssn": {
+        "tp": 649,
+        "fp": 8,
+        "fn": 879,
+        "docs": 7946,
+        "goldDocs": 1528,
+        "precision": 0.9878234398782344,
+        "recall": 0.424738219895288
+      },
+      "credit-card": {
+        "tp": 0,
+        "fp": 40,
+        "fn": 0,
+        "docs": 7946,
+        "goldDocs": 0,
+        "precision": 0,
+        "recall": null
+      },
+      "us-phone": {
+        "tp": 464,
+        "fp": 560,
+        "fn": 792,
+        "docs": 7946,
+        "goldDocs": 1256,
+        "precision": 0.453125,
+        "recall": 0.36942675159235666
+      }
+    },
+    "falsePositiveOverlap": {
+      "email": {
+        "(no gold span)": 65,
+        "USERNAME": 5,
+        "PASS": 1
+      },
+      "us-phone": {
+        "SOCIALNUMBER": 532,
+        "(no gold span)": 28
+      },
+      "credit-card": {
+        "DRIVERLICENSE": 1,
+        "TEL": 3,
+        "SOCIALNUMBER": 3,
+        "IDCARD": 32,
+        "(no gold span)": 1
+      },
+      "us-ssn": {
+        "(no gold span)": 8
+      }
+    },
+    "outOfScopeOnly": 4758,
+    "outOfScopeOnlyFlagged": 56
+  },
+  "ai4privacy_in_scope_shapes": {
+    "email": {
+      "tp": 1501,
+      "fp": 71,
+      "fn": 1081,
+      "goldSpans": 2611,
+      "precision": 0.9548346055979644,
+      "spanRecall": 0.585982382229031
+    },
+    "us-ssn": {
+      "tp": 646,
+      "fp": 11,
+      "fn": 418,
+      "goldSpans": 1070,
+      "precision": 0.9832572298325722,
+      "spanRecall": 0.6093457943925233
+    },
+    "credit-card": {
+      "tp": 0,
+      "fp": 40,
+      "fn": 0,
+      "goldSpans": 0,
+      "precision": 0,
+      "spanRecall": null
+    },
+    "us-phone": {
+      "tp": 119,
+      "fp": 905,
+      "fn": 39,
+      "goldSpans": 158,
+      "precision": 0.1162109375,
+      "spanRecall": 0.7531645569620253
+    }
+  },
+  "gretel_english_test": {
+    "docs": 2891,
+    "labelCounts": {
+      "employee_id": 114,
+      "name": 3489,
+      "street_address": 2194,
+      "last_name": 82,
+      "phone_number": 480,
+      "company": 3476,
+      "date": 923,
+      "ipv6": 61,
+      "ipv4": 62,
+      "customer_id": 94,
+      "time": 211,
+      "credit_card_number": 83,
+      "credit_card_security_code": 76,
+      "user_name": 32,
+      "bban": 93,
+      "passport_number": 76,
+      "date_of_birth": 126,
+      "password": 47,
+      "email": 330,
+      "first_name": 159,
+      "iban": 69,
+      "driver_license_number": 68,
+      "ssn": 85,
+      "account_pin": 80,
+      "bank_routing_number": 81,
+      "date_time": 38,
+      "local_latlng": 58,
+      "swift_bic_code": 112,
+      "api_key": 54
+    },
+    "types": {
+      "email": {
+        "tp": 214,
+        "fp": 196,
+        "fn": 15,
+        "docs": 2891,
+        "goldDocs": 229,
+        "precision": 0.5219512195121951,
+        "recall": 0.9344978165938864
+      },
+      "us-ssn": {
+        "tp": 60,
+        "fp": 1,
+        "fn": 10,
+        "docs": 2891,
+        "goldDocs": 70,
+        "precision": 0.9836065573770492,
+        "recall": 0.8571428571428571
+      },
+      "credit-card": {
+        "tp": 39,
+        "fp": 14,
+        "fn": 35,
+        "docs": 2891,
+        "goldDocs": 74,
+        "precision": 0.7358490566037735,
+        "recall": 0.527027027027027
+      },
+      "us-phone": {
+        "tp": 270,
+        "fp": 41,
+        "fn": 123,
+        "docs": 2891,
+        "goldDocs": 393,
+        "precision": 0.8681672025723473,
+        "recall": 0.6870229007633588
+      }
+    },
+    "falsePositiveOverlap": {
+      "email": {
+        "(no gold span)": 191,
+        "user_name": 3,
+        "name": 2
+      },
+      "us-phone": {
+        "(no gold span)": 41
+      },
+      "credit-card": {
+        "(no gold span)": 13,
+        "bban": 1
+      },
+      "us-ssn": {
+        "(no gold span)": 1
+      }
+    },
+    "outOfScopeOnly": 2276,
+    "outOfScopeOnlyFlagged": 94
+  },
+  "gretel_in_scope_shapes": {
+    "email": {
+      "tp": 214,
+      "fp": 196,
+      "fn": 33,
+      "goldSpans": 315,
+      "precision": 0.5219512195121951,
+      "spanRecall": 0.8952380952380953
+    },
+    "us-ssn": {
+      "tp": 60,
+      "fp": 1,
+      "fn": 2,
+      "goldSpans": 74,
+      "precision": 0.9836065573770492,
+      "spanRecall": 0.972972972972973
+    },
+    "credit-card": {
+      "tp": 39,
+      "fp": 14,
+      "fn": 37,
+      "goldSpans": 79,
+      "precision": 0.7358490566037735,
+      "spanRecall": 0.5316455696202531
+    },
+    "us-phone": {
+      "tp": 247,
+      "fp": 64,
+      "fn": 40,
+      "goldSpans": 312,
+      "precision": 0.7942122186495176,
+      "spanRecall": 0.8717948717948718
+    }
+  },
+  "shapeRule": "Second pass keeps only gold spans whose surface form matches the detector's stated format (US SSN 9-digit/dashed/spaced, US phone 10-digit or grouped, email containing @). Recall here is span-level. Precision is still one prediction per document.",
+  "asqa_dev": {
+    "n": 948,
+    "withBracket": 2,
+    "titleSubstring": 525,
+    "mustCiteAnyGold": 4,
+    "mustCiteStructuredDefault": 0,
+    "mustCiteFabricatedWhenBrackets": 0,
+    "bracketed": 2,
+    "mustCiteOptions": {
+      "inline": true
+    }
+  },
+  "usSsnSingleMatch": {
+    "goldUsShaped": 1070,
+    "overlappedByTheOneMatch": 646,
+    "missedBecauseMatchWasElsewhere": 348,
+    "noMatch": 76
+  }
+}

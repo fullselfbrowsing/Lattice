@@ -1,0 +1,151 @@
+{
+  "retrievedOn": "2026-11-03",
+  "extraction": "Poppler pdftotext 26.06.0 -layout, form-feed page split, trim page boundaries; no paraphrase or invented fields in page text.",
+  "scope": "Actual published decisions; not original company exhibits or complete operational files. PDFs and extracted pages retained locally; public manifest carries source fingerprints rather than redistributing full decisions.",
+  "sources": [
+    {
+      "id": "moffatt",
+      "title": "Moffatt v. Air Canada, 2024 BCCRT 149",
+      "url": "https://www.middletemple.org.uk/sites/default/files/civicrm/persist/contribute/files/2024bccrt149.pdf",
+      "pdfSha256": "92b1c88e691d62a4450eba5ef143f2d6c620418603fad538ce90e00c999c2b97",
+      "pdfBytes": 206524,
+      "pages": [
+        {
+          "source_id": "moffatt-p1",
+          "page": 1,
+          "textSha256": "fc9a3780c1960f1ad48c9b686888b316c48bdea804ca137bdb2e5bcbfcb86797",
+          "characters": 1094
+        },
+        {
+          "source_id": "moffatt-p2",
+          "page": 2,
+          "textSha256": "14bfe0841e381cece0cce428de6b398eb98422981d7c2a1f735fe378b15d3138",
+          "characters": 2089
+        },
+        {
+          "source_id": "moffatt-p3",
+          "page": 3,
+          "textSha256": "533a59833f2c6833f13523142d3a12741beb44c6734902087add9284627ca80e",
+          "characters": 1929
+        },
+        {
+          "source_id": "moffatt-p4",
+          "page": 4,
+          "textSha256": "57dbc827cb6392b8a539e84e55cb383b40f42763a99388d16d99433729f75ecf",
+          "characters": 2104
+        },
+        {
+          "source_id": "moffatt-p5",
+          "page": 5,
+          "textSha256": "65ad2cca231d6992763f3c86ec358eae8bd60b0c6a760bedefa718347c0f1262",
+          "characters": 2152
+        },
+        {
+          "source_id": "moffatt-p6",
+          "page": 6,
+          "textSha256": "4460760b3a9eefdf791bfe9dc2f693e9f7ce1e5ff27aeff78bac247afc0d2b76",
+          "characters": 2479
+        },
+        {
+          "source_id": "moffatt-p7",
+          "page": 7,
+          "textSha256": "1c25de0349062fcc37f06a23617c28c1ac249f4298c2a5c5199615e02a2719f5",
+          "characters": 2126
+        },
+        {
+          "source_id": "moffatt-p8",
+          "page": 8,
+          "textSha256": "7e7bffada5b4a691fd9d97ae57961850e79778eaad8bc031ffde061693a8691a",
+          "characters": 2260
+        },
+        {
+          "source_id": "moffatt-p9",
+          "page": 9,
+          "textSha256": "9b13411d57d1c4d9bd1507dc0df0dec112c3f420282fac3959ce5c4d0595ba33",
+          "characters": 1070
+        }
+      ]
+    },
+    {
+      "id": "drn-4377241",
+      "title": "Financial Ombudsman decision DRN-4377241",
+      "url": "https://www.financial-ombudsman.org.uk/decision/DRN-4377241.pdf",
+      "pdfSha256": "95426dc30e90675eb23f65157f143aaa41d21f75f908206dfe8749f9559c8099",
+      "pdfBytes": 113158,
+      "pages": [
+        {
+          "source_id": "drn-4377241-p1",
+          "page": 1,
+          "textSha256": "6c4066c018e2c3689f602da7c358a861425fc5b8f9af3e8e6ad88291f3887ff1",
+          "characters": 3089
+        },
+        {
+          "source_id": "drn-4377241-p2",
+          "page": 2,
+          "textSha256": "3b24f233d507ea6cb827127e1cdf80e5e3b71ab27bbc12865591a5c64e82f648",
+          "characters": 3468
+        },
+        {
+          "source_id": "drn-4377241-p3",
+          "page": 3,
+          "textSha256": "9d0348dcea5f0cb045ab934a3c945608b307a990c7273b179b9034c07d20a239",
+          "characters": 4096
+        },
+        {
+          "source_id": "drn-4377241-p4",
+          "page": 4,
+          "textSha256": "29ad460fd42da255a452c96a65dcb73dc7ef0f02ce7220fa9bb5ef93630263be",
+          "characters": 750
+        }
+      ]
+    },
+    {
+      "id": "drn-4148727",
+      "title": "Financial Ombudsman decision DRN-4148727",
+      "url": "https://www.financial-ombudsman.org.uk/decision/DRN-4148727.pdf",
+      "pdfSha256": "d11c1f27fc7a9014372860b6132ea5df8a0f80b0d0066a265337d9a4182f31f8",
+      "pdfBytes": 99355,
+      "pages": [
+        {
+          "source_id": "drn-4148727-p1",
+          "page": 1,
+          "textSha256": "4aae90b1421d5009865315fc8353f095b88787ae241f210e36634832d0831fbe",
+          "characters": 2906
+        },
+        {
+          "source_id": "drn-4148727-p2",
+          "page": 2,
+          "textSha256": "4ffd023402078a32855e7ab4d37ca0f9488fd374c6e94e83ea6052ec7bd0dcf3",
+          "characters": 1769
+        }
+      ]
+    },
+    {
+      "id": "drn-3785437",
+      "title": "Financial Ombudsman decision DRN-3785437",
+      "url": "https://www.financial-ombudsman.org.uk/decision/DRN-3785437.pdf",
+      "pdfSha256": "b96a90f75d687928f3927ac96922f7032b50a212d1d175bcc344752121750a27",
+      "pdfBytes": 114889,
+      "pages": [
+        {
+          "source_id": "drn-3785437-p1",
+          "page": 1,
+          "textSha256": "ec1754a1e6e7b4522903daa799cb9ae19c60412c0339be7ccf35e0832c7fc8d8",
+          "characters": 2976
+        },
+        {
+          "source_id": "drn-3785437-p2",
+          "page": 2,
+          "textSha256": "5fa672a9cfbd3e6de404d04160ac184664993e5616e41e9f75f66c22462ea925",
+          "characters": 3296
+        },
+        {
+          "source_id": "drn-3785437-p3",
+          "page": 3,
+          "textSha256": "737cd1d280b9c714ae6f67ebe1553c31a4eb28392e04ee36e5fc2253ffb02170",
+          "characters": 2316
+        }
+      ]
+    }
+  ]
+}

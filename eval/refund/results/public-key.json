@@ -1,0 +1,14 @@
+{
+  "kid": "refund-demo-20261103",
+  "publicKeyJwk": {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "oB70wo37WgC4XAruqbSXXPGu7YxKTrNKSBoZ0Sn-Cos",
+    "kty": "OKP"
+  },
+  "state": "active"
+}

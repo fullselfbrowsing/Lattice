@@ -2,6 +2,59 @@ import type { ArtifactInput } from "../artifacts/artifact.js";
 import type { ProviderPackagedArtifactPlan } from "../plan/plan.js";
 import type { ProviderRunRequest } from "./provider.js";
 
+export class UnsupportedArtifactTransportError extends Error {
+  readonly kind = "unsupported-artifact-transport";
+
+  constructor(readonly artifactId: string, readonly transport: string | undefined) {
+    super(`Artifact ${artifactId} cannot be delivered using transport ${transport ?? "unspecified"}.`);
+    this.name = "UnsupportedArtifactTransportError";
+  }
+}
+
+/** Infer only a directly representable transport when no packaging plan was supplied. */
+export function resolvedArtifactTransport(request: ProviderRunRequest, artifact: ArtifactInput): string {
+  const planned = packagedPlanForArtifact(request, artifact.id)?.transport;
+  if (planned !== undefined) return planned;
+  if (artifact.kind === "json" || artifact.kind === "tool-result") return "json";
+  if (artifact.kind !== "text" && artifactHttpUrl(artifact) !== undefined) return "url";
+  return "inline";
+}
+
+/** Serialize non-media artifacts without losing unsupported values through JSON.stringify. */
+export function artifactText(request: ProviderRunRequest, artifact: ArtifactInput): string {
+  const transport = resolvedArtifactTransport(request, artifact);
+  if (artifact.kind === "url" && transport !== "url") {
+    throw new UnsupportedArtifactTransportError(artifact.id, transport);
+  }
+  let value: unknown = artifact.value;
+  if (transport === "url") {
+    value = artifactHttpUrl(artifact);
+  } else if (!["inline", "json", "extracted-text", "transcript"].includes(transport)) {
+    throw new UnsupportedArtifactTransportError(artifact.id, transport);
+  }
+  try {
+    if (!isJsonValue(value)) throw new UnsupportedArtifactTransportError(artifact.id, transport);
+    return JSON.stringify({ artifactId: artifact.id, kind: artifact.kind, mediaType: artifact.mediaType,
+      privacy: artifact.privacy, transport, ...(artifact.kind === "url" ? { url: value } : { value }) });
+  } catch {
+    throw new UnsupportedArtifactTransportError(artifact.id, transport);
+  }
+}
+
+function isJsonValue(value: unknown, parents = new Set<object>()): boolean {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || parents.has(value)) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return false;
+  if (Object.getOwnPropertySymbols(value).length > 0) return false;
+  parents.add(value);
+  const children = Array.isArray(value) ? Array.from(value) : Object.values(value);
+  const valid = children.every((child) => isJsonValue(child, parents));
+  parents.delete(value);
+  return valid;
+}
+
 export function packagedPlanForArtifact(
   request: ProviderRunRequest,
   artifactId: string,

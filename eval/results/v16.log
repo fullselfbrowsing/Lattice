@@ -1,0 +1,75 @@
+┌─────────┬─────────────────────────────────────────────────────────────┬──────┬───────────────────────────────────────────┐
+│ (index) │ check                                                       │ ok   │ kind                                      │
+├─────────┼─────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────┤
+│ 0       │ 'plain-verifies'                                            │ true │ ''                                        │
+│ 1       │ 'advisories-on-unbound-receipt'                             │ true │ '3 info advisories'                       │
+│ 2       │ 'advisory-shape-structured'                                 │ true │ '{code, severity, message}'               │
+│ 3       │ 'current-version-no-version-advisory'                       │ true │ ''                                        │
+│ 4       │ 'bound-accepts-matching-options'                            │ true │ ''                                        │
+│ 5       │ 'audience-mismatch'                                         │ true │ 'audience-mismatch'                       │
+│ 6       │ 'nonce-mismatch'                                            │ true │ 'nonce-mismatch'                          │
+│ 7       │ 'expired'                                                   │ true │ 'receipt-expired'                         │
+│ 8       │ 'minVersion-v1.4-accepts-current'                           │ true │ ''                                        │
+│ 9       │ 'bound-unchecked-audience-warns'                            │ true │ 'warn:audience-unchecked'                 │
+│ 10      │ 'bound-unchecked-nonce-warns'                               │ true │ 'warn:nonce-unchecked'                    │
+│ 11      │ 'nonce-value-never-echoed'                                  │ true │ 'not echoed'                              │
+│ 12      │ 'expiresAt-set-no-expiry-advisory'                          │ true │ ''                                        │
+│ 13      │ 'bound-and-checked-no-advisories'                           │ true │ '0 advisories'                            │
+│ 14      │ 'maxAgeMs-silences-expiry-absent'                           │ true │ ''                                        │
+│ 15      │ 'minVersion-floor-rejects-v1.1'                             │ true │ 'schema-version-too-low'                  │
+│ 16      │ 'v1.1-still-verifies-without-minVersion'                    │ true │ ''                                        │
+│ 17      │ 'version-below-current-info-effective-floor'                │ true │ 'info:version-below-current'              │
+│ 18      │ 'version-below-current-kept-at-baseline-minVersion'         │ true │ 'info:version-below-current'              │
+│ 19      │ 'truncate-without-expectedCount'                            │ true │ 'accepted'                                │
+│ 20      │ 'truncate-with-expectedCount'                               │ true │ 'count-mismatch'                          │
+│ 21      │ 'expectedCount-silences-tail-advisory'                      │ true │ 'accepted'                                │
+│ 22      │ 'requireClosure-rejects-unclosed-chain'                     │ true │ 'count-mismatch'                          │
+│ 23      │ 'closed-chain-accepts'                                      │ true │ ''                                        │
+│ 24      │ 'closed-chain-no-tail-advisory'                             │ true │ ''                                        │
+│ 25      │ 'closed-chain-dropped-leaf'                                 │ true │ 'count-mismatch'                          │
+│ 26      │ 'closed-chain-dropped-closer'                               │ true │ 'count-mismatch'                          │
+│ 27      │ 'requireClosure-accepts-closed-chain'                       │ true │ ''                                        │
+│ 28      │ 'partial-subset-accepts-with-closure-partial-warn'          │ true │ 'warn:closure-partial'                    │
+│ 29      │ 'partial-full-set-no-closure-partial'                       │ true │ 'accepted'                                │
+│ 30      │ 'subset-without-partial-rejected'                           │ true │ 'count-mismatch'                          │
+│ 31      │ 'partial-requires-closer'                                   │ true │ 'count-mismatch'                          │
+│ 32      │ 'partial-rejects-unlisted-member'                           │ true │ 'count-mismatch'                          │
+│ 33      │ 'createReceipt-rejects-malformed-member-cid'                │ true │ 'TypeError'                               │
+│ 34      │ 'createReceipt-rejects-non-array-member-list'               │ true │ 'TypeError'                               │
+│ 35      │ 'createReceipt-rejects-duplicate-member-cid'                │ true │ 'TypeError'                               │
+│ 36      │ 'createReceipt-rejects-unsorted-member-list'                │ true │ 'TypeError'                               │
+│ 37      │ 'createReceipt-rejects-unknown-closure-mode'                │ true │ 'TypeError'                               │
+│ 38      │ 'createReceipt-rejects-closure-on-non-root'                 │ true │ 'TypeError'                               │
+│ 39      │ 'malformed-chainClosure-mode-verifyReceipt'                 │ true │ 'version-mismatch'                        │
+│ 40      │ 'malformed-chainMemberCids-string-verifyReceipt'            │ true │ 'version-mismatch'                        │
+│ 41      │ 'malformed-chainMemberCids-non-string-verifyReceipt'        │ true │ 'version-mismatch'                        │
+│ 42      │ 'malformed-root-closure-verifyChain-link-invalid'           │ true │ 'link-invalid(version-mismatch)'          │
+│ 43      │ 'malformed-closer-verifyChain-link-invalid'                 │ true │ 'link-invalid(version-mismatch)'          │
+│ 44      │ 'malformed-closer-partial-link-invalid'                     │ true │ 'link-invalid(version-mismatch)'          │
+│ 45      │ 'duplicate-member-cid-verifyChain'                          │ true │ 'count-mismatch'                          │
+│ 46      │ 'non-root-closure-receipt-verifies-alone'                   │ true │ ''                                        │
+│ 47      │ 'non-root-closure-verifyChain-rejected'                     │ true │ 'count-mismatch'                          │
+│ 48      │ 'non-root-closure-partial-rejected'                         │ true │ 'count-mismatch'                          │
+│ 49      │ 'root-only-closure-unclosed-root'                           │ true │ 'count-mismatch'                          │
+│ 50      │ 'crew-receipts-n-plus-2'                                    │ true │ '5 receipts for 3 agents'                 │
+│ 51      │ 'crew-start-declares-closure-closer-lists-members'          │ true │ 'closer lists 4'                          │
+│ 52      │ 'crew-chain-verifies-requireClosure'                        │ true │ ''                                        │
+│ 53      │ 'crew-closer-verdict-success'                               │ true │ 'success'                                 │
+│ 54      │ 'crew-dropped-leaf-count-mismatch'                          │ true │ 'count-mismatch'                          │
+│ 55      │ 'crew-dropped-closer-count-mismatch'                        │ true │ 'count-mismatch'                          │
+│ 56      │ 'crew-partial-disclosure-warns'                             │ true │ 'warn:closure-partial'                    │
+│ 57      │ 'crew-budget-exceeded-closer-execution-failed'              │ true │ 'crew-budget-exceeded / execution-failed' │
+│ 58      │ 'crew-child-mint-failure-default-receiptError'              │ true │ 'signer-failed'                           │
+│ 59      │ 'crew-child-mint-failure-flag-receiptError'                 │ true │ 'signer-failed'                           │
+│ 60      │ 'crew-child-mint-failure-throw-ReceiptSigningError'         │ true │ 'ReceiptSigningError'                     │
+│ 61      │ 'crew-child-mint-throw-stops-crew'                          │ true │ '2 provider calls'                        │
+│ 62      │ 'crew-closer-mint-failure-flagged-chain-unverifiable'       │ true │ 'count-mismatch'                          │
+│ 63      │ 'crew-start-failure-default-ReceiptSigningError'            │ true │ 'ReceiptSigningError'                     │
+│ 64      │ 'crew-start-failure-flag-ReceiptSigningError'               │ true │ 'ReceiptSigningError'                     │
+│ 65      │ 'crew-start-failure-throw-ReceiptSigningError'              │ true │ 'ReceiptSigningError'                     │
+│ 66      │ 'base-1.6.0-verifier-accepts-new-crew-chain'                │ true │ 'latticeVersion 1.6.0'                    │
+│ 67      │ 'base-1.6.0-verifier-does-not-enforce-closure (documented)' │ true │ 'accepted'                                │
+│ 68      │ 'signer-flag-default'                                       │ true │ 'signer-failed'                           │
+│ 69      │ 'signer-throw'                                              │ true │ 'ReceiptSigningError'                     │
+│ 70      │ 'no-signer-no-receipt'                                      │ true │ ''                                        │
+└─────────┴─────────────────────────────────────────────────────────────┴──────┴───────────────────────────────────────────┘

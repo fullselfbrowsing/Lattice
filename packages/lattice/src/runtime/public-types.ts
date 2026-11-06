@@ -30,8 +30,9 @@ export type {
   MatchesInvariant,
   MustCiteInvariant,
   NoPiiInvariant,
+  NoPiiOptions,
 } from "../contract/invariants.js";
-export type { PiiDetector, PiiDetectorResult } from "../contract/pii-detectors.js";
+export type { PiiDetector, PiiDetectorResult, PiiMatch, PiiDetectionContext } from "../contract/pii-detectors.js";
 export type { TripwireEvidence, TripwireResult } from "../contract/tripwire.js";
 export type {
   InferOutput,
@@ -83,6 +84,8 @@ export type {
   ProviderPricingHint,
   ProviderRef,
   ProviderRunRequest,
+  ProviderGenerationOptions,
+  ProviderRequestMetadata,
   ProviderRunResponse,
   ProviderStream,
   ProviderStreamChunk,
@@ -155,6 +158,9 @@ export type {
   ReceiptSigner,
   ReceiptUsageCanonical,
   ReceiptVersion,
+  VerifyAdvisory,
+  VerifyAdvisoryCode,
+  VerifyAdvisorySeverity,
   VerifyChainError,
   VerifyChainErrorKind,
   VerifyChainFail,

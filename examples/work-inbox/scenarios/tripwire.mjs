@@ -1,7 +1,7 @@
 /**
  * Tripwire scenario — fake provider returns an `answer` field containing
  * the email `j.doe@example.com`. The contract attaches `inv.noPII("answer")`,
- * the default PII detectors (Luhn + email regex) fire on the answer, and
+ * the default `email` detector flags the address in the answer, and
  * the run terminates with `RunFailure { kind: "tripwire-violated" }`.
  *
  * The terminating receipt is signed (RECEIPT-10) and carries
@@ -52,7 +52,7 @@ export async function run(ctx) {
     sessionId: "tripwire",
     fakeRawOutputs: {
       // The email j.doe@example.com is intentionally embedded so the
-      // default email-regex PII detector trips.
+      // default `email` PII detector trips.
       answer: "Refund approved for j.doe@example.com per ticket review.",
     },
   });

@@ -1,0 +1,120 @@
+{
+  "model": "llama3.2:3b",
+  "baseUrl": "http://127.0.0.1:11434/v1",
+  "nShort": 5,
+  "tools": [
+    {
+      "tool": "ollama-direct",
+      "measured": true,
+      "latencyMs": {
+        "n": 5,
+        "mean": 1170.664448000025,
+        "p50": 1060.1888800001689,
+        "min": 435.3536870003154,
+        "max": 1832.6135039997098
+      },
+      "note": "Plain HTTP to Ollama. No gateway."
+    },
+    {
+      "tool": "litellm",
+      "measured": true,
+      "version": null,
+      "mode": "in-process completion and Router against local Ollama. No proxy process.",
+      "latencyMs": {
+        "n": 5,
+        "mean": 3248.93555059989,
+        "p50": 3964.8365889997876,
+        "min": 586.5024089998769,
+        "max": 6362.994254999649
+      },
+      "bytes": 2408,
+      "leak": false,
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "editedStillParses": true,
+      "replay": false,
+      "routingSame": true,
+      "routingUnique": 1,
+      "routingN": 8,
+      "policy": false,
+      "ticketCallbackBytes": 2,
+      "leakNote": "The success-callback log contains the prompt text verbatim. This run logged the short prompt, which has no ticket markers. The same callback would store a ticket prompt.",
+      "requestTextStored": true
+    },
+    {
+      "tool": "langchain-callback",
+      "measured": true,
+      "mode": "Local LangChain callback. Not LangSmith cloud.",
+      "latencyMs": {
+        "n": 5,
+        "mean": 3698.6500265998984,
+        "p50": 1936.328926999522,
+        "min": 844.4438820006326,
+        "max": 8321.065895999709
+      },
+      "bytes": 6893,
+      "leak": true,
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "replay": false,
+      "routing": false,
+      "policy": false
+    },
+    {
+      "tool": "openllmetry",
+      "measured": true,
+      "mode": "traceloop-sdk in-process spans around LiteLLM. No collector.",
+      "latencyMs": {
+        "n": 3,
+        "mean": 1264.5053983336159,
+        "p50": 1253.0568590000257,
+        "min": 1211.4166560004378,
+        "max": 1329.0426800003843
+      },
+      "bytes": 3346,
+      "spanCount": 4,
+      "leak": true,
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "replay": false,
+      "routing": false,
+      "policy": false
+    },
+    {
+      "tool": "portkey-gateway",
+      "measured": true,
+      "version": "1.15.2",
+      "mode": "Local node server on 127.0.0.1:8787, provider ollama, custom host 127.0.0.1:11434. No Portkey cloud.",
+      "latencyMs": {
+        "n": 5,
+        "mean": 5080.771196200112,
+        "p50": 6281.00457400069,
+        "min": 1098.5116980000385,
+        "max": 8688.262712999858
+      },
+      "bytes": 1953,
+      "leak": false,
+      "logApiError": "HTTPError: HTTP Error 500: Internal Server Error",
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "replay": false,
+      "routing": false,
+      "policy": false,
+      "note": "The response body contains the model output. GET /v1/logs did not return a stored log on this build."
+    },
+    {
+      "tool": "helicone",
+      "measured": false,
+      "status": "from docs, not measured",
+      "reason": "No Docker daemon is installed, so the self-hosted Helicone stack was not started.",
+      "docs": "Helicone stores request and response logs for an OpenAI-compatible proxy. Self-hosting is documented as a Docker stack."
+    },
+    {
+      "tool": "langfuse",
+      "measured": false,
+      "status": "from docs, not measured",
+      "reason": "No Docker daemon is installed, and the server expects Postgres, ClickHouse, and Redis. An npm-only server was not started.",
+      "docs": "Langfuse stores traces, scores, and prompts. A self-hosted server is verifiable only while that server and its database are available."
+    }
+  ]
+}

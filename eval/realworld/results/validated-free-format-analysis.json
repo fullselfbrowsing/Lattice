@@ -1,0 +1,74 @@
+{
+  "version": "free-format-diagnostics/v1",
+  "scope": "Post-hoc aggregate diagnosis only; no score changes or heldout prompt tuning.",
+  "categoriesAreMutuallyExclusive": true,
+  "notes": [
+    "Empty citation lists are not automatically classified as justified abstentions.",
+    "Length-limited counts overlap format categories.",
+    "No generated text, questions, document IDs, or source contents are exported."
+  ],
+  "groups": [
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "arm": "contract",
+      "cases": 60,
+      "categories": {
+        "valid": 52,
+        "empty-citation-list": 4,
+        "transport-unavailable": 2,
+        "unused-source-id": 1,
+        "empty-content": 1
+      },
+      "lengthLimited": 0,
+      "emptyContentFinishReasons": {
+        "content_filter": 1
+      }
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "arm": "prompt-only",
+      "cases": 60,
+      "categories": {
+        "valid": 52,
+        "unused-source-id": 3,
+        "empty-content": 2,
+        "empty-citation-list": 3
+      },
+      "lengthLimited": 1,
+      "emptyContentFinishReasons": {
+        "length": 1,
+        "content_filter": 1
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "arm": "contract",
+      "cases": 60,
+      "categories": {
+        "valid": 56,
+        "empty-content": 2,
+        "empty-citation-list": 1,
+        "unused-source-id": 1
+      },
+      "lengthLimited": 2,
+      "emptyContentFinishReasons": {
+        "length": 2
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "arm": "prompt-only",
+      "cases": 60,
+      "categories": {
+        "valid": 53,
+        "invalid-json": 1,
+        "empty-content": 3,
+        "unused-source-id": 3
+      },
+      "lengthLimited": 4,
+      "emptyContentFinishReasons": {
+        "length": 3
+      }
+    }
+  ]
+}

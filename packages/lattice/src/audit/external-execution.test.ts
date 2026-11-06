@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { artifact } from "../artifacts/artifact.js";
 import { contract } from "../contract/contract.js";
+import { hashCanonicalForReceipt } from "../receipts/bindings.js";
 import { createMemoryKeySet } from "../receipts/keyset.js";
 import {
   createInMemorySigner,
@@ -21,6 +22,24 @@ async function makeSigner(kid = "external-audit-test") {
 }
 
 describe("createExternalExecutionAudit", () => {
+  it("binds exact external serialized request strings without inferring bytes from objects", async () => {
+    const { signer, keySet } = await makeSigner();
+    const rawRequest = '{ "model":"external", "messages":[] }';
+    const result = await createExternalExecutionAudit({
+      task: "external task", policy: {}, contract: contract(),
+      model: { requested: "external", observed: null },
+      route: { providerId: "external", capabilityId: "external", attemptNumber: 1 },
+      usage: { promptTokens: 1, completionTokens: 1, costUsd: null },
+      rawRequest, outputs: { answer: "done" },
+    }, signer);
+    const requestHash = (await fingerprintArtifactValue(rawRequest))!.value;
+    expect(await verifyReceipt(result.receipt, keySet, {
+      expectedTaskHash: await hashCanonicalForReceipt("external task"),
+      expectedPolicyHash: await hashCanonicalForReceipt({}),
+      expectedProviderRequestHashes: [requestHash],
+    })).toMatchObject({ ok: true });
+  });
+
   it("creates a signed receipt, compatible sidecar, and replay envelope for external calls", async () => {
     const { signer, keySet } = await makeSigner();
     const input = artifact.text("customer issue", { id: "artifact:external:1" });
@@ -61,6 +80,9 @@ describe("createExternalExecutionAudit", () => {
       expect(verifyResult.body.outputHash).toBe(outputHash?.value);
       expect(verifyResult.body.model.requested).toBe("grok-4-1-fast-demo");
       expect(verifyResult.body.route.providerId).toBe("xai");
+      expect(verifyResult.body.taskHash).toBe(await hashCanonicalForReceipt("Classify customer issue"));
+      expect(verifyResult.body.policyHash).toBe(await hashCanonicalForReceipt({ privacy: "standard" }));
+      expect(verifyResult.body.providerRequestHashes).toBeUndefined();
     }
 
     expect(result.sidecar).toMatchObject({

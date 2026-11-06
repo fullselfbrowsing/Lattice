@@ -39,6 +39,12 @@ import type { LatticeConfig } from "./../runtime/config.js";
 import type { OutputContractMap } from "../outputs/contracts.js";
 import { validateOutputMapValues } from "../outputs/validate.js";
 import type { ProviderAdapter, ProviderRunResponse, Usage } from "../providers/provider.js";
+import { validateGenerationOptions } from "../providers/request.js";
+import { mergePolicy } from "../policy/policy.js";
+import { createRequestBindingCollector, hashCanonicalForReceipt } from "../receipts/bindings.js";
+import { hashOutputForReceipt } from "../receipts/hashes.js";
+import { createReceipt } from "../receipts/receipt.js";
+import { ReceiptSigningError } from "../results/errors.js";
 import { createNoopSurvivabilityAdapter, type SurvivabilityAdapter } from "../runtime/survivability.js";
 import { runTool, type ToolCallResult } from "../tools/tools.js";
 
@@ -89,6 +95,9 @@ export interface DispatchToolUseContext {
  * lookup/`runTool` path executes verbatim (fall-through).
  */
 export interface RunAgentInternalOptions {
+  readonly requestBindings?: ReturnType<typeof createRequestBindingCollector>;
+  readonly onAttempt?: (provider: ProviderAdapter) => void;
+  readonly onResponse?: (provider: ProviderAdapter, response: ProviderRunResponse) => void;
   readonly dispatchToolUse?: (
     req: ToolUseRequest,
     ctx: DispatchToolUseContext,
@@ -103,15 +112,65 @@ export interface RunAgentInternalOptions {
  * transcript (the `conversation` array). Phase 20 promotes scheduler /
  * transport / storage to the pluggable `AgentHost` adapter.
  *
- * Phase 39: `runAgent` is a thin public wrapper over `runAgentInternal`
- * with no internal options — the public signature and behavior are
- * unchanged.
+ * The public wrapper issues one terminal receipt when a signer is supplied.
+ * Crew dispatch calls the internal runner and owns its completion receipts.
  */
 export async function runAgent<TOutputs extends OutputContractMap = DefaultAgentOutputs>(
   intent: AgentIntent<TOutputs>,
   config: LatticeConfig = {},
 ): Promise<AgentResult<TOutputs>> {
-  return runAgentInternal(intent, config);
+  const signer = intent.signer ?? config.signer;
+  if (signer === undefined) return runAgentInternal(intent, config);
+  const runId = `agent-${crypto.randomUUID()}`;
+  const requestBindings = createRequestBindingCollector();
+  const policy = mergePolicy(undefined, intent.policy);
+  let selected = pickFirstExecutableProvider(config);
+  let observed: string | null = null;
+  let attemptNumber = 0;
+  const result = await runAgentInternal(
+    { ...intent, ...(policy !== undefined ? { policy } : {}) }, config,
+    {
+      requestBindings,
+      onAttempt(provider) {
+        selected = provider;
+        attemptNumber += 1;
+      },
+      onResponse(provider, response) {
+        selected = provider;
+        const raw = response.rawResponse as { readonly model?: unknown } | undefined;
+        observed = typeof raw?.model === "string" ? raw.model : null;
+      },
+    },
+  );
+  try {
+    const hashes = requestBindings.hashes;
+    const receipt = await createReceipt({
+      runId,
+      model: { requested: selected?.capabilities?.[0]?.modelId ?? selected?.id ?? "", observed },
+      route: {
+        providerId: selected?.id ?? "",
+        capabilityId: selected?.capabilities?.[0]?.modelId ?? selected?.id ?? "",
+        attemptNumber,
+      },
+      usage: result.usage,
+      contractVerdict: result.kind === "success" ? "success"
+        : result.kind === "validation" ? "validation-failed"
+        : result.kind === "tripwire-violated" ? "tripwire-violated"
+        : result.kind === "no-contract-match" ? "no-contract-match" : "execution-failed",
+      contractHash: intent.contract === undefined ? null : await hashCanonicalForReceipt(intent.contract),
+      taskHash: await hashCanonicalForReceipt(intent.task),
+      policyHash: await hashCanonicalForReceipt(policy ?? {}),
+      ...(hashes !== undefined ? { providerRequestHashes: hashes } : {}),
+      inputHashes: [],
+      outputHash: result.kind === "success" ? await hashOutputForReceipt(result.output) : null,
+    }, signer);
+    return { ...result, receipt };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    intent.tracer?.event?.("step.transition", { runId, stepName: "agent-completion", mintError: message });
+    if (config.receipts?.onSignerError === "throw") throw new ReceiptSigningError(runId, message, { cause: error });
+    return { ...result, receiptError: { kind: "signer-failed", message } };
+  }
 }
 
 /**
@@ -124,6 +183,7 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
   config: LatticeConfig = {},
   internalOptions: RunAgentInternalOptions = {},
 ): Promise<AgentResult<TOutputs>> {
+  validateGenerationOptions(intent.generation);
   const startedAt = Date.now();
   const cumulativeUsage = { promptTokens: 0, completionTokens: 0, costUsd: null as number | null };
   const iterations: IterationRecord[] = [];
@@ -281,11 +341,27 @@ export async function runAgentInternal<TOutputs extends OutputContractMap = Defa
         artifacts: [],
         outputs: outputNames,
         outputContracts,
+        ...(intent.generation !== undefined ? { generation: intent.generation } : {}),
+        ...(internalOptions.requestBindings !== undefined
+          ? { onRequestPrepared: internalOptions.requestBindings.onRequestPrepared } : {}),
         ...(intent.policy !== undefined ? { policy: intent.policy } : {}),
       };
-      response = host.transport !== undefined
-        ? await host.transport.call(provider, providerRequest)
-        : await provider.execute(providerRequest);
+      if (internalOptions.requestBindings !== undefined) {
+        Object.defineProperty(providerRequest, "onRequestPrepared", {
+          value: internalOptions.requestBindings.onRequestPrepared,
+          enumerable: true,
+          writable: false,
+          configurable: false,
+        });
+      }
+      internalOptions.onAttempt?.(provider);
+      const execute = () => host.transport !== undefined
+        ? host.transport.call(provider, providerRequest)
+        : provider.execute!(providerRequest);
+      response = internalOptions.requestBindings !== undefined
+        ? await internalOptions.requestBindings.observe(execute)
+        : await execute();
+      internalOptions.onResponse?.(provider, response);
     } catch (error) {
       return buildFailure({
         kind: "provider_execution",

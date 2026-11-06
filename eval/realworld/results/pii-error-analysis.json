@@ -1,0 +1,351 @@
+{
+  "schemaVersion": "lattice-pii-error-analysis/v1",
+  "generatedAt": "2026-10-28T01:07:25.472653+00:00",
+  "dataset": "development-only",
+  "documents": 20776,
+  "holdoutRead": false,
+  "scorerVersion": "pii-metrics/v2",
+  "offsetUnit": "codepoint",
+  "provenance": {
+    "analysisCodeRevision": "fefc3635ddc2d64813777afb3d2fc639d42b577d",
+    "scorerCodeRevision": "fefc3635ddc2d64813777afb3d2fc639d42b577d",
+    "analysisScriptSha256": "ab378deaf53742aee3b1c2db4b654cbef648f95fa3f89f92ddcfd236b66ab6a9",
+    "scorerSha256": "9bab86d862150699564b69aed78fb09f3feb140f42deb3fc24d0ee10aba5df9a",
+    "labelMappingScriptSha256": "81e8eb25f9e6d3a404a7197860bb0e3ae1910aae990c49d9c31bf72459282cb2",
+    "developmentFileSha256": "4069a79228b0110d8bf129eebcb4ffeac7f05f2d27f0d1cea5beef509d48c5e6",
+    "predictionFileSha256": "359e572efcebdee3da6b833dbfdf66acd599d2e3a5ce31fb25a0f091910dbfc2",
+    "predictionMetadataSha256": "6f2442e38ae87e52aec493c9c25ec66139457853a1716f423e70358138acd85b",
+    "contextual": false,
+    "python": "3.14.3"
+  },
+  "methodology": {
+    "matching": "Official UTF-16 normalization, span deduplication, source-label mapping, and deterministic one-to-one maximum-cardinality overlap matching. Reproduced TP/FP/FN counts are asserted against pii_metrics.score; metrics are unchanged.",
+    "partition": "Every unmatched prediction belongs to exactly one bucket: overlaps same-type gold but loses one-to-one matching; overlaps only other annotated labels; or overlaps no annotation of any type.",
+    "repeatedStrings": "Case-sensitive exact equality with a complete annotated span at another non-overlapping location in the same document. Counts are cross-tabulated by unmatched bucket; values are never exported.",
+    "interpretation": "No-overlap predictions repeating a same-type annotated string are potential annotation gaps, not automatically true positives. Other-label overlaps may reflect taxonomy disagreements, boundaries, or detector mistakes. Unannotated strings without this evidence remain unexplained by this analysis.",
+    "privacy": "Only aggregate counts, metrics, and file-level provenance hashes are published. No raw text, matched values, document IDs, individual offsets, or per-value hashes are emitted. Only the fixed development files are read."
+  },
+  "types": {
+    "email": {
+      "overlapScoreUnchanged": {
+        "tp": 1901,
+        "fp": 4336,
+        "fn": 151,
+        "goldSpans": 2052,
+        "predSpans": 6237,
+        "precision": 0.30479397146063814,
+        "recall": 0.9264132553606238,
+        "f1": 0.4586801785498854
+      },
+      "exactScoreUnchanged": {
+        "tp": 1562,
+        "fp": 4675,
+        "fn": 490,
+        "goldSpans": 2052,
+        "predSpans": 6237,
+        "precision": 0.25044091710758376,
+        "recall": 0.7612085769980507,
+        "f1": 0.3768850283508264
+      },
+      "counts": {
+        "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 2108,
+        "deduplicatedPredictions": 6237,
+        "distinctPredictedStringsWithinDocuments": 4129,
+        "documents": 20776,
+        "documentsWithPredictions": 3005,
+        "documentsWithSameTypeGold": 1537,
+        "documentsWithUnmatchedPredictions": 1807,
+        "documents_noAnnotatedOverlap": 1754,
+        "documents_otherLabelOverlapWithoutSameTypeOverlap": 92,
+        "duplicateIdenticalSpansRemoved": 0,
+        "goldSpans": 2052,
+        "matchedPredictions": 1901,
+        "noAnnotatedOverlap": 4171,
+        "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 4171,
+        "otherLabelOverlapWithoutSameTypeOverlap": 165,
+        "rawPredictions": 6237,
+        "sameTypeOverlapAfterOneToOneMatching": 0,
+        "unmatchedGoldSpans": 151,
+        "unmatchedPredictions": 4336,
+        "unmatchedWithExactStringAnnotatedElsewhere": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+      },
+      "otherAnnotatedOverlapTypes": {
+        "outside-four-mapped-types": 164,
+        "us-ssn": 1
+      },
+      "exactStringAnnotatedElsewhereByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "noAnnotatedOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        }
+      },
+      "repeatedUnmatchedPredictionStringsByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "distinctStringsWithinDocuments": 120,
+          "additionalOccurrencesBeyondFirst": 45
+        },
+        "noAnnotatedOverlap": {
+          "distinctStringsWithinDocuments": 2570,
+          "additionalOccurrencesBeyondFirst": 1601
+        }
+      },
+      "potentialAnnotationGapCount": 0
+    },
+    "us-ssn": {
+      "overlapScoreUnchanged": {
+        "tp": 479,
+        "fp": 43,
+        "fn": 66,
+        "goldSpans": 545,
+        "predSpans": 522,
+        "precision": 0.9176245210727969,
+        "recall": 0.8788990825688073,
+        "f1": 0.8978444236176195
+      },
+      "exactScoreUnchanged": {
+        "tp": 479,
+        "fp": 43,
+        "fn": 66,
+        "goldSpans": 545,
+        "predSpans": 522,
+        "precision": 0.9176245210727969,
+        "recall": 0.8788990825688073,
+        "f1": 0.8978444236176195
+      },
+      "counts": {
+        "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 37,
+        "deduplicatedPredictions": 522,
+        "distinctPredictedStringsWithinDocuments": 485,
+        "documents": 20776,
+        "documentsWithPredictions": 458,
+        "documentsWithSameTypeGold": 495,
+        "documentsWithUnmatchedPredictions": 25,
+        "documents_noAnnotatedOverlap": 25,
+        "duplicateIdenticalSpansRemoved": 0,
+        "goldSpans": 545,
+        "matchedPredictions": 479,
+        "noAnnotatedOverlap": 43,
+        "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 43,
+        "otherLabelOverlapWithoutSameTypeOverlap": 0,
+        "rawPredictions": 522,
+        "sameTypeOverlapAfterOneToOneMatching": 0,
+        "unmatchedGoldSpans": 66,
+        "unmatchedPredictions": 43,
+        "unmatchedWithExactStringAnnotatedElsewhere": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+      },
+      "otherAnnotatedOverlapTypes": {},
+      "exactStringAnnotatedElsewhereByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "noAnnotatedOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        }
+      },
+      "repeatedUnmatchedPredictionStringsByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "noAnnotatedOverlap": {
+          "distinctStringsWithinDocuments": 43,
+          "additionalOccurrencesBeyondFirst": 0
+        }
+      },
+      "potentialAnnotationGapCount": 0
+    },
+    "us-phone": {
+      "overlapScoreUnchanged": {
+        "tp": 2587,
+        "fp": 581,
+        "fn": 1219,
+        "goldSpans": 3806,
+        "predSpans": 3168,
+        "precision": 0.8166035353535354,
+        "recall": 0.6797162375197058,
+        "f1": 0.7418984800688271
+      },
+      "exactScoreUnchanged": {
+        "tp": 2432,
+        "fp": 736,
+        "fn": 1374,
+        "goldSpans": 3806,
+        "predSpans": 3168,
+        "precision": 0.7676767676767676,
+        "recall": 0.6389910667367315,
+        "f1": 0.6974476627473473
+      },
+      "counts": {
+        "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 254,
+        "deduplicatedPredictions": 3168,
+        "distinctPredictedStringsWithinDocuments": 2914,
+        "documents": 20776,
+        "documentsWithPredictions": 2363,
+        "documentsWithSameTypeGold": 3085,
+        "documentsWithUnmatchedPredictions": 327,
+        "documents_noAnnotatedOverlap": 327,
+        "duplicateIdenticalSpansRemoved": 0,
+        "goldSpans": 3806,
+        "matchedPredictions": 2587,
+        "noAnnotatedOverlap": 581,
+        "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 581,
+        "otherLabelOverlapWithoutSameTypeOverlap": 0,
+        "rawPredictions": 3168,
+        "sameTypeOverlapAfterOneToOneMatching": 0,
+        "unmatchedGoldSpans": 1219,
+        "unmatchedPredictions": 581,
+        "unmatchedWithExactStringAnnotatedElsewhere": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+      },
+      "otherAnnotatedOverlapTypes": {},
+      "exactStringAnnotatedElsewhereByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "noAnnotatedOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        }
+      },
+      "repeatedUnmatchedPredictionStringsByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "noAnnotatedOverlap": {
+          "distinctStringsWithinDocuments": 520,
+          "additionalOccurrencesBeyondFirst": 61
+        }
+      },
+      "potentialAnnotationGapCount": 0
+    },
+    "credit-card": {
+      "overlapScoreUnchanged": {
+        "tp": 254,
+        "fp": 195,
+        "fn": 277,
+        "goldSpans": 531,
+        "predSpans": 449,
+        "precision": 0.5657015590200446,
+        "recall": 0.4783427495291902,
+        "f1": 0.5183673469387755
+      },
+      "exactScoreUnchanged": {
+        "tp": 253,
+        "fp": 196,
+        "fn": 278,
+        "goldSpans": 531,
+        "predSpans": 449,
+        "precision": 0.5634743875278396,
+        "recall": 0.4764595103578154,
+        "f1": 0.5163265306122449
+      },
+      "counts": {
+        "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 117,
+        "deduplicatedPredictions": 449,
+        "distinctPredictedStringsWithinDocuments": 332,
+        "documents": 20776,
+        "documentsWithPredictions": 322,
+        "documentsWithSameTypeGold": 472,
+        "documentsWithUnmatchedPredictions": 108,
+        "documents_noAnnotatedOverlap": 105,
+        "documents_otherLabelOverlapWithoutSameTypeOverlap": 3,
+        "duplicateIdenticalSpansRemoved": 0,
+        "goldSpans": 531,
+        "matchedPredictions": 254,
+        "noAnnotatedOverlap": 192,
+        "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 192,
+        "otherLabelOverlapWithoutSameTypeOverlap": 3,
+        "rawPredictions": 449,
+        "sameTypeOverlapAfterOneToOneMatching": 0,
+        "unmatchedGoldSpans": 277,
+        "unmatchedPredictions": 195,
+        "unmatchedWithExactStringAnnotatedElsewhere": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+        "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+      },
+      "otherAnnotatedOverlapTypes": {
+        "outside-four-mapped-types": 1,
+        "us-phone": 1,
+        "us-ssn": 1
+      },
+      "exactStringAnnotatedElsewhereByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        },
+        "noAnnotatedOverlap": {
+          "anyAnnotatedType": 0,
+          "sameMappedType": 0,
+          "otherOrUnmappedTypeOnly": 0
+        }
+      },
+      "repeatedUnmatchedPredictionStringsByBucket": {
+        "sameTypeOverlapAfterOneToOneMatching": {
+          "distinctStringsWithinDocuments": 0,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "otherLabelOverlapWithoutSameTypeOverlap": {
+          "distinctStringsWithinDocuments": 3,
+          "additionalOccurrencesBeyondFirst": 0
+        },
+        "noAnnotatedOverlap": {
+          "distinctStringsWithinDocuments": 113,
+          "additionalOccurrencesBeyondFirst": 79
+        }
+      },
+      "potentialAnnotationGapCount": 0
+    }
+  }
+}

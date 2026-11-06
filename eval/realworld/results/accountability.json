@@ -1,0 +1,1867 @@
+{
+  "schemaVersion": "lattice-accountability-benchmark/v1",
+  "kind": "offline-synthetic",
+  "generatedAt": "2026-10-27T20:24:41.687Z",
+  "inferenceCalls": 0,
+  "spendUsd": 0,
+  "provenance": {
+    "codeRevision": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+    "trackedWorktreeDirty": false,
+    "scriptSha256": "5e3030b4d11db871f2d0e90473419badafd95631e8687b81cf56ab01e6bda3a9",
+    "fixtureSha256": "7031a5e1ebfa5f82fe3a2da0b6803b5aaa9b2fc9d496917931233292bbc2ad60",
+    "builtLibrarySha256": "413c86f56bbe0e9d91ed781f2b2613f241a393df263d74cf488af334fc908710",
+    "canonicalizerVersion": "3.0.0",
+    "node": "v24.14.1",
+    "latticeVersion": "1.6.0"
+  },
+  "methodology": {
+    "commonRecord": "All arms store the complete identical canonical Lattice receipt body, including every task, policy, input, output, and request digest. Raw synthetic values are committed by hashes in every arm.",
+    "signing": "Both signed arms use the same ephemeral Ed25519 key. The generic log signs its domain prefix plus canonical record bytes using node:crypto; Lattice signs its DSSE PAE. Private keys are never saved.",
+    "mutations": "Integrity probes change the same record bytes or fields without updating either signature. The byte edit preserves valid JSON; JSON parsing failures are not counted as integrity protection.",
+    "expectationPolicy": "Generic and unsigned logs receive matching explicit application equality checks; Lattice uses VerifyOptions. Base signature/parse acceptance is reported separately from expectation acceptance. Unsigned equality does not authenticate the asserted fields.",
+    "interpretation": "A trusted signer can rewrite and re-sign records; both signed formats should accept that positive control. Signatures do not establish factual correctness, policy enforcement, real model execution, or provider consumption. No truncation/chain completeness claim is tested.",
+    "aggregation": "Category counts retain controls, expectation checks, and unsupported key checks separately. asExpected measures benchmark correctness, not model quality or comparative security superiority."
+  },
+  "fixtures": [
+    {
+      "id": "ticket-a",
+      "task": "Summarize the shipping request.",
+      "policy": {
+        "privacy": "standard",
+        "noLogging": true
+      },
+      "input": "Synthetic order A requests delivery on Tuesday.",
+      "output": {
+        "answer": "Order A requests Tuesday delivery."
+      }
+    },
+    {
+      "id": "ticket-b",
+      "task": "Résume ce message synthétique.",
+      "policy": {
+        "noPublicUrl": true,
+        "privacy": "sensitive"
+      },
+      "input": "Le colis synthétique B arrive mercredi.",
+      "output": {
+        "answer": "Le colis B arrive mercredi."
+      }
+    },
+    {
+      "id": "ticket-c",
+      "task": "Classify the synthetic support request.",
+      "policy": {
+        "gateway": {
+          "metadata": {
+            "team": "synthetic",
+            "purpose": "offline-test"
+          }
+        },
+        "noUpload": true
+      },
+      "input": "Synthetic account C needs a password reset.",
+      "output": {
+        "answer": "Account support: password reset."
+      }
+    }
+  ],
+  "records": [
+    {
+      "fixtureId": "ticket-a",
+      "record": {
+        "contractHash": null,
+        "contractVerdict": "success",
+        "inputHashes": [
+          "94da4bb22c8576f019cc15feb07e2a20a54ca2557ae90c4fb05786e8e26f2362"
+        ],
+        "issuedAt": "2026-10-27T00:00:00.000Z",
+        "kid": "offline-synthetic-key",
+        "model": {
+          "observed": "synthetic:offline",
+          "requested": "synthetic:offline"
+        },
+        "outputHash": "2fa6785de07e772f57f02fb278fd2c088f47c6447feb145ff52845c5af809874",
+        "policyHash": "15bc9ce5a1d12263cfaf14bd9962361e0cb4d990a32934233113b932187a6b23",
+        "providerRequestHashes": [
+          "747f78531163cd8f7c730ca2b61fd5cd08ae8b37fd54fe847a5645e9832cdcc1"
+        ],
+        "receiptId": "synthetic-receipt:ticket-a",
+        "redactionPolicyId": "lattice.default.v1",
+        "redactions": [],
+        "route": {
+          "attemptNumber": 1,
+          "capabilityId": "synthetic:offline",
+          "providerId": "synthetic"
+        },
+        "runId": "synthetic:ticket-a",
+        "taskHash": "8ce8630415478fce051a3734c1c565c5d4dbaa81e21793e3cb1f71228e6022f4",
+        "usage": {
+          "completionTokens": 0,
+          "costUsd": "0",
+          "promptTokens": 0
+        },
+        "version": "lattice-receipt/v1.4"
+      },
+      "canonicalRecordSha256": "2b8828049a0fc439c5c4583a4db3ea17f3b7e0ddc1d1e327ae9b7a5712e14a0b",
+      "matchedRecordBytes": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "record": {
+        "contractHash": null,
+        "contractVerdict": "success",
+        "inputHashes": [
+          "c11aef7e460f7ce77c0000ab71bb3811cd3bca5ccecbe51de320e524dcdad587"
+        ],
+        "issuedAt": "2026-10-27T00:00:00.000Z",
+        "kid": "offline-synthetic-key",
+        "model": {
+          "observed": "synthetic:offline",
+          "requested": "synthetic:offline"
+        },
+        "outputHash": "7527bc4a72e5a0da9b54a4b434f0b0adc7db9d3e80d59f5c030b17fad631ec43",
+        "policyHash": "dc26365da95e54418faebaf3a69acf13d34f4b400aeadbfb178ee56490ba4053",
+        "providerRequestHashes": [
+          "9efd07bb2c0aa6e2e4bc57c81a9e112bcbc34ed25613f6f95c7c78e133497409"
+        ],
+        "receiptId": "synthetic-receipt:ticket-b",
+        "redactionPolicyId": "lattice.default.v1",
+        "redactions": [],
+        "route": {
+          "attemptNumber": 1,
+          "capabilityId": "synthetic:offline",
+          "providerId": "synthetic"
+        },
+        "runId": "synthetic:ticket-b",
+        "taskHash": "b87b439525cd4dd52b408645cb8926ae7ee65902ed82201ad72a046610f921fb",
+        "usage": {
+          "completionTokens": 0,
+          "costUsd": "0",
+          "promptTokens": 0
+        },
+        "version": "lattice-receipt/v1.4"
+      },
+      "canonicalRecordSha256": "93a9922a3f542cbcbf600bc1e5467a83ef838454a3160b7d7252f70e8135cc09",
+      "matchedRecordBytes": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "record": {
+        "contractHash": null,
+        "contractVerdict": "success",
+        "inputHashes": [
+          "bfc5564bebd0846b465e25ec1a9fd450cf6357587ada4113eb62e72146b7fd15"
+        ],
+        "issuedAt": "2026-10-27T00:00:00.000Z",
+        "kid": "offline-synthetic-key",
+        "model": {
+          "observed": "synthetic:offline",
+          "requested": "synthetic:offline"
+        },
+        "outputHash": "34e0cef353c6dd5dadba4fa981fde60dc3dc71563863e19fdef7cb537eb4d863",
+        "policyHash": "916a3478f605f18064dde63b5226a6db7a5a0533f976bb314a4e89bd8eb96ba8",
+        "providerRequestHashes": [
+          "0ba2b3c6d12fc3cdef897316a4a511e474735636e97b76c764689b82b0e29a61"
+        ],
+        "receiptId": "synthetic-receipt:ticket-c",
+        "redactionPolicyId": "lattice.default.v1",
+        "redactions": [],
+        "route": {
+          "attemptNumber": 1,
+          "capabilityId": "synthetic:offline",
+          "providerId": "synthetic"
+        },
+        "runId": "synthetic:ticket-c",
+        "taskHash": "a67874e9184e97a7304f17fdbae4f27d457393b09af619331967b36e8b2d0b5e",
+        "usage": {
+          "completionTokens": 0,
+          "costUsd": "0",
+          "promptTokens": 0
+        },
+        "version": "lattice-receipt/v1.4"
+      },
+      "canonicalRecordSha256": "df019843a666ae8686ee301f917784c6e812067bd4c4b463bb014e81f23e7f21",
+      "matchedRecordBytes": true
+    }
+  ],
+  "probes": [
+    {
+      "fixtureId": "ticket-a",
+      "id": "unchanged",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "valid-json-byte-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "content-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "task-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "policy-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "input-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "output-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "request-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "wrong-verification-key",
+      "category": "key-mismatch",
+      "expectedAccepted": {
+        "json-log": null,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": false,
+          "signatureOrParseAccepted": null,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": null,
+          "reason": "unsigned-log-has-no-key-verification"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "trusted-signer-rewrite",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "expected-task-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "8f3f4874b80f144c5df40ea6b8e1914b58483d2895714e8724f6ba0c344ec648"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "expected-policy-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedPolicyHash": "25eb2fdec3d27d1a151fd484b907b0f58ae302d0af8ec5c9b39e1399e097f9eb"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "expected-request-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedProviderRequestHashes": [
+          "bfde93b4b1385e8b541ccf3585d0d42edd5554f668faab712b872f3e4a65aa83"
+        ]
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-a",
+      "id": "trusted-rewrite-vs-original-task",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "8ce8630415478fce051a3734c1c565c5d4dbaa81e21793e3cb1f71228e6022f4"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "unchanged",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "valid-json-byte-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "content-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "task-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "policy-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "input-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "output-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "request-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "wrong-verification-key",
+      "category": "key-mismatch",
+      "expectedAccepted": {
+        "json-log": null,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": false,
+          "signatureOrParseAccepted": null,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": null,
+          "reason": "unsigned-log-has-no-key-verification"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "trusted-signer-rewrite",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "expected-task-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "e66fccd0138eacef4fd55d94d06335e4d73e658b18cab69fd17c2272777ec25a"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "expected-policy-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedPolicyHash": "e01bbe026149a71cb9a763a372c9818f51bddec1dda6eacbaafdd68a115ed39d"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "expected-request-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedProviderRequestHashes": [
+          "4499234198136075267bf26780d461c585a52a395cb0935034edee4c54057e74"
+        ]
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-b",
+      "id": "trusted-rewrite-vs-original-task",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "b87b439525cd4dd52b408645cb8926ae7ee65902ed82201ad72a046610f921fb"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "unchanged",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "valid-json-byte-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "content-edit",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "task-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "policy-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "input-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "output-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "request-change",
+      "category": "integrity-mutation",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "wrong-verification-key",
+      "category": "key-mismatch",
+      "expectedAccepted": {
+        "json-log": null,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": false,
+          "signatureOrParseAccepted": null,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": null,
+          "reason": "unsigned-log-has-no-key-verification"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": false,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": false,
+          "reason": "signature-invalid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "trusted-signer-rewrite",
+      "category": "positive-control",
+      "expectedAccepted": {
+        "json-log": true,
+        "signed-canonical-log": true,
+        "lattice-receipt": true
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "json-parses-without-authentication"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": null,
+          "accepted": true,
+          "reason": "signature-valid"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "expected-task-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "6e8c4fac1deec888ca113f21cc2ed0a1269137b433154cb24ccef27512aa43b0"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "expected-policy-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedPolicyHash": "060b659ef4d59b056575e36114e433f8051eb066e2a20e310f621ab43b85339d"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "expected-request-mismatch",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedProviderRequestHashes": [
+          "8c0601b35f29e4e2be3d90ce64bb91887ee06875831dfe39d09b219e74c46d4b"
+        ]
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    },
+    {
+      "fixtureId": "ticket-c",
+      "id": "trusted-rewrite-vs-original-task",
+      "category": "expectation-check",
+      "expectations": {
+        "expectedTaskHash": "a67874e9184e97a7304f17fdbae4f27d457393b09af619331967b36e8b2d0b5e"
+      },
+      "expectedAccepted": {
+        "json-log": false,
+        "signed-canonical-log": false,
+        "lattice-receipt": false
+      },
+      "outcomes": {
+        "json-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": false,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "signed-canonical-log": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "application-binding-mismatch"
+        },
+        "lattice-receipt": {
+          "applicable": true,
+          "signatureOrParseAccepted": true,
+          "authenticated": true,
+          "expectationAccepted": false,
+          "accepted": false,
+          "reason": "execution-binding-mismatch"
+        }
+      },
+      "asExpected": true
+    }
+  ],
+  "summary": {
+    "json-log": {
+      "positive-control": {
+        "cases": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unsupported": 0
+      },
+      "integrity-mutation": {
+        "cases": 21,
+        "accepted": 21,
+        "rejected": 0,
+        "unsupported": 0
+      },
+      "key-mismatch": {
+        "cases": 3,
+        "accepted": 0,
+        "rejected": 0,
+        "unsupported": 3
+      },
+      "expectation-check": {
+        "cases": 12,
+        "accepted": 0,
+        "rejected": 12,
+        "unsupported": 0
+      }
+    },
+    "signed-canonical-log": {
+      "positive-control": {
+        "cases": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unsupported": 0
+      },
+      "integrity-mutation": {
+        "cases": 21,
+        "accepted": 0,
+        "rejected": 21,
+        "unsupported": 0
+      },
+      "key-mismatch": {
+        "cases": 3,
+        "accepted": 0,
+        "rejected": 3,
+        "unsupported": 0
+      },
+      "expectation-check": {
+        "cases": 12,
+        "accepted": 0,
+        "rejected": 12,
+        "unsupported": 0
+      }
+    },
+    "lattice-receipt": {
+      "positive-control": {
+        "cases": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unsupported": 0
+      },
+      "integrity-mutation": {
+        "cases": 21,
+        "accepted": 0,
+        "rejected": 21,
+        "unsupported": 0
+      },
+      "key-mismatch": {
+        "cases": 3,
+        "accepted": 0,
+        "rejected": 3,
+        "unsupported": 0
+      },
+      "expectation-check": {
+        "cases": 12,
+        "accepted": 0,
+        "rejected": 12,
+        "unsupported": 0
+      }
+    }
+  },
+  "signedArmDecisionParity": true,
+  "allProbesAsExpected": true
+}

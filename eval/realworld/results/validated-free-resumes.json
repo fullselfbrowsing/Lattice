@@ -1,0 +1,30 @@
+[
+  {
+    "at": "2026-11-03T17:05:55.746850+00:00",
+    "stage": "full",
+    "recordedRows": 202,
+    "reason": "Provider transport failed; evaluation halted and reservation retained: fetch failed",
+    "failedCase": {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "citations",
+      "arm": "contract",
+      "id": "78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88"
+    },
+    "action": "Read-only key endpoint reachable; restart same harness and ledger, preserve failed row, continue remaining cases.",
+    "keyUsageUsd": 0.04546433,
+    "freeRequestsRemaining": 725
+  },
+  {
+    "at": "2026-11-03T17:14:13.265824+00:00",
+    "stage": "full",
+    "recordedRows": 206,
+    "reason": "Provider transport failed; evaluation halted and reservation retained: The operation was aborted due to timeout",
+    "failedCase": {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "suite": "citations",
+      "arm": "contract",
+      "id": "0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263"
+    },
+    "action": "Restart same zero-cost harness and ledger after second isolated Dots transport failure; preserve failed rows and continue remaining cases."
+  }
+]

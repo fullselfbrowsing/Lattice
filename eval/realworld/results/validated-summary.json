@@ -1,0 +1,3195 @@
+{
+  "version": "validated-report/v1",
+  "models": [
+    "openai/gpt-4.1-mini",
+    "google/gemini-2.5-flash-lite",
+    "anthropic/claude-haiku-4.5"
+  ],
+  "sourceEnvironment": {
+    "at": "2026-10-27T20:24:40.596Z",
+    "revision": "617c565fae49df774f9931e54367241cbd7122ae",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "14b0549a2f6d02a43ae423f0057f9d1e3d56605d1adf365bb6574bb3f56e2fd6",
+    "node": "v24.14.1",
+    "stage": "full",
+    "models": [
+      {
+        "id": "openai/gpt-4.1-mini",
+        "pricing": {
+          "prompt": "0.0000004",
+          "completion": "0.0000016",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001"
+        },
+        "contextLength": 1047576
+      },
+      {
+        "id": "google/gemini-2.5-flash-lite",
+        "pricing": {
+          "prompt": "0.0000001",
+          "completion": "0.0000004",
+          "image": "0.0000001",
+          "audio": "0.0000003",
+          "input_audio_cache": "0.00000003",
+          "web_search": "0.014",
+          "internal_reasoning": "0.0000004",
+          "input_cache_read": "0.00000001",
+          "input_cache_write": "0.0000000833333333333333"
+        },
+        "contextLength": 1048576
+      },
+      {
+        "id": "anthropic/claude-haiku-4.5",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000005",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.00000125",
+          "input_cache_write_1h": "0.000002"
+        },
+        "contextLength": 200000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
+    "requestBinding": "SHA256 of serialized body handed to configured fetch; retries may repeat a body. No claim of receiver attestation.",
+    "scope": "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
+    "smokeGate": "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
+    "tokenCaps": {
+      "latency": 16,
+      "transport": 64,
+      "privacy": 128,
+      "citations": 512,
+      "agent": 512,
+      "crew": 512,
+      "judge": 768
+    }
+  },
+  "judgeEnvironment": {
+    "at": "2026-10-28T00:53:35.857Z",
+    "revision": "5f6f8f0e7d49a53bb216a2fc8e77957aa04ad95f",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "105cd8292f2d22946583c9c5770c7d63d3523a83af70ab7dc3edbb463bde4af9",
+    "node": "v24.14.1",
+    "stage": "judge",
+    "models": [
+      {
+        "id": "openai/gpt-4.1-mini",
+        "pricing": {
+          "prompt": "0.0000004",
+          "completion": "0.0000016",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001"
+        },
+        "contextLength": 1047576
+      },
+      {
+        "id": "google/gemini-2.5-flash-lite",
+        "pricing": {
+          "prompt": "0.0000001",
+          "completion": "0.0000004",
+          "image": "0.0000001",
+          "audio": "0.0000003",
+          "input_audio_cache": "0.00000003",
+          "web_search": "0.014",
+          "internal_reasoning": "0.0000004",
+          "input_cache_read": "0.00000001",
+          "input_cache_write": "0.0000000833333333333333"
+        },
+        "contextLength": 1048576
+      },
+      {
+        "id": "anthropic/claude-haiku-4.5",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000005",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.00000125",
+          "input_cache_write_1h": "0.000002"
+        },
+        "contextLength": 200000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
+    "requestBinding": "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
+    "scope": "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
+    "smokeGate": "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
+    "tokenCaps": {
+      "latency": 16,
+      "transport": 64,
+      "privacy": 128,
+      "citations": 512,
+      "agent": 512,
+      "crew": 512,
+      "judge": 768
+    }
+  },
+  "collection": {
+    "expected": 1020,
+    "attempted": 213,
+    "unattempted": 807,
+    "coverageComplete": false,
+    "status": "incomplete",
+    "stopped": "verifyReceipt: expected providerRequestHashes must be a non-empty ordered array of SHA-256 digests",
+    "judgeStopped": null,
+    "warmupRowsExcluded": 0
+  },
+  "termination": {
+    "version": "validated-termination/v1",
+    "measuredHarnessRevision": "617c565fae49df774f9931e54367241cbd7122ae",
+    "measuredHarnessHash": "14b0549a2f6d02a43ae423f0057f9d1e3d56605d1adf365bb6574bb3f56e2fd6",
+    "reason": "Conservative remaining budget cannot reserve the next GPT-4.1-mini request. Paid evaluation stopped; uncertain charges were not released.",
+    "confirmedUsd": 0.04482533000000004,
+    "chargedOrReservedUsd": 9.58954493,
+    "limitUsd": 10,
+    "readOnlyKeyUsageSnapshotUsd": 0.04546433,
+    "keyUsageSnapshotIsNotSettlementProof": true,
+    "incomplete": [
+      "Three-model latency suite",
+      "Heldout citation generation and judge",
+      "Haiku single-agent and crew successes"
+    ],
+    "harnessDefectsFound": [
+      "After first network timeout, the measured version kept trying subsequent cases, consuming conservative reservations. Fixed to halt on the first unknown transport failure.",
+      "After a budget denial, zero observed HTTP calls were passed as an invalid empty expected request-hash array. This interrupted row persistence. Fixed to compare configured-fetch preparations and omit an empty expectation."
+    ],
+    "missingFinalRow": "The final case failed before HTTP egress due to budget denial; no additional paid request was made.",
+    "reporting": "Keep original measurements and stop reason unchanged. Do not pool development smoke cases with heldout evaluation. No hosted latency, support/completeness, or answer-correctness score is established by this run."
+  },
+  "judge": {
+    "available": true,
+    "sourceCompatible": true,
+    "unmatchedRows": 0,
+    "limitation": "One fixed GPT-4.1-mini judge; no human labels. ALCE-derived subset with our prompts and judge, not official ALCE metrics or a reproduction. Judge errors and shared-model bias remain possible.",
+    "alceSource": "https://github.com/princeton-nlp/ALCE"
+  },
+  "method": {
+    "latency": "Only runtime-successful measured latency rows with finite nonnegative wall/provider/processing timings. Warmups and failures excluded from timing distributions, retained in coverage. Processing is wall minus HTTP and backoff, not a causal pure-SDK cost.",
+    "bootstrap": {
+      "draws": 5000,
+      "seed": 20261027,
+      "interval": "95% percentile bootstrap of the median, resampling cases within model/arm; n<2 has no CI"
+    },
+    "citationDenominator": "60 per model/arm, including unattempted, blocked, invalid and unjudged cases. Claim metrics are conditional micro-aggregates over valid judgments. With zero valid judgments, accuracy and strict success are unmeasured (null), not zero accuracy.",
+    "strictCitationSuccess": "Usable runtime output, valid judge, correct non-abstained answer, nonempty claims, every claim supported/cited, and every claimed citation relevant.",
+    "transport": "Task correctness and observed request image parts do not attest that the remote receiver consumed specific bytes.",
+    "privacy": "Checks supplied markers only; blocked answers and absent receipts are not counted as delivered leak-free answers.",
+    "historical": "Historical results use different extraction/scoring and are not directly comparable."
+  },
+  "groups": [
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "latency",
+      "arm": "direct",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "latency",
+      "arm": "unsigned",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "latency",
+      "arm": "signed",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "transport",
+      "arm": "direct",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 14,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 4,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "transport",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "correct": 13,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 3,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "privacy",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "answerAvailable": 20,
+      "deliveredMarkerLeaks": 0,
+      "markerFreeAnswers": 20,
+      "rawOutputsObserved": 20,
+      "rawMarkerLeaks": 0,
+      "signedReceiptsAssessed": 20,
+      "signedMarkerLeaks": 0
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "agent",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 5,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 5,
+        "verified": 5,
+        "taskBound": 5,
+        "policyBound": 5,
+        "requestBound": 5,
+        "expectedBindingsVerified": 5,
+        "submittedBodiesCovered": 5,
+        "outputBindingEligible": 5,
+        "outputHashMatch": 5,
+        "editedOutputDetected": 5
+      },
+      "correct": 5,
+      "toolCallCases": 5,
+      "toolCalls": 5,
+      "strictSuccess": 5
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "crew",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 5,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 15
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 5,
+      "childExecutedCases": 5,
+      "closedChainCases": 5,
+      "receiptCount": 20,
+      "receiptCases": 5,
+      "strictSuccess": 5
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "citations",
+      "arm": "prompt-only",
+      "expected": 60,
+      "attempted": 2,
+      "unattempted": 58,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 2,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {
+        "provider_execution": 2
+      },
+      "httpStatuses": {
+        "None": 2
+      },
+      "receipts": {
+        "present": 2,
+        "verified": 2,
+        "taskBound": 2,
+        "policyBound": 2,
+        "requestBound": 2,
+        "expectedBindingsVerified": 2,
+        "submittedBodiesCovered": 2,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "suite": "citations",
+      "arm": "contract",
+      "expected": 60,
+      "attempted": 1,
+      "unattempted": 59,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 1,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {
+        "provider_execution": 1
+      },
+      "httpStatuses": {
+        "None": 1
+      },
+      "receipts": {
+        "present": 1,
+        "verified": 1,
+        "taskBound": 1,
+        "policyBound": 1,
+        "requestBound": 1,
+        "expectedBindingsVerified": 1,
+        "submittedBodiesCovered": 1,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "latency",
+      "arm": "direct",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "latency",
+      "arm": "unsigned",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "latency",
+      "arm": "signed",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "transport",
+      "arm": "direct",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20,
+        "429": 1
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 20,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10,
+            "429": 1
+          },
+          "correct": 10,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "transport",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "correct": 20,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "privacy",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 20,
+        "outputHashMatch": 20,
+        "editedOutputDetected": 20
+      },
+      "answerAvailable": 20,
+      "deliveredMarkerLeaks": 0,
+      "markerFreeAnswers": 20,
+      "rawOutputsObserved": 20,
+      "rawMarkerLeaks": 0,
+      "signedReceiptsAssessed": 20,
+      "signedMarkerLeaks": 0
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "agent",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 5,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 10
+      },
+      "receipts": {
+        "present": 5,
+        "verified": 5,
+        "taskBound": 5,
+        "policyBound": 5,
+        "requestBound": 5,
+        "expectedBindingsVerified": 5,
+        "submittedBodiesCovered": 5,
+        "outputBindingEligible": 5,
+        "outputHashMatch": 5,
+        "editedOutputDetected": 5
+      },
+      "correct": 5,
+      "toolCallCases": 5,
+      "toolCalls": 5,
+      "strictSuccess": 5
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "crew",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 5,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 15
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 5,
+      "childExecutedCases": 5,
+      "closedChainCases": 5,
+      "receiptCount": 20,
+      "receiptCases": 5,
+      "strictSuccess": 5
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "citations",
+      "arm": "prompt-only",
+      "expected": 60,
+      "attempted": 0,
+      "unattempted": 60,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "suite": "citations",
+      "arm": "contract",
+      "expected": 60,
+      "attempted": 0,
+      "unattempted": 60,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "latency",
+      "arm": "direct",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "latency",
+      "arm": "unsigned",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "latency",
+      "arm": "signed",
+      "expected": 50,
+      "attempted": 0,
+      "unattempted": 50,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "timingExcludedRuntimeSuccess": 0,
+      "timings": {
+        "wallMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "providerMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        },
+        "processingMs": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "medianCI95": null
+        }
+      }
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "transport",
+      "arm": "direct",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 20,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 1.0,
+      "errorKinds": {},
+      "httpStatuses": {
+        "200": 20,
+        "429": 1
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 20,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10,
+            "429": 1
+          },
+          "correct": 10,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "transport",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 19,
+      "runtimeFailure": 1,
+      "runtimeSuccessPerExpected": 0.95,
+      "errorKinds": {
+        "provider_execution": 1
+      },
+      "httpStatuses": {
+        "200": 19,
+        "429": 5
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 19,
+        "outputHashMatch": 19,
+        "editedOutputDetected": 19
+      },
+      "correct": 19,
+      "modalities": {
+        "image": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 9,
+          "runtimeFailure": 1,
+          "runtimeSuccessPerExpected": 0.9,
+          "errorKinds": {
+            "provider_execution": 1
+          },
+          "httpStatuses": {
+            "200": 9,
+            "429": 5
+          },
+          "correct": 9,
+          "imagePartObserved": 10
+        },
+        "json": {
+          "expected": 10,
+          "attempted": 10,
+          "unattempted": 0,
+          "runtimeSuccess": 10,
+          "runtimeFailure": 0,
+          "runtimeSuccessPerExpected": 1.0,
+          "errorKinds": {},
+          "httpStatuses": {
+            "200": 10
+          },
+          "correct": 10,
+          "imagePartObserved": null
+        }
+      }
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "privacy",
+      "arm": "signed",
+      "expected": 20,
+      "attempted": 20,
+      "unattempted": 0,
+      "runtimeSuccess": 19,
+      "runtimeFailure": 1,
+      "runtimeSuccessPerExpected": 0.95,
+      "errorKinds": {
+        "provider_execution": 1
+      },
+      "httpStatuses": {
+        "200": 19,
+        "None": 1
+      },
+      "receipts": {
+        "present": 20,
+        "verified": 20,
+        "taskBound": 20,
+        "policyBound": 20,
+        "requestBound": 20,
+        "expectedBindingsVerified": 20,
+        "submittedBodiesCovered": 20,
+        "outputBindingEligible": 19,
+        "outputHashMatch": 19,
+        "editedOutputDetected": 19
+      },
+      "answerAvailable": 19,
+      "deliveredMarkerLeaks": 0,
+      "markerFreeAnswers": 19,
+      "rawOutputsObserved": 19,
+      "rawMarkerLeaks": 0,
+      "signedReceiptsAssessed": 20,
+      "signedMarkerLeaks": 0
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "agent",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 5,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {
+        "provider_execution": 5
+      },
+      "httpStatuses": {
+        "None": 5
+      },
+      "receipts": {
+        "present": 5,
+        "verified": 5,
+        "taskBound": 5,
+        "policyBound": 5,
+        "requestBound": 5,
+        "expectedBindingsVerified": 5,
+        "submittedBodiesCovered": 5,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "toolCallCases": 0,
+      "toolCalls": 0,
+      "strictSuccess": 0
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "crew",
+      "arm": "signed",
+      "expected": 5,
+      "attempted": 5,
+      "unattempted": 0,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 5,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {
+        "provider_execution": 5
+      },
+      "httpStatuses": {
+        "None": 5
+      },
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "correct": 0,
+      "childExecutedCases": 0,
+      "closedChainCases": 5,
+      "receiptCount": 15,
+      "receiptCases": 5,
+      "strictSuccess": 0
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "citations",
+      "arm": "prompt-only",
+      "expected": 60,
+      "attempted": 0,
+      "unattempted": 60,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "suite": "citations",
+      "arm": "contract",
+      "expected": 60,
+      "attempted": 0,
+      "unattempted": 60,
+      "runtimeSuccess": 0,
+      "runtimeFailure": 0,
+      "runtimeSuccessPerExpected": 0.0,
+      "errorKinds": {},
+      "httpStatuses": {},
+      "receipts": {
+        "present": 0,
+        "verified": 0,
+        "taskBound": 0,
+        "policyBound": 0,
+        "requestBound": 0,
+        "expectedBindingsVerified": 0,
+        "submittedBodiesCovered": 0,
+        "outputBindingEligible": 0,
+        "outputHashMatch": 0,
+        "editedOutputDetected": 0
+      },
+      "formatValid": 0,
+      "usable": 0,
+      "judgeAttempted": 0,
+      "judgeRuntimeSuccess": 0,
+      "judgeValid": 0,
+      "usableJudgeValid": 0,
+      "judgeAbstained": 0,
+      "emptyClaimJudgments": 0,
+      "answerCorrect": null,
+      "usableAnswerCorrect": null,
+      "strictSuccess": null,
+      "judgeInvalid": 0,
+      "unjudgedOrInvalidPerExpected": 60,
+      "usableUnjudgedOrInvalid": 0,
+      "formatInvalidOrUnavailable": 60,
+      "answerCorrectPerExpected": null,
+      "strictSuccessPerExpected": null,
+      "answerCorrectAmongValidJudgments": null,
+      "claims": {
+        "claims": 0,
+        "supported": 0,
+        "cited": 0,
+        "supportedAndCited": 0,
+        "relevantCitations": 0,
+        "totalCitations": 0,
+        "support": null,
+        "citedCompleteness": null,
+        "supportedAndCitedCompleteness": null,
+        "citationPrecision": null
+      },
+      "measurementStatus": "not-measured"
+    }
+  ],
+  "pii": {
+    "profiles": {
+      "dev-default": {
+        "dataset": "dev",
+        "profile": "default",
+        "commit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+        "scorerCommit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+        "predictionProvenance": {
+          "commit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+          "node": "v24.14.1",
+          "latticeVersion": "1.6.0"
+        },
+        "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+        "datasetSha256": "4069a79228b0110d8bf129eebcb4ffeac7f05f2d27f0d1cea5beef509d48c5e6",
+        "predictionSha256": "359e572efcebdee3da6b833dbfdf66acd599d2e3a5ce31fb25a0f091910dbfc2",
+        "documents": 20776,
+        "source": {
+          "dataset": "gretelai/synthetic_pii_finance_multilingual",
+          "file": "data/English_train-00000-of-00001.parquet",
+          "revision": "7b844d16738527a04264f50214cb426a4cea0897"
+        },
+        "extraction": {
+          "email": "all-matches",
+          "us-ssn": "all-matches",
+          "credit-card": "all-matches",
+          "us-phone": "all-matches"
+        },
+        "scorerVersion": "pii-metrics/v2",
+        "offsetUnit": "codepoint",
+        "document": {
+          "email": {
+            "tp": 1435,
+            "fp": 1570,
+            "fn": 102,
+            "goldDocs": 1537,
+            "precision": 0.47753743760399336,
+            "recall": 0.933636955107352,
+            "f1": 0.6318802289740203
+          },
+          "us-ssn": {
+            "tp": 436,
+            "fp": 22,
+            "fn": 59,
+            "goldDocs": 495,
+            "precision": 0.9519650655021834,
+            "recall": 0.8808080808080808,
+            "f1": 0.9150052465897167
+          },
+          "us-phone": {
+            "tp": 2086,
+            "fp": 277,
+            "fn": 999,
+            "goldDocs": 3085,
+            "precision": 0.8827761320355481,
+            "recall": 0.6761750405186385,
+            "f1": 0.7657856093979442
+          },
+          "credit-card": {
+            "tp": 215,
+            "fp": 107,
+            "fn": 257,
+            "goldDocs": 472,
+            "precision": 0.6677018633540373,
+            "recall": 0.4555084745762712,
+            "f1": 0.5415617128463476
+          }
+        },
+        "documentClassification": {
+          "email": {
+            "tp": 1438,
+            "fp": 1567,
+            "fn": 99,
+            "tn": 17672,
+            "goldDocs": 1537,
+            "precision": 0.4785357737104825,
+            "recall": 0.9355888093689004,
+            "f1": 0.6332012329370321
+          },
+          "us-ssn": {
+            "tp": 436,
+            "fp": 22,
+            "fn": 59,
+            "tn": 20259,
+            "goldDocs": 495,
+            "precision": 0.9519650655021834,
+            "recall": 0.8808080808080808,
+            "f1": 0.9150052465897167
+          },
+          "us-phone": {
+            "tp": 2094,
+            "fp": 269,
+            "fn": 991,
+            "tn": 17422,
+            "goldDocs": 3085,
+            "precision": 0.8861616589081676,
+            "recall": 0.6787682333873581,
+            "f1": 0.7687224669603524
+          },
+          "credit-card": {
+            "tp": 215,
+            "fp": 107,
+            "fn": 257,
+            "tn": 20197,
+            "goldDocs": 472,
+            "precision": 0.6677018633540373,
+            "recall": 0.4555084745762712,
+            "f1": 0.5415617128463476
+          }
+        },
+        "span": {
+          "email": {
+            "tp": 1901,
+            "fp": 4336,
+            "fn": 151,
+            "goldSpans": 2052,
+            "predSpans": 6237,
+            "precision": 0.30479397146063814,
+            "recall": 0.9264132553606238,
+            "f1": 0.4586801785498854
+          },
+          "us-ssn": {
+            "tp": 479,
+            "fp": 43,
+            "fn": 66,
+            "goldSpans": 545,
+            "predSpans": 522,
+            "precision": 0.9176245210727969,
+            "recall": 0.8788990825688073,
+            "f1": 0.8978444236176195
+          },
+          "us-phone": {
+            "tp": 2587,
+            "fp": 581,
+            "fn": 1219,
+            "goldSpans": 3806,
+            "predSpans": 3168,
+            "precision": 0.8166035353535354,
+            "recall": 0.6797162375197058,
+            "f1": 0.7418984800688271
+          },
+          "credit-card": {
+            "tp": 254,
+            "fp": 195,
+            "fn": 277,
+            "goldSpans": 531,
+            "predSpans": 449,
+            "precision": 0.5657015590200446,
+            "recall": 0.4783427495291902,
+            "f1": 0.5183673469387755
+          }
+        },
+        "spanExact": {
+          "email": {
+            "tp": 1562,
+            "fp": 4675,
+            "fn": 490,
+            "goldSpans": 2052,
+            "predSpans": 6237,
+            "precision": 0.25044091710758376,
+            "recall": 0.7612085769980507,
+            "f1": 0.3768850283508264
+          },
+          "us-ssn": {
+            "tp": 479,
+            "fp": 43,
+            "fn": 66,
+            "goldSpans": 545,
+            "predSpans": 522,
+            "precision": 0.9176245210727969,
+            "recall": 0.8788990825688073,
+            "f1": 0.8978444236176195
+          },
+          "us-phone": {
+            "tp": 2432,
+            "fp": 736,
+            "fn": 1374,
+            "goldSpans": 3806,
+            "predSpans": 3168,
+            "precision": 0.7676767676767676,
+            "recall": 0.6389910667367315,
+            "f1": 0.6974476627473473
+          },
+          "credit-card": {
+            "tp": 253,
+            "fp": 196,
+            "fn": 278,
+            "goldSpans": 531,
+            "predSpans": 449,
+            "precision": 0.5634743875278396,
+            "recall": 0.4764595103578154,
+            "f1": 0.5163265306122449
+          }
+        },
+        "blocking": {
+          "mapped_types": {
+            "tp": 3767,
+            "fp": 716,
+            "fn": 783,
+            "tn": 15510,
+            "goldDocs": 4550,
+            "precision": 0.8402855230872184,
+            "recall": 0.8279120879120879,
+            "f1": 0.8340529170818112
+          },
+          "all_annotated_types": {
+            "tp": 4421,
+            "fp": 62,
+            "fn": 14032,
+            "tn": 2261,
+            "goldDocs": 18453,
+            "precision": 0.9861699754628597,
+            "recall": 0.23958163984176015,
+            "f1": 0.38550749912800836
+          }
+        },
+        "latencyMs": {
+          "n": 20776,
+          "mean": 0.004852628032345013,
+          "p50": 0.0042,
+          "p95": 0.0093,
+          "min": 0.0007,
+          "max": 0.3404
+        }
+      },
+      "dev-contextual": {
+        "dataset": "dev",
+        "profile": "contextual",
+        "commit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+        "scorerCommit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+        "predictionProvenance": {
+          "commit": "77645bd66ddf110ff50d0db805d37866c2322a08",
+          "node": "v24.14.1",
+          "latticeVersion": "1.6.0"
+        },
+        "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+        "datasetSha256": "4069a79228b0110d8bf129eebcb4ffeac7f05f2d27f0d1cea5beef509d48c5e6",
+        "predictionSha256": "a4c0ddba256b1681bce874027c0514a82f8a4a50bbcd4d489ee7cc607177ff1f",
+        "documents": 20776,
+        "source": {
+          "dataset": "gretelai/synthetic_pii_finance_multilingual",
+          "file": "data/English_train-00000-of-00001.parquet",
+          "revision": "7b844d16738527a04264f50214cb426a4cea0897"
+        },
+        "extraction": {
+          "email": "all-matches",
+          "us-ssn": "all-matches",
+          "credit-card": "all-matches",
+          "us-phone": "all-matches"
+        },
+        "scorerVersion": "pii-metrics/v2",
+        "offsetUnit": "codepoint",
+        "document": {
+          "email": {
+            "tp": 1435,
+            "fp": 1570,
+            "fn": 102,
+            "goldDocs": 1537,
+            "precision": 0.47753743760399336,
+            "recall": 0.933636955107352,
+            "f1": 0.6318802289740203
+          },
+          "us-ssn": {
+            "tp": 436,
+            "fp": 22,
+            "fn": 59,
+            "goldDocs": 495,
+            "precision": 0.9519650655021834,
+            "recall": 0.8808080808080808,
+            "f1": 0.9150052465897167
+          },
+          "us-phone": {
+            "tp": 2087,
+            "fp": 277,
+            "fn": 998,
+            "goldDocs": 3085,
+            "precision": 0.8828257191201354,
+            "recall": 0.6764991896272285,
+            "f1": 0.7660121123141861
+          },
+          "credit-card": {
+            "tp": 215,
+            "fp": 107,
+            "fn": 257,
+            "goldDocs": 472,
+            "precision": 0.6677018633540373,
+            "recall": 0.4555084745762712,
+            "f1": 0.5415617128463476
+          }
+        },
+        "documentClassification": {
+          "email": {
+            "tp": 1438,
+            "fp": 1567,
+            "fn": 99,
+            "tn": 17672,
+            "goldDocs": 1537,
+            "precision": 0.4785357737104825,
+            "recall": 0.9355888093689004,
+            "f1": 0.6332012329370321
+          },
+          "us-ssn": {
+            "tp": 436,
+            "fp": 22,
+            "fn": 59,
+            "tn": 20259,
+            "goldDocs": 495,
+            "precision": 0.9519650655021834,
+            "recall": 0.8808080808080808,
+            "f1": 0.9150052465897167
+          },
+          "us-phone": {
+            "tp": 2095,
+            "fp": 269,
+            "fn": 990,
+            "tn": 17422,
+            "goldDocs": 3085,
+            "precision": 0.8862098138747885,
+            "recall": 0.6790923824959482,
+            "f1": 0.7689484309047532
+          },
+          "credit-card": {
+            "tp": 215,
+            "fp": 107,
+            "fn": 257,
+            "tn": 20197,
+            "goldDocs": 472,
+            "precision": 0.6677018633540373,
+            "recall": 0.4555084745762712,
+            "f1": 0.5415617128463476
+          }
+        },
+        "span": {
+          "email": {
+            "tp": 1901,
+            "fp": 4336,
+            "fn": 151,
+            "goldSpans": 2052,
+            "predSpans": 6237,
+            "precision": 0.30479397146063814,
+            "recall": 0.9264132553606238,
+            "f1": 0.4586801785498854
+          },
+          "us-ssn": {
+            "tp": 479,
+            "fp": 43,
+            "fn": 66,
+            "goldSpans": 545,
+            "predSpans": 522,
+            "precision": 0.9176245210727969,
+            "recall": 0.8788990825688073,
+            "f1": 0.8978444236176195
+          },
+          "us-phone": {
+            "tp": 2588,
+            "fp": 583,
+            "fn": 1218,
+            "goldSpans": 3806,
+            "predSpans": 3171,
+            "precision": 0.816146326080101,
+            "recall": 0.6799789805570152,
+            "f1": 0.7418661315751756
+          },
+          "credit-card": {
+            "tp": 254,
+            "fp": 195,
+            "fn": 277,
+            "goldSpans": 531,
+            "predSpans": 449,
+            "precision": 0.5657015590200446,
+            "recall": 0.4783427495291902,
+            "f1": 0.5183673469387755
+          }
+        },
+        "spanExact": {
+          "email": {
+            "tp": 1562,
+            "fp": 4675,
+            "fn": 490,
+            "goldSpans": 2052,
+            "predSpans": 6237,
+            "precision": 0.25044091710758376,
+            "recall": 0.7612085769980507,
+            "f1": 0.3768850283508264
+          },
+          "us-ssn": {
+            "tp": 479,
+            "fp": 43,
+            "fn": 66,
+            "goldSpans": 545,
+            "predSpans": 522,
+            "precision": 0.9176245210727969,
+            "recall": 0.8788990825688073,
+            "f1": 0.8978444236176195
+          },
+          "us-phone": {
+            "tp": 2433,
+            "fp": 738,
+            "fn": 1373,
+            "goldSpans": 3806,
+            "predSpans": 3171,
+            "precision": 0.7672658467360454,
+            "recall": 0.639253809774041,
+            "f1": 0.6974344274043285
+          },
+          "credit-card": {
+            "tp": 253,
+            "fp": 196,
+            "fn": 278,
+            "goldSpans": 531,
+            "predSpans": 449,
+            "precision": 0.5634743875278396,
+            "recall": 0.4764595103578154,
+            "f1": 0.5163265306122449
+          }
+        },
+        "blocking": {
+          "mapped_types": {
+            "tp": 3767,
+            "fp": 716,
+            "fn": 783,
+            "tn": 15510,
+            "goldDocs": 4550,
+            "precision": 0.8402855230872184,
+            "recall": 0.8279120879120879,
+            "f1": 0.8340529170818112
+          },
+          "all_annotated_types": {
+            "tp": 4421,
+            "fp": 62,
+            "fn": 14032,
+            "tn": 2261,
+            "goldDocs": 18453,
+            "precision": 0.9861699754628597,
+            "recall": 0.23958163984176015,
+            "f1": 0.38550749912800836
+          }
+        },
+        "latencyMs": {
+          "n": 20776,
+          "mean": 0.005023762995764344,
+          "p50": 0.0043,
+          "p95": 0.0096,
+          "min": 0.0008,
+          "max": 0.3595
+        }
+      },
+      "holdout-default": {
+        "dataset": "holdout",
+        "profile": "default",
+        "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+        "scorerCommit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+        "predictionProvenance": {
+          "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+          "node": "v24.14.1",
+          "latticeVersion": "1.6.0"
+        },
+        "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+        "datasetSha256": "986bb58f039d37abbac82b591692255fd5fdc6b09a074a5ccf0b0cc48459d71a",
+        "predictionSha256": "32005ea492f5ac7c1d4fa475fd8ca00254bd604a57c945c3e463c49917a24b89",
+        "documents": 5186,
+        "source": {
+          "dataset": "gretelai/synthetic_pii_finance_multilingual",
+          "file": "data/English_train-00000-of-00001.parquet",
+          "revision": "7b844d16738527a04264f50214cb426a4cea0897"
+        },
+        "extraction": {
+          "email": "all-matches",
+          "us-ssn": "all-matches",
+          "credit-card": "all-matches",
+          "us-phone": "all-matches"
+        },
+        "scorerVersion": "pii-metrics/v2",
+        "offsetUnit": "codepoint",
+        "document": {
+          "email": {
+            "tp": 357,
+            "fp": 415,
+            "fn": 21,
+            "goldDocs": 378,
+            "precision": 0.46243523316062174,
+            "recall": 0.9444444444444444,
+            "f1": 0.6208695652173913
+          },
+          "us-ssn": {
+            "tp": 106,
+            "fp": 8,
+            "fn": 10,
+            "goldDocs": 116,
+            "precision": 0.9298245614035088,
+            "recall": 0.9137931034482759,
+            "f1": 0.9217391304347826
+          },
+          "us-phone": {
+            "tp": 530,
+            "fp": 66,
+            "fn": 247,
+            "goldDocs": 777,
+            "precision": 0.889261744966443,
+            "recall": 0.6821106821106822,
+            "f1": 0.7720320466132556
+          },
+          "credit-card": {
+            "tp": 66,
+            "fp": 25,
+            "fn": 62,
+            "goldDocs": 128,
+            "precision": 0.7252747252747253,
+            "recall": 0.515625,
+            "f1": 0.6027397260273972
+          }
+        },
+        "documentClassification": {
+          "email": {
+            "tp": 357,
+            "fp": 415,
+            "fn": 21,
+            "tn": 4393,
+            "goldDocs": 378,
+            "precision": 0.46243523316062174,
+            "recall": 0.9444444444444444,
+            "f1": 0.6208695652173913
+          },
+          "us-ssn": {
+            "tp": 106,
+            "fp": 8,
+            "fn": 10,
+            "tn": 5062,
+            "goldDocs": 116,
+            "precision": 0.9298245614035088,
+            "recall": 0.9137931034482759,
+            "f1": 0.9217391304347826
+          },
+          "us-phone": {
+            "tp": 530,
+            "fp": 66,
+            "fn": 247,
+            "tn": 4343,
+            "goldDocs": 777,
+            "precision": 0.889261744966443,
+            "recall": 0.6821106821106822,
+            "f1": 0.7720320466132556
+          },
+          "credit-card": {
+            "tp": 66,
+            "fp": 25,
+            "fn": 62,
+            "tn": 5033,
+            "goldDocs": 128,
+            "precision": 0.7252747252747253,
+            "recall": 0.515625,
+            "f1": 0.6027397260273972
+          }
+        },
+        "span": {
+          "email": {
+            "tp": 477,
+            "fp": 1087,
+            "fn": 28,
+            "goldSpans": 505,
+            "predSpans": 1564,
+            "precision": 0.30498721227621484,
+            "recall": 0.9445544554455445,
+            "f1": 0.4610923151280812
+          },
+          "us-ssn": {
+            "tp": 117,
+            "fp": 27,
+            "fn": 11,
+            "goldSpans": 128,
+            "predSpans": 144,
+            "precision": 0.8125,
+            "recall": 0.9140625,
+            "f1": 0.8602941176470589
+          },
+          "us-phone": {
+            "tp": 664,
+            "fp": 139,
+            "fn": 311,
+            "goldSpans": 975,
+            "predSpans": 803,
+            "precision": 0.8268991282689913,
+            "recall": 0.681025641025641,
+            "f1": 0.7469066366704162
+          },
+          "credit-card": {
+            "tp": 80,
+            "fp": 54,
+            "fn": 68,
+            "goldSpans": 148,
+            "predSpans": 134,
+            "precision": 0.5970149253731343,
+            "recall": 0.5405405405405406,
+            "f1": 0.5673758865248227
+          }
+        },
+        "spanExact": {
+          "email": {
+            "tp": 395,
+            "fp": 1169,
+            "fn": 110,
+            "goldSpans": 505,
+            "predSpans": 1564,
+            "precision": 0.25255754475703324,
+            "recall": 0.7821782178217822,
+            "f1": 0.3818269695505075
+          },
+          "us-ssn": {
+            "tp": 117,
+            "fp": 27,
+            "fn": 11,
+            "goldSpans": 128,
+            "predSpans": 144,
+            "precision": 0.8125,
+            "recall": 0.9140625,
+            "f1": 0.8602941176470589
+          },
+          "us-phone": {
+            "tp": 621,
+            "fp": 182,
+            "fn": 354,
+            "goldSpans": 975,
+            "predSpans": 803,
+            "precision": 0.7733499377334994,
+            "recall": 0.6369230769230769,
+            "f1": 0.6985376827896513
+          },
+          "credit-card": {
+            "tp": 78,
+            "fp": 56,
+            "fn": 70,
+            "goldSpans": 148,
+            "predSpans": 134,
+            "precision": 0.582089552238806,
+            "recall": 0.527027027027027,
+            "f1": 0.5531914893617021
+          }
+        },
+        "blocking": {
+          "mapped_types": {
+            "tp": 984,
+            "fp": 185,
+            "fn": 161,
+            "tn": 3856,
+            "goldDocs": 1145,
+            "precision": 0.8417450812660393,
+            "recall": 0.8593886462882097,
+            "f1": 0.8504753673293
+          },
+          "all_annotated_types": {
+            "tp": 1154,
+            "fp": 15,
+            "fn": 3459,
+            "tn": 558,
+            "goldDocs": 4613,
+            "precision": 0.9871685201026519,
+            "recall": 0.25016258400173425,
+            "f1": 0.39916983742649603
+          }
+        },
+        "latencyMs": {
+          "n": 5186,
+          "mean": 0.00600470497493251,
+          "p50": 0.0047,
+          "p95": 0.0115,
+          "min": 0.0009,
+          "max": 0.5993
+        }
+      },
+      "holdout-contextual": {
+        "dataset": "holdout",
+        "profile": "contextual",
+        "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+        "scorerCommit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+        "predictionProvenance": {
+          "commit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+          "node": "v24.14.1",
+          "latticeVersion": "1.6.0"
+        },
+        "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+        "datasetSha256": "986bb58f039d37abbac82b591692255fd5fdc6b09a074a5ccf0b0cc48459d71a",
+        "predictionSha256": "bd6824dd425fa627e83473efbc93855792c0f065da10cc3b27f2d3e3197b6aaf",
+        "documents": 5186,
+        "source": {
+          "dataset": "gretelai/synthetic_pii_finance_multilingual",
+          "file": "data/English_train-00000-of-00001.parquet",
+          "revision": "7b844d16738527a04264f50214cb426a4cea0897"
+        },
+        "extraction": {
+          "email": "all-matches",
+          "us-ssn": "all-matches",
+          "credit-card": "all-matches",
+          "us-phone": "all-matches"
+        },
+        "scorerVersion": "pii-metrics/v2",
+        "offsetUnit": "codepoint",
+        "document": {
+          "email": {
+            "tp": 357,
+            "fp": 415,
+            "fn": 21,
+            "goldDocs": 378,
+            "precision": 0.46243523316062174,
+            "recall": 0.9444444444444444,
+            "f1": 0.6208695652173913
+          },
+          "us-ssn": {
+            "tp": 106,
+            "fp": 8,
+            "fn": 10,
+            "goldDocs": 116,
+            "precision": 0.9298245614035088,
+            "recall": 0.9137931034482759,
+            "f1": 0.9217391304347826
+          },
+          "us-phone": {
+            "tp": 530,
+            "fp": 66,
+            "fn": 247,
+            "goldDocs": 777,
+            "precision": 0.889261744966443,
+            "recall": 0.6821106821106822,
+            "f1": 0.7720320466132556
+          },
+          "credit-card": {
+            "tp": 66,
+            "fp": 25,
+            "fn": 62,
+            "goldDocs": 128,
+            "precision": 0.7252747252747253,
+            "recall": 0.515625,
+            "f1": 0.6027397260273972
+          }
+        },
+        "documentClassification": {
+          "email": {
+            "tp": 357,
+            "fp": 415,
+            "fn": 21,
+            "tn": 4393,
+            "goldDocs": 378,
+            "precision": 0.46243523316062174,
+            "recall": 0.9444444444444444,
+            "f1": 0.6208695652173913
+          },
+          "us-ssn": {
+            "tp": 106,
+            "fp": 8,
+            "fn": 10,
+            "tn": 5062,
+            "goldDocs": 116,
+            "precision": 0.9298245614035088,
+            "recall": 0.9137931034482759,
+            "f1": 0.9217391304347826
+          },
+          "us-phone": {
+            "tp": 530,
+            "fp": 66,
+            "fn": 247,
+            "tn": 4343,
+            "goldDocs": 777,
+            "precision": 0.889261744966443,
+            "recall": 0.6821106821106822,
+            "f1": 0.7720320466132556
+          },
+          "credit-card": {
+            "tp": 66,
+            "fp": 25,
+            "fn": 62,
+            "tn": 5033,
+            "goldDocs": 128,
+            "precision": 0.7252747252747253,
+            "recall": 0.515625,
+            "f1": 0.6027397260273972
+          }
+        },
+        "span": {
+          "email": {
+            "tp": 477,
+            "fp": 1087,
+            "fn": 28,
+            "goldSpans": 505,
+            "predSpans": 1564,
+            "precision": 0.30498721227621484,
+            "recall": 0.9445544554455445,
+            "f1": 0.4610923151280812
+          },
+          "us-ssn": {
+            "tp": 117,
+            "fp": 27,
+            "fn": 11,
+            "goldSpans": 128,
+            "predSpans": 144,
+            "precision": 0.8125,
+            "recall": 0.9140625,
+            "f1": 0.8602941176470589
+          },
+          "us-phone": {
+            "tp": 664,
+            "fp": 140,
+            "fn": 311,
+            "goldSpans": 975,
+            "predSpans": 804,
+            "precision": 0.8258706467661692,
+            "recall": 0.681025641025641,
+            "f1": 0.746486790331647
+          },
+          "credit-card": {
+            "tp": 80,
+            "fp": 54,
+            "fn": 68,
+            "goldSpans": 148,
+            "predSpans": 134,
+            "precision": 0.5970149253731343,
+            "recall": 0.5405405405405406,
+            "f1": 0.5673758865248227
+          }
+        },
+        "spanExact": {
+          "email": {
+            "tp": 395,
+            "fp": 1169,
+            "fn": 110,
+            "goldSpans": 505,
+            "predSpans": 1564,
+            "precision": 0.25255754475703324,
+            "recall": 0.7821782178217822,
+            "f1": 0.3818269695505075
+          },
+          "us-ssn": {
+            "tp": 117,
+            "fp": 27,
+            "fn": 11,
+            "goldSpans": 128,
+            "predSpans": 144,
+            "precision": 0.8125,
+            "recall": 0.9140625,
+            "f1": 0.8602941176470589
+          },
+          "us-phone": {
+            "tp": 621,
+            "fp": 183,
+            "fn": 354,
+            "goldSpans": 975,
+            "predSpans": 804,
+            "precision": 0.7723880597014925,
+            "recall": 0.6369230769230769,
+            "f1": 0.6981450252951096
+          },
+          "credit-card": {
+            "tp": 78,
+            "fp": 56,
+            "fn": 70,
+            "goldSpans": 148,
+            "predSpans": 134,
+            "precision": 0.582089552238806,
+            "recall": 0.527027027027027,
+            "f1": 0.5531914893617021
+          }
+        },
+        "blocking": {
+          "mapped_types": {
+            "tp": 984,
+            "fp": 185,
+            "fn": 161,
+            "tn": 3856,
+            "goldDocs": 1145,
+            "precision": 0.8417450812660393,
+            "recall": 0.8593886462882097,
+            "f1": 0.8504753673293
+          },
+          "all_annotated_types": {
+            "tp": 1154,
+            "fp": 15,
+            "fn": 3459,
+            "tn": 558,
+            "goldDocs": 4613,
+            "precision": 0.9871685201026519,
+            "recall": 0.25016258400173425,
+            "f1": 0.39916983742649603
+          }
+        },
+        "latencyMs": {
+          "n": 5186,
+          "mean": 0.006014269186270729,
+          "p50": 0.0048,
+          "p95": 0.0118,
+          "min": 0.001,
+          "max": 0.6359
+        }
+      }
+    },
+    "comparisons": {
+      "dev": {
+        "available": true,
+        "comparable": true,
+        "documents": 20776,
+        "exactMacroF1": {
+          "default": 0.6221259113320095,
+          "contextual": 0.6221226024962548
+        },
+        "overlapMacroF1": {
+          "default": 0.6541976072937769,
+          "contextual": 0.654189520170364
+        },
+        "exactMacroF1Delta": -3.3088357546118274e-06,
+        "overlapMacroF1Delta": -8.08712341282547e-06,
+        "exactPrecision": {
+          "email": {
+            "default": 0.25044091710758376,
+            "contextual": 0.25044091710758376,
+            "delta": 0.0
+          },
+          "us-ssn": {
+            "default": 0.9176245210727969,
+            "contextual": 0.9176245210727969,
+            "delta": 0.0
+          },
+          "us-phone": {
+            "default": 0.7676767676767676,
+            "contextual": 0.7672658467360454,
+            "delta": -0.00041092094072225915
+          },
+          "credit-card": {
+            "default": 0.5634743875278396,
+            "contextual": 0.5634743875278396,
+            "delta": 0.0
+          }
+        }
+      },
+      "holdout": {
+        "available": true,
+        "comparable": true,
+        "documents": 5186,
+        "exactMacroF1": {
+          "default": 0.62346256483723,
+          "contextual": 0.6233644004635945
+        },
+        "overlapMacroF1": {
+          "default": 0.6589172389925948,
+          "contextual": 0.6588122774079025
+        },
+        "exactMacroF1Delta": -9.816437363541208e-05,
+        "overlapMacroF1Delta": -0.0001049615846923091,
+        "exactPrecision": {
+          "email": {
+            "default": 0.25255754475703324,
+            "contextual": 0.25255754475703324,
+            "delta": 0.0
+          },
+          "us-ssn": {
+            "default": 0.8125,
+            "contextual": 0.8125,
+            "delta": 0.0
+          },
+          "us-phone": {
+            "default": 0.7733499377334994,
+            "contextual": 0.7723880597014925,
+            "delta": -0.0009618780320068687
+          },
+          "credit-card": {
+            "default": 0.582089552238806,
+            "contextual": 0.582089552238806,
+            "delta": 0.0
+          }
+        }
+      }
+    },
+    "preregisteredPromotion": {
+      "version": "pii-promotion/v1",
+      "frozenBeforeHoldout": true,
+      "baseline": "default",
+      "candidate": "contextual",
+      "manifestSha256": "09527e11a4f4d8da18f35fc73315bd08485a8d2cd5ce5816aeb93ead31ac3d8f",
+      "runtimeCommit": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+      "primaryMetric": "macro one-to-one exact-span F1 across four mapped types",
+      "gate": "macro F1 increases and no type loses more than 0.01 absolute exact-span precision; default promotion additionally requires supportive development evidence",
+      "developmentEvidence": "Candidate has slightly lower macro F1 on development; retain opt-in regardless of a tiny heldout delta. No post-holdout tuning.",
+      "holdout": {
+        "macroF1": {
+          "default": 0.62346256483723,
+          "contextual": 0.6233644004635945
+        },
+        "precisionLossByType": {
+          "email": 0.0,
+          "us-ssn": 0.0,
+          "us-phone": 0.0009618780320068687,
+          "credit-card": 0.0
+        },
+        "gatePassed": false,
+        "decision": "Keep contextual detection opt-in; no default promotion."
+      }
+    },
+    "promotionChecks": {
+      "frozenBeforeHoldout": true,
+      "manifestMatches": true,
+      "sameDataAndScorer": true,
+      "supportiveDevelopment": false,
+      "holdoutExactMacroF1Improves": false,
+      "perTypePrecisionLossWithinOnePoint": true
+    },
+    "eligibleForDefaultPromotion": false,
+    "decision": "retain-opt-in",
+    "interpretation": "Corpus annotation agreement, not estimated deployment precision. Four supported PII types; prose rows do not measure structured-field cues. Historical single-match and many-to-one span scores are not comparable."
+  },
+  "accountability": {
+    "schemaVersion": "lattice-accountability-benchmark/v1",
+    "kind": "offline-synthetic",
+    "generatedAt": "2026-10-27T20:24:41.687Z",
+    "inferenceCalls": 0,
+    "spendUsd": 0,
+    "provenance": {
+      "codeRevision": "5c0d1c8bf4aede914c797405784ddca9c2efa9ed",
+      "trackedWorktreeDirty": false,
+      "scriptSha256": "5e3030b4d11db871f2d0e90473419badafd95631e8687b81cf56ab01e6bda3a9",
+      "fixtureSha256": "7031a5e1ebfa5f82fe3a2da0b6803b5aaa9b2fc9d496917931233292bbc2ad60",
+      "builtLibrarySha256": "413c86f56bbe0e9d91ed781f2b2613f241a393df263d74cf488af334fc908710",
+      "canonicalizerVersion": "3.0.0",
+      "node": "v24.14.1",
+      "latticeVersion": "1.6.0"
+    },
+    "methodology": {
+      "commonRecord": "All arms store the complete identical canonical Lattice receipt body, including every task, policy, input, output, and request digest. Raw synthetic values are committed by hashes in every arm.",
+      "signing": "Both signed arms use the same ephemeral Ed25519 key. The generic log signs its domain prefix plus canonical record bytes using node:crypto; Lattice signs its DSSE PAE. Private keys are never saved.",
+      "mutations": "Integrity probes change the same record bytes or fields without updating either signature. The byte edit preserves valid JSON; JSON parsing failures are not counted as integrity protection.",
+      "expectationPolicy": "Generic and unsigned logs receive matching explicit application equality checks; Lattice uses VerifyOptions. Base signature/parse acceptance is reported separately from expectation acceptance. Unsigned equality does not authenticate the asserted fields.",
+      "interpretation": "A trusted signer can rewrite and re-sign records; both signed formats should accept that positive control. Signatures do not establish factual correctness, policy enforcement, real model execution, or provider consumption. No truncation/chain completeness claim is tested.",
+      "aggregation": "Category counts retain controls, expectation checks, and unsupported key checks separately. asExpected measures benchmark correctness, not model quality or comparative security superiority."
+    },
+    "summary": {
+      "json-log": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 21,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 0,
+          "unsupported": 3
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      },
+      "signed-canonical-log": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 0,
+          "rejected": 21,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 3,
+          "unsupported": 0
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      },
+      "lattice-receipt": {
+        "positive-control": {
+          "cases": 6,
+          "accepted": 6,
+          "rejected": 0,
+          "unsupported": 0
+        },
+        "integrity-mutation": {
+          "cases": 21,
+          "accepted": 0,
+          "rejected": 21,
+          "unsupported": 0
+        },
+        "key-mismatch": {
+          "cases": 3,
+          "accepted": 0,
+          "rejected": 3,
+          "unsupported": 0
+        },
+        "expectation-check": {
+          "cases": 12,
+          "accepted": 0,
+          "rejected": 12,
+          "unsupported": 0
+        }
+      }
+    },
+    "signedArmDecisionParity": true,
+    "allProbesAsExpected": true
+  },
+  "budget": {
+    "source": "persisted-ledger",
+    "limitUsd": 10,
+    "confirmedUsd": 0.044825330000000004,
+    "chargedOrReservedUsd": 9.589544929999999,
+    "requests": 325,
+    "unresolvedRequests": 27,
+    "available": true,
+    "unresolvedReservedUsd": 9.544719599999999,
+    "billingReconciled": false,
+    "approvalCapUsd": 10,
+    "withinCap": true,
+    "remainingReservedCapacityUsd": 0.41045507000000114
+  },
+  "inputs": {
+    "validated-full.json": {
+      "available": true,
+      "sha256": "5665a24ef2412a2b9cc71bfca466e90d3c42ee2337ee6475f6200c24227bd38c",
+      "bytes": 309532
+    },
+    "validated-judge.json": {
+      "available": true,
+      "sha256": "ada80b3f98eac448c9769855ed7af9e924981d85c311bfcc1d3876c0c6214ba2",
+      "bytes": 3314
+    },
+    "pii-dev-default.json": {
+      "available": true,
+      "sha256": "3ef5d3f3165a521d8ea4d75158bef280bb4bc5c77b1713584b361a7cce5e744d",
+      "bytes": 5299
+    },
+    "pii-dev-contextual.json": {
+      "available": true,
+      "sha256": "5855bbe9af91b03f05586d236fd1827527df1225d7229054a58adfe702d5eb56",
+      "bytes": 5300
+    },
+    "pii-holdout-default.json": {
+      "available": true,
+      "sha256": "efb46be7260540bca7cd0511a83c05088038876aadaf0bc588749a7edc45d2c6",
+      "bytes": 5183
+    },
+    "pii-holdout-contextual.json": {
+      "available": true,
+      "sha256": "f67a69b3b7f5ab972436a3ad74130e8bc40f0b4c340f6e1aaa255eb7f69ad1b7",
+      "bytes": 5185
+    },
+    "pii-promotion.json": {
+      "available": true,
+      "sha256": "cec8e1da5ce56ea27b623da9da59f9c6e4f11cdbb93235ad5f273db36afa1549",
+      "bytes": 1034
+    },
+    "accountability.json": {
+      "available": true,
+      "sha256": "f171064d154eb0c8eef2e59dc4f86275061db6937f67cf2d54df46be4527afc3",
+      "bytes": 56790
+    },
+    "validated-termination.json": {
+      "available": true,
+      "sha256": "6dfc0b098f126d68d82c250757e43f9f98dd2ae610dd926b9630d03539c400d3",
+      "bytes": 1487
+    },
+    "citation-development-spotcheck.json": {
+      "available": true,
+      "sha256": "602c0682f2df65a59b950edfc5961a3b7cdc03222e0d3224c773943b5e1eded0",
+      "bytes": 1727
+    },
+    "pii-error-analysis.json": {
+      "available": true,
+      "sha256": "830d9ef9f47ca816a79e6cb25dbb94c5d3fc26bf3b92447345c43c681c5184fc",
+      "bytes": 13485
+    },
+    "hosted-budget.json": {
+      "available": true,
+      "sha256": "6705196b1bd6c6da6148e832e5d8c3cec7c2bd7a9c1a4abff15ab36013d4b6f3",
+      "bytes": 75683
+    }
+  },
+  "piiErrorAnalysis": {
+    "schemaVersion": "lattice-pii-error-analysis/v1",
+    "generatedAt": "2026-10-28T01:07:25.472653+00:00",
+    "dataset": "development-only",
+    "documents": 20776,
+    "holdoutRead": false,
+    "scorerVersion": "pii-metrics/v2",
+    "offsetUnit": "codepoint",
+    "provenance": {
+      "analysisCodeRevision": "fefc3635ddc2d64813777afb3d2fc639d42b577d",
+      "scorerCodeRevision": "fefc3635ddc2d64813777afb3d2fc639d42b577d",
+      "analysisScriptSha256": "ab378deaf53742aee3b1c2db4b654cbef648f95fa3f89f92ddcfd236b66ab6a9",
+      "scorerSha256": "9bab86d862150699564b69aed78fb09f3feb140f42deb3fc24d0ee10aba5df9a",
+      "labelMappingScriptSha256": "81e8eb25f9e6d3a404a7197860bb0e3ae1910aae990c49d9c31bf72459282cb2",
+      "developmentFileSha256": "4069a79228b0110d8bf129eebcb4ffeac7f05f2d27f0d1cea5beef509d48c5e6",
+      "predictionFileSha256": "359e572efcebdee3da6b833dbfdf66acd599d2e3a5ce31fb25a0f091910dbfc2",
+      "predictionMetadataSha256": "6f2442e38ae87e52aec493c9c25ec66139457853a1716f423e70358138acd85b",
+      "contextual": false,
+      "python": "3.14.3"
+    },
+    "methodology": {
+      "matching": "Official UTF-16 normalization, span deduplication, source-label mapping, and deterministic one-to-one maximum-cardinality overlap matching. Reproduced TP/FP/FN counts are asserted against pii_metrics.score; metrics are unchanged.",
+      "partition": "Every unmatched prediction belongs to exactly one bucket: overlaps same-type gold but loses one-to-one matching; overlaps only other annotated labels; or overlaps no annotation of any type.",
+      "repeatedStrings": "Case-sensitive exact equality with a complete annotated span at another non-overlapping location in the same document. Counts are cross-tabulated by unmatched bucket; values are never exported.",
+      "interpretation": "No-overlap predictions repeating a same-type annotated string are potential annotation gaps, not automatically true positives. Other-label overlaps may reflect taxonomy disagreements, boundaries, or detector mistakes. Unannotated strings without this evidence remain unexplained by this analysis.",
+      "privacy": "Only aggregate counts, metrics, and file-level provenance hashes are published. No raw text, matched values, document IDs, individual offsets, or per-value hashes are emitted. Only the fixed development files are read."
+    },
+    "types": {
+      "email": {
+        "overlapScoreUnchanged": {
+          "tp": 1901,
+          "fp": 4336,
+          "fn": 151,
+          "goldSpans": 2052,
+          "predSpans": 6237,
+          "precision": 0.30479397146063814,
+          "recall": 0.9264132553606238,
+          "f1": 0.4586801785498854
+        },
+        "exactScoreUnchanged": {
+          "tp": 1562,
+          "fp": 4675,
+          "fn": 490,
+          "goldSpans": 2052,
+          "predSpans": 6237,
+          "precision": 0.25044091710758376,
+          "recall": 0.7612085769980507,
+          "f1": 0.3768850283508264
+        },
+        "counts": {
+          "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 2108,
+          "deduplicatedPredictions": 6237,
+          "distinctPredictedStringsWithinDocuments": 4129,
+          "documents": 20776,
+          "documentsWithPredictions": 3005,
+          "documentsWithSameTypeGold": 1537,
+          "documentsWithUnmatchedPredictions": 1807,
+          "documents_noAnnotatedOverlap": 1754,
+          "documents_otherLabelOverlapWithoutSameTypeOverlap": 92,
+          "duplicateIdenticalSpansRemoved": 0,
+          "goldSpans": 2052,
+          "matchedPredictions": 1901,
+          "noAnnotatedOverlap": 4171,
+          "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 4171,
+          "otherLabelOverlapWithoutSameTypeOverlap": 165,
+          "rawPredictions": 6237,
+          "sameTypeOverlapAfterOneToOneMatching": 0,
+          "unmatchedGoldSpans": 151,
+          "unmatchedPredictions": 4336,
+          "unmatchedWithExactStringAnnotatedElsewhere": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+        },
+        "otherAnnotatedOverlapTypes": {
+          "outside-four-mapped-types": 164,
+          "us-ssn": 1
+        },
+        "exactStringAnnotatedElsewhereByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "noAnnotatedOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          }
+        },
+        "repeatedUnmatchedPredictionStringsByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "distinctStringsWithinDocuments": 120,
+            "additionalOccurrencesBeyondFirst": 45
+          },
+          "noAnnotatedOverlap": {
+            "distinctStringsWithinDocuments": 2570,
+            "additionalOccurrencesBeyondFirst": 1601
+          }
+        },
+        "potentialAnnotationGapCount": 0
+      },
+      "us-ssn": {
+        "overlapScoreUnchanged": {
+          "tp": 479,
+          "fp": 43,
+          "fn": 66,
+          "goldSpans": 545,
+          "predSpans": 522,
+          "precision": 0.9176245210727969,
+          "recall": 0.8788990825688073,
+          "f1": 0.8978444236176195
+        },
+        "exactScoreUnchanged": {
+          "tp": 479,
+          "fp": 43,
+          "fn": 66,
+          "goldSpans": 545,
+          "predSpans": 522,
+          "precision": 0.9176245210727969,
+          "recall": 0.8788990825688073,
+          "f1": 0.8978444236176195
+        },
+        "counts": {
+          "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 37,
+          "deduplicatedPredictions": 522,
+          "distinctPredictedStringsWithinDocuments": 485,
+          "documents": 20776,
+          "documentsWithPredictions": 458,
+          "documentsWithSameTypeGold": 495,
+          "documentsWithUnmatchedPredictions": 25,
+          "documents_noAnnotatedOverlap": 25,
+          "duplicateIdenticalSpansRemoved": 0,
+          "goldSpans": 545,
+          "matchedPredictions": 479,
+          "noAnnotatedOverlap": 43,
+          "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 43,
+          "otherLabelOverlapWithoutSameTypeOverlap": 0,
+          "rawPredictions": 522,
+          "sameTypeOverlapAfterOneToOneMatching": 0,
+          "unmatchedGoldSpans": 66,
+          "unmatchedPredictions": 43,
+          "unmatchedWithExactStringAnnotatedElsewhere": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+        },
+        "otherAnnotatedOverlapTypes": {},
+        "exactStringAnnotatedElsewhereByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "noAnnotatedOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          }
+        },
+        "repeatedUnmatchedPredictionStringsByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "noAnnotatedOverlap": {
+            "distinctStringsWithinDocuments": 43,
+            "additionalOccurrencesBeyondFirst": 0
+          }
+        },
+        "potentialAnnotationGapCount": 0
+      },
+      "us-phone": {
+        "overlapScoreUnchanged": {
+          "tp": 2587,
+          "fp": 581,
+          "fn": 1219,
+          "goldSpans": 3806,
+          "predSpans": 3168,
+          "precision": 0.8166035353535354,
+          "recall": 0.6797162375197058,
+          "f1": 0.7418984800688271
+        },
+        "exactScoreUnchanged": {
+          "tp": 2432,
+          "fp": 736,
+          "fn": 1374,
+          "goldSpans": 3806,
+          "predSpans": 3168,
+          "precision": 0.7676767676767676,
+          "recall": 0.6389910667367315,
+          "f1": 0.6974476627473473
+        },
+        "counts": {
+          "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 254,
+          "deduplicatedPredictions": 3168,
+          "distinctPredictedStringsWithinDocuments": 2914,
+          "documents": 20776,
+          "documentsWithPredictions": 2363,
+          "documentsWithSameTypeGold": 3085,
+          "documentsWithUnmatchedPredictions": 327,
+          "documents_noAnnotatedOverlap": 327,
+          "duplicateIdenticalSpansRemoved": 0,
+          "goldSpans": 3806,
+          "matchedPredictions": 2587,
+          "noAnnotatedOverlap": 581,
+          "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 581,
+          "otherLabelOverlapWithoutSameTypeOverlap": 0,
+          "rawPredictions": 3168,
+          "sameTypeOverlapAfterOneToOneMatching": 0,
+          "unmatchedGoldSpans": 1219,
+          "unmatchedPredictions": 581,
+          "unmatchedWithExactStringAnnotatedElsewhere": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+        },
+        "otherAnnotatedOverlapTypes": {},
+        "exactStringAnnotatedElsewhereByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "noAnnotatedOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          }
+        },
+        "repeatedUnmatchedPredictionStringsByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "noAnnotatedOverlap": {
+            "distinctStringsWithinDocuments": 520,
+            "additionalOccurrencesBeyondFirst": 61
+          }
+        },
+        "potentialAnnotationGapCount": 0
+      },
+      "credit-card": {
+        "overlapScoreUnchanged": {
+          "tp": 254,
+          "fp": 195,
+          "fn": 277,
+          "goldSpans": 531,
+          "predSpans": 449,
+          "precision": 0.5657015590200446,
+          "recall": 0.4783427495291902,
+          "f1": 0.5183673469387755
+        },
+        "exactScoreUnchanged": {
+          "tp": 253,
+          "fp": 196,
+          "fn": 278,
+          "goldSpans": 531,
+          "predSpans": 449,
+          "precision": 0.5634743875278396,
+          "recall": 0.4764595103578154,
+          "f1": 0.5163265306122449
+        },
+        "counts": {
+          "additionalOccurrencesBeyondFirstOfSameStringWithinDocument": 117,
+          "deduplicatedPredictions": 449,
+          "distinctPredictedStringsWithinDocuments": 332,
+          "documents": 20776,
+          "documentsWithPredictions": 322,
+          "documentsWithSameTypeGold": 472,
+          "documentsWithUnmatchedPredictions": 108,
+          "documents_noAnnotatedOverlap": 105,
+          "documents_otherLabelOverlapWithoutSameTypeOverlap": 3,
+          "duplicateIdenticalSpansRemoved": 0,
+          "goldSpans": 531,
+          "matchedPredictions": 254,
+          "noAnnotatedOverlap": 192,
+          "noAnnotatedOverlapAndNoExactStringAnnotatedElsewhere": 192,
+          "otherLabelOverlapWithoutSameTypeOverlap": 3,
+          "rawPredictions": 449,
+          "sameTypeOverlapAfterOneToOneMatching": 0,
+          "unmatchedGoldSpans": 277,
+          "unmatchedPredictions": 195,
+          "unmatchedWithExactStringAnnotatedElsewhere": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_otherOrUnmappedTypeOnly": 0,
+          "unmatchedWithExactStringAnnotatedElsewhere_sameMappedType": 0
+        },
+        "otherAnnotatedOverlapTypes": {
+          "outside-four-mapped-types": 1,
+          "us-phone": 1,
+          "us-ssn": 1
+        },
+        "exactStringAnnotatedElsewhereByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          },
+          "noAnnotatedOverlap": {
+            "anyAnnotatedType": 0,
+            "sameMappedType": 0,
+            "otherOrUnmappedTypeOnly": 0
+          }
+        },
+        "repeatedUnmatchedPredictionStringsByBucket": {
+          "sameTypeOverlapAfterOneToOneMatching": {
+            "distinctStringsWithinDocuments": 0,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "otherLabelOverlapWithoutSameTypeOverlap": {
+            "distinctStringsWithinDocuments": 3,
+            "additionalOccurrencesBeyondFirst": 0
+          },
+          "noAnnotatedOverlap": {
+            "distinctStringsWithinDocuments": 113,
+            "additionalOccurrencesBeyondFirst": 79
+          }
+        },
+        "potentialAnnotationGapCount": 0
+      }
+    }
+  },
+  "developmentSpotcheck": {
+    "available": true,
+    "source": "citation-development-spotcheck.json",
+    "scope": "qualitative AI-reviewed development only; excluded from numerical accuracy and heldout metrics"
+  },
+  "generator": {
+    "sha256": "8b8aa19f670db5e96727b6064877137fee9399381a3d8ae310d5e7f50a33e8ac",
+    "python": "3.12.13",
+    "numpy": "2.5.4",
+    "matplotlib": "3.11.2"
+  }
+}

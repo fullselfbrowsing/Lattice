@@ -1,0 +1,22 @@
+{
+  "version": "validated-termination/v1",
+  "measuredHarnessRevision": "617c565fae49df774f9931e54367241cbd7122ae",
+  "measuredHarnessHash": "14b0549a2f6d02a43ae423f0057f9d1e3d56605d1adf365bb6574bb3f56e2fd6",
+  "reason": "Conservative remaining budget cannot reserve the next GPT-4.1-mini request. Paid evaluation stopped; uncertain charges were not released.",
+  "confirmedUsd": 0.04482533000000004,
+  "chargedOrReservedUsd": 9.58954493,
+  "limitUsd": 10,
+  "readOnlyKeyUsageSnapshotUsd": 0.04546433,
+  "keyUsageSnapshotIsNotSettlementProof": true,
+  "incomplete": [
+    "Three-model latency suite",
+    "Heldout citation generation and judge",
+    "Haiku single-agent and crew successes"
+  ],
+  "harnessDefectsFound": [
+    "After first network timeout, the measured version kept trying subsequent cases, consuming conservative reservations. Fixed to halt on the first unknown transport failure.",
+    "After a budget denial, zero observed HTTP calls were passed as an invalid empty expected request-hash array. This interrupted row persistence. Fixed to compare configured-fetch preparations and omit an empty expectation."
+  ],
+  "missingFinalRow": "The final case failed before HTTP egress due to budget denial; no additional paid request was made.",
+  "reporting": "Keep original measurements and stop reason unchanged. Do not pool development smoke cases with heldout evaluation. No hosted latency, support/completeness, or answer-correctness score is established by this run."
+}

@@ -1,0 +1,98 @@
+{
+  "planned": 32,
+  "attempted": 32,
+  "developmentCalls": 2,
+  "models": [
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "planned": 16,
+      "attempted": 16,
+      "runtimeSuccess": 16,
+      "strictPass": 14,
+      "signatures": 16,
+      "evidenceComplete": 16,
+      "caseRecordsComplete": 16,
+      "simulatedPayments": 6,
+      "held": 0,
+      "medianWallExcludingPacingMs": 9438.402104000012
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "planned": 16,
+      "attempted": 16,
+      "runtimeSuccess": 16,
+      "strictPass": 14,
+      "signatures": 16,
+      "evidenceComplete": 16,
+      "caseRecordsComplete": 16,
+      "simulatedPayments": 6,
+      "held": 0,
+      "medianWallExcludingPacingMs": 19252.490020499972
+    }
+  ],
+  "byCase": [
+    {
+      "caseId": "routine",
+      "expectedAction": "approve",
+      "planned": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "basic-denial",
+      "expectedAction": "deny",
+      "planned": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "disputed-promise",
+      "expectedAction": "escalate",
+      "planned": 4,
+      "strictPass": 2
+    },
+    {
+      "caseId": "missing-date",
+      "expectedAction": "request_evidence",
+      "planned": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "approval-limit",
+      "expectedAction": "escalate",
+      "planned": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "already-refunded",
+      "expectedAction": "deny",
+      "planned": 4,
+      "strictPass": 3
+    },
+    {
+      "caseId": "booking-mismatch",
+      "expectedAction": "request_evidence",
+      "planned": 4,
+      "strictPass": 4
+    },
+    {
+      "caseId": "customer-instruction",
+      "expectedAction": "deny",
+      "planned": 4,
+      "strictPass": 3
+    }
+  ],
+  "strictPass": 28,
+  "signatures": 32,
+  "evidenceComplete": 32,
+  "mutationsPassed": 18,
+  "mutationsTotal": 18,
+  "wrongSignedControlPassed": true,
+  "cohortRequests": 34,
+  "addedAccountUsageUsd": 0,
+  "paidLedgerUnchanged": true,
+  "stopped": null,
+  "requestCosts": {
+    "reportedZero": 34,
+    "unknown": 0,
+    "nonzero": 0
+  }
+}

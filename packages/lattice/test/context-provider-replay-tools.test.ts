@@ -152,7 +152,7 @@ describe("context, sessions, provider adapters, replay, and tools", () => {
     });
     expect(calls).toHaveLength(1);
     expect(JSON.stringify(calls[0])).toContain("artifact:url:manual");
-    expect(JSON.stringify(calls[0])).toContain("context-pack:test");
+    expect(JSON.stringify(calls[0])).not.toContain("context-pack:test");
   });
 
   it("validates local and MCP-like tools and returns artifact-backed results", async () => {

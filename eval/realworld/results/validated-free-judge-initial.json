@@ -1,0 +1,2046 @@
+{
+  "version": "validated-live/v1",
+  "env": {
+    "at": "2026-11-03T17:46:15.456Z",
+    "revision": "a40d76774f853248446420df466c847e6c4dd2e7",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "2026f5798258a13d34d75d9857da0c0cf31783b352653ed0f4d23e0ba3736b06",
+    "observerHash": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "node": "v24.14.1",
+    "stage": "judge",
+    "cohort": "free",
+    "freeGuardHash": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "counts": {
+      "transport": 10,
+      "privacy": 10,
+      "agents": 2,
+      "citations": 60,
+      "latency": 20,
+      "warmups": 2
+    },
+    "judgeModel": "xingchen-agi/xing4.0-29b-a4b:free",
+    "quota": {
+      "used": 506,
+      "limit": 1000,
+      "remaining": 494
+    },
+    "endpointCatalog": {
+      "nvidia/nemotron-3.5-super-vl:free": [
+        {
+          "name": "Nvidia | nvidia/nemotron-3.5-super-vl-20261015:free",
+          "model_id": "nvidia/nemotron-3.5-super-vl:free",
+          "model_name": "NVIDIA: Nemotron 3.5 Super VL",
+          "context_length": 1000000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Nvidia",
+          "tag": "nvidia",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "max_prompt_tokens": 868928,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "seed",
+            "top_p",
+            "tools",
+            "tool_choice",
+            "response_format",
+            "structured_outputs"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": true,
+            "function": true
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "dots-studio/dots-3-note-preview:free": [
+        {
+          "name": "AtlasCloud | dots-studio/dots-3-note-preview-20260813:free",
+          "model_id": "dots-studio/dots-3-note-preview:free",
+          "model_name": "Dots Studio: Dots3-Note Preview",
+          "context_length": 512000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "AtlasCloud",
+          "tag": "atlas-cloud/fp8",
+          "service_tier": null,
+          "quantization": "fp8",
+          "max_completion_tokens": 460800,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ],
+      "xingchen-agi/xing4.0-29b-a4b:free": [
+        {
+          "name": "Phala | xingchen-agi/xing4.0-29b-a4b-20261015:free",
+          "model_id": "xingchen-agi/xing4.0-29b-a4b:free",
+          "model_name": "XingChen: Xing4.0 29B A4B",
+          "context_length": 262144,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Phala",
+          "tag": "phala",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 235929,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 100,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ]
+    },
+    "freePolicy": "Pinned :free catalog entries and zero endpoint prices; no model fallbacks/extensions; at most 900 requests across stages, 3200ms minimum spacing, no HTTP retries. Separate paid ledger remains untouched.",
+    "models": [
+      {
+        "id": "nvidia/nemotron-3.5-super-vl:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 1000000
+      },
+      {
+        "id": "dots-studio/dots-3-note-preview:free",
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "contextLength": 512000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "wallMs includes HTTP and pacing; processingMs excludes HTTP and pacing. Subtract pacingMs from wallMs for comparisons.",
+    "requestBinding": "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
+    "paidLedgerHash": "6705196b1bd6c6da6148e832e5d8c3cec7c2bd7a9c1a4abff15ab36013d4b6f3",
+    "scope": "Exploratory free-model cohort; separate from paid results. Free-tier queueing and provider variability limit latency generalization; fixed free judge is not human validated.",
+    "smokeGate": "Complete smoke coverage, successful JSON transport for each model, verified receipt bindings/crew closure, no marker leakage. Model answer, tool-use and format errors remain measured outcomes.",
+    "tokenCaps": {
+      "latency": 1024,
+      "transport": 1024,
+      "privacy": 1024,
+      "citations": 4096,
+      "agent": 4096,
+      "crew": 4096,
+      "judge": 4096
+    }
+  },
+  "rows": [
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 1907.812291,
+      "providerMs": 1904.179209,
+      "backoffMs": 0,
+      "processingMs": 3.617748000000063,
+      "pacingMs": 0.01533399999999574,
+      "calls": [
+        {
+          "bodyHash": "2db460e183777ec80ec6a4068b81fd2def395d12c947e59fcdf0f6249a1ab7dd",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 1904.179209,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 9415.321333,
+      "providerMs": 8113.217750000001,
+      "backoffMs": 0,
+      "processingMs": 7.207499999999072,
+      "pacingMs": 1294.896083,
+      "calls": [
+        {
+          "bodyHash": "2c0a54d2f17b5afd014671d7a6e87216a53601464408ba0d5251a3a08d452857",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 8113.217750000001,
+          "costUsd": 0,
+          "promptTokens": 1313,
+          "completionTokens": 1155,
+          "reasoningTokens": 1041,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793727978-mYytGMDA8yklRrhz1Chp",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 481.91983399999845,
+      "providerMs": 479.97704200000044,
+      "backoffMs": 0,
+      "processingMs": 1.9375839999975142,
+      "pacingMs": 0.0052080000004934845,
+      "calls": [
+        {
+          "bodyHash": "61411ee761fc9ced19bdab6f1dcf242b9ed50b1d33595e63e32c23d1491704af",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 479.97704200000044,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3130.0609999999997,
+      "providerMs": 408.0922500000015,
+      "backoffMs": 0,
+      "processingMs": 3.7840829999968264,
+      "pacingMs": 2718.1846670000014,
+      "calls": [
+        {
+          "bodyHash": "f8281f1115b720ee57beda0fe024da3d704002dcaccfa125208cac26aaef1d3b",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 408.0922500000015,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c549851f6690c6c49625c027d1f7dbd6f575c24f2908a6d86b3a5d2e3337bfe1",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3370.3464999999997,
+      "providerMs": 579.0087500000009,
+      "backoffMs": 0,
+      "processingMs": 2.3254999999971915,
+      "pacingMs": 2789.0122500000016,
+      "calls": [
+        {
+          "bodyHash": "14b8087b57b6bb71086cf31759ec0a38246e1d80fb4bfd37b1514063984769df",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 579.0087500000009,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:e9f4efbdc34d6bd62ea03bc406dc0de16a024a1dc242a25a3a4a311a176a102d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3204.712707999999,
+      "providerMs": 584.0189580000006,
+      "backoffMs": 0,
+      "processingMs": 2.563333000001876,
+      "pacingMs": 2618.1304169999967,
+      "calls": [
+        {
+          "bodyHash": "29475a736542c465405703e2ca22878f2fce243856cb2d357be1826cc71f739d",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 584.0189580000006,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:e9f4efbdc34d6bd62ea03bc406dc0de16a024a1dc242a25a3a4a311a176a102d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 8420.105500000001,
+      "providerMs": 5807.381792,
+      "backoffMs": 0,
+      "processingMs": 4.563749000000826,
+      "pacingMs": 2608.1599590000005,
+      "calls": [
+        {
+          "bodyHash": "29475a736542c465405703e2ca22878f2fce243856cb2d357be1826cc71f739d",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 5807.381792,
+          "costUsd": 0,
+          "promptTokens": 1215,
+          "completionTokens": 830,
+          "reasoningTokens": 756,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793727999-0Q1nbI90AfJfMOWSMycr",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:80ba7ba08e57cd28baeb404b3c13790ba653c6586ccda17ea689ef714c881e2d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 610.260250000003,
+      "providerMs": 608.9894590000004,
+      "backoffMs": 0,
+      "processingMs": 1.2672910000001139,
+      "pacingMs": 0.0035000000025320332,
+      "calls": [
+        {
+          "bodyHash": "2e03a254e4d93a6bdd04703961b7b6f0b466aedfe1465052080fdd55dce5d480",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 608.9894590000004,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:57562184b74c36848d3a3b702e4c61d3dfb981528d8b8de71440c6cc3b3397f2",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 2908.412916999998,
+      "providerMs": 316.3637909999961,
+      "backoffMs": 0,
+      "processingMs": 2.5480010000028415,
+      "pacingMs": 2589.501124999999,
+      "calls": [
+        {
+          "bodyHash": "9e0c6c2c9a6d815a8c401a234ec9c8c596b8a5b0c0e2fcfe0a97089b41cb64f7",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 316.3637909999961,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:57562184b74c36848d3a3b702e4c61d3dfb981528d8b8de71440c6cc3b3397f2",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3614.9817079999993,
+      "providerMs": 731.3650830000042,
+      "backoffMs": 0,
+      "processingMs": 1.8125,
+      "pacingMs": 2881.804124999995,
+      "calls": [
+        {
+          "bodyHash": "a08e4be019be9618774dc8826dc55347bae71579b645d89fdda3a5b2269cc3b4",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 731.3650830000042,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 2899.8569579999967,
+      "providerMs": 431.5770000000048,
+      "backoffMs": 0,
+      "processingMs": 3.3756669999929727,
+      "pacingMs": 2464.904290999999,
+      "calls": [
+        {
+          "bodyHash": "de69a2e403d874a240ba6739fcad7b2903b04daf97a6c2d29b11f807237e6269",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 431.5770000000048,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:78fa7ffbfed6da69374601888ace2ae19e4bf514df67de482baf5f045db96f88",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3345.407457999994,
+      "providerMs": 579.9038750000036,
+      "backoffMs": 0,
+      "processingMs": 1.3704579999975977,
+      "pacingMs": 2764.133124999993,
+      "calls": [
+        {
+          "bodyHash": "3a19a77afc53dd6c64317c6f9b2db051e298f66ea37d9aedb8d677dccb862edd",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 579.9038750000036,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:bb1bf50580114b6d2d741697f600bb3071d0639ae36b714401c60b80ddb22549",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 57520.292291000005,
+      "providerMs": 54898.001917,
+      "backoffMs": 0,
+      "processingMs": 1.9304570000094827,
+      "pacingMs": 2620.3599169999943,
+      "calls": [
+        {
+          "bodyHash": "16987e9e503fe0c4d54ac3334240bd69b4723914e396cd43c30caae83d7a470b",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 54898.001917,
+          "costUsd": 0,
+          "promptTokens": 2442,
+          "completionTokens": 1717,
+          "reasoningTokens": 1603,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728021-vFikKZ0UinHhRMPhnayu",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:bb1bf50580114b6d2d741697f600bb3071d0639ae36b714401c60b80ddb22549",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 607.3550830000022,
+      "providerMs": 606.3113749999902,
+      "backoffMs": 0,
+      "processingMs": 1.0419160000164993,
+      "pacingMs": 0.001791999995475635,
+      "calls": [
+        {
+          "bodyHash": "16987e9e503fe0c4d54ac3334240bd69b4723914e396cd43c30caae83d7a470b",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 606.3113749999902,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3001.960249999989,
+      "providerMs": 411.6233749999956,
+      "backoffMs": 0,
+      "processingMs": 2.050583000003826,
+      "pacingMs": 2588.2862919999898,
+      "calls": [
+        {
+          "bodyHash": "f88943d4048b50383be1854841e5e874d35ffa63ba8e134389ee83eafd5f9dda",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 411.6233749999956,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:0ae2d4da4389b0781f153424040f73860c40a54118c06d1805c7f9febe81a263",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3093.0829169999924,
+      "providerMs": 308.96774999999616,
+      "backoffMs": 0,
+      "processingMs": 4.034833999990951,
+      "pacingMs": 2780.0803330000053,
+      "calls": [
+        {
+          "bodyHash": "30700c559dd1e89a43237fa069e749e8f04e807ee348b579d143d10011bfbdea",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 308.96774999999616,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:950d8d3392dbe4cc08b71f38acbb29ae7086afb443ed95cd17f64e2a95fe3ce0",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3485.4171249999927,
+      "providerMs": 595.6595410000009,
+      "backoffMs": 0,
+      "processingMs": 3.27979200000118,
+      "pacingMs": 2886.4777919999906,
+      "calls": [
+        {
+          "bodyHash": "4029098cc57df75de7503a47b84a3a240abcc48b335f769c2f0fb45690175ed2",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 595.6595410000009,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:950d8d3392dbe4cc08b71f38acbb29ae7086afb443ed95cd17f64e2a95fe3ce0",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3197.5291670000006,
+      "providerMs": 595.9781660000008,
+      "backoffMs": 0,
+      "processingMs": 2.405916999996407,
+      "pacingMs": 2599.1450840000034,
+      "calls": [
+        {
+          "bodyHash": "3a9107e61f4d919216c2a283bdbf209ee1c50eec66099d06e37ec270d6a66912",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 595.9781660000008,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:487662ff1dc1769809e333c5727e8656c16d17317b37ff029dff4e1b69ac1081",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 2887.2508329999982,
+      "providerMs": 288.1016660000023,
+      "backoffMs": 0,
+      "processingMs": 1.8523339999956079,
+      "pacingMs": 2597.2968330000003,
+      "calls": [
+        {
+          "bodyHash": "d3270b2ee338ae5a08c73c4a218c165146844e96bc099575fc5230e7d32aafcc",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 288.1016660000023,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:487662ff1dc1769809e333c5727e8656c16d17317b37ff029dff4e1b69ac1081",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3368.228792000009,
+      "providerMs": 455.13358300000255,
+      "backoffMs": 0,
+      "processingMs": 1.4500840000109747,
+      "pacingMs": 2911.6451249999955,
+      "calls": [
+        {
+          "bodyHash": "4516a14e093917417b20dbcbb381628403025853601fd248809b62c17b2625cd",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 455.13358300000255,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d0dda82ee56b74fcb9523df9deb087ce692af12d48279b6bd4e0c7a6517af33d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3305.6593339999963,
+      "providerMs": 560.7684160000063,
+      "backoffMs": 0,
+      "processingMs": 4.031917999978759,
+      "pacingMs": 2740.8590000000113,
+      "calls": [
+        {
+          "bodyHash": "2830b682008b290b85acd4c0d8758b244b20200914450bef1b4491648ea07f32",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 560.7684160000063,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d0dda82ee56b74fcb9523df9deb087ce692af12d48279b6bd4e0c7a6517af33d",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3292.221458999993,
+      "providerMs": 656.594333999994,
+      "backoffMs": 0,
+      "processingMs": 2.0005419999943115,
+      "pacingMs": 2633.6265830000048,
+      "calls": [
+        {
+          "bodyHash": "46ed6cbef6adb8d9baf9fd280485b2effeb872083718a0140908f52b544b460c",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 656.594333999994,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:2a4df0dbea68a274665ef90e224eafe7c6cd0f9d2b293c5b57951ad4fd88eaf2",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 44146.245167,
+      "providerMs": 41605.683917,
+      "backoffMs": 0,
+      "processingMs": 3.7231659999961266,
+      "pacingMs": 2536.8380840000027,
+      "calls": [
+        {
+          "bodyHash": "e306a70ed12d03a52710dc8b4c1667a14f6b5228bdc313beabcfce7c175403ba",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 41605.683917,
+          "costUsd": 0,
+          "promptTokens": 1224,
+          "completionTokens": 1471,
+          "reasoningTokens": 1397,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728105-sBfkHJMRYK4ielW4uJZD",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:2a4df0dbea68a274665ef90e224eafe7c6cd0f9d2b293c5b57951ad4fd88eaf2",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 488.0942090000026,
+      "providerMs": 486.6242499999935,
+      "backoffMs": 0,
+      "processingMs": 1.467417000036221,
+      "pacingMs": 0.0025419999728910625,
+      "calls": [
+        {
+          "bodyHash": "e306a70ed12d03a52710dc8b4c1667a14f6b5228bdc313beabcfce7c175403ba",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 486.6242499999935,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:fd1b7392362bc81c22db5319eef65758252539907cbdf2e40ebfbba66913b47a",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 10774.217042000004,
+      "providerMs": 8057.126499999984,
+      "backoffMs": 0,
+      "processingMs": 6.638375000009546,
+      "pacingMs": 2710.4521670000104,
+      "calls": [
+        {
+          "bodyHash": "83e10cf1aed8d70f9a499667890690aa37d58e2bcd246eb86b238accf4545e45",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 8057.126499999984,
+          "costUsd": 0,
+          "promptTokens": 1445,
+          "completionTokens": 1119,
+          "reasoningTokens": 1002,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728150-UoJybvpjPrvRTOnFnLfS",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:fd1b7392362bc81c22db5319eef65758252539907cbdf2e40ebfbba66913b47a",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 636.0515000000014,
+      "providerMs": 634.1520420000015,
+      "backoffMs": 0,
+      "processingMs": 1.8958749999874271,
+      "pacingMs": 0.003583000012440607,
+      "calls": [
+        {
+          "bodyHash": "679f03b2794009282df5ddcfb0a16c9329c69d39001929fc2e82784fdcd0d419",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 634.1520420000015,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c88f68ec97bc2f5885ddb6cc5ce246389e754eaffeec700ab6ba8e449d922dac",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3121.1080409999995,
+      "providerMs": 557.8804999999993,
+      "backoffMs": 0,
+      "processingMs": 2.8991660000174306,
+      "pacingMs": 2560.3283749999828,
+      "calls": [
+        {
+          "bodyHash": "f8234cdb94d47457ddfb25c3ae97503aa38a50ac09ff7125f7d72fad3e93e8ce",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 557.8804999999993,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c88f68ec97bc2f5885ddb6cc5ce246389e754eaffeec700ab6ba8e449d922dac",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3171.3438750000205,
+      "providerMs": 529.7599580000096,
+      "backoffMs": 0,
+      "processingMs": 2.195625000022119,
+      "pacingMs": 2639.3882919999887,
+      "calls": [
+        {
+          "bodyHash": "b95f66c2db8cc7621cb8df244117963a8b60398f4369d15b2fbd22293692e16d",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 529.7599580000096,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:52091ce7884b5ea73d5b95abd65d03b7c2af151e5fdcf9190ccb56197e0277dc",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3537.328416000004,
+      "providerMs": 868.2032920000202,
+      "backoffMs": 0,
+      "processingMs": 3.812456999963615,
+      "pacingMs": 2665.31266700002,
+      "calls": [
+        {
+          "bodyHash": "16e43dce2f5ae8ebe593e7240afe551cf093259f60e9f155dce1ca43d0ab1081",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 868.2032920000202,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:52091ce7884b5ea73d5b95abd65d03b7c2af151e5fdcf9190ccb56197e0277dc",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 2846.8751249999914,
+      "providerMs": 518.3306249999732,
+      "backoffMs": 0,
+      "processingMs": 2.2023750000225846,
+      "pacingMs": 2326.3421249999956,
+      "calls": [
+        {
+          "bodyHash": "b78dc7e58ab5e9241ae6099375eb9c8d08e0981a1b4b87c3902c02d12d72dabf",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 518.3306249999732,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d5bfae2d41b783b67c0f14660b2177bec85e00f394d59f66db794d57023dbdb0",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3277.8931250000023,
+      "providerMs": 601.4898749999993,
+      "backoffMs": 0,
+      "processingMs": 2.4790830000129063,
+      "pacingMs": 2673.92416699999,
+      "calls": [
+        {
+          "bodyHash": "dad0456e530e2d3f958635258ca947d9d4b5a330f73b30a1decb411bfd08e2a3",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 601.4898749999993,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:d5bfae2d41b783b67c0f14660b2177bec85e00f394d59f66db794d57023dbdb0",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 2768.775250000006,
+      "providerMs": 175.61766700001317,
+      "backoffMs": 0,
+      "processingMs": 1.368665999994846,
+      "pacingMs": 2591.788916999998,
+      "calls": [
+        {
+          "bodyHash": "4616867b9e7b14f2b51d4becbac36be7550faf39fcccdbeadc783ef0f1c4f3cd",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 175.61766700001317,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:df26f3d892ca7a3704974e9ce2ec5c4647e12ab6b9c8d9c3639fde1bca2f27b9",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3642.041957999987,
+      "providerMs": 614.700416000007,
+      "backoffMs": 0,
+      "processingMs": 3.4857090000004973,
+      "pacingMs": 3023.8558329999796,
+      "calls": [
+        {
+          "bodyHash": "96f5c5d7aa836efc18ce6b2bf05c2021d44dd71e6434a9b14d6cb9c55bfc00cd",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 614.700416000007,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:df26f3d892ca7a3704974e9ce2ec5c4647e12ab6b9c8d9c3639fde1bca2f27b9",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3249.8613340000156,
+      "providerMs": 666.6224999999977,
+      "backoffMs": 0,
+      "processingMs": 1.3752090000198223,
+      "pacingMs": 2581.863624999998,
+      "calls": [
+        {
+          "bodyHash": "0d8f09cf29ec9569b657e51be368ce3b014bd35d25141082057c74eba0d2cffe",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 666.6224999999977,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:72bcfff88928f53783044efebe863a196560c237bce0cd728f5188c807b81f1b",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3068.7584170000046,
+      "providerMs": 539.7517090000038,
+      "backoffMs": 0,
+      "processingMs": 1.6132079999952111,
+      "pacingMs": 2527.3935000000056,
+      "calls": [
+        {
+          "bodyHash": "c6edd1e92c6354a416ea2b0b46c87ff5476d9af73123a975c2fbef84bc670c6e",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 539.7517090000038,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:72bcfff88928f53783044efebe863a196560c237bce0cd728f5188c807b81f1b",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 13045.128832999995,
+      "providerMs": 10382.35491699999,
+      "backoffMs": 0,
+      "processingMs": 4.025831999984803,
+      "pacingMs": 2658.7480840000208,
+      "calls": [
+        {
+          "bodyHash": "a37d3393bda250835b7f7c66d8055116abd66124c5fc71f2bdf605384a3dc443",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 10382.35491699999,
+          "costUsd": 0,
+          "promptTokens": 1843,
+          "completionTokens": 1911,
+          "reasoningTokens": 1757,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728190-Vb4vzA0vUtK848Z5q19H",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:ca23761e8fb0d62e4057d3ae4c28def00a79c7ce05510dc0f07946ecf0ec1aa4",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 543.7386249999981,
+      "providerMs": 542.8208330000052,
+      "backoffMs": 0,
+      "processingMs": 0.9151669999992009,
+      "pacingMs": 0.0026249999937135726,
+      "calls": [
+        {
+          "bodyHash": "edc5af2a3a9a8196536bb4a06546b9b8d56bc5311d3d3701e063746c818054fe",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 542.8208330000052,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:ca23761e8fb0d62e4057d3ae4c28def00a79c7ce05510dc0f07946ecf0ec1aa4",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 12776.620416999998,
+      "providerMs": 10118.040083,
+      "backoffMs": 0,
+      "processingMs": 1.4310420000110753,
+      "pacingMs": 2657.1492919999873,
+      "calls": [
+        {
+          "bodyHash": "ba4c0571948726ecf859c4068906ff58c04457b842315b3ebfcefba510647163",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 10118.040083,
+          "costUsd": 0,
+          "promptTokens": 1516,
+          "completionTokens": 1258,
+          "reasoningTokens": 1144,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728203-FN3AVqFeauHmU8flDlha",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c017d2b481a6a79c0bf34c00f8f0a52cd6e3b70155ca254a68f1793dd4973df9",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 541.5965410000063,
+      "providerMs": 540.3308750000142,
+      "backoffMs": 0,
+      "processingMs": 1.2632079999893904,
+      "pacingMs": 0.00245800000266172,
+      "calls": [
+        {
+          "bodyHash": "107ec6ce973da34047edc0bbad5bac3f2ae82a9d99f3268b96da2d4e83ea5606",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 540.3308750000142,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:c017d2b481a6a79c0bf34c00f8f0a52cd6e3b70155ca254a68f1793dd4973df9",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3168.4890409999934,
+      "providerMs": 514.1015000000189,
+      "backoffMs": 0,
+      "processingMs": 2.0454999999783468,
+      "pacingMs": 2652.3420409999962,
+      "calls": [
+        {
+          "bodyHash": "107ec6ce973da34047edc0bbad5bac3f2ae82a9d99f3268b96da2d4e83ea5606",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 514.1015000000189,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:5051d48aa4e4443bda85e6ee70c3306adad8bf17747a00e24d2c90b7a082e986",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 13657.673874999979,
+      "providerMs": 10970.066291999974,
+      "backoffMs": 0,
+      "processingMs": 3.5664160000160336,
+      "pacingMs": 2684.0411669999885,
+      "calls": [
+        {
+          "bodyHash": "bbf947906b06a273c887027768c27a5b54f8fd1514b7cb1b60dcb182ef9583f6",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 10970.066291999974,
+          "costUsd": 0,
+          "promptTokens": 1714,
+          "completionTokens": 1438,
+          "reasoningTokens": 1364,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728220-HiUegnFoPcS4IBB5WGSL",
+          "finishReason": "stop",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:5051d48aa4e4443bda85e6ee70c3306adad8bf17747a00e24d2c90b7a082e986",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 749.1437079999887,
+      "providerMs": 748.5621660000179,
+      "backoffMs": 0,
+      "processingMs": 0.57974999997532,
+      "pacingMs": 0.001791999995475635,
+      "calls": [
+        {
+          "bodyHash": "bbf947906b06a273c887027768c27a5b54f8fd1514b7cb1b60dcb182ef9583f6",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 748.5621660000179,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:645527492653e669d534230128242bea3e283f3437f8815d1db8ac48d0aac899",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": true,
+      "errorKind": null,
+      "error": null,
+      "wallMs": 19595.860958999983,
+      "providerMs": 17140.939165999967,
+      "backoffMs": 0,
+      "processingMs": 3.637293000036152,
+      "pacingMs": 2451.2844999999797,
+      "calls": [
+        {
+          "bodyHash": "015717f387b79457f96b9f2d8f47bb4ec5980cdbd115447983461aa7d2445992",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 200,
+          "httpMs": 17140.939165999967,
+          "costUsd": 0,
+          "promptTokens": 1383,
+          "completionTokens": 4096,
+          "reasoningTokens": 4096,
+          "provider": "Phala",
+          "observedModel": "xingchen-agi/xing4.0-29b-a4b:free",
+          "generationId": "gen-1793728234-bANvuK0xTMmo2lKwr30S",
+          "finishReason": "length",
+          "attempt": 0,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:645527492653e669d534230128242bea3e283f3437f8815d1db8ac48d0aac899",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "contract",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 660.7082079999964,
+      "providerMs": 659.3725419999682,
+      "backoffMs": 0,
+      "processingMs": 1.3316240000422113,
+      "pacingMs": 0.0040419999859295785,
+      "calls": [
+        {
+          "bodyHash": "27b8568d40068b1863a9a405c4a8462555daca2bb37abc57f03434502d0ef66c",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 659.3725419999682,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free:185ad3c88ca5e5ee86fbeca46381c3dd0ee619f2f1daa49a8740d04b31c54a6b",
+      "model": "xingchen-agi/xing4.0-29b-a4b:free",
+      "suite": "citation-judge",
+      "arm": "prompt-only",
+      "ok": false,
+      "errorKind": "provider_execution",
+      "error": null,
+      "wallMs": 3021.7175829999615,
+      "providerMs": 483.6123329999973,
+      "backoffMs": 0,
+      "processingMs": 2.160457999969367,
+      "pacingMs": 2535.944791999995,
+      "calls": [
+        {
+          "bodyHash": "f373d25e5cd43a6d0ea6dc2004e2066456700b93b5b6bb667aaa94ece0044a70",
+          "model": "xingchen-agi/xing4.0-29b-a4b:free",
+          "status": 429,
+          "httpMs": 483.6123329999973,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "errorCode": 429,
+          "errorMessage": "Provider returned error",
+          "retryAfter": null,
+          "imageParts": 0
+        }
+      ],
+      "receipt": {
+        "present": false
+      },
+      "judgeValid": false,
+      "targetModel": "nvidia/nemotron-3.5-super-vl:free"
+    }
+  ],
+  "budget": {
+    "mode": "free-only",
+    "limitUsd": 0,
+    "confirmedUsd": 0,
+    "requests": 567,
+    "maxRequests": 900,
+    "unreportedCosts": 48,
+    "remainingAtStartupMinusRequests": 449
+  },
+  "stopped": "Operator stopped after 36 of 45 judge requests were rate-limited; successful replies used fenced JSON. No results are pooled with replacement judge."
+}

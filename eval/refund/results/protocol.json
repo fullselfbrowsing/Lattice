@@ -1,0 +1,197 @@
+{
+  "version": "refund-live/v1",
+  "models": [
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free",
+      "pricing": {
+        "prompt": "0",
+        "completion": "0"
+      },
+      "endpoints": [
+        {
+          "name": "Nvidia | nvidia/nemotron-3.5-super-vl-20261015:free",
+          "model_id": "nvidia/nemotron-3.5-super-vl:free",
+          "model_name": "NVIDIA: Nemotron 3.5 Super VL",
+          "context_length": 1000000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "Nvidia",
+          "tag": "nvidia",
+          "service_tier": null,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "max_prompt_tokens": 868928,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "seed",
+            "top_p",
+            "tools",
+            "tool_choice",
+            "response_format",
+            "structured_outputs"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": true,
+            "function": true
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ]
+    },
+    {
+      "id": "dots-studio/dots-3-note-preview:free",
+      "pricing": {
+        "prompt": "0",
+        "completion": "0"
+      },
+      "endpoints": [
+        {
+          "name": "AtlasCloud | dots-studio/dots-3-note-preview-20260813:free",
+          "model_id": "dots-studio/dots-3-note-preview:free",
+          "model_name": "Dots Studio: Dots3-Note Preview",
+          "context_length": 512000,
+          "pricing": {
+            "prompt": "0",
+            "completion": "0",
+            "discount": 0
+          },
+          "provider_name": "AtlasCloud",
+          "tag": "atlas-cloud/fp8",
+          "service_tier": null,
+          "quantization": "fp8",
+          "max_completion_tokens": 460800,
+          "max_prompt_tokens": null,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supports_tool_choice": {
+            "none": true,
+            "auto": true,
+            "required": false,
+            "function": false
+          },
+          "status": 0,
+          "uptime_last_30m": 100,
+          "uptime_last_5m": 100,
+          "uptime_last_1d": 99.86111111111111,
+          "supports_implicit_caching": false,
+          "native_tools": {},
+          "supports_voice_cloning": false,
+          "supports_multiple_audio_references": false,
+          "supports_image_reference": false,
+          "supports_diarization": false,
+          "latency_last_30m": null,
+          "throughput_last_30m": null
+        }
+      ]
+    }
+  ],
+  "repetitions": 2,
+  "plannedRuns": 32,
+  "maxCohortRequests": 40,
+  "generation": {
+    "temperature": 0,
+    "maxOutputTokens": 4096
+  },
+  "executionPolicy": {
+    "privacy": "standard",
+    "providerAllowList": [
+      "openrouter"
+    ],
+    "noPublicUrl": true
+  },
+  "scope": "Synthetic travel cases, live model recommendations, simulated employee/manager approvals and payments. No company deployment or human study.",
+  "frozenAt": "2026-11-03T21:20:22.143Z",
+  "revision": "f8a69141b6dd8188137cafaafda39a13cf5f1259",
+  "node": "v24.14.1",
+  "codeHashes": {
+    "eval/realworld/scripts/budget.mjs": "bfe202320f09bbae716158fa5f18dba32b79d8f5509f3bcb4dc8c2cbe4f112d1",
+    "eval/realworld/scripts/free-eval.mjs": "6e3762ea81e6121b9212b84fe8893756d0e9f5e0b2abbab706adb5cae0aeb204",
+    "eval/realworld/scripts/live-observer.mjs": "fdc80dee64d3536153608300325b2f60db45826f0aea412cbf4a85dfdfcfe862",
+    "eval/refund/controls.mjs": "795f442bf0ef2333bbd61a5d3dbf348518e9ace73f896514c446ec76fc313f66",
+    "eval/refund/fixtures.mjs": "21f75595331c8532fee4c137032bea314d8b40cb2fc97ba3cfdd5b888dc48ca7",
+    "eval/refund/report.mjs": "1fdb3bc5dcf6c477c8b0a9a46f1bce72ff6e2b2229019f63505fdb70aa3bfe7c",
+    "eval/refund/run.mjs": "4b00131c14dd5b62f19d5fca613a497bd5102a916e532ecb3a8f0125d211c816",
+    "eval/refund/workflow.mjs": "66a1228db44f817a2105419442f4c2b9f766c5988b914d867d7d9e2fd0e062f5",
+    "eval/refund/workflow.test.mjs": "6d5519ea5b9f4ee45979d5ce137bef3ed290c4211f7eb4a36537af0db38ab10b",
+    "packages/lattice/dist/agent-run-CB4Sm3KM.js": "a54c2d5bdf369bc2d8d5759d754a40ab4900af27a6d3ffb33ec18ba7657ea249",
+    "packages/lattice/dist/agents.js": "41840a2b76f4bb3e596c4a48a6d25f686e7319acf540e138c10f6ec32b457903",
+    "packages/lattice/dist/artifact-BH5NkaAw.js": "77990a2a873aa1851346ce159e8982f52f899548b1bb8265bc67811cf2945c3e",
+    "packages/lattice/dist/artifacts.js": "aa454fb5a6dd6531fdd259d3c1830eb2531a938ffea877fac3c7d35aa57d3bde",
+    "packages/lattice/dist/audit.js": "d55dbd3bb4b9efd3533c4938e84c26f2f31ded1fd2d075ffb5ace33779d05fed",
+    "packages/lattice/dist/catalog-CAfYwB_-.js": "2f045fcac9fabfcc9129802128cc0d38469c5d6551a74f7182c96d82c526d9a0",
+    "packages/lattice/dist/context-pack-BBX7V13u.js": "1667d6c1b6a2b318a51246ef55a6431a1beb3db8a60dec6009c36a1c5d214bbf",
+    "packages/lattice/dist/context.js": "74cf80409ed0cf95c5de151886098925dbb8ee385cf8425890d4388240e76e38",
+    "packages/lattice/dist/contracts-CzIBpYey.js": "54ca0b8683c7cc80bf780c48a7baa5d248f23c161b19dcb368d83afb49b77b6e",
+    "packages/lattice/dist/core.js": "10ebbe5aef4eaf646eb0beec17878a83304df4be9e313551e812e5e172ed7cf2",
+    "packages/lattice/dist/errors-BJNFnUT4.js": "e820b722e516bb8d96972a26ac891516e9775257be97435fb7b9817236ab1f18",
+    "packages/lattice/dist/eval.js": "81300f766d61a3b29d4eef6c1891ce3d252005ea3372e309c27867b9b90c6d2f",
+    "packages/lattice/dist/fingerprint-DodDbQKN.js": "dbc1f92abd68dca02ea0c2b73b0dcd2e0048bde7deaaec8960e04f9c96642391",
+    "packages/lattice/dist/index.js": "4690e9a9decc1aa293c403fa8b91d90e79dcf101802604f9966881b28b651497",
+    "packages/lattice/dist/lineage-B0-uISV-.js": "dd3833ef0fd2fe6c4d1e680f518826ad8d2cc3702d9c85134cb56ca752e51002",
+    "packages/lattice/dist/local-Q8Pln2LE.js": "2843258cbe36627abe7fe9695ebe175b9fe9dd5d0178a4db645535738c131963",
+    "packages/lattice/dist/memory-Dqoz3ka4.js": "dffd210460fd0845b57233a1907197ee4615af65e41863ab61b6b1eaa19d8e77",
+    "packages/lattice/dist/negotiate-l-grnAVR.js": "359aa256aba27f1983d136f2469ddaafe75b7ed990b6c276363f00e3696b9754",
+    "packages/lattice/dist/permission-context-BTWYZ_rR.js": "122335a40db2021d11c4bcffa47db9847d880dff6e538e0c4f59e6aaa2874c7b",
+    "packages/lattice/dist/plan-DFm8Llep.js": "f853130d42c95d26278b6c52b25180d27f55206983d6f9e585351e866aa9aec1",
+    "packages/lattice/dist/policy-DqKmUglf.js": "9c3a69dcd367bee98c1fd6b6a9ee6fe3a14262a97fa19f61e569e13464c42343",
+    "packages/lattice/dist/providers.js": "240a0776d546abba440595d6d311dae6d4176e6fbdc807090fc236c2061a97bd",
+    "packages/lattice/dist/receipt-Ch4ZBYqz.js": "c1bd60b417b2f71291beb4c39c0065b7379afe83107d8d9e05fce6bc171539fc",
+    "packages/lattice/dist/replay-BuLy1Qxc.js": "4cea5df5acdb14f37075c4afed392fd6aa426c866c677f27da2c804f08091978",
+    "packages/lattice/dist/request-CKAyp_Ab.js": "6501ec87ba8029dcbe2ae7d6d685213349b7c4542dcd0bf06b2e175c56b1fb23",
+    "packages/lattice/dist/rolldown-runtime-CiIaOW0V.js": "16a983b80655888fa521be8504570aef2fc3713d1a723ff439beddac3a2428c3",
+    "packages/lattice/dist/router--tFwfKMr.js": "6bc1068796dc6e63c3bbeefdf55d6ed82f37216969f838aa73712fb56b010e1e",
+    "packages/lattice/dist/routing.js": "589fc3b07aa40035ba4e1270e1a269514d52cc646d2e67e86c7bb6fc812a66bb",
+    "packages/lattice/dist/run-crew-2HoLHpcZ.js": "30b272e434368bc5171d0c17f87f683331b7b09fbc99d16b6d21e51215cd6706",
+    "packages/lattice/dist/runtime-D-uwb0cP.js": "dc52dce6d1da28d4fc85045c392c54170653ecf58de43958d7f48bd4409b1a2b",
+    "packages/lattice/dist/scaffolds-Ch3xx4Vp.js": "4ace75a48a58699e33e89d348fc994eb17fc120efaac71f2815c0ebab0f0d2e5",
+    "packages/lattice/dist/storage.js": "ec08d162dcc61fb7807b62bc66dd88e029bef4cf4e9ec6d6695047b7fd15b6c9",
+    "packages/lattice/dist/tool-call-validation-5hvqcz7j.js": "ec6178190f891ed3ceb425dfa6c5344f8d85475c4a6912fdd39d2762bbfb5d66",
+    "packages/lattice/dist/tools-Ca3TIB9Y.js": "a0679d408f18325ba69e2b1476440b6ddbdc4cda173531793ca45288d8eb0df1",
+    "packages/lattice/dist/tools.js": "dc093f503681ffbd92b72061799cb9eb41fd0cdad5014468f9f47bf7e69ebb8f",
+    "packages/lattice/dist/validate-D641TVah.js": "105e14bd74f0135fd7fc8f2947657adf1cf35e06593117336b2ca50f7d50e2a6"
+  },
+  "fixtureHash": "9d8dc7abb878db6a72117b73b10f792a31111347b2949368d33060eecbb4f487",
+  "trustAnchorHash": "ebacc860322d20d77552f8d64367432a90330c22e97046684e5e430bc27727c2",
+  "ledgerStart": 784,
+  "accountBefore": {
+    "usage": 0.04546433,
+    "usageDaily": 0,
+    "quota": {
+      "used": 738,
+      "limit": 1000,
+      "remaining": 262
+    }
+  },
+  "paidLedgerHash": "6705196b1bd6c6da6148e832e5d8c3cec7c2bd7a9c1a4abff15ab36013d4b6f3",
+  "scoring": "Exact declared action, amount, authority, conflict, decisive rule inclusion and required source inclusion. Narrative explanation not graded for entailment. All 32 planned runs in the denominator.",
+  "controls": "No retries, paid fallback, extensions or model replacement. Two development calls excluded; no prompt repair after freeze. Simulated human/payment events are not model actions.",
+  "timing": "Wall includes HTTP and free-tier pacing. Residual also includes harness/ledger work and is not pure SDK overhead."
+}

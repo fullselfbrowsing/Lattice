@@ -1,0 +1,1002 @@
+{
+  "checkedAt": "2026-11-03T23:46:54.168Z",
+  "rows": [
+    {
+      "id": "moffatt:nvidia/nemotron-3.5-super-vl:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "moffatt:dots-studio/dots-3-note-preview:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4377241:nvidia/nemotron-3.5-super-vl:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4377241:dots-studio/dots-3-note-preview:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4148727:nvidia/nemotron-3.5-super-vl:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-3785437:nvidia/nemotron-3.5-super-vl:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:0",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": false,
+      "evidenceOkay": false,
+      "problems": [
+        "no-successful-output"
+      ],
+      "grade": {
+        "format": false,
+        "facts": false,
+        "citations": false,
+        "strict": false,
+        "answers": [],
+        "reason": "invalid-json"
+      },
+      "strict": false
+    },
+    {
+      "id": "moffatt:dots-studio/dots-3-note-preview:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "moffatt:nvidia/nemotron-3.5-super-vl:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4377241:dots-studio/dots-3-note-preview:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4377241:nvidia/nemotron-3.5-super-vl:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": false,
+        "strict": false,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": false
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": false
+    },
+    {
+      "id": "drn-4148727:nvidia/nemotron-3.5-super-vl:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    },
+    {
+      "id": "drn-3785437:nvidia/nemotron-3.5-super-vl:free:1",
+      "signature": true,
+      "taskBound": true,
+      "policyBound": true,
+      "requestBound": true,
+      "outputBound": true,
+      "evidenceOkay": true,
+      "problems": [],
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "strict": true
+    }
+  ],
+  "retention": "Fresh-process verification uses exact local sources/request bodies. Published bundles omit source page text and raw requests; retained outputs/receipts/hash manifests are public. Source PDFs can be retrieved and matched to the manifest. No original company exhibit authenticity or issuer honesty established."
+}

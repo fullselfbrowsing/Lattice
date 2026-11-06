@@ -48,7 +48,9 @@ describe("modular package entrypoints", () => {
     expect(typeof providers.createOpenAICompatibleProvider).toBe("function");
     expect(typeof providers.parseToolUseEnvelope).toBe("function");
     expect(typeof audit.createReceipt).toBe("function");
+    expect(typeof audit.hashCanonicalForReceipt).toBe("function");
     expect(typeof audit.verifyChain).toBe("function");
+    expect(typeof audit.receiptVerifyAdvisories).toBe("function");
     expect(audit.RECEIPT_VERSIONS.at(-1)).toBe("lattice-receipt/v1.4");
     expect(typeof context.buildContextPack).toBe("function");
     expect(typeof artifacts.artifact.text).toBe("function");

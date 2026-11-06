@@ -1,0 +1,51 @@
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  x=1mm,y=1mm,font=\footnotesize,
+  stage/.style={draw,rounded corners=2pt,align=center,text width=142mm,minimum height=15mm,inner sep=3pt},
+  half/.style={stage,text width=64mm,minimum height=22mm},
+  flow/.style={-{Stealth[length=2mm]},semithick},
+  intended/.style={flow,dashed}
+]
+\node[stage] (source) at (0,0) {\textbf{Actual public dispute records}\\Moffatt v.\ Air Canada and three Financial Ombudsman decisions; source URLs and PDF hashes};
+\node[stage] (pages) at (0,-22) {\textbf{Application: preserve and package source pages}\\Exact extracted page text, page identifiers and source fingerprints; no invented transaction facts};
+\node[stage,fill=blue!5] (run) at (0,-44) {\textbf{Lattice: live retrospective review}\\Pinned free model; structured answers and supporting page IDs; format contract and signed receipt};
+\node[stage] (retain) at (0,-66) {\textbf{Retain the review packet and exact execution evidence}\\Source pages, task, execution policy, serialized request, model output and receipt};
+\node[half] (integrity) at (-39,-94) {\textbf{Integrity verification}\\Recompute source/output hashes;\\check signature and expected bindings};
+\node[half] (facts) at (39,-94) {\textbf{Source-based scoring}\\Compare factual answers and page IDs\\with the frozen rubric};
+\node[stage] (packet) at (0,-122) {\textbf{Retained packet with verification and scoring diagnostics}\\Real document facts remain distinct from model interpretations and missing evidence};
+\node[stage,dashed] (review) at (0,-146) {\textbf{Intended use: a disputes reviewer checks the packet}\\Human review effectiveness is untested; this experiment authorizes and executes no payment};
+\draw[flow] (source) -- (pages);
+\draw[flow] (pages) -- (run);
+\draw[flow] (run) -- (retain);
+\draw[flow] (retain.south) -- ++(0,-4) -| (integrity.north);
+\draw[flow] (retain.south) -- ++(0,-4) -| (facts.north);
+\draw[flow] (integrity.south) -- ++(0,-5) -| (packet.north);
+\draw[flow] (facts.south) -- ++(0,-5) -| (packet.north);
+\draw[intended] (packet) -- (review);
+\end{tikzpicture}
+\caption{Executed retrospective review of actual published refund-dispute records: Moffatt \citep{moffatt2024} and Financial Ombudsman Service decisions DRN-3785437, DRN-4148727 and DRN-4377241. Solid arrows show executed preparation, live inference and technical checks. The dashed final step is intended human use, not an observed practitioner study. Full decisions, including their outcomes, are supplied; this is document review, not prediction of a legal decision. Diagram prepared with OpenAI Codex; drafting model/version unconfirmed, pending author disclosure review.}
+\label{fig:public-refund-workflow}
+\end{figure}
+\nocite{fos3785437,fos4148727,fos4377241}
+
+\begin{table}[!htbp]
+\centering
+\caption{Actual public-record review: retained evidence and limits}
+\label{tab:public-refund-evidence}
+\footnotesize\setstretch{1.05}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{27mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Step / responsible role & Actual retained evidence & Implemented check & Remaining boundary \\
+\midrule
+Acquisition / application operator & Four published PDFs, URLs, PDF hashes and exact extracted pages & Match PDF fingerprints, page counts and page-text hashes & Published decisions are not original company systems or complete exhibit files \\[4pt]
+Execution / Lattice operator & Task, page artifacts, execution policy, serialized request and model output & Confirm all supplied pages occur in the recorded provider request; bind task, policy and request & Request commitment does not prove provider consumption or honesty \\[4pt]
+Review packet / model and application & Structured factual answers, page references and review note & Format contract; separate frozen factual-value and supporting-page rubric & Source-page coverage is not full entailment; free-text review notes and legal correctness ungraded \\[4pt]
+Integrity / separate verifier process & Receipt, public key and locally retained input/output/request bytes & Verify signature, expected bindings and recomputed content hashes & No proof of truth or real-world completeness; no model re-execution \\[4pt]
+Organizational use / intended disputes reviewer & Packet and diagnostics; explicit unknowns, such as unconfirmed settlement & No human-performance or payment-execution check in this experiment & A direction to pay is not a completed payment; reviewer usefulness remains unevaluated \\
+\bottomrule
+\end{tabularx}
+\begin{minipage}{\textwidth}\footnotesize\setstretch{1.05}\smallskip
+\textit{Worked source.} In Moffatt, the published order totals CAD~812.02; the decision supplies no confirmation that this order was subsequently paid \citep[para.~44]{moffatt2024}. The rubric distinguishes that direction from settlement. Source PDFs and exact request bodies remain locally retained; published bundles contain outputs, receipts and source/request fingerprints. Earlier invented-case tests are retained separately in Appendix~\ref{sec:synthetic-refund-case}.
+\end{minipage}
+\end{table}

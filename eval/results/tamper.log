@@ -1,0 +1,99 @@
+body-edit-keep-sig/edit-outputHash: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-outputHash: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-outputHash: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-inputHashes: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-inputHashes: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-inputHashes: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-route-provider: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-route-provider: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-route-provider: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-model: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-model: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-model: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-usage-cost: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-usage-cost: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-usage-cost: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-verdict: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-verdict: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-verdict: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-issuedAt: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-issuedAt: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-issuedAt: 70/70 [signature-invalid:70]
+body-edit-keep-sig/edit-runId: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-runId: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-runId: 70/70 [signature-invalid:70]
+body-edit-keep-sig/drop-redactions: 70/70 [version-mismatch:70]
+body-edit-jcs-keep-sig/drop-redactions: 70/70 [version-mismatch:70]
+body-edit-attacker-sig-legit-kid/drop-redactions: 70/70 [version-mismatch:70]
+body-edit-keep-sig/edit-redactionPolicy: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/edit-redactionPolicy: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/edit-redactionPolicy: 70/70 [signature-invalid:70]
+body-edit-keep-sig/add-field: 70/70 [canonicalization-mismatch:70]
+body-edit-jcs-keep-sig/add-field: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/add-field: 70/70 [signature-invalid:70]
+body-edit-keep-sig/unicode-nfd: 70/70 [signature-invalid:70]
+body-edit-jcs-keep-sig/unicode-nfd: 70/70 [signature-invalid:70]
+body-edit-attacker-sig-legit-kid/unicode-nfd: 70/70 [signature-invalid:70]
+encoding/key-reorder: 70/70 [canonicalization-mismatch:70]
+encoding/whitespace: 70/70 [canonicalization-mismatch:70]
+signature/sig-bitflip: 70/70 [signature-invalid:70]
+signature/sig-swap-same-key: 70/70 [signature-invalid:70]
+signature/sig-truncate: 70/70 [signature-invalid:70]
+signature/sig-empty-list: 70/70 [envelope-malformed:70]
+signature/payload-truncate: 70/70 [envelope-malformed:70]
+signature/payloadType-change: 70/70 [envelope-malformed:70]
+key/keyid-to-other-trusted: 70/70 [signature-invalid:70]
+key/keyid-unknown: 70/70 [key-not-found:70]
+key/forge-attacker-key-own-kid: 70/70 [key-not-found:70]
+key/resign-revoked-key: 70/70 [key-revoked:70]
+key/resign-other-key-body-kid-mismatch: 70/70 [signature-invalid:70]
+downgrade/version-v1-resigned-valid-key: 70/70 [schema-version-too-low:70]
+downgrade/version-absent-resigned-valid-key: 70/70 [schema-version-too-low:70]
+control-accept/untouched: 0/70 [accepted(active):70]
+control-accept/retired-key-legit-signature: 0/70 [accepted(retired):70]
+control-accept/version-v1.1-resigned-valid-key (key holder): 0/70 [accepted(active):70]
+replay/same-receipt-presented-again (no nonce/audience): 0/70 [accepted(active):70]
+[
+  {
+    mutation: 'swap-adjacent-links',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 0,
+    chainVerifierReason: 'tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent'
+  },
+  {
+    mutation: 'drop-middle-link',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 1,
+    chainVerifierReason: 'orphan-link'
+  },
+  {
+    mutation: 'splice-foreign-link',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 1,
+    chainVerifierReason: 'orphan-link'
+  },
+  {
+    mutation: 'truncate-tail',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 0,
+    chainVerifierReason: 'tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent'
+  },
+  {
+    mutation: 'truncate-tail-expectedCount',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 1,
+    chainVerifierReason: 'count-mismatch'
+  },
+  {
+    mutation: 'replace-root',
+    n: 50,
+    perReceiptRejectRate: 0,
+    chainVerifierRejectRate: 1,
+    chainVerifierReason: 'orphan-link'
+  }
+]
