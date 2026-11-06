@@ -85,6 +85,10 @@ The appendix distinguishes source baseline `73a47cf` from experimentally measure
 
 **C7 product-detail relocation complete; author review and venue-format confirmation pending.** Appendix A stays inside the working PDF until A7 confirms journal length and appendix/supplement rules. Original authorship and session model/version remain unconfirmed; A1/P5 and previous author reviews stay open. C2–C6 evidence, C6 technical background and Ai4Privacy documentation are unchanged. C8 and template migration remain separate tasks.
 
+## Review of C1 and C4–C7
+
+The [C4–C7 review](research/C4-C7-REVIEW.md) recomputes the evaluation from raw data, tests the managerial, literature and appendix claims, and lists items for the authors. Measured results are unchanged. No narrative was rewritten.
+
 ## Build
 
 With a TeX Live installation:

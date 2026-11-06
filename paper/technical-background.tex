@@ -15,14 +15,14 @@ Table~\ref{tab:compare} compares these systems with the artifact presented here.
 Feature & TrustTrack & Sello & Janus & Lattice (this study) \\
 \midrule
 Unit of record & Agent behavior & Agent action at receiving service & Agent step (proposal, verdict, effect) & Model run or terminal agent result; optional task, policy, and request bindings \\
-Who signs & Protocol participants (design) & Receiving service & Agent runtime, validators, humans & Issuing runtime (self-attested) \\
+Who signs & Protocol participants (design) & Receiving service & Log daemon signs segments; participants sign what they submit & Issuing runtime (self-attested) \\
 Tamper evidence & Proposed & Signature and witness-cosigned Merkle log & Signed hash chain & Signature over canonical JSON; parent links; crew chains list their members \\
-Third-party transparency log & Not specified & Yes & Not described & No \\
+Third-party transparency log & Shared-ledger anchoring proposed & Yes & No; external anchoring designed, not built & No \\
 Deterministic, recorded routing across providers & Not described & Not described & Not described & Yes; selected route signed, policy hash supported, candidates and rationale outside receipt \\
-Redaction before signing & Not specified & Encryption to owner & Not a focus & Yes, masked before signing (Sect.~\ref{sec:eval-min}) \\
-Signed output binding & Not specified & Signed receipt over the action & Signed hash chain; verdicts re-derived offline & Successful-output hash, checked against retained bytes \\
-Effect gating & Not described & Not described & Yes & No; output invariants run after generation and fail the run \\
-Implementation & None (blueprint) & Reference implementation & Implementation & Open-source library and command-line tool \\
+Redaction before signing & Selective disclosure proposed & Encryption to owner & Not a focus & Yes, masked before signing (Sect.~\ref{sec:eval-min}) \\
+Signed output binding & Proposed: agent-signed logs of inputs, actions and outputs & Signed receipt with input and output hashes & Signed hash chain; verdicts re-derived offline & Successful-output hash, checked against retained bytes \\
+Effect gating & Not described & Not described & On the MCP edge; the SDK path is cooperative admission & No; output invariants run after generation and fail the run \\
+Implementation & None (blueprint) & Reference implementation & Open-source daemon, SDK and verifier & Open-source library and command-line tool \\
 Evaluation & Use cases & Cryptographic microbenchmarks & Crash injection, 100M-event verification, model experiment & Tamper suite, output binding, policy checks, overhead (Sect.~\ref{sec:evaluation}) \\
 \bottomrule
 \end{tabularx}

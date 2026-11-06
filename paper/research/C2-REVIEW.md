@@ -2,6 +2,8 @@
 
 Date: November 4, 2026. GSD quick task: `261104-exq`. Reviewer: Claude (Claude Code, Claude Opus 5.5), acting at Lakshman Turlapati's direction. This is an AI review. It does not replace the authors' own confirmation under A1/P5.
 
+**Numbering note (Nov 5):** C4 later reorganized the Evaluation section. "Section 7.11" below is now Section 7.7, and table numbers have shifted.
+
 **Outcome.** All four sources were re-verified byte for byte, and every factual claim in the C2 materials has a primary-source locator. The tribunal order in Moffatt is not evidence of settlement, and the rubric treats it correctly. The November 3 rubric correction is valid, but it was applied in only one direction. A complete audit finds an offsetting error, which leaves the score at **14/16** rather than 15/16. The audit also found that the Moffatt decision is arithmetically inconsistent in two places: the total paid, and the bereavement-fare cost of the outbound flight (paragraph 38). The tribunal's reported amounts are preserved as published. Claude rewrote the narrative with Moffatt at the center and integrated it into Section 5 and Section 7.11 of `main.tex`. **C2 is marked reviewed**, subject to the publisher-policy issue below.
 
 ## 1. Source validation
@@ -15,7 +17,7 @@ Date: November 4, 2026. GSD quick task: `261104-exq`. Reviewer: Claude (Claude C
 
 Extraction was repeated with Poppler `pdftotext 26.06.0 -layout`, the same version and settings as `prepare.mjs`. All 18 page hashes match `eval/public-refund/source-manifest.json`. Moffatt pages 4 and 8 were also rendered and read as images to confirm the fare figures. The four bibliography entries match the documents. Using DRN-number citation aliases avoids the ambiguous "n.d.a/b/c" in-text labels.
 
-**Recommended author check (5 minutes):** open the CanLII or CRT copy of Moffatt in a browser and confirm paragraphs 18, 34 and 40. Automated access to both was refused, so the Middle Temple copy has not been compared with the official HTML.
+**Recommended author check (5 minutes):** open the CanLII or CRT copy of Moffatt in a browser and confirm paragraphs 18, 34, 38 and 40. Automated access to both was refused, so the Middle Temple copy has not been compared with the official HTML.
 
 ## 2. Factual claims
 

@@ -2,6 +2,8 @@
 
 **C6 source mapping and editorial revision complete; author reading, synthesis and review pending.** Research and editing: November 5, 2026; preliminary discovery: November 4–5. Baseline: `6fa9f3f`. This is a focused narrative review supporting the existing research question, not a systematic review or evidence of exhaustive novelty searching.
 
+**Correction note (Nov 5, quick task `261105-p6k`):** an independent check against primary texts found this map's agent-comparison row incomplete. TrustTrack, Janus and Sello cells in `tab:compare` are corrected, and Janus's effect gating is qualified to its MCP edge. Wieringa (2020) was also read only at abstract level and belongs with the abstract-only works listed here. See the [C4–C7 review](C4-C7-REVIEW.md).
+
 ## Search and selection
 
 The starting set was the manuscript's governance, accountability, auditing, provenance/security and DSR bibliography. Searches followed the three additions specified in the approved C6 plan and sought publisher or author-repository copies of the existing core works. Search scope comprised AIS eLibrary/MIS Quarterly, journal publisher pages, university/author repositories and arXiv for explicitly identified technical preprints. Crossref was used for metadata checks, not for claims about findings. No subscription database export, reproducible exhaustive hit count, PRISMA flow or independent screening was performed.

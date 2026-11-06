@@ -1619,7 +1619,10 @@
     "CfourPublicPlanned": 16,
     "CfourFreeStrict": 166,
     "CfourFreeCitationPlanned": 240,
-    "CfourPublicFrozen": 14
+    "CfourPublicFrozen": 14,
+    "CfourSignDeltaConfigs": 10,
+    "CfourSignDeltaMinMs": "0.195",
+    "CfourSignDeltaMaxMs": "5.142"
   },
   "noNewExperiments": true
 }
