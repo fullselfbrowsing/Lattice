@@ -83,7 +83,7 @@
 @incollection{vombrocke2020, title={Introduction to Design Science Research}, ISBN={9783030467814}, ISSN={2196-8713}, url={http://dx.doi.org/10.1007/978-3-030-46781-4_1}, DOI={10.1007/978-3-030-46781-4_1}, booktitle={Design Science Research. Cases}, publisher={Springer International Publishing}, author={vom Brocke, Jan and Hevner, Alan and Maedche, Alexander}, year={2020}, pages={1--13} }
 
 @inproceedings{crosby2009, author={Crosby, Scott A. and Wallach, Dan S.}, title={Efficient Data Structures for Tamper-Evident Logging}, booktitle={18th USENIX Security Symposium (USENIX Security 09)}, pages={317--334}, publisher={USENIX Association}, year={2009}, url={https://www.usenix.org/conference/usenixsecurity09/technical-sessions/presentation/efficient-data-structures-tamper-evident}}
-@inproceedings{sculley2015, author={Sculley, D. and Holt, Gary and Golovin, Daniel and Davydov, Eugene and Phillips, Todd and Ebner, Dietmar and Chaudhary, Vinay and Young, Michael and Crespo, Jean-Fran{\c{c}}ois and Dennison, Dan}, title={Hidden Technical Debt in Machine Learning Systems}, booktitle={Advances in Neural Information Processing Systems 28}, year={2015}, url={https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html}}
+@inproceedings{sculley2015, author={Sculley, D. and Holt, Gary and Golovin, Daniel and Davydov, Eugene and Phillips, Todd and Ebner, Dietmar and Chaudhary, Vinay and Young, Michael and Crespo, Jean-Fran{\c{c}}ois and Dennison, Dan}, title={Hidden Technical Debt in Machine Learning Systems}, booktitle={Advances in Neural Information Processing Systems 28}, year={2015}, pages={2503--2511}, url={https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html}, note={Author publication record: \url{https://research.google/pubs/hidden-technical-debt-in-machine-learning-systems/}. Accessed November 9, 2026}}
 @misc{li2025trusttrack, author={Li, Muyang}, title={From Cloud-Native to Trust-Native: A Protocol for Verifiable Multi-Agent Systems}, year={2025}, howpublished={arXiv preprint arXiv:2507.22077}, doi={10.48550/arXiv.2507.22077}}
 @misc{figuera2026sello, author={Figuera, Juan}, title={Notarized Agents: Receiver-Attested Confidential Receipts for {AI} Agent Actions}, year={2026}, howpublished={arXiv preprint arXiv:2606.04193}, doi={10.48550/arXiv.2606.04193}}
 @misc{arslan2026janus, author={Arslan, Mustafa}, title={Janus: Evidence-Before-Effect Sagas and Offline-Verifiable Provenance for Agentic {LLMs}}, year={2026}, howpublished={arXiv preprint arXiv:2609.38266}, doi={10.48550/arXiv.2609.38266}}
@@ -127,11 +127,11 @@
 }
 
 @misc{gretelfinance,
-  author       = {{Gretel.ai}},
+  author       = {Watson, Alex and Meyer, Yev and Van Segbroeck, Maarten and Grossman, Matthew and Torbey, Sami and Mlocek, Piotr and Greco, Johnny},
   title        = {Synthetic {PII} Finance Multilingual ({gretelai/\allowbreak synthetic\_\allowbreak pii\_\allowbreak finance\_\allowbreak multilingual})},
   howpublished = {Hugging Face dataset, revision 7b844d16738527a04264f50214cb426a4cea0897},
   year         = {2024},
-  note         = {{Apache-2.0}. \url{https://huggingface.co/datasets/gretelai/synthetic_pii_finance_multilingual}}
+  note         = {Gretel.ai dataset. {Apache-2.0}. \url{https://huggingface.co/datasets/gretelai/synthetic_pii_finance_multilingual}}
 }
 
 @inproceedings{asqa,
@@ -233,29 +233,37 @@
   url          = {https://www.usenix.org/conference/usenixsecurity19/presentation/torres-arias}
 }
 
-@inproceedings{bindschaedler2026afr,
+@misc{bindschaedler2026afr,
   author       = {Laurent Bindschaedler and Quentin Botha and Christoph Siebenbrunner},
   title        = {Agent Flight Recorder: Tamper-Evident Audit Trails with On-Chain Anchoring for Long-Horizon Tool-Using Agents},
-  booktitle    = {Proc. IEEE Int. Conf. Blockchain Computing and Applications (BCCA)},
+  howpublished = {arXiv preprint arXiv:2609.01931v1},
   year         = {2026},
-  note         = {arXiv:2609.01931, \url{https://arxiv.org/abs/2609.01931}}
+  doi          = {10.48550/arXiv.2609.01931},
+  url          = {https://arxiv.org/abs/2609.01931v1},
+  note         = {The arXiv record reports acceptance at {IEEE BCCA} 2026. \url{https://doi.org/10.48550/arXiv.2609.01931}}
 }
 
 @misc{ardebili2026novafabric,
   author       = {Mohsen {Seyedkazemi Ardebili}},
   title        = {{NovaFabric}: Tamper-Evident, Replayable Evidence for Autonomous {AI} Agent Runs},
-  howpublished = {arXiv:2609.12582 [cs.CR]},
+  howpublished = {arXiv preprint arXiv:2609.12582v1 [cs.CR]},
   year         = {2026},
   month        = sep,
-  note         = {\url{https://arxiv.org/abs/2609.12582}}
+  doi          = {10.48550/arXiv.2609.12582},
+  url          = {https://arxiv.org/abs/2609.12582v1},
+  note         = {\url{https://doi.org/10.48550/arXiv.2609.12582}}
 }
 
 @inproceedings{alce,
   title={Enabling Large Language Models to Generate Text with Citations},
   author={Gao, Tianyu and Yen, Howard and Yu, Jiatong and Chen, Danqi},
   year={2023},
-  booktitle={Empirical Methods in Natural Language Processing (EMNLP)},
-  url={https://github.com/princeton-nlp/ALCE}
+  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
+  pages={6465--6488},
+  publisher={Association for Computational Linguistics},
+  doi={10.18653/v1/2023.emnlp-main.398},
+  url={https://aclanthology.org/2023.emnlp-main.398/},
+  note={Code: \url{https://github.com/princeton-nlp/ALCE}}
 }
 
 @misc{moffatt2024,
