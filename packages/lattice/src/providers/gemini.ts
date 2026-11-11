@@ -224,7 +224,8 @@ async function createGeminiUserParts(
     if (!isGeminiMediaArtifact(inputArtifact.kind) || transport === "extracted-text" || transport === "transcript") {
       if (["file", "document"].includes(inputArtifact.kind) &&
         transport !== "extracted-text" && transport !== "transcript") {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          `${inputArtifact.kind} artifacts reach Gemini only as extracted text or a transcript`);
       }
       parts.push({ text: artifactText(request, inputArtifact) });
       continue;
@@ -232,7 +233,8 @@ async function createGeminiUserParts(
     if (transport === "file-id") {
       const fileUri = geminiFileUri(inputArtifact);
       if (fileUri === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "file-id transport needs a Gemini file URI in the artifact metadata");
       }
       parts.push({
         fileData: {
@@ -246,7 +248,8 @@ async function createGeminiUserParts(
     if (transport === "url") {
       const fileUri = artifactHttpUrl(inputArtifact);
       if (fileUri === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "the media has no http(s) URL");
       }
       parts.push({
         fileData: {
@@ -260,7 +263,8 @@ async function createGeminiUserParts(
     if (transport === "base64" || transport === "inline") {
       const data = await artifactBase64Data(inputArtifact);
       if (data === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "the media bytes could not be read");
       }
       parts.push({
         inlineData: {
@@ -270,7 +274,8 @@ async function createGeminiUserParts(
       });
       continue;
     }
-    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+      "Gemini accepts media by file URI, URL or inline data");
   }
 
   return parts;

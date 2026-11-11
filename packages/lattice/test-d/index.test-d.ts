@@ -40,6 +40,7 @@ import type {
   RateLimitGroup,
   ReceiptEnvelope,
   RunEventSink,
+  UnsupportedArtifactTransportError,
 } from "..";
 
 // Phase 40 public-surface guard:
@@ -136,3 +137,7 @@ expectType<MustCiteInvariant>(mustCite);
 expectType<boolean | undefined>(mustCite.inline);
 expectType<boolean | undefined>(mustCite.rejectUncited);
 expectType<string | undefined>(mustCite.textPath);
+
+declare const transportError: UnsupportedArtifactTransportError;
+expectType<string | undefined>(transportError.reason);
+expectType<string | undefined>(transportError.path);

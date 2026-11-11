@@ -294,4 +294,19 @@ describe("runtime generation forwarding", () => {
     await provider.execute!({ task: "hello", artifacts: [], outputs: ["answer"] });
     expect(urls).toEqual(["https://proxy.test/openai/chat/completions"]);
   });
+
+  it("fails ai.run with the detailed reason and sends nothing for a non-JSON artifact", async () => {
+    const fetch = vi.fn(async () => response(false)) as unknown as typeof globalThis.fetch;
+    const ai = createAI({ providers: [createOpenAICompatibleProvider({
+      model: "test", baseUrl: "https://provider.test/v1", fetch,
+    })] });
+    const result = await ai.run({
+      task: "Read the note.", outputs: { answer: "text" as const },
+      artifacts: [artifact.json({ note: "x", createdAt: new Date(0) }, { id: "note" })],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected failure");
+    expect(JSON.stringify(result.error)).toContain("$.createdAt is a Date");
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

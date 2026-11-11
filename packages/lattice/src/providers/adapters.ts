@@ -342,17 +342,27 @@ async function createOpenAICompatibleRequestBody(input: {
     const transport = resolvedArtifactTransport(input.request, artifact);
     if (artifact.kind === "image" && transport !== "extracted-text") {
       let url: string | undefined;
-      if (transport === "url") url = artifactHttpUrl(artifact);
-      else if (transport === "inline" || transport === "base64") {
+      if (transport === "url") {
+        url = artifactHttpUrl(artifact);
+        if (url === undefined) {
+          throw new UnsupportedArtifactTransportError(artifact.id, transport, "the image has no http(s) URL");
+        }
+      } else if (transport === "inline" || transport === "base64") {
         const data = await artifactBase64Data(artifact);
-        if (data !== undefined) url = `data:${mediaTypeForArtifact(artifact, "image/jpeg")};base64,${data}`;
+        if (data === undefined) {
+          throw new UnsupportedArtifactTransportError(artifact.id, transport, "the image bytes could not be read");
+        }
+        url = `data:${mediaTypeForArtifact(artifact, "image/jpeg")};base64,${data}`;
+      } else {
+        throw new UnsupportedArtifactTransportError(
+          artifact.id, transport, "OpenAI-compatible providers accept images only by URL or inline data");
       }
-      if (url === undefined) throw new UnsupportedArtifactTransportError(artifact.id, transport);
       artifacts.push({ type: "image_url", image_url: { url } });
     } else {
       if (["audio", "video", "file", "document"].includes(artifact.kind) &&
         transport !== "extracted-text" && transport !== "transcript") {
-        throw new UnsupportedArtifactTransportError(artifact.id, transport);
+        throw new UnsupportedArtifactTransportError(artifact.id, transport,
+          `${artifact.kind} artifacts reach OpenAI-compatible providers only as extracted text or a transcript`);
       }
       artifacts.push({ type: "text", text: artifactText(input.request, artifact) });
     }

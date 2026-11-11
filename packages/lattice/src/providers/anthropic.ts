@@ -222,7 +222,8 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
     if (inputArtifact.kind !== "image" || transport === "extracted-text") {
       if (["audio", "video", "file", "document"].includes(inputArtifact.kind) &&
         transport !== "extracted-text" && transport !== "transcript") {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          `${inputArtifact.kind} artifacts reach Anthropic only as extracted text or a transcript`);
       }
       blocks.push({ type: "text", text: artifactText(request, inputArtifact) });
       continue;
@@ -230,7 +231,8 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
     if (transport === "file-id") {
       const fileId = anthropicFileId(inputArtifact);
       if (fileId === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "file-id transport needs an Anthropic file id in the artifact metadata");
       }
       blocks.push({
         type: "image",
@@ -246,7 +248,8 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
     if (transport === "url") {
       const url = artifactHttpUrl(inputArtifact);
       if (url === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "the image has no http(s) URL");
       }
       blocks.push({
         type: "image",
@@ -261,7 +264,8 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
     if (transport === "base64" || transport === "inline") {
       const data = await artifactBase64Data(inputArtifact);
       if (data === undefined) {
-        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+        throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+          "the image bytes could not be read");
       }
       blocks.push({
         type: "image",
@@ -273,7 +277,8 @@ async function createAnthropicUserContent(request: ProviderRunRequest): Promise<
       });
       continue;
     }
-    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport);
+    throw new UnsupportedArtifactTransportError(inputArtifact.id, transport,
+      "Anthropic accepts images by file id, URL or inline data");
   }
 
   return { blocks, usesFilesApi };

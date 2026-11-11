@@ -1325,3 +1325,46 @@ describe("noPublicUrl cross-adapter parity", () => {
     expect(requests).toHaveLength(0);
   });
 });
+
+describe("artifact transport error reasons", () => {
+  const fetchStub = (() => { throw new Error("fetch must not be called"); }) as unknown as typeof fetch;
+  const providers = [
+    ["compatible", createOpenAICompatibleProvider({ model: "m", baseUrl: "https://c.test/v1", fetch: fetchStub }),
+      "OpenAI-compatible providers", /accept images only by URL|no http\(s\) URL/u],
+    ["anthropic", createAnthropicProvider({ model: "m", apiKey: "k", fetch: fetchStub }),
+      "Anthropic", /no http\(s\) URL/u],
+    ["gemini", createGeminiProvider({ model: "m", apiKey: "k", fetch: fetchStub }),
+      "Gemini", /no http\(s\) URL/u],
+  ] as const;
+
+  async function reasonFor(
+    provider: (typeof providers)[number][1],
+    input: ReturnType<typeof artifact.json>,
+    transport?: "url",
+  ): Promise<UnsupportedArtifactTransportError> {
+    const error = await provider.execute!({
+      task: "t", artifacts: [input], outputs: ["answer"],
+      ...(transport === undefined ? {} : {
+        providerPackaging: {
+          providerId: "p", modelId: "m", warnings: [],
+          artifacts: [{ artifactId: input.id, transport, lineageTransform: "provider-packaging" as const, warnings: [] }],
+        },
+      }),
+    }).then(() => undefined, (caught: unknown) => caught);
+    expect(error).toBeInstanceOf(UnsupportedArtifactTransportError);
+    return error as UnsupportedArtifactTransportError;
+  }
+
+  it.each(providers)("%s explains JSON, file, and image failures", async (_name, provider, who, imageReason) => {
+    const json = { id: "j", kind: "json", value: { createdAt: new Date(0) } } as unknown as ReturnType<typeof artifact.json>;
+    const jsonError = await reasonFor(provider, json);
+    expect(jsonError.reason).toContain("$.createdAt is a Date");
+    expect(jsonError.path).toBe("$.createdAt");
+
+    const fileError = await reasonFor(provider, artifact.file("abc", { id: "f" }));
+    expect(fileError.reason).toBe(`file artifacts reach ${who} only as extracted text or a transcript`);
+
+    const imageError = await reasonFor(provider, artifact.image("not-a-url", { id: "i" }), "url");
+    expect(imageError.reason).toMatch(imageReason);
+  });
+});
