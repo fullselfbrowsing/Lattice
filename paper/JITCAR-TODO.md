@@ -330,7 +330,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 - [ ] Decide whether any proposed practitioner activity, identifiable operational data, or quotations require institutional review; obtain the relevant determination before recruitment or collection.
 - [ ] If no participant study is conducted, accurately state the scope of the reported work and label the practitioner study as future work. Do not invent an IRB approval or exemption number.
-- [ ] Resolve every visible TODO: practitioner-study approval/IRB, ethics, contribution statement (P5), and archive DOI (P4).
+- [ ] Resolve every visible TODO: practitioner-study approval/IRB, ethics, contribution statement (P5), and archive DOI (P4). Update: the archive-DOI TODO is resolved (10.5281/zenodo.24145363); three remain.
 - [ ] Search manuscript, generated fragments, appendices, declarations, and compiled PDF for TODO/TBD/placeholder markers and unresolved references.
 
 **Done when:** ethics statements describe the actual study and the submission contains no unresolved red TODOs or placeholder assertions.
@@ -339,11 +339,11 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 **Owner:** Codex prepares/checks; Lakshman authorizes and performs publication steps as agreed. **Dates:** prepare Nov 10–11; DOI resolved by Nov 12. **Depends on:** A5/A6 permissions and stable results.
 
-- [ ] Select the exact code/data/result revision to archive; distinguish the measured revision from subsequent fixes.
-- [ ] Inventory distributable source, scripts, aggregate results, documentation, licenses, and environment instructions; exclude credentials, private records, and restricted datasets. For Ai4Privacy, retain aggregate reports only and exclude raw caches, record-level annotations/span exports and the private correspondence recorded under A6.
-- [ ] Prepare a tagged release/archive and repository changes needed for reproducibility. Review concrete contents before pushing or publishing.
-- [ ] Obtain a real DOI through the chosen archive workflow, verify its landing page and metadata, and update data/code availability. A reserved identifier and a published accessible archive must be distinguished accurately.
-- [ ] Check anonymous-review requirements before adding repository or archive links that identify authors.
+- [x] Select the exact code/data/result revision to archive; distinguish the measured revision from subsequent fixes. Done: release `v1.7.0` (commit `87f7bb9`); measured revisions are distinguished from the release in the appendix and IEEE notes.
+- [ ] Inventory distributable source, scripts, aggregate results, documentation, licenses, and environment instructions; exclude credentials, private records, and restricted datasets. For Ai4Privacy, retain aggregate reports only and exclude raw caches, record-level annotations/span exports and the private correspondence recorded under A6. Checked Nov 11 in the `v1.7.0` archive: no credentials, Ai4Privacy rows, raw caches, span exports or third-party documents; the full A6 correspondence stays private under `.context/`. Open: the archived `paper/research/AI4PRIVACY-PERMISSION.md` names the respondent and quotes one sentence of the October 22 reply, so the authors must decide whether that record may stay public.
+- [x] Prepare a tagged release/archive and repository changes needed for reproducibility. Review concrete contents before pushing or publishing. Done: tagged release `v1.7.0` published and archived on Nov 11. Its archive contents were reviewed after publication, not before; see the inventory item above for findings.
+- [x] Obtain a real DOI through the chosen archive workflow, verify its landing page and metadata, and update data/code availability. A reserved identifier and a published accessible archive must be distinguished accurately. Done: DOI 10.5281/zenodo.24145363 findable at DataCite; availability statement updated.
+- [x] Check anonymous-review requirements before adding repository or archive links that identify authors. Done: single-anonymous review, so identifying links are permitted.
 
 **Done when:** the availability statement matches accessible, permitted artifacts and the DOI's actual state.
 
