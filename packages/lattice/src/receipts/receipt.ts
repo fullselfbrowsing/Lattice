@@ -4,6 +4,7 @@ import type { RouteRejectReason } from "../plan/plan.js";
 import type { Usage } from "../providers/provider.js";
 
 import { canonicalizeReceiptBody, usageToCanonical } from "./canonical.js";
+import { executionBindingProblem } from "./bindings.js";
 import {
   PAYLOAD_TYPE,
   base64Encode,
@@ -49,11 +50,20 @@ export interface CreateReceiptInput {
   readonly audience?: string;
   readonly nonce?: string;
   readonly expiresAt?: string;
+  // Chain closure. Set `chainClosure` on a tree's root (createReceipt
+  // rejects it together with `parentReceiptCid`); list every other
+  // member's receiptCid in `chainMemberCids` on one closing receipt,
+  // sorted and unique (crew runs do this; see verifyChain).
+  readonly chainClosure?: "member-cids";
+  readonly chainMemberCids?: readonly string[];
   readonly usage: Usage;
   readonly contractVerdict: ContractVerdict;
   readonly contractHash: string | null;
   readonly inputHashes: readonly string[];
   readonly outputHash: string | null;
+  readonly taskHash?: string;
+  readonly policyHash?: string;
+  readonly providerRequestHashes?: readonly string[];
   readonly redactionPolicyId?: string;
   readonly noRouteReasons?: readonly RouteRejectReason[];
   readonly tripwireEvidence?: TripwireEvidence;
@@ -97,6 +107,50 @@ function assertInstant(field: "issuedAt" | "expiresAt", value: string | undefine
   }
 }
 
+const RECEIPT_CID_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+
+/**
+ * Reject closure fields a verifier would refuse, so a JS caller passing the
+ * wrong shape gets a TypeError at issuance instead of a signed receipt that
+ * fails every chain check later.
+ */
+function assertChainClosure(
+  chainClosure: unknown,
+  chainMemberCids: unknown,
+  parentReceiptCid: unknown,
+): void {
+  if (chainClosure !== undefined && chainClosure !== "member-cids") {
+    throw new TypeError(
+      `createReceipt: chainClosure must be "member-cids", got ${JSON.stringify(chainClosure) ?? String(chainClosure)}`,
+    );
+  }
+  if (chainClosure !== undefined && parentReceiptCid !== undefined) {
+    throw new TypeError(
+      "createReceipt: chainClosure is only valid on a root receipt; omit parentReceiptCid or chainClosure",
+    );
+  }
+  if (chainMemberCids === undefined) return;
+  if (!Array.isArray(chainMemberCids)) {
+    throw new TypeError(
+      "createReceipt: chainMemberCids must be an array of sha256:<hex> receipt CIDs",
+    );
+  }
+  for (const [index, cid] of chainMemberCids.entries()) {
+    if (typeof cid !== "string" || !RECEIPT_CID_PATTERN.test(cid)) {
+      throw new TypeError(
+        `createReceipt: chainMemberCids[${index}] must be a sha256:<64 lowercase hex> receipt CID, got ${JSON.stringify(cid) ?? String(cid)}`,
+      );
+    }
+    const previous: unknown = chainMemberCids[index - 1];
+    if (typeof previous === "string" && previous === cid) {
+      throw new TypeError(`createReceipt: chainMemberCids lists ${cid} more than once`);
+    }
+    if (typeof previous === "string" && previous > cid) {
+      throw new TypeError("createReceipt: chainMemberCids must be sorted");
+    }
+  }
+}
+
 export async function createReceipt(
   input: CreateReceiptInput,
   signer: ReceiptSigner,
@@ -108,6 +162,9 @@ export async function createReceipt(
   // verifier's timezone, so refuse to issue one (caller error, not a verdict).
   assertInstant("issuedAt", input.issuedAt);
   assertInstant("expiresAt", input.expiresAt);
+  assertChainClosure(input.chainClosure, input.chainMemberCids, input.parentReceiptCid);
+  const bindingProblem = executionBindingProblem(input);
+  if (bindingProblem !== undefined) throw new TypeError(`createReceipt: ${bindingProblem}`);
   const issuedAt = input.issuedAt ?? new Date().toISOString();
 
   // Always emit the current schema. Older minted versions (v1.1 to v1.3)
@@ -131,11 +188,20 @@ export async function createReceipt(
     ...(input.audience !== undefined ? { audience: input.audience } : {}),
     ...(input.nonce !== undefined ? { nonce: input.nonce } : {}),
     ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+    ...(input.chainClosure !== undefined ? { chainClosure: input.chainClosure } : {}),
+    ...(input.chainMemberCids !== undefined
+      ? { chainMemberCids: input.chainMemberCids }
+      : {}),
     usage: usageToCanonical(input.usage),
     contractVerdict: input.contractVerdict,
     contractHash: input.contractHash,
     inputHashes: input.inputHashes,
     outputHash: input.outputHash,
+    ...(input.taskHash !== undefined ? { taskHash: input.taskHash } : {}),
+    ...(input.policyHash !== undefined ? { policyHash: input.policyHash } : {}),
+    ...(input.providerRequestHashes !== undefined
+      ? { providerRequestHashes: [...input.providerRequestHashes] }
+      : {}),
     redactionPolicyId: policyId,
     redactions: [],
     ...(input.noRouteReasons !== undefined

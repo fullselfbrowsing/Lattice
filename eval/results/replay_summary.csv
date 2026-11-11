@@ -1,0 +1,8 @@
+adapter,runs,recorded,verified,materialized,replayOk,outputHashMatch,liveRerunHashMatch,alteredOutputDetected,reloadedInputHashesMatch,errors
+openai,50,50,50,50,50,50,50,50,50,0
+openai-compatible,50,50,50,50,50,50,50,50,50,0
+anthropic,50,50,50,50,50,50,50,50,50,0
+gemini,50,50,50,50,50,50,50,50,50,0
+xai,50,50,50,50,50,50,50,50,50,0
+openrouter,50,50,50,50,50,50,50,50,50,0
+lm-studio,50,50,50,50,50,50,50,50,50,0

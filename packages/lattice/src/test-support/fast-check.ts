@@ -26,6 +26,19 @@ interface FastCheckLite {
     arbitrary: FastCheckArbitrary<T>,
     constraints?: FastCheckLengthConstraints,
   ) => FastCheckArbitrary<T[]>;
+  readonly jsonValue: () => FastCheckArbitrary<unknown>;
+  readonly dictionary: <V>(
+    key: FastCheckArbitrary<string>,
+    value: FastCheckArbitrary<V>,
+  ) => FastCheckArbitrary<Record<string, V>>;
+  readonly property: {
+    <A>(first: FastCheckArbitrary<A>, predicate: (first: A) => void | boolean): unknown;
+    <A, B>(
+      first: FastCheckArbitrary<A>,
+      second: FastCheckArbitrary<B>,
+      predicate: (first: A, second: B) => void | boolean,
+    ): unknown;
+  };
   readonly string: (
     constraints?: FastCheckLengthConstraints,
   ) => FastCheckArbitrary<string>;

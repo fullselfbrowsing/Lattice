@@ -1,0 +1,56 @@
+{
+  "kind": "post-hoc-source-rubric-correction",
+  "caseId": "drn-4148727",
+  "question": "complaint_upheld",
+  "originalAcceptedPages": [
+    2
+  ],
+  "correctedAcceptedPages": [
+    1,
+    2
+  ],
+  "sourcePageSha256": "4aae90b1421d5009865315fc8353f095b88787ae241f210e36634832d0831fbe",
+  "sourceUrl": "https://www.financial-ombudsman.org.uk/decision/DRN-4148727.pdf",
+  "supportingExcerpt": "I do not uphold it.",
+  "locator": "PDF page 1, What I have decided section, immediately before the chargeback discussion",
+  "reason": "The ombudsman states the outcome on page 1 as well as in the final-decision section on page 2. The original whitelist was too narrow. This was an annotation omission, not an unsupported model answer.",
+  "frozenStrict": 14,
+  "correctedStrict": 15,
+  "planned": 16,
+  "models": [
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "planned": 8,
+      "frozenStrict": 8,
+      "correctedStrict": 8,
+      "frozenCitedAnswers": 40,
+      "correctedCitedAnswers": 40
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "planned": 8,
+      "frozenStrict": 6,
+      "correctedStrict": 7,
+      "frozenCitedAnswers": 34,
+      "correctedCitedAnswers": 35
+    }
+  ],
+  "affectedRows": [
+    {
+      "id": "drn-4148727:dots-studio/dots-3-note-preview:free:1",
+      "frozenStrict": false,
+      "correctedStrict": true,
+      "change": "Supporting page 1 is valid for the recorded final outcome."
+    }
+  ],
+  "remainingFailures": [
+    {
+      "id": "drn-3785437:dots-studio/dots-3-note-preview:free:0",
+      "error": "tripwire-violated",
+      "format": false,
+      "answers": []
+    }
+  ],
+  "noNewInference": true,
+  "authorValidation": "Pending independent author review; source and rationale supplied."
+}

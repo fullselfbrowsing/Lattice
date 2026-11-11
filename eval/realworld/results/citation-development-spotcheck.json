@@ -1,0 +1,48 @@
+{
+  "version": "citation-development-spotcheck/v1",
+  "reviewer": "Codex assistant qualitative review; not a human annotator or the fixed API judge",
+  "split": "development",
+  "caseId": "a8b0557f3df3d462145fd51d9986c118305dcdf9e1ffd32eb9285eaa1daa636e",
+  "sourceRevision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+  "sourceIdsReviewed": [
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5"
+  ],
+  "sourceResult": "validated-smoke.json",
+  "unavailableOutputs": 2,
+  "observations": [
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "arms": [
+        "prompt-only",
+        "contract"
+      ],
+      "format": "Malformed JSON from unescaped internal quotes. Contract rejects it.",
+      "support": "The named performers and cited source agree with passage s1. This qualitative observation does not make the malformed answer usable."
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "arms": [
+        "prompt-only",
+        "contract"
+      ],
+      "format": "Markdown fences violate the required raw JSON format. Contract rejects it.",
+      "support": "Passage s1 supports the core performer/voice claims, but the singing-voice qualification illustrates why atomic claim review matters."
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "arms": [
+        "prompt-only",
+        "contract"
+      ],
+      "format": "No answer available after HTTP 429 responses.",
+      "support": "Not assessable."
+    }
+  ],
+  "conclusion": "Format enforcement and semantic support are different. This one development case cannot establish evaluation accuracy or general citation quality. No heldout judge comparison or human study was completed.",
+  "availableOutputs": 4,
+  "judgeEligibleOutputs": 0
+}

@@ -5,7 +5,7 @@ import { isHttpUrl } from "./multimodal.js";
 /**
  * Thrown when a run with `policy.noPublicUrl: true` is about to dispatch a
  * request whose serialized body still contains a public http(s) URL derived
- * from `request.artifacts` (value or string metadata entry).
+ * from `request.artifacts` (including nested JSON values and metadata).
  *
  * This is the single shared egress error class for all three adapter families
  * (OpenAI-compatible, Anthropic, Gemini).  Callers may `instanceof`-check it.
@@ -32,8 +32,8 @@ export class NoPublicUrlEgressError extends Error {
  *
  * When the policy IS active it builds a forbidden-URL set from ARTIFACT-DERIVED
  * sources only:
- *   - `artifact.value` (if it is a string and `isHttpUrl(value)` is true)
- *   - Every `string` value inside `artifact.metadata` (if `isHttpUrl(v)` is true)
+ *   - HTTP(S) strings inside `artifact.value`, including nested JSON
+ *   - HTTP(S) strings inside `artifact.metadata`
  *
  * URLs in `policy.gateway.metadata` are NOT artifact-derived and are therefore
  * NOT in scope.  They are naturally excluded because they never appear in
@@ -61,23 +61,25 @@ export function assertNoPublicUrlEgress(
   for (const artifact of request.artifacts) {
     const artifactId = (artifact.id as string | undefined) ?? "";
 
-    // Check artifact.value
-    if (typeof artifact.value === "string" && isHttpUrl(artifact.value)) {
-      forbidden.push({ url: artifact.value, id: artifactId });
-    }
-
-    // Check all string metadata values
-    const metadata = artifact.metadata ?? {};
-    for (const v of Object.values(metadata)) {
-      if (typeof v === "string" && isHttpUrl(v)) {
-        forbidden.push({ url: v, id: artifactId });
-      }
+    for (const url of [...artifactUrls(artifact.value), ...artifactUrls(artifact.metadata)]) {
+      forbidden.push({ url, id: artifactId });
     }
   }
 
   for (const entry of forbidden) {
-    if (serializedBody.includes(entry.url)) {
+    const escaped = JSON.stringify(entry.url).slice(1, -1);
+    const nestedEscaped = JSON.stringify(escaped).slice(1, -1);
+    if ([entry.url, escaped, nestedEscaped].some((value) => serializedBody.includes(value))) {
       throw new NoPublicUrlEgressError(providerId, entry.id, entry.url);
     }
   }
+}
+
+function artifactUrls(value: unknown, visited = new Set<object>()): string[] {
+  if (isHttpUrl(value)) return [value];
+  if (value === null || typeof value !== "object" || visited.has(value) ||
+    value instanceof ArrayBuffer || ArrayBuffer.isView(value) ||
+    (typeof Blob !== "undefined" && value instanceof Blob)) return [];
+  visited.add(value);
+  return Object.values(value).flatMap((nested) => artifactUrls(nested, visited));
 }

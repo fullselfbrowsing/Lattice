@@ -1,0 +1,215 @@
+# Real-model evaluation
+
+This directory records runs against a local Ollama model, hosted `:free`
+models on OpenRouter, and the other record systems that could be executed on
+the same machine. The mocked harness in `eval/run-all.sh` is a different
+experiment.
+
+## Validated evaluation
+
+The October 27 implementation adds `results/validated-summary.md` as the current result entry point. Earlier local/free-tier recordings stay historical. They use different prompts, scorers, and library revisions and cannot establish a controlled before/after improvement.
+
+Build with `pnpm build`. Set `REALWORLD_CACHE` to a private, gitignored directory and `OPENROUTER_KEY_FILE` to a credential file. Raw corpora, model answers, and request bodies stay in that cache. Only aggregate results and content hashes are published. The paid runner serializes requests, persists reservations before egress, and shares a $10 ceiling across smoke, full, and judge stages. Unknown charges retain the entire conservative reservation. It never resets spend on resume.
+
+```sh
+python eval/realworld/scripts/02-prepare.py --download
+python eval/realworld/scripts/02-prepare.py --download-train
+python eval/realworld/scripts/02-prepare-pii-split.py
+python eval/realworld/scripts/13-prepare-citations.py
+EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
+EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
+EVAL_STAGE=judge node eval/realworld/scripts/14-validated-live.mjs
+node eval/realworld/scripts/15-accountability.mjs
+python eval/realworld/scripts/16-validated-report.py
+```
+
+The smoke gate checks native transport, signed bindings, tool execution, delegation, and receipt closure on the same runtime build. Model-quality errors, expected citation contract rejections, and citation-stage rate limits are recorded outcomes. The full runner asserts byte-identical direct/runtime requests before egress. Latency excludes five warmups per arm, rotates arm order, and includes retries and backoff in wall time; provider and runtime processing time are reported separately. Every incomplete suite retains its planned denominator.
+
+PII extraction uses `findAll`, UTF-16-to-codepoint conversion, deduplication, and maximum one-to-one span matching. Blocking, type classification, overlap extraction, and exact extraction are separate metrics. To emit a frozen split, set `PII_DATASET_FILE`, `PII_DATASET_NAME=dev` or `holdout`, `PII_CONTEXTUAL=0` or `1`, and `LATTICE_SPANS`, then run `06-lattice-spans.mjs`. Score with `12-score-pii-split.py --split-directory "$REALWORLD_CACHE/pii-split" --split holdout --profile default --spans FILE --output FILE`. Freeze both profiles and the manifest before opening the holdout. The current contextual candidate failed the macro-F1 promotion gate; defaults remain unchanged.
+
+The citation benchmark uses a pinned ALCE/ASQA source, five retrieved passages, 20 development and 60 evaluation questions, and identical prompt-only/contract prompts. The contract enforces JSON and citation-ID resolution only. The fixed model judge measures support, citation relevance/completeness, and answer correctness separately. Judge outputs are model judgments, not human labels. Invalid, blocked, and unjudged answers remain visible. A qualitative reviewer spot-check is documented separately and does not substitute for a human study.
+
+See [STUDY-PROTOCOL.md](STUDY-PROTOCOL.md) for prepared study materials. No participants were recruited.
+
+## Setup
+
+- Build the library first (`pnpm build`); the scripts import
+  `packages/lattice/dist`.
+- Python packages: `pip install -r eval/realworld/requirements-realworld.txt`.
+- Comparison systems: `eval/realworld/fetch-competitors.sh` clones Agent
+  Flight Recorder, NovaFabric, Sello, and Janus at the commits recorded in
+  `results/compare.json` into `CMP_DIR` (default `eval/realworld/.cache/cmp`,
+  gitignored). The scripts import or run code from these checkouts, so keep
+  `CMP_DIR` writable only by you.
+- cosign v2.5.3 on `PATH` or in `COSIGN_BIN`, the `nova` CLI, Go (the Janus
+  shim builds with `GOTOOLCHAIN=go1.26.8`), Ollama with `llama3.2:3b`, and a
+  Portkey gateway on 127.0.0.1:8787 for `08-gateways.py`.
+- Janus: `integrations/janus/go.mod` and `go.sum` are gitignored.
+  `04-compare.py` runs `go mod init`, points the module at
+  `$CMP_DIR/janus` with `go mod edit -replace`, and runs `go mod tidy` before
+  `go build`.
+- Datasets are cached outside the repo in `REALWORLD_CACHE` (default
+  `/tmp/realworld-data`). `scripts/02-prepare.py --download` fetches the three
+  source files with `huggingface_hub` at the revisions in
+  `results/datasets.json`. The ai4privacy texts are never committed. The
+  `LICENSE.md` at the pinned revision grants them for academic research and
+  non-commercial use when Ai4Privacy is acknowledged. Redistribution and
+  commercial use need a written licence or a prior discussion with
+  licensing@ai4privacy.com. In an October 22 reply supplied by the author,
+  Michael Anthony confirmed that the described English-validation detector
+  evaluation falls within academic terms: aggregate metrics only, no
+  redistributed records or derived annotations, and acknowledgment of
+  Ai4Privacy. See the [permission record](../../paper/research/AI4PRIVACY-PERMISSION.md)
+  for the exact scope and date provenance. One author's primary affiliation
+  is Full Self Browsing; the paper discloses that. Keep raw caches and local
+  span exports outside publication archives. Gretel and ASQA are Apache-2.0.
+
+Environment variables: `NODE_BIN` (default `node` on `PATH`), `PYTHON`,
+`REALWORLD_CACHE`, `CMP_DIR`, `COSIGN_BIN`, `LATTICE_SPANS` (default
+`$REALWORLD_CACHE/lattice-spans.jsonl`), `REUSE_LATTICE_SPANS=1`,
+`PII_SKIP_LLM_GUARD=1`, `GLINER_REVISION`, and `OPENROUTER_API_KEY` or
+`OPENROUTER_KEY_FILE`.
+
+## Scripts
+
+`run-all.sh` runs 01-05. `RUN_BROAD=1 run-all.sh` also runs 06-12.
+
+| Script | Needs | Writes |
+| --- | --- | --- |
+| `01-live.mjs` | Ollama with `llama3.2:3b` | `live.json`, `payloads.json` |
+| `02-prepare.py` | pyarrow; `--download` needs huggingface_hub | cache files, `dataset-meta.json` in the cache |
+| `02-score.mjs` | the cache | `datasets.json` |
+| `03-wrap.mjs` | Sello checkout; run by 04 | `wrap-node.json` |
+| `04-compare.py` | checkouts, cosign, nova, Go, in-toto, OpenTelemetry SDK | `compare.json` |
+| `05-charts.py` | matplotlib, numpy | `rw-latency`, `rw-pii`, `rw-bytes`, `realworld.tex`, `feature-matrix.tex` |
+| `06-lattice-spans.mjs` | the cache; run by 06-pii-tools | `$LATTICE_SPANS` |
+| `06-pii-tools.py` | the cache, Presidio, spaCy `en_core_web_sm`, GLiNER | `pii-tools.json` |
+| `06-llm-guard-only.py` | llm-guard | LLM Guard row of `pii-tools.json` |
+| `07-cite.py` | the cache; `--nli` needs transformers | `citations.json` |
+| `08-gateways.py` | Ollama, LiteLLM, LangChain, traceloop-sdk, Portkey | `gateways.json` |
+| `09-tamper-classes.py` | checkouts, node; runs `09-lattice-mutations.mjs` | `tamper-classes.json` |
+| `10-openrouter.mjs` | OpenRouter key; calls only `:free` models | `openrouter.json` |
+| `11-rescore-lattice.py` | optional; the span file | Lattice row of `pii-tools.json` |
+| `12-charts.py` | matplotlib, numpy | the other `rw-*` figures, `realworld-broad.tex` |
+
+`05-charts.py` and `12-charts.py` read only the JSON in `results/` and need no
+network or model. Their figures are deterministic: PDFs carry no creation date
+and PNGs no software string. Both write to `results/` and copy the PDFs and the
+`.tex` fragments into `paper/` and `paper/ieee/`. The PNGs stay in `results/`.
+The comparison artifacts directory is gitignored because it contains signing
+keys. Do not commit API keys. `10-openrouter.mjs` reads the key from the
+environment and refuses to write a file that still contains it.
+
+## Notes on the committed records
+
+These notes cover the places where a committed record, the script that writes
+it, and the generated text differ.
+
+- cosign. The measured run called `sign-blob` without `--tlog-upload=false`
+  and `verify-blob` without `--insecure-ignore-tlog`. cosign v2.5.3 therefore
+  uploaded a hashedrekord entry for the eval blob to the public Rekor log (log
+  index 3359395843, 2026-10-21T17:05:01Z), the 4916 ms wrap time includes that
+  round trip, and verification was online. Only the blob hash and a throwaway
+  public key went to the log. The cosign entry in `compare.json` records this
+  in its `correction` field, with `tlogUpload: true`, `offlineVerify: null`,
+  and `verifyOk: true`. `04-compare.py` passes both flags, so a new run stays
+  local.
+- Replay. `replayOffline` returns the outputs the caller supplies, so the
+  replay metric is a hash-binding check. The figures and tables call it
+  signed output binding: yes when the record is signed and the system's own
+  verifier rejected a byte edit. cosign, in-toto, Sello, Janus, and the
+  NovaFabric capsule also meet it.
+- Hosted overhead. The end-to-end times stored in `openrouter.json` include the
+  HTTP time of retried attempts. `12-charts.py` computes end-to-end time as
+  `latticeMs + providerMs` from the per-trial rows, which leaves retries out.
+  The two differ only for Xingchen (overhead p50 0.019% recorded and 0.032%
+  computed; signed p50 9820 ms recorded and 4812 ms computed) and one Liquid
+  trial. `openrouter-rerun.json` is a later free-tier run on the author's
+  machine, library commit `c5f79b0`, started 2026-10-26 14:13 CDT. It used five
+  short-prompt trials per model and replayed 20 receipts per model. The
+  single-agent and image stages were not run. `12-charts.py` prefers that file
+  when it is present and keeps `openrouter.json` as the previous recording.
+  `openrouter-rerun-summary.md` is the per-model comparison, and
+  `openrouter-rerun.log` is the runner log. No API key is in those files.
+  Median Lattice processing on the rerun is higher than on `openrouter.json`
+  (1.7 to 3.0 ms, 0.07 to 0.27% of end-to-end; Liquid p95 0.72%). With five
+  trials, p95 is the largest trial. Liquid and Laguna ended
+  `crew-budget-exceeded` with 3 receipts and a closed chain; that is not a
+  successful crew. Inkling returned HTTP 403 in both runs. Minimax was absent
+  from the catalog at the rerun.
+- Drift. `drift[].uniqueExact` in `openrouter.json` counts failed calls' empty
+  answers. The published cells count successful answers only, and
+  `10-openrouter.mjs` computes `uniqueExact` over successful answers.
+- `datasets.json` scores Gretel credit cards with 0 gold documents because the
+  run that wrote it did not map `credit_card_number`. The published Gretel card
+  scores come from `pii-tools.json`, which maps it, and `02-score.mjs` maps it.
+- The dataset precision, recall, and F1 rows for Lattice were measured with the
+  `noPII` detectors at commit `a8cc091`. The current detectors narrow
+  identifier-label suppression and require a cue for bare numbers; the mocked
+  harness covers them.
+- `mustCite`. The RAG verdicts in `live.json` and `openrouter.json` (the
+  refund-policy passes, and the successes behind the drift cells) were
+  measured with the `mustCite` rules at commit `a8cc091`. There, an inline
+  `[name]` or `(name)` marker containing the artifact name counted as a
+  citation by default. The current default reads only a structured
+  `citations` or `evidence` list and never reads the answer text. The recorded
+  RAG answers cite `[policy-refund]` only inline, so under the current default
+  every one of those RAG calls would fail unless `inline: true` is passed.
+  `openrouter-rerun.json` records `mustCiteOptions: { inline: true }` at
+  commit `c5f79b0`, and the published hosted RAG cells come from that file.
+  The local Ollama RAG cells are still the `a8cc091` recording.
+  `01-live.mjs`, `10-openrouter.mjs`, and `02-score.mjs` pass
+  `{ inline: true }` and record it as `mustCiteOptions`.
+  `05-charts.py` and `12-charts.py` print the `a8cc091` note for records
+  without `mustCiteOptions`. The ASQA counts are in `datasets.json` and
+  `citations.json`: the structured default accepts 0 of 948 and
+  `inline: true` accepts 4.
+## Free model cohort
+
+`validated-free-*` records a separate zero-cost OpenRouter cohort. It does not
+replace or pool the incomplete paid `validated-*` run. The runner accepts only
+pinned catalog `:free` IDs with zero model and endpoint prices, rejects fallback
+and extension settings, and stops if any response reports a nonzero charge.
+Free request counts persist separately in `.context/free-request-ledger.json`;
+the paid budget and unresolved reservations remain unchanged.
+
+The free cohort uses Nemotron 3.5 Super VL and Dots 3 Note Preview. Gemma 4 31B
+was unavailable in the first development smoke (HTTP 429); that recording is
+preserved. Free models use provider-default reasoning with 1024-token caps for
+simple tasks and 4096 for citations and agents. These higher caps were
+selected on development cases before heldout inference. Each target model has
+10 transport fixtures, 10 privacy cases, 2 agents, 2 crews, all 60 frozen citation
+questions in each arm, and 20 latency trials per arm plus 2 warmups.
+
+```bash
+export OPENROUTER_KEY_FILE=/path/to/credential-file
+EVAL_COHORT=free EVAL_STAGE=smoke node eval/realworld/scripts/14-validated-live.mjs
+EVAL_COHORT=free EVAL_STAGE=full node eval/realworld/scripts/14-validated-live.mjs
+node eval/realworld/scripts/20-free-judge.mjs
+python eval/realworld/scripts/19-free-format-analysis.py
+python eval/realworld/scripts/18-free-report.py
+```
+
+Use the evaluation Python environment described above. Existing artifacts can
+resume only under the same runtime/harness/guard hashes. Preserve prior runs
+under distinct names before changing their configuration. The free request cap
+is 900 across all stages; the account's daily remainder can stop earlier. Each
+HTTP call is paced at least 3.2 seconds after the preceding call began. There
+are no automatic free HTTP retries, paid fallbacks, or quota bypasses. Measured
+wall time includes pacing; the free report subtracts its recorded duration.
+
+Citation judging uses the fixed free Nemotron 3 Ultra model with temperature
+zero, a 4096-token output cap and a 1024-token reasoning allowance. The initial
+Xing 4.0 attempt was rate-limited and is preserved separately, without pooling
+its labels. The replacement passed two synthetic supported/contradicted probes;
+it remains exploratory, without human validation. Up to four independent judge
+requests share one paced queue. The initial sequential collection is retained,
+and collector hashes distinguish the scheduling revision. The parser may remove
+one outer JSON fence from a judge response; candidate outputs and their format
+scores are unchanged. Invalid answers and provider errors remain visible;
+missing judgments are unknown rather than zero quality. Free-tier queueing and
+small timing samples do not establish production latency.
+
+The format-diagnostic script reads local private answer files but exports only
+aggregate failure categories. It never changes the recorded scoring. The free
+report also generates `validated-free.tex` for both paper drafts.

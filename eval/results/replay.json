@@ -1,0 +1,93 @@
+[
+  {
+    "adapter": "openai",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "openai-compatible",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "anthropic",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "gemini",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "xai",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "openrouter",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  },
+  {
+    "adapter": "lm-studio",
+    "runs": 50,
+    "recorded": 50,
+    "verified": 50,
+    "materialized": 50,
+    "replayOk": 50,
+    "outputHashMatch": 50,
+    "liveRerunHashMatch": 50,
+    "alteredOutputDetected": 50,
+    "reloadedInputHashesMatch": 50,
+    "errors": 0
+  }
+]

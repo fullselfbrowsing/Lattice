@@ -1,3 +1,4 @@
+export { hashCanonicalForReceipt } from "./receipts/bindings.js";
 export { createReceipt } from "./receipts/receipt.js";
 export type { CreateReceiptInput } from "./receipts/receipt.js";
 export { createExternalExecutionAudit } from "./audit/external-execution.js";
@@ -24,7 +25,7 @@ export {
 } from "./receipts/sign.js";
 export type { GeneratedEd25519KeyPair } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
-export { verifyReceipt } from "./receipts/verify.js";
+export { receiptVerifyAdvisories, verifyReceipt } from "./receipts/verify.js";
 export { verifyChain } from "./receipts/chain.js";
 export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { receiptCid } from "./receipts/cid.js";
@@ -58,6 +59,9 @@ export type {
   ReceiptSigner,
   ReceiptUsageCanonical,
   ReceiptVersion,
+  VerifyAdvisory,
+  VerifyAdvisoryCode,
+  VerifyAdvisorySeverity,
   VerifyChainError,
   VerifyChainErrorKind,
   VerifyChainFail,

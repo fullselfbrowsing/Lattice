@@ -3,6 +3,7 @@ import type { GatewayMetadataValue, GatewayPolicy } from "../policy/policy.js";
 import type {
   ProviderAdapter,
   ProviderFinishMetadata,
+  ProviderGenerationOptions,
   ProviderRunRequest,
   ProviderRunResponse,
   ProviderStream,
@@ -34,7 +35,15 @@ import {
   type SanitizeOutputOption,
 } from "../sanitizers/index.js";
 import { readSseEvents } from "./sse.js";
-import { isHttpUrl } from "./multimodal.js";
+import {
+  artifactBase64Data,
+  artifactHttpUrl,
+  artifactText,
+  mediaTypeForArtifact,
+  resolvedArtifactTransport,
+  UnsupportedArtifactTransportError,
+} from "./multimodal.js";
+import { notifyRequestPrepared, validateGenerationOptions } from "./request.js";
 import { assertNoPublicUrlEgress } from "./no-public-url.js";
 
 export interface OpenAICompatibleProviderOptions {
@@ -104,11 +113,27 @@ export interface SdkLikeProviderOptions {
   readonly generate: (input: {
     readonly task: string;
     readonly outputNames: readonly string[];
+    readonly generation?: ProviderGenerationOptions;
   }) => Promise<ProviderRunResponse> | ProviderRunResponse;
+}
+
+export interface OpenAIProviderOptions extends Omit<OpenAICompatibleProviderOptions, "baseUrl"> {
+  /**
+   * A bare origin gets /v1 appended; a base URL with a path (for example
+   * https://api.openai.com/v1 or a gateway prefix) is used as given.
+   * Defaults to https://api.openai.com/v1.
+   */
+  readonly baseUrl?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertNoOpenAIError(payload: unknown): void {
+  if (isRecord(payload) && payload.error !== undefined && payload.error !== null) {
+    throw new Error("OpenAI-compatible provider returned an error payload.");
+  }
 }
 
 function isGatewayMetadataValue(value: unknown): value is GatewayMetadataValue {
@@ -299,18 +324,56 @@ function observedModelFromResponse(body: unknown): string | undefined {
   return typeof model === "string" ? model : undefined;
 }
 
-function createOpenAICompatibleRequestBody(input: {
+type OpenAIOutputTokenField = "max_tokens" | "max_completion_tokens";
+
+async function createOpenAICompatibleRequestBody(input: {
   readonly model: string;
   readonly request: ProviderRunRequest;
+  readonly outputTokenField: OpenAIOutputTokenField;
   readonly metadata?: Record<string, unknown>;
   readonly stream?: boolean;
-}): Record<string, unknown> {
+}): Promise<Record<string, unknown>> {
+  validateGenerationOptions(input.request.generation);
   const nativeTools = openAIToolDefinitions(input.request.nativeTools);
   const nativeToolChoice = openAIToolChoice(input.request.nativeToolChoice);
   const responseFormat = openAIResponseFormat(input.request.nativeStructuredOutput);
+  const artifacts: Record<string, unknown>[] = [];
+  for (const artifact of input.request.artifacts) {
+    const transport = resolvedArtifactTransport(input.request, artifact);
+    if (artifact.kind === "image" && transport !== "extracted-text") {
+      let url: string | undefined;
+      if (transport === "url") {
+        url = artifactHttpUrl(artifact);
+        if (url === undefined) {
+          throw new UnsupportedArtifactTransportError(artifact.id, transport, "the image has no http(s) URL");
+        }
+      } else if (transport === "inline" || transport === "base64") {
+        const data = await artifactBase64Data(artifact);
+        if (data === undefined) {
+          throw new UnsupportedArtifactTransportError(artifact.id, transport, "the image bytes could not be read");
+        }
+        url = `data:${mediaTypeForArtifact(artifact, "image/jpeg")};base64,${data}`;
+      } else {
+        throw new UnsupportedArtifactTransportError(
+          artifact.id, transport, "OpenAI-compatible providers accept images only by URL or inline data");
+      }
+      artifacts.push({ type: "image_url", image_url: { url } });
+    } else {
+      if (["audio", "video", "file", "document"].includes(artifact.kind) &&
+        transport !== "extracted-text" && transport !== "transcript") {
+        throw new UnsupportedArtifactTransportError(artifact.id, transport,
+          `${artifact.kind} artifacts reach OpenAI-compatible providers only as extracted text or a transcript`);
+      }
+      artifacts.push({ type: "text", text: artifactText(input.request, artifact) });
+    }
+  }
 
   return {
     model: input.model,
+    ...(input.request.generation?.temperature !== undefined
+      ? { temperature: input.request.generation.temperature } : {}),
+    ...(input.request.generation?.maxOutputTokens !== undefined
+      ? { [input.outputTokenField]: input.request.generation.maxOutputTokens } : {}),
     ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
     messages: [
       {
@@ -326,7 +389,6 @@ function createOpenAICompatibleRequestBody(input: {
               contextPack: input.request.contextPack === undefined
                 ? undefined
                 : {
-                    id: input.request.contextPack.id,
                     tokenBudget: input.request.contextPack.tokenBudget,
                     estimatedTokens: input.request.contextPack.estimatedTokens,
                     included: input.request.contextPack.included,
@@ -337,38 +399,7 @@ function createOpenAICompatibleRequestBody(input: {
                   },
             }),
           },
-          ...input.request.artifacts.map((inputArtifact) => {
-            const resolvedTransport =
-              input.request.providerPackaging?.artifacts.find(
-                (item) => item.artifactId === inputArtifact.id,
-              )?.transport ??
-              input.request.plan?.providerPackaging?.artifacts.find(
-                (item) => item.artifactId === inputArtifact.id,
-              )?.transport;
-
-            return {
-              type: "text",
-              text: JSON.stringify({
-                artifactId: inputArtifact.id,
-                kind: inputArtifact.kind,
-                mediaType: inputArtifact.mediaType,
-                privacy: inputArtifact.privacy,
-                transport: resolvedTransport,
-                value:
-                  typeof inputArtifact.value === "string" &&
-                  inputArtifact.kind !== "url" &&
-                  !(isHttpUrl(inputArtifact.value) && resolvedTransport !== "url")
-                    ? inputArtifact.value
-                    : undefined,
-                url:
-                  inputArtifact.kind === "url" &&
-                  typeof inputArtifact.value === "string" &&
-                  resolvedTransport === "url"
-                    ? inputArtifact.value
-                    : undefined,
-              }),
-            };
-          }),
+          ...artifacts,
         ],
       },
     ],
@@ -442,6 +473,13 @@ function openAIResponseFormat(
  */
 export function createOpenAICompatibleProvider(
   options: OpenAICompatibleProviderOptions,
+): ReturnType<typeof createOpenAICompatibleAdapter> {
+  return createOpenAICompatibleAdapter(options, "max_tokens");
+}
+
+function createOpenAICompatibleAdapter(
+  options: OpenAICompatibleProviderOptions,
+  outputTokenField: OpenAIOutputTokenField,
 ): ProviderAdapter & {
   readonly quirks: OpenAICompatQuirks;
   readonly negotiateCapabilities: (modelId: string) => Promise<NegotiatedCapabilities>;
@@ -490,12 +528,14 @@ export function createOpenAICompatibleProvider(
         readGatewayPolicy(request.policy),
       );
       const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
-      const bodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+      const bodyStr = JSON.stringify(await createOpenAICompatibleRequestBody({
         model: options.model,
         request,
+        outputTokenField,
         ...(metadata !== undefined ? { metadata } : {}),
       }));
       assertNoPublicUrlEgress(request, id, bodyStr);
+      await notifyRequestPrepared(request, bodyStr);
       const init: RequestInit = {
         method: "POST",
         headers: {
@@ -516,6 +556,7 @@ export function createOpenAICompatibleProvider(
         model?: unknown;
         usage?: unknown;
       };
+      assertNoOpenAIError(body);
       const observedModel = observedModelFromResponse(body);
       const choice = firstOpenAIChoice(body);
       const message = openAIMessageFromChoice(choice);
@@ -579,6 +620,7 @@ export function createOpenAICompatibleProvider(
         baseUrl,
         fetchImpl,
         request,
+        outputTokenField,
         ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
         ...(options.gateway !== undefined ? { providerGateway: options.gateway } : {}),
         ...(options.pricing !== undefined ? { pricing: options.pricing } : {}),
@@ -598,6 +640,7 @@ async function* streamOpenAICompatibleResponse(input: {
   readonly apiKey?: string;
   readonly fetchImpl: typeof fetch;
   readonly request: ProviderRunRequest;
+  readonly outputTokenField: OpenAIOutputTokenField;
   readonly providerGateway?: GatewayPolicy;
   readonly pricing?: {
     readonly inputPer1kTokens?: number;
@@ -611,13 +654,15 @@ async function* streamOpenAICompatibleResponse(input: {
     readGatewayPolicy(input.request.policy),
   );
   const metadata = gatewayPolicyToMetadata(mergedGatewayPolicy);
-  const streamBodyStr = JSON.stringify(createOpenAICompatibleRequestBody({
+  const streamBodyStr = JSON.stringify(await createOpenAICompatibleRequestBody({
     model: input.model,
     request: input.request,
+    outputTokenField: input.outputTokenField,
     ...(metadata !== undefined ? { metadata } : {}),
     stream: true,
   }));
   assertNoPublicUrlEgress(input.request, input.id, streamBodyStr);
+  await notifyRequestPrepared(input.request, streamBodyStr);
   const response = await input.fetchImpl(`${input.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -630,6 +675,10 @@ async function* streamOpenAICompatibleResponse(input: {
 
   if (!response.ok) {
     throw new Error(`OpenAI-compatible provider failed with ${response.status}.`);
+  }
+
+  if (response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    assertNoOpenAIError(await response.clone().json());
   }
 
   const textParts: string[] = [];
@@ -649,6 +698,7 @@ async function* streamOpenAICompatibleResponse(input: {
     }
 
     const chunk = parseJsonObject(data);
+    assertNoOpenAIError(chunk);
     rawChunks.push(chunk);
     const chunkObservedModel = observedModelFromResponse(chunk);
     if (chunkObservedModel !== undefined) {
@@ -1134,6 +1184,18 @@ function mergeOpenAIModelsWithRegistry(
   };
 }
 
+/** Appends /v1 to a bare origin; a base URL that already has a path is used as given. */
+function resolveOpenAIBaseUrl(baseUrl: string | undefined): string {
+  const stripped = (baseUrl ?? "https://api.openai.com").replace(/\/+$/u, "");
+  if (stripped.endsWith("/v1")) return stripped;
+  try {
+    const { pathname } = new URL(stripped);
+    return pathname === "/" || pathname === "" ? `${stripped}/v1` : stripped;
+  } catch {
+    return stripped;
+  }
+}
+
 /**
  * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — OpenAI provider factory.
  *
@@ -1156,14 +1218,14 @@ function mergeOpenAIModelsWithRegistry(
  * leak on rejection. Verifiable: grep `.finally` in this file.
  */
 export function createOpenAIProvider(
-  options: OpenAICompatibleProviderOptions,
+  options: OpenAIProviderOptions,
 ): ProviderAdapter & {
   readonly quirks: OpenAIQuirks;
   readonly negotiateCapabilities: (modelId: string) => Promise<NegotiatedCapabilities>;
 } {
   const id = options.id ?? "openai";
   const fetchImpl = options.fetch ?? fetch;
-  const baseUrl = (options.baseUrl ?? "https://api.openai.com").replace(/\/$/u, "");
+  const baseUrl = resolveOpenAIBaseUrl(options.baseUrl);
   const ttlMs = options.modelsCacheTtlMs ?? 300_000;
   const retryCount = options.modelsRetryCount ?? 2;
 
@@ -1173,7 +1235,7 @@ export function createOpenAIProvider(
   const inflight = new Map<string, Promise<NegotiatedCapabilities>>();
 
   async function fetchAndNegotiate(modelId: string): Promise<NegotiatedCapabilities> {
-    const url = `${baseUrl}/v1/models`;
+    const url = `${baseUrl}/models`;
     // IN-02: omit Authorization entirely when apiKey is undefined; sending
     // "Bearer " literal would trigger noisy 401s and intrusion-detection flags.
     // Mirrors the OpenAI-compat execute path (line 137).
@@ -1255,11 +1317,11 @@ export function createOpenAIProvider(
     return fetchPromise;
   }
 
-  const innerCompat = createOpenAICompatibleProvider({
+  const innerCompat = createOpenAICompatibleAdapter({
     ...options,
     id,
     baseUrl,
-  });
+  }, "max_completion_tokens");
 
   return {
     ...innerCompat,
@@ -1299,9 +1361,11 @@ export function createAISdkProvider(options: SdkLikeProviderOptions): ProviderAd
       },
     ],
     execute: async (request) => {
+      validateGenerationOptions(request.generation);
       const response = await options.generate({
         task: request.task,
         outputNames: request.outputs,
+        ...(request.generation !== undefined ? { generation: request.generation } : {}),
       });
       const normalizedUsage: Usage = {
         promptTokens: response.usage?.inputTokens ?? 0,

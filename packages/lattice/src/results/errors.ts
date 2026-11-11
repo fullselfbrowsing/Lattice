@@ -98,7 +98,9 @@ export function isTerminal(error: LatticeRunError): boolean {
 
 /**
  * Thrown by `ai.run` when `LatticeConfig.receipts.onSignerError === "throw"`
- * and receipt issuance fails (issue #21 F5).
+ * and receipt issuance fails (issue #21 F5). `runAgentCrew` throws it under
+ * the same setting when the root agent's completion receipt or the
+ * crew-close receipt cannot be minted; `runId` is then the crew's runId.
  *
  * Deliberately NOT a `LatticeRunError` kind: the run itself reached a
  * verdict, and callers who opt into "throw" want a hard stop they cannot

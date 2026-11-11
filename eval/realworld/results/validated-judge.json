@@ -1,0 +1,91 @@
+{
+  "version": "validated-live/v1",
+  "env": {
+    "at": "2026-10-28T00:53:35.857Z",
+    "revision": "5f6f8f0e7d49a53bb216a2fc8e77957aa04ad95f",
+    "codeHash": "af6f9aecac80262dda326968558806bd390e041e07bfc8352e166d5c58053a75",
+    "harnessHash": "105cd8292f2d22946583c9c5770c7d63d3523a83af70ab7dc3edbb463bde4af9",
+    "node": "v24.14.1",
+    "stage": "judge",
+    "models": [
+      {
+        "id": "openai/gpt-4.1-mini",
+        "pricing": {
+          "prompt": "0.0000004",
+          "completion": "0.0000016",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001"
+        },
+        "contextLength": 1047576
+      },
+      {
+        "id": "google/gemini-2.5-flash-lite",
+        "pricing": {
+          "prompt": "0.0000001",
+          "completion": "0.0000004",
+          "image": "0.0000001",
+          "audio": "0.0000003",
+          "input_audio_cache": "0.00000003",
+          "web_search": "0.014",
+          "internal_reasoning": "0.0000004",
+          "input_cache_read": "0.00000001",
+          "input_cache_write": "0.0000000833333333333333"
+        },
+        "contextLength": 1048576
+      },
+      {
+        "id": "anthropic/claude-haiku-4.5",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000005",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.00000125",
+          "input_cache_write_1h": "0.000002"
+        },
+        "contextLength": 200000
+      }
+    ],
+    "citationManifest": {
+      "version": "citation-split/v1",
+      "dataset": "princeton-nlp/ALCE-data",
+      "revision": "334fa2e7dd32040c3fef931a123c4be1a81e91a0",
+      "member": "ALCE-data/asqa_eval_gtr_top100.json",
+      "rawSha256": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+      "sourceSelection": "first five GTR-retrieved passages, no oracle reranking",
+      "selection": "question-deduplicated SHA256 order with lattice-citation-v1 salt",
+      "splits": {
+        "dev": {
+          "sha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087",
+          "rows": 20
+        },
+        "evaluation": {
+          "sha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+          "rows": 60
+        }
+      }
+    },
+    "timing": "wallMs includes all HTTP attempts and backoff; processingMs = wallMs - HTTP time - backoff. No pacing inside timed runs.",
+    "requestBinding": "SHA256 of each serialized body handed to configured fetch, even if fetch rejects before HTTP. HTTP retries may repeat a body. No claim of receiver attestation.",
+    "scope": "OpenRouter model-family comparison; native Anthropic/Gemini adapters verified offline.",
+    "smokeGate": "Transport, signatures, bindings, tools, delegation and privacy; model answer/format errors and citation-stage HTTP 429s remain measured outcomes. Citation contract rejection is expected enforcement.",
+    "tokenCaps": {
+      "latency": 16,
+      "transport": 64,
+      "privacy": 128,
+      "citations": 512,
+      "agent": 512,
+      "crew": 512,
+      "judge": 768
+    }
+  },
+  "rows": [],
+  "budget": {
+    "limitUsd": 10,
+    "confirmedUsd": 0.04482533000000004,
+    "chargedOrReservedUsd": 9.58954493,
+    "requests": 325,
+    "unresolvedRequests": 27
+  },
+  "stopped": null
+}

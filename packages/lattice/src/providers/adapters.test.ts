@@ -15,6 +15,7 @@ import { NegotiationAuthError } from "../capabilities/negotiate.js";
 import type { NegotiatedCapabilities } from "../capabilities/negotiate.js";
 import { unwrapInternalEnvelope } from "../sanitizers/index.js";
 import { defineTool } from "../tools/tools.js";
+import { UnsupportedArtifactTransportError } from "./multimodal.js";
 
 function makeFakeFetch(body: unknown, status = 200): typeof fetch {
   return (async () =>
@@ -23,6 +24,41 @@ function makeFakeFetch(body: unknown, status = 200): typeof fetch {
       headers: { "content-type": "application/json" },
     })) as unknown as typeof fetch;
 }
+
+describe("OpenAI-shaped error envelopes", () => {
+  const request = { task: "Reply pong", artifacts: [], outputs: ["answer"] };
+  const factories = [
+    ["compatible", (fetchImpl: typeof fetch) => createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake", fetch: fetchImpl })],
+    ["OpenAI", (fetchImpl: typeof fetch) => createOpenAIProvider({ model: "test", fetch: fetchImpl })],
+  ] as const;
+
+  it.each(factories)("%s rejects an HTTP-200 error even with partial choices", async (_name, create) => {
+    const provider = create(makeFakeFetch({ error: { code: 502, message: "upstream failed" },
+      choices: [{ message: { content: "partial" } }] }));
+    await expect(provider.execute!(request)).rejects.toThrow("error payload");
+  });
+
+  it.each(factories)("%s accepts a normal response with a null error field", async (_name, create) => {
+    const provider = create(makeFakeFetch({ error: null, choices: [{ message: { content: "pong" } }] }));
+    expect((await provider.execute!(request)).rawOutputs.answer).toBe("pong");
+  });
+
+  it("rejects a JSON error response to a streaming request", async () => {
+    const provider = createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake",
+      fetch: makeFakeFetch({ error: { code: 502, message: "upstream failed" } }) });
+    await expect(collectStream(await provider.executeStream!(request))).rejects.toThrow("error payload");
+  });
+
+  it("fails a stream after an error event instead of completing partial output", async () => {
+    const fixture = makeStreamingFetch([
+      sseData({ choices: [{ delta: { content: "partial" } }] }),
+      sseData({ error: { code: 502, message: "upstream failed" } }),
+      sseData("[DONE]"),
+    ]);
+    const provider = createOpenAICompatibleProvider({ model: "test", baseUrl: "http://fake", fetch: fixture.fetch });
+    await expect(collectStream(await provider.executeStream!(request))).rejects.toThrow("error payload");
+  });
+});
 
 const encoder = new TextEncoder();
 
@@ -1077,12 +1113,6 @@ describe("Phase 36: OpenAI-compatible output sanitizers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// h31: noPublicUrl cross-adapter parity
-// ---------------------------------------------------------------------------
-// Tests A and B are RED before adapters.ts is patched (Task 2).
-// Tests C, D, E must be GREEN immediately (positive path + Anthropic/Gemini parity lock).
-// ---------------------------------------------------------------------------
-
 describe("noPublicUrl cross-adapter parity", () => {
   const ARTIFACT_ID = "img-1";
   const PUBLIC_URL = "https://example.com/img.png";
@@ -1093,8 +1123,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     sseData("[DONE]"),
   ];
 
-  // Test A: url-kind artifact with transport "inline" (noPublicUrl blocks url field).
-  it("Test A: OpenAI-compat omits url field when transport is not 'url' (noPublicUrl blocked)", async () => {
+  it("OpenAI-compat rejects a URL artifact assigned an inline transport", async () => {
     const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
     const adapter = createOpenAICompatibleProvider({
       model: "test",
@@ -1102,7 +1131,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch,
     });
 
-    await collectStream(
+    await expect(collectStream(
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
@@ -1123,17 +1152,11 @@ describe("noPublicUrl cross-adapter parity", () => {
           warnings: [],
         },
       }),
-    );
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a streaming request.");
-    const bodyStr = first.init.body as string;
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    )).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
-  // Test B: image-kind artifact whose value is a public URL with transport "base64"
-  // (noPublicUrl fallback — value-borne URL must not leak).
-  it("Test B: OpenAI-compat omits value-borne public URL when transport is not 'url' (noPublicUrl blocked)", async () => {
+  it("OpenAI-compat rejects a URL image without bytes for its base64 transport", async () => {
     const { fetch, requests } = makeStreamingFetch(minimalSseChunks);
     const adapter = createOpenAICompatibleProvider({
       model: "test",
@@ -1141,7 +1164,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch,
     });
 
-    await collectStream(
+    await expect(collectStream(
       await adapter.executeStream!({
         task: "describe this image",
         artifacts: [
@@ -1162,12 +1185,8 @@ describe("noPublicUrl cross-adapter parity", () => {
           warnings: [],
         },
       }),
-    );
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a streaming request.");
-    const bodyStr = first.init.body as string;
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    )).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
   // Test C: positive / no over-blocking — url-kind artifact with transport "url"
@@ -1209,9 +1228,7 @@ describe("noPublicUrl cross-adapter parity", () => {
     expect(bodyStr).toContain(PUBLIC_URL);
   });
 
-  // Test D: Anthropic parity lock — image artifact with transport "base64" must not
-  // include a public URL in the request body (Anthropic already compliant; regression lock).
-  it("Test D: Anthropic omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+  it("Anthropic rejects a URL image without bytes for its base64 transport", async () => {
     const requests: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
       requests.push({ url: String(url), init: init ?? {} });
@@ -1235,7 +1252,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch: fakeFetch,
     });
 
-    await adapter.execute!({
+    await expect(adapter.execute!({
       task: "describe this image",
       artifacts: [
         artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
@@ -1254,18 +1271,11 @@ describe("noPublicUrl cross-adapter parity", () => {
         ],
         warnings: [],
       },
-    });
-
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a request.");
-    const bodyStr = first.init.body as string;
-    // Anthropic is already compliant: image with base64 transport must not emit the public URL
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+    })).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
   });
 
-  // Test E: Gemini parity lock — image artifact with transport "base64" must not
-  // include a public URL in the request body (Gemini already compliant; regression lock).
-  it("Test E: Gemini omits public URL in request body when transport is not 'url' (parity lock)", async () => {
+  it("Gemini rejects a URL image without bytes for its base64 transport", async () => {
     const requests: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
       requests.push({ url: String(url), init: init ?? {} });
@@ -1292,7 +1302,7 @@ describe("noPublicUrl cross-adapter parity", () => {
       fetch: fakeFetch,
     });
 
-    await adapter.execute!({
+    await expect(adapter.execute!({
       task: "describe this image",
       artifacts: [
         artifact.image(PUBLIC_URL, { id: ARTIFACT_ID }),
@@ -1311,12 +1321,50 @@ describe("noPublicUrl cross-adapter parity", () => {
         ],
         warnings: [],
       },
-    });
+    })).rejects.toBeInstanceOf(UnsupportedArtifactTransportError);
+    expect(requests).toHaveLength(0);
+  });
+});
 
-    const first = requests[0];
-    if (first === undefined) throw new Error("Expected a request.");
-    const bodyStr = first.init.body as string;
-    // Gemini is already compliant: image with base64 transport must not emit the public URL
-    expect(bodyStr).not.toContain(PUBLIC_URL);
+describe("artifact transport error reasons", () => {
+  const fetchStub = (() => { throw new Error("fetch must not be called"); }) as unknown as typeof fetch;
+  const providers = [
+    ["compatible", createOpenAICompatibleProvider({ model: "m", baseUrl: "https://c.test/v1", fetch: fetchStub }),
+      "OpenAI-compatible providers", /accept images only by URL|no http\(s\) URL/u],
+    ["anthropic", createAnthropicProvider({ model: "m", apiKey: "k", fetch: fetchStub }),
+      "Anthropic", /no http\(s\) URL/u],
+    ["gemini", createGeminiProvider({ model: "m", apiKey: "k", fetch: fetchStub }),
+      "Gemini", /no http\(s\) URL/u],
+  ] as const;
+
+  async function reasonFor(
+    provider: (typeof providers)[number][1],
+    input: ReturnType<typeof artifact.json>,
+    transport?: "url",
+  ): Promise<UnsupportedArtifactTransportError> {
+    const error = await provider.execute!({
+      task: "t", artifacts: [input], outputs: ["answer"],
+      ...(transport === undefined ? {} : {
+        providerPackaging: {
+          providerId: "p", modelId: "m", warnings: [],
+          artifacts: [{ artifactId: input.id, transport, lineageTransform: "provider-packaging" as const, warnings: [] }],
+        },
+      }),
+    }).then(() => undefined, (caught: unknown) => caught);
+    expect(error).toBeInstanceOf(UnsupportedArtifactTransportError);
+    return error as UnsupportedArtifactTransportError;
+  }
+
+  it.each(providers)("%s explains JSON, file, and image failures", async (_name, provider, who, imageReason) => {
+    const json = { id: "j", kind: "json", value: { createdAt: new Date(0) } } as unknown as ReturnType<typeof artifact.json>;
+    const jsonError = await reasonFor(provider, json);
+    expect(jsonError.reason).toContain("$.createdAt is a Date");
+    expect(jsonError.path).toBe("$.createdAt");
+
+    const fileError = await reasonFor(provider, artifact.file("abc", { id: "f" }));
+    expect(fileError.reason).toBe(`file artifacts reach ${who} only as extracted text or a transcript`);
+
+    const imageError = await reasonFor(provider, artifact.image("not-a-url", { id: "i" }), "url");
+    expect(imageError.reason).toMatch(imageReason);
   });
 });

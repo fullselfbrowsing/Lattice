@@ -30,6 +30,7 @@ import type {
   RateLimitGroupOptions,
   RateLimitLease,
   ReceiptEnvelope,
+  ReceiptError,
   RunAgentCrewOptions,
   Usage,
 } from "@full-self-browsing/lattice";
@@ -120,6 +121,12 @@ expectType<number>(crewResult.totalIterations);
 expectType<ReadonlyArray<ReceiptEnvelope>>(crewResult.receipts);
 expectType<string | undefined>(crewResult.crewRootCid);
 expectType<string>(crewResult.runId);
+expectType<ReceiptError | undefined>(crewResult.receiptError);
+expectType<"signer-failed" | undefined>(crewResult.receiptError?.kind);
+expectType<Promise<CrewResult>>(
+  runAgentCrew(crewOptions, { receipts: { onSignerError: "throw" } }),
+);
+expectError(runAgentCrew(crewOptions, { receipts: { onSignerError: "ignore" } }));
 expectType<string>(crewResult.perAgent[0]!.id);
 expectType<Usage>(crewResult.perAgent[0]!.usage);
 expectType<number>(crewResult.perAgent[0]!.iterations);

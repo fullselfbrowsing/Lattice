@@ -1,0 +1,312 @@
+{
+  "payloads": [
+    {
+      "id": "rag",
+      "requestChars": 216,
+      "responseChars": 102
+    },
+    {
+      "id": "support-ticket",
+      "requestChars": 201,
+      "responseChars": 175
+    },
+    {
+      "id": "sequential",
+      "requestChars": 105,
+      "responseChars": 88
+    }
+  ],
+  "markers": [
+    "jamie.lee@example.com",
+    "415-555-0134",
+    "219-09-9999",
+    "ZWQ-MARKER-9c1e4b"
+  ],
+  "tools": [
+    {
+      "tool": "json-log",
+      "measured": true,
+      "kind": "baseline written for this evaluation",
+      "ms": 0.032900999940466136,
+      "bytes": 1045,
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "note": "A plain JSON file has no integrity check. An edit still parses.",
+      "editedStillParses": true,
+      "replay": false,
+      "leak": true,
+      "routing": false,
+      "policy": false,
+      "loc": 8
+    },
+    {
+      "tool": "hash-chain",
+      "measured": true,
+      "kind": "baseline written for this evaluation",
+      "ms": 0.08239999988290947,
+      "bytes": 1531,
+      "offlineVerify": true,
+      "byteEditDetected": true,
+      "rebuildAccepted": true,
+      "rebuildHeadDiffers": true,
+      "externalAnchor": false,
+      "replay": false,
+      "leak": true,
+      "routing": false,
+      "policy": false,
+      "loc": 28
+    },
+    {
+      "tool": "opentelemetry-genai",
+      "measured": true,
+      "kind": "OpenTelemetry SDK in-process span export, no collector",
+      "ms": 0.22814699968876084,
+      "bytes": 1366,
+      "offlineVerify": false,
+      "byteEditDetected": false,
+      "replay": false,
+      "leak": true,
+      "routing": false,
+      "policy": false,
+      "loc": 22,
+      "note": "Attributes follow the GenAI semantic-convention names and include the transcript. No signature."
+    },
+    {
+      "tool": "agent-flight-recorder",
+      "measured": true,
+      "commit": "28ddcde9c133bd10e9a500cc7e38e3d70d8baa86",
+      "plain": {
+        "ms": 0.7972659996084985,
+        "bytes": 2328,
+        "chainOk": true,
+        "epochs": 3,
+        "byteFlipLoadFailed": true,
+        "leak": true,
+        "anchor": "MockAnchor in-memory, not a public chain"
+      },
+      "disclosure": {
+        "ms": 1.907300999846484,
+        "bytes": 3357,
+        "chainOk": true,
+        "epochs": 3,
+        "byteFlipLoadFailed": true,
+        "leak": false,
+        "anchor": "MockAnchor in-memory, not a public chain"
+      },
+      "offlineVerify": true,
+      "byteEditDetected": true,
+      "replay": false,
+      "leak": true,
+      "leakWithDisclosure": false,
+      "routing": false,
+      "policy": false,
+      "bytes": 2328,
+      "ms": 0.7972659996084985,
+      "loc": 36,
+      "note": "Hash chain, Merkle epochs, and MockAnchor. web3 is imported by the package; no chain transaction was sent."
+    },
+    {
+      "tool": "novafabric-hmac",
+      "measured": true,
+      "commit": "142382681ef27f317e1dcfc5022ae140ed6de9fd",
+      "version": "events/signing.py HMAC-SHA256, not a sealed capsule",
+      "ms": 0.07732099993518204,
+      "bytes": 1432,
+      "offlineVerify": true,
+      "byteEditDetected": true,
+      "resignWithSharedSecretAccepted": true,
+      "replay": false,
+      "leak": true,
+      "routing": false,
+      "policy": false,
+      "loc": 18
+    },
+    {
+      "tool": "novafabric-capture",
+      "measured": true,
+      "version": "novafabric 0.105.0",
+      "commit": "142382681ef27f317e1dcfc5022ae140ed6de9fd",
+      "mode": "nova seal init (self-asserted ECDSA P-256, no RFC 3161) then nova capture python3",
+      "ms": 1373.0534989999796,
+      "bytes": 21288,
+      "offlineVerify": true,
+      "byteEditDetected": true,
+      "validateAfterEdit": 0,
+      "leak": true,
+      "replay": false,
+      "routing": false,
+      "policy": false,
+      "loc": 4,
+      "verifyTail": "he holder of this key signed; the key is not bound to any person, \norganisation or machine by anything you trust\n    certificate: NovaFabric local seal identity (`nova seal init`); pin its CA \nwith --ca-bundle for continuity across key rotations\n\nsignature_ok=True, timestamp_ok=None, log_integrity_ok=True, \nlog_inclusion=local-log, ca_chain_ok=False, identity_trust=self-asserted, \nintent=authored\n",
+      "note": "nova validate stayed successful after the same stdout edit in a prior unsealed run. nova verify on this sealed capsule is the tamper check."
+    },
+    {
+      "tool": "cosign",
+      "measured": true,
+      "mode": "local key pair, sign-blob with cosign's default transparency-log upload. Fulcio was not used. The run uploaded a hashedrekord entry to the public Rekor log (rekor.sigstore.dev), so the 4916 ms wrap time includes that round trip, and verify-blob checked the log online.",
+      "version": "v2.5.3",
+      "gitCommit": "488ef8ceed5ab5d77379e9077a124a0d0df41d06",
+      "ms": 4916.32889199991,
+      "bytes": 1319,
+      "tlogUpload": true,
+      "verifyOk": true,
+      "offlineVerify": null,
+      "byteEditDetected": true,
+      "replay": false,
+      "leak": true,
+      "routing": false,
+      "policy": false,
+      "loc": 12,
+      "keyless": false,
+      "rekor": {
+        "url": "https://rekor.sigstore.dev",
+        "kind": "hashedrekord",
+        "logIndex": 3359395843,
+        "integratedTime": "2026-10-21T17:05:01Z",
+        "artifactSha256": "bfa5616074f2f51c67ea6d366466335b52f62c70bfb9463da9cd8ad746798019"
+      },
+      "correction": "Recorded after the run. sign-blob was called without --tlog-upload=false, so cosign v2.5.3 uploaded to the public Rekor log (--yes only skips the confirmation prompt), and verify-blob was called without --insecure-ignore-tlog, so verification was online. offlineVerify is null because no offline verification was run; verifyOk is the recorded verify-blob result. scripts/04-compare.py now passes both flags."
+    },
+    {
+      "tool": "in-toto",
+      "measured": true,
+      "mode": "in_toto_run DSSE link, ed25519 functionary, no layout inspection",
+      "version": "3.1.0",
+      "ms": 34.14919100032421,
+      "bytes": 888,
+      "linkFiles": [
+        "record.2ab4033d.link"
+      ],
+      "offlineVerify": true,
+      "verifyError": null,
+      "byteEditDetected": true,
+      "replay": false,
+      "leak": false,
+      "leakInLinkMetadata": false,
+      "routing": false,
+      "policy": false,
+      "loc": 24,
+      "note": "The link records artifact hashes. Leakage is reported separately for the link file and for the product file the step wrote."
+    },
+    {
+      "tool": "janus",
+      "measured": true,
+      "commit": "18c390359571c042deb6313c8e825b68a2f0872e",
+      "mode": "local evidence.Appender + verify.SegmentDir. Not the orchestrator, WORM store, or gate.",
+      "go": "go1.26.8 via GOTOOLCHAIN (system go is 1.22.2)",
+      "append": {
+        "event_id": "01a15f6e-34c1-72c7-b116-5cf7f09c506e",
+        "key_id": "ed25519-c11c71b4e8bbb711",
+        "ms": 5,
+        "seq": 1
+      },
+      "ms": 5,
+      "bytes": 1723,
+      "offlineVerify": true,
+      "verifyStdout": "{\"critical\":0,\"findings\":null,\"ms\":0,\"ok\":true}\n",
+      "byteEditDetected": true,
+      "leak": true,
+      "replay": false,
+      "routing": false,
+      "policy": false,
+      "loc": 70
+    }
+  ],
+  "node": {
+    "lattice": {
+      "measured": true,
+      "locNote": "createReceipt over sha256 of the recorded request and response",
+      "rows": [
+        {
+          "id": "rag",
+          "ms": 5.584,
+          "bytes": 1062,
+          "verifyOk": true,
+          "byteFlipRejected": true,
+          "resignOtherKeyRejected": true,
+          "leak": false
+        },
+        {
+          "id": "support-ticket",
+          "ms": 0.173,
+          "bytes": 1078,
+          "verifyOk": true,
+          "byteFlipRejected": true,
+          "resignOtherKeyRejected": true,
+          "leak": false
+        },
+        {
+          "id": "sequential",
+          "ms": 0.166,
+          "bytes": 1070,
+          "verifyOk": true,
+          "byteFlipRejected": true,
+          "resignOtherKeyRejected": true,
+          "leak": false
+        }
+      ],
+      "verifyOk": true,
+      "byteFlipRejected": true,
+      "resignOtherKeyRejected": true,
+      "leak": false,
+      "bytes": 3210,
+      "ms": 5.923
+    },
+    "sello": {
+      "measured": true,
+      "mode": "typescript SDK createReceiptFromJwsToken + MockTransparencyLog (not the public transparency log)",
+      "commit": "943c3d2bf00e92cae27199fccf8cddff9f54f78c",
+      "verifyOk": true,
+      "validBeforeTamper": 3,
+      "rejectedBeforeTamper": 0,
+      "rejectedAfterTamper": 1,
+      "tamperDetected": true,
+      "leak": false,
+      "bytes": 1359,
+      "ms": 9.336,
+      "rows": [
+        {
+          "id": "rag",
+          "ms": 7.259,
+          "bytes": 447,
+          "leak": false
+        },
+        {
+          "id": "support-ticket",
+          "ms": 1.192,
+          "bytes": 458,
+          "leak": false
+        },
+        {
+          "id": "sequential",
+          "ms": 0.885,
+          "bytes": 454,
+          "leak": false
+        }
+      ]
+    }
+  },
+  "not_run": [
+    {
+      "tool": "TrustTrack",
+      "arxiv": "2507.22077",
+      "measured": false,
+      "reason": "No implementation repository was found (MuyangLi/TrustTrack returned 404). Comparison is from the paper only."
+    },
+    {
+      "tool": "Langfuse",
+      "measured": false,
+      "reason": "Docker is not installed, so a self-hosted Langfuse server was not started."
+    },
+    {
+      "tool": "Sello public log",
+      "measured": false,
+      "reason": "The TypeScript SDK was measured against MockTransparencyLog. The public transparency log was not used."
+    },
+    {
+      "tool": "cosign keyless (Fulcio)",
+      "measured": false,
+      "reason": "Keyless signing with a Fulcio certificate was not measured. The local-key sign-blob run used cosign's default transparency-log upload, so it did contact the public Rekor log; its wrap time includes that round trip and its verification was online."
+    }
+  ]
+}

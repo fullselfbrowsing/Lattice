@@ -16,6 +16,7 @@ import type {
 } from "../receipts/types.js";
 import { computeArtifactLineageMerkleRoot } from "../receipts/lineage.js";
 import { createReceipt } from "../receipts/receipt.js";
+import { hashCanonicalForReceipt } from "../receipts/bindings.js";
 import type { ReplayEnvelope } from "../replay/replay.js";
 import { fingerprintArtifactValue } from "../storage/fingerprint.js";
 import { latticeVersion } from "../version.js";
@@ -43,6 +44,7 @@ export interface ExternalExecutionAuditInput<
   readonly model: ReceiptModel;
   readonly route: ReceiptRoute;
   readonly usage: ExternalExecutionUsage;
+  /** Exact serialized request strings additionally bind provider submission bytes. */
   readonly rawRequest?: unknown;
   readonly rawResponse?: unknown;
   readonly contractVerdict?: ContractVerdict;
@@ -124,6 +126,10 @@ export async function createExternalExecutionAudit<
       usage: input.usage,
       contractVerdict,
       contractHash,
+      taskHash: await hashCanonicalForReceipt(input.task),
+      policyHash: await hashCanonicalForReceipt(input.policy),
+      ...(typeof input.rawRequest === "string" && rawRequestHash !== undefined
+        ? { providerRequestHashes: [rawRequestHash] } : {}),
       inputHashes,
       outputHash,
     },

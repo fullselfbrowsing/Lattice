@@ -1,0 +1,379 @@
+(node:345532) ExperimentalWarning: The Ed25519 Web Crypto API algorithm is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+catalog 7/8
+model xingchen-agi/xing4.0-29b-a4b:free
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+overhead xingchen-agi/xing4.0-29b-a4b:free 0 lattice 6.66ms provider 3104 extraTok 80 text "pong" slack 80.3
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+overhead xingchen-agi/xing4.0-29b-a4b:free 1 lattice 3.03ms provider 7247 extraTok ? text "" slack 0.2
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+overhead xingchen-agi/xing4.0-29b-a4b:free 2 lattice 2.08ms provider 2300 extraTok ? text "pong" slack 27.4
+backoff 4000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 4000ms status 429
+overhead xingchen-agi/xing4.0-29b-a4b:free 3 lattice 2.84ms provider 2636 extraTok 79 text "pong" slack 14.2
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+overhead xingchen-agi/xing4.0-29b-a4b:free 4 lattice 2.16ms provider 0 extraTok ? text "pong" slack 37.5
+rag xingchen-agi/xing4.0-29b-a4b:free t0 0 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 1 ok true cited true
+rag xingchen-agi/xing4.0-29b-a4b:free t0 2 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 3 ok false cited false
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 4 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 5 ok false cited false
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 6 ok false cited false
+rag xingchen-agi/xing4.0-29b-a4b:free t0 7 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 8 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0 9 ok false cited false
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 0 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 1 ok false cited false
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 2 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 3 ok true cited true
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 4 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 5 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 6 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 7 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+backoff 20000ms status 429
+backoff 24000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 8 ok false cited false
+backoff 4000ms status 429
+backoff 8000ms status 429
+rag xingchen-agi/xing4.0-29b-a4b:free t0.7 9 ok true cited true
+ticket xingchen-agi/xing4.0-29b-a4b:free ok true leak false answerPII false
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 4000ms status 429
+backoff 8000ms status 429
+backoff 12000ms status 429
+backoff 16000ms status 429
+crew xingchen-agi/xing4.0-29b-a4b:free success receipts 4
+replay xingchen-agi/xing4.0-29b-a4b:free 14/20
+model nvidia/nemotron-3.5-super-vl:free
+overhead nvidia/nemotron-3.5-super-vl:free 0 lattice 2.26ms provider 961 extraTok ? text "pong" slack 2.4
+overhead nvidia/nemotron-3.5-super-vl:free 1 lattice 1.39ms provider 822 extraTok 80 text "pong" slack 0.9
+overhead nvidia/nemotron-3.5-super-vl:free 2 lattice 2.76ms provider 817 extraTok 81 text "pong" slack 18.0
+overhead nvidia/nemotron-3.5-super-vl:free 3 lattice 3.22ms provider 43535 extraTok 80 text "pong" slack 8.7
+overhead nvidia/nemotron-3.5-super-vl:free 4 lattice 1.63ms provider 851 extraTok 83 text "pong" slack 11.4
+rag nvidia/nemotron-3.5-super-vl:free t0 0 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 1 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 2 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 3 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 4 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 5 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 6 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 7 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 8 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0 9 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 0 ok false cited false
+rag nvidia/nemotron-3.5-super-vl:free t0.7 1 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 2 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 3 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 4 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 5 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 6 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 7 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 8 ok true cited true
+rag nvidia/nemotron-3.5-super-vl:free t0.7 9 ok true cited true
+ticket nvidia/nemotron-3.5-super-vl:free ok true leak false answerPII false
+crew nvidia/nemotron-3.5-super-vl:free success receipts 4
+replay nvidia/nemotron-3.5-super-vl:free 19/20
+model nvidia/nemotron-3.5-lightning:free
+overhead nvidia/nemotron-3.5-lightning:free 0 lattice 1.72ms provider 3756 extraTok 78 text "pong" slack 0.7
+overhead nvidia/nemotron-3.5-lightning:free 1 lattice 2.26ms provider 2043 extraTok 82 text "pong" slack 0.4
+overhead nvidia/nemotron-3.5-lightning:free 2 lattice 2.09ms provider 3164 extraTok 83 text "pong" slack 2.9
+overhead nvidia/nemotron-3.5-lightning:free 3 lattice 2.27ms provider 2147 extraTok 77 text "pong" slack 7.7
+overhead nvidia/nemotron-3.5-lightning:free 4 lattice 1.91ms provider 2907 extraTok 81 text "pong" slack 7.8
+rag nvidia/nemotron-3.5-lightning:free t0 0 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 1 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 2 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 3 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 4 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 5 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 6 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 7 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 8 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0 9 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 0 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 1 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 2 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 3 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 4 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 5 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 6 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 7 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 8 ok true cited true
+rag nvidia/nemotron-3.5-lightning:free t0.7 9 ok true cited true
+ticket nvidia/nemotron-3.5-lightning:free ok true leak false answerPII false
+crew nvidia/nemotron-3.5-lightning:free success receipts 4
+replay nvidia/nemotron-3.5-lightning:free 20/20
+model dots-studio/dots-3-note-preview:free
+overhead dots-studio/dots-3-note-preview:free 0 lattice 1.87ms provider 1106 extraTok 71 text "\n\npong" slack 1.3
+overhead dots-studio/dots-3-note-preview:free 1 lattice 1.66ms provider 1543 extraTok 71 text "\n\npong" slack 2.0
+overhead dots-studio/dots-3-note-preview:free 2 lattice 1.62ms provider 1970 extraTok 70 text "\n\npong" slack 2.3
+overhead dots-studio/dots-3-note-preview:free 3 lattice 1.69ms provider 2263 extraTok 75 text "\n\npong" slack 0.5
+overhead dots-studio/dots-3-note-preview:free 4 lattice 1.21ms provider 1943 extraTok 74 text "\n\npong" slack 0.2
+rag dots-studio/dots-3-note-preview:free t0 0 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 1 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 2 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 3 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 4 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 5 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 6 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 7 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 8 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0 9 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 0 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 1 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 2 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 3 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 4 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 5 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 6 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 7 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 8 ok true cited true
+rag dots-studio/dots-3-note-preview:free t0.7 9 ok true cited true
+ticket dots-studio/dots-3-note-preview:free ok true leak false answerPII false
+crew dots-studio/dots-3-note-preview:free success receipts 4
+replay dots-studio/dots-3-note-preview:free 20/20
+model liquid/lfm-2.5-2.6b:free
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+overhead liquid/lfm-2.5-2.6b:free 0 lattice 2.09ms provider 303 extraTok 66 text "\npong" slack 9.7
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+overhead liquid/lfm-2.5-2.6b:free 1 lattice 1.55ms provider 1207 extraTok 65 text "\npong" slack 0.5
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+overhead liquid/lfm-2.5-2.6b:free 2 lattice 1.69ms provider 3648 extraTok 62 text "\npong" slack 5.7
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+overhead liquid/lfm-2.5-2.6b:free 3 lattice 1.61ms provider 1388 extraTok 60 text "\npong" slack 4.0
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+overhead liquid/lfm-2.5-2.6b:free 4 lattice 1.90ms provider 260 extraTok 62 text "\npong" slack 5.5
+rag liquid/lfm-2.5-2.6b:free t0 0 ok true cited true
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 1 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 2 ok false cited false
+rag liquid/lfm-2.5-2.6b:free t0 3 ok true cited true
+rag liquid/lfm-2.5-2.6b:free t0 4 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 5 ok true cited true
+rag liquid/lfm-2.5-2.6b:free t0 6 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 7 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 8 ok false cited false
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0 9 ok true cited true
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 0 ok true cited true
+rag liquid/lfm-2.5-2.6b:free t0.7 1 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 2 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 3 ok false cited false
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 4 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 5 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 6 ok true cited true
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 7 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 8 ok true cited true
+backoff 1000ms status 429
+backoff 1000ms status 429
+rag liquid/lfm-2.5-2.6b:free t0.7 9 ok true cited true
+backoff 1000ms status 429
+ticket liquid/lfm-2.5-2.6b:free ok true leak false answerPII false
+crew liquid/lfm-2.5-2.6b:free crew-budget-exceeded receipts 3
+replay liquid/lfm-2.5-2.6b:free 17/20
+model thinkingmachines/inkling-small:free
+model poolside/laguna-s-2.1:free
+overhead poolside/laguna-s-2.1:free 0 lattice 3.01ms provider 961 extraTok 70 text "pong" slack 11.6
+overhead poolside/laguna-s-2.1:free 1 lattice 3.36ms provider 3145 extraTok 71 text "pong" slack 7.9
+overhead poolside/laguna-s-2.1:free 2 lattice 3.01ms provider 1132 extraTok 73 text "pong" slack 9.2
+overhead poolside/laguna-s-2.1:free 3 lattice 2.31ms provider 898 extraTok 77 text "pong" slack 0.8
+overhead poolside/laguna-s-2.1:free 4 lattice 2.49ms provider 705 extraTok 74 text "pong" slack 0.4
+rag poolside/laguna-s-2.1:free t0 0 ok true cited true
+rag poolside/laguna-s-2.1:free t0 1 ok true cited true
+rag poolside/laguna-s-2.1:free t0 2 ok true cited true
+rag poolside/laguna-s-2.1:free t0 3 ok true cited true
+rag poolside/laguna-s-2.1:free t0 4 ok true cited true
+rag poolside/laguna-s-2.1:free t0 5 ok true cited true
+rag poolside/laguna-s-2.1:free t0 6 ok true cited true
+rag poolside/laguna-s-2.1:free t0 7 ok true cited true
+rag poolside/laguna-s-2.1:free t0 8 ok true cited true
+rag poolside/laguna-s-2.1:free t0 9 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 0 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 1 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 2 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 3 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 4 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 5 ok true cited true
+backoff 4000ms status 429
+rag poolside/laguna-s-2.1:free t0.7 6 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 7 ok true cited true
+backoff 4000ms status 429
+backoff 8000ms status 429
+rag poolside/laguna-s-2.1:free t0.7 8 ok true cited true
+rag poolside/laguna-s-2.1:free t0.7 9 ok true cited true
+ticket poolside/laguna-s-2.1:free ok true leak false answerPII false
+crew poolside/laguna-s-2.1:free crew-budget-exceeded receipts 3
+replay poolside/laguna-s-2.1:free 20/20
+OPENROUTER_DONE models 7 stopped no

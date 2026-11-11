@@ -3,16 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 import { createFakeProvider } from "../../providers/fake.js";
-import type { ProviderRunResponse, Usage } from "../../providers/provider.js";
+import type { ProviderRunRequest, ProviderRunResponse, Usage } from "../../providers/provider.js";
 import { hashOutputForReceipt } from "../../receipts/hashes.js";
 import { createMemoryKeySet } from "../../receipts/keyset.js";
 import {
   createInMemorySigner,
   generateEd25519KeyPairJwk,
 } from "../../receipts/sign.js";
-import type { CapabilityReceiptBody } from "../../receipts/types.js";
+import type { CapabilityReceiptBody, ReceiptSigner } from "../../receipts/types.js";
 import { verifyChain } from "../../receipts/chain.js";
 import { verifyReceipt } from "../../receipts/verify.js";
+import { ReceiptSigningError } from "../../results/errors.js";
 import { createAI } from "../../runtime/create-ai.js";
 import { createNoopAgentHost } from "../host.js";
 
@@ -55,10 +56,12 @@ function makeScriptedProvider(
   const answerQueue = [...answers];
   const usageQueue = [...usages];
   const tasks: string[] = [];
+  const requests: ProviderRunRequest[] = [];
   const provider = createFakeProvider({
     id: "crew-fake",
     response: (request): ProviderRunResponse => {
       tasks.push(request.task);
+      requests.push(request);
       return {
         rawOutputs: { answer: answerQueue.shift() ?? "" },
         normalizedUsage: usageQueue.shift() ?? {
@@ -69,7 +72,7 @@ function makeScriptedProvider(
       };
     },
   });
-  return { provider, tasks };
+  return { provider, tasks, requests };
 }
 
 function decodeReceiptBody(payload: string): CapabilityReceiptBody {
@@ -81,6 +84,53 @@ afterEach(() => {
 });
 
 describe("runAgentCrew — orchestration and accounting", () => {
+  it.each([undefined, { temperature: 0, maxOutputTokens: 73 }])(
+    "preserves crew generation settings across root, child, and grandchild requests: %j",
+    async (generation) => {
+      const leaf = makeChild("leaf");
+      const researcher = defineAgent({
+        ...makeChild("researcher"),
+        childAgents: [leaf],
+      });
+      const root = makeRoot([researcher]);
+      const { provider, requests } = makeScriptedProvider([
+        '{"tool_calls":[{"id":"c1","name":"researcher","args":{"task":"find facts"}}]}',
+        '{"tool_calls":[{"id":"c2","name":"leaf","args":{"task":"check evidence"}}]}',
+        "leaf evidence",
+        "research summary",
+        "final synthesis",
+      ], []);
+      const ai = createAI({ providers: [provider] });
+      const result = await ai.runAgentCrew({
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        policy: { maxDepth: 2, maxIterationsPerAgent: 3 },
+        ...(generation !== undefined ? { generation } : {}),
+      });
+
+      expect(result.result.kind).toBe("success");
+      expect(result.perAgent.map(({ id, iterations }) => ({ id, iterations }))).toEqual([
+        { id: "leaf", iterations: 1 },
+        { id: "researcher", iterations: 2 },
+        { id: "lead", iterations: 2 },
+      ]);
+      expect(requests).toHaveLength(5);
+      for (const request of requests) {
+        if (generation === undefined) expect(request).not.toHaveProperty("generation");
+        else expect(request.generation).toEqual(generation);
+      }
+    },
+  );
+
+  it("rejects invalid crew generation settings before provider calls", async () => {
+    const { provider, requests } = makeScriptedProvider(["unused"], []);
+    await expect(runAgentCrew({
+      root: makeRoot([]), hosts: { childHost: createNoopAgentHost() },
+      generation: { maxOutputTokens: 0 },
+    }, { providers: [provider] })).rejects.toThrow("generation.maxOutputTokens");
+    expect(requests).toHaveLength(0);
+  });
+
   it("completes a minimal parent + child crew and returns aggregate usage", async () => {
     const child = makeChild("researcher");
     const root = makeRoot([child]);
@@ -416,10 +466,26 @@ describe("runAgentCrew — signed receipt chain", () => {
     });
     expect(chain).toMatchObject({ ok: true, rootCid: result.crewRootCid, count: result.receipts.length });
 
-    // Issue #21 F6: the crew-start root has no output yet, but every agent
-    // completion receipt commits to that agent's output.
-    expect(bodies[0]?.outputHash).toBeNull();
+    // The crew-start receipt commits to the crew's agent id tree rather
+    // than a null output hash. Agent completion receipts still commit to
+    // each agent's output.
+    expect(bodies[0]?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(bodies[0]?.outputHash).toBe(
+      await hashOutputForReceipt({
+        kind: "crew-start",
+        agents: { id: "lead", children: [{ id: "researcher", children: [] }] },
+      }),
+    );
+    expect(bodies[0]?.chainClosure).toBe("member-cids");
     expect(bodies[0]?.inputHashes).toEqual([]);
+    const closeBody = bodies.find((body) => body.stepName === "crew-close:lead");
+    expect(closeBody?.chainMemberCids?.length).toBe(result.receipts.length - 1);
+    expect(closeBody?.contractVerdict).toBe("success");
+    expect(result.receipts).toHaveLength(4);
+    expect(result.receiptError).toBeUndefined();
+    expect(await verifyChain(result.receipts, keySet, { requireClosure: true })).toMatchObject({
+      ok: true,
+    });
     const leadBody = bodies.find((body) => body.stepName === "crew-agent-completion:lead");
     expect(leadBody).toBeDefined();
     if (result.result.kind === "success") {
@@ -429,5 +495,367 @@ describe("runAgentCrew — signed receipt chain", () => {
       (body) => body.stepName === "crew-agent-completion:researcher",
     );
     expect(researcherBody?.outputHash).toMatch(/^[a-f0-9]{64}$/u);
+  });
+});
+
+/** stepName of the receipt whose PAE bytes are being signed. */
+function signedStepName(pae: Uint8Array): string | undefined {
+  const text = new TextDecoder().decode(pae);
+  const payload = text.slice(text.lastIndexOf(" ") + 1);
+  return decodeReceiptBody(payload).stepName;
+}
+
+async function makeSignerPair(kid = "crew-close-test"): Promise<{
+  readonly signer: ReceiptSigner;
+  readonly keySet: ReturnType<typeof createMemoryKeySet>;
+}> {
+  const { privateKeyJwk, publicKeyJwk } = await generateEd25519KeyPairJwk();
+  return {
+    signer: createInMemorySigner(privateKeyJwk, { kid, publicKeyJwk }),
+    keySet: createMemoryKeySet([{ kid, publicKeyJwk, state: "active" }]),
+  };
+}
+
+/** Wrap `inner` so signing a receipt whose stepName matches `failOn` throws. */
+function failingSigner(inner: ReceiptSigner, failOn: (step: string) => boolean): ReceiptSigner {
+  return {
+    kid: inner.kid,
+    publicKeyJwk: inner.publicKeyJwk,
+    async sign(bytes) {
+      const step = signedStepName(bytes) ?? "";
+      if (failOn(step)) throw new Error(`remote signer 503 on ${step}`);
+      return inner.sign(bytes);
+    },
+  };
+}
+
+function oneChildCrew(usage: Usage = { promptTokens: 1, completionTokens: 1, costUsd: null }) {
+  const root = makeRoot([makeChild("alpha")]);
+  const { provider } = makeScriptedProvider(
+    ['{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}', "alpha summary", "final"],
+    [usage, usage, usage],
+  );
+  return { root, provider };
+}
+
+describe("runAgentCrew — crew-close verdict and timing", () => {
+  it("signs the crew-close receipt execution-failed when the crew budget is exceeded", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew({ promptTokens: 1, completionTokens: 1, costUsd: 1 });
+
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer,
+        policy: { budget: { maxCostUsd: 1.5 } },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("crew-budget-exceeded");
+    const close = result.receipts
+      .map((envelope) => decodeReceiptBody(envelope.payload))
+      .find((body) => body.stepName === "crew-close:lead");
+    expect(close?.contractVerdict).toBe("execution-failed");
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({ ok: true });
+  });
+
+  it("does not count post-work receipt signing (root completion, crew-close) against the crew wall-time budget", async () => {
+    const { signer: inner } = await makeSignerPair();
+    let offsetMs = 0;
+    const realNow = Date.now.bind(Date);
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => realNow() + offsetMs);
+    // A slow remote signer: each post-work mint takes "10 s" on the mocked clock.
+    const slow: ReceiptSigner = {
+      kid: inner.kid,
+      publicKeyJwk: inner.publicKeyJwk,
+      async sign(bytes) {
+        const step = signedStepName(bytes) ?? "";
+        if (step === "crew-agent-completion:lead" || step.startsWith("crew-close:")) {
+          offsetMs += 10_000;
+        }
+        return inner.sign(bytes);
+      },
+    };
+    try {
+      const { root, provider } = oneChildCrew();
+      const result = await runAgentCrew(
+        {
+          root,
+          hosts: { childHost: createNoopAgentHost() },
+          signer: slow,
+          policy: { budget: { maxWallTimeMs: 5_000 } },
+        },
+        { providers: [provider] },
+      );
+      expect(offsetMs).toBe(20_000);
+      expect(result.result.kind).toBe("success");
+      const close = result.receipts
+        .map((envelope) => decodeReceiptBody(envelope.payload))
+        .find((body) => body.stepName === "crew-close:lead");
+      expect(close?.contractVerdict).toBe("success");
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("commits the crew-start hash to every descendant id, not only direct children", async () => {
+    const { signer } = await makeSignerPair();
+    async function startHash(leafId: string): Promise<string | null | undefined> {
+      const leaf = makeChild(leafId);
+      const mid = defineAgent({
+        id: "mid",
+        intent: "Delegate to the leaf.",
+        tools: [],
+        childAgents: [leaf],
+        summaryReturnSchema: makeSchema(),
+      });
+      const { provider } = makeScriptedProvider(
+        [
+          '{"tool_calls":[{"id":"a","name":"mid","args":{"task":"M"}}]}',
+          `{"tool_calls":[{"id":"b","name":"${leafId}","args":{"task":"L"}}]}`,
+          "leaf summary",
+          "mid summary",
+          "final",
+        ],
+        [],
+      );
+      const result = await runAgentCrew(
+        { root: makeRoot([mid]), hosts: { childHost: createNoopAgentHost() }, signer, policy: { maxDepth: 3 } },
+        { providers: [provider] },
+      );
+      return decodeReceiptBody(result.receipts[0]!.payload).outputHash;
+    }
+
+    const withLeaf = await startHash("leaf");
+    expect(withLeaf).toBe(
+      await hashOutputForReceipt({
+        kind: "crew-start",
+        agents: {
+          id: "lead",
+          children: [{ id: "mid", children: [{ id: "leaf", children: [] }] }],
+        },
+      }),
+    );
+    expect(await startHash("other-leaf")).not.toBe(withLeaf);
+  });
+});
+
+describe("runAgentCrew — receipt signer failures after the crew's work", () => {
+  const isParent = (step: string): boolean => step === "crew-agent-completion:lead";
+  const isClose = (step: string): boolean => step.startsWith("crew-close:");
+
+  it("flags a failed root completion mint, still closes the chain, and keeps the result", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }> = [];
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, isParent),
+        tracer: {
+          kind: "tracer",
+          event(name, attributes) {
+            events.push({ name, ...(attributes !== undefined ? { attributes } : {}) });
+          },
+        },
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    expect(result.receiptError?.message).toContain("crew-agent-completion:lead");
+    expect(Object.isFrozen(result.receiptError)).toBe(true);
+    const steps = result.receipts.map((envelope) => decodeReceiptBody(envelope.payload).stepName);
+    expect(steps).toEqual(["crew-start:lead", "crew-agent-completion:alpha", "crew-close:lead"]);
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({ ok: true, count: 3 });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        name: "step.transition",
+        attributes: expect.objectContaining({ stepName: "crew-agent-completion:lead" }),
+      }),
+    );
+  });
+
+  it("flags a failed crew-close mint and says the chain cannot verify without it", async () => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const result = await runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, isClose) },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.message).toContain("crew-close:lead");
+    expect(result.receiptError?.message).toContain("chainClosure");
+    expect(result.receipts).toHaveLength(3);
+    expect(await verifyChain(result.receipts, keySet)).toMatchObject({
+      ok: false,
+      error: { kind: "count-mismatch" },
+    });
+  });
+
+  it("reports both failures in one receiptError when every post-work mint fails", async () => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, (step) => isParent(step) || isClose(step)),
+      },
+      { providers: [provider] },
+    );
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.message).toContain("crew-agent-completion:lead");
+    expect(result.receiptError?.message).toContain("crew-close:lead");
+  });
+
+  it.each([
+    ["root completion", isParent],
+    ["crew-close", isClose],
+  ])("throws ReceiptSigningError for a failed %s mint under onSignerError: throw", async (_label, failOn) => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const run = runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, failOn) },
+      { providers: [provider], receipts: { onSignerError: "throw" } },
+    );
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/remote signer 503/u);
+  });
+});
+
+describe("runAgentCrew — child completion and crew-start signer failures", () => {
+  const isAlpha = (step: string): boolean => step === "crew-agent-completion:alpha";
+
+  function twoChildCrew() {
+    const root = makeRoot([makeChild("alpha"), makeChild("beta")]);
+    const scripted = makeScriptedProvider(
+      [
+        '{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}',
+        "alpha summary",
+        '{"tool_calls":[{"id":"b","name":"beta","args":{"task":"B"}}]}',
+        "beta summary",
+        "final",
+      ],
+      [],
+    );
+    return { root, ...scripted };
+  }
+
+  it.each([
+    ["the default", undefined],
+    ["explicit flag", "flag" as const],
+  ])("under %s mode, keeps the work and names the missing child receipt in receiptError", async (_label, mode) => {
+    const { signer, keySet } = await makeSignerPair();
+    const { root, provider } = oneChildCrew();
+    const events: Array<Record<string, unknown> | undefined> = [];
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, isAlpha),
+        tracer: {
+          kind: "tracer",
+          event(_name, attributes) {
+            events.push(attributes);
+          },
+        },
+      },
+      { providers: [provider], ...(mode !== undefined ? { receipts: { onSignerError: mode } } : {}) },
+    );
+
+    expect(result.result.kind).toBe("success");
+    expect(result.receiptError?.kind).toBe("signer-failed");
+    expect(result.receiptError?.message).toContain(
+      "crew-agent-completion:alpha receipt was not minted: remote signer 503",
+    );
+    expect(result.receiptError?.message).toContain("still verifies without");
+    expect(Object.isFrozen(result.receiptError)).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ stepName: "crew-agent-completion:alpha", mintError: expect.any(String) }),
+    );
+    const steps = result.receipts.map((envelope) => decodeReceiptBody(envelope.payload).stepName);
+    expect(steps).toEqual(["crew-start:lead", "crew-agent-completion:lead", "crew-close:lead"]);
+    expect(result.perAgent.find((entry) => entry.id === "alpha")?.receiptCids).toEqual([]);
+    // The closer lists only what was minted, so the chain verifies without
+    // alpha's receipt. receiptError is what tells the caller it is missing.
+    expect(await verifyChain(result.receipts, keySet, { requireClosure: true })).toMatchObject({
+      ok: true,
+      count: 3,
+    });
+  });
+
+  it("names every failed mint in mint order: children first, then the closer", async () => {
+    const { signer } = await makeSignerPair();
+    const { root, provider } = twoChildCrew();
+    const result = await runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(
+          signer,
+          (step) =>
+            step === "crew-agent-completion:alpha" ||
+            step === "crew-agent-completion:beta" ||
+            step.startsWith("crew-close:"),
+        ),
+      },
+      { providers: [provider] },
+    );
+
+    expect(result.result.kind).toBe("success");
+    const message = result.receiptError?.message ?? "";
+    const order = [
+      "crew-agent-completion:alpha receipt",
+      "crew-agent-completion:beta receipt",
+      "crew-close:lead receipt",
+    ].map((needle) => message.indexOf(needle));
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("rejects with ReceiptSigningError at the failed child mint under onSignerError: throw", async () => {
+    const { signer } = await makeSignerPair();
+    const root = makeRoot([makeChild("alpha")]);
+    const { provider, tasks } = makeScriptedProvider(
+      ['{"tool_calls":[{"id":"a","name":"alpha","args":{"task":"A"}}]}', "alpha summary", "final"],
+      [],
+    );
+    const run = runAgentCrew(
+      { root, hosts: { childHost: createNoopAgentHost() }, signer: failingSigner(signer, isAlpha) },
+      { providers: [provider], receipts: { onSignerError: "throw" } },
+    );
+
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/crew-agent-completion:alpha receipt was not minted: remote signer 503/u);
+    // The crew stops at the failed mint: the root agent's final turn never runs.
+    expect(tasks).toHaveLength(2);
+  });
+
+  it.each([
+    ["the default", undefined],
+    ["flag", "flag" as const],
+    ["throw", "throw" as const],
+  ])("throws ReceiptSigningError before any agent runs when crew-start fails under %s mode", async (_label, mode) => {
+    const { signer } = await makeSignerPair();
+    const root = makeRoot([makeChild("alpha")]);
+    const { provider, tasks } = makeScriptedProvider(["final"], []);
+    const run = runAgentCrew(
+      {
+        root,
+        hosts: { childHost: createNoopAgentHost() },
+        signer: failingSigner(signer, (step) => step.startsWith("crew-start:")),
+      },
+      { providers: [provider], ...(mode !== undefined ? { receipts: { onSignerError: mode } } : {}) },
+    );
+
+    await expect(run).rejects.toBeInstanceOf(ReceiptSigningError);
+    await expect(run).rejects.toThrow(/crew-start:lead receipt was not minted: remote signer 503 on crew-start:lead; no agent ran/u);
+    expect(tasks).toHaveLength(0);
   });
 });

@@ -1,0 +1,19 @@
+{
+  "node": "v24.14.1",
+  "v8": "13.6.233.17-node.44",
+  "platform": "darwin 25.6.0",
+  "arch": "arm64",
+  "cpu": "Apple M4 Max",
+  "cores": 16,
+  "totalMemGB": 64,
+  "latticeVersion": "1.6.0",
+  "date": "2026-10-27T20:26:58.430Z",
+  "libraryCommit": "a8c1496661463333da8d1ac81fe97fa77e255b3b",
+  "usedFor": [
+    "03-tamper",
+    "04-replay",
+    "05-policy",
+    "07-v16",
+    "vitest test counts"
+  ]
+}

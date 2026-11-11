@@ -1,0 +1,1018 @@
+{
+  "unit": "Document-level matches the Lattice harness: one document is a true positive when any predicted span of that type overlaps a gold span. Span-level counts each predicted span and each missed gold span. Lattice counts every occurrence of the one substring detect() returns.",
+  "datasets": {
+    "ai4privacy": "ai4privacy/pii-masking-300k English validation, revision c8c77895a005822682b66ab547fc0422579bc1d3, 7946 docs, academic/non-commercial, no redistribution",
+    "gretel": "gretelai/synthetic_pii_finance_multilingual English test, revision 7b844d16738527a04264f50214cb426a4cea0897, Apache-2.0, 2891 docs"
+  },
+  "tools": [
+    {
+      "tool": "lattice-noPII",
+      "measured": true,
+      "datasets": {
+        "ai4privacy": {
+          "document": {
+            "email": {
+              "tp": 1501,
+              "fp": 71,
+              "fn": 32,
+              "goldDocs": 1533,
+              "precision": 0.9548346055979644,
+              "recall": 0.9791258969341161,
+              "f1": 0.9668276972624799
+            },
+            "us-ssn": {
+              "tp": 649,
+              "fp": 8,
+              "fn": 879,
+              "goldDocs": 1528,
+              "precision": 0.9878234398782344,
+              "recall": 0.424738219895288,
+              "f1": 0.594050343249428
+            },
+            "us-phone": {
+              "tp": 464,
+              "fp": 560,
+              "fn": 792,
+              "goldDocs": 1256,
+              "precision": 0.453125,
+              "recall": 0.36942675159235666,
+              "f1": 0.40701754385964917
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 40,
+              "fn": 0,
+              "goldDocs": 0,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 1530,
+              "fp": 71,
+              "fn": 1082,
+              "goldSpans": 2612,
+              "predSpans": 1601,
+              "precision": 0.9556527170518426,
+              "recall": 0.5857580398162328,
+              "f1": 0.7263232850700213
+            },
+            "us-ssn": {
+              "tp": 655,
+              "fp": 8,
+              "fn": 1899,
+              "goldSpans": 2554,
+              "predSpans": 663,
+              "precision": 0.9879336349924586,
+              "recall": 0.25646045418950664,
+              "f1": 0.4072116879079888
+            },
+            "us-phone": {
+              "tp": 465,
+              "fp": 563,
+              "fn": 1532,
+              "goldSpans": 1997,
+              "predSpans": 1028,
+              "precision": 0.45233463035019456,
+              "recall": 0.2328492739108663,
+              "f1": 0.3074380165289256
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 40,
+              "fn": 0,
+              "goldSpans": 0,
+              "predSpans": 40,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 7946,
+            "mean": 0.004801862572363453,
+            "p50": 0.0034,
+            "p95": 0.0113,
+            "min": 0.0012,
+            "max": 0.4031
+          }
+        },
+        "gretel": {
+          "document": {
+            "email": {
+              "tp": 214,
+              "fp": 196,
+              "fn": 15,
+              "goldDocs": 229,
+              "precision": 0.5219512195121951,
+              "recall": 0.9344978165938864,
+              "f1": 0.6697965571205008
+            },
+            "us-ssn": {
+              "tp": 60,
+              "fp": 1,
+              "fn": 10,
+              "goldDocs": 70,
+              "precision": 0.9836065573770492,
+              "recall": 0.8571428571428571,
+              "f1": 0.916030534351145
+            },
+            "us-phone": {
+              "tp": 270,
+              "fp": 41,
+              "fn": 123,
+              "goldDocs": 393,
+              "precision": 0.8681672025723473,
+              "recall": 0.6870229007633588,
+              "f1": 0.7670454545454546
+            },
+            "credit-card": {
+              "tp": 39,
+              "fp": 14,
+              "fn": 35,
+              "goldDocs": 74,
+              "precision": 0.7358490566037735,
+              "recall": 0.527027027027027,
+              "f1": 0.6141732283464566
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 272,
+              "fp": 382,
+              "fn": 48,
+              "goldSpans": 330,
+              "predSpans": 654,
+              "precision": 0.41590214067278286,
+              "recall": 0.85,
+              "f1": 0.5585215605749486
+            },
+            "us-ssn": {
+              "tp": 72,
+              "fp": 1,
+              "fn": 13,
+              "goldSpans": 85,
+              "predSpans": 73,
+              "precision": 0.9863013698630136,
+              "recall": 0.8470588235294118,
+              "f1": 0.9113924050632911
+            },
+            "us-phone": {
+              "tp": 299,
+              "fp": 54,
+              "fn": 179,
+              "goldSpans": 480,
+              "predSpans": 353,
+              "precision": 0.8470254957507082,
+              "recall": 0.6255230125523012,
+              "f1": 0.7196149217809868
+            },
+            "credit-card": {
+              "tp": 42,
+              "fp": 21,
+              "fn": 41,
+              "goldSpans": 83,
+              "predSpans": 63,
+              "precision": 0.6666666666666666,
+              "recall": 0.5060240963855421,
+              "f1": 0.5753424657534246
+            }
+          },
+          "latencyMs": {
+            "n": 2891,
+            "mean": 0.007227118644067797,
+            "p50": 0.0059,
+            "p95": 0.0154,
+            "min": 0.001,
+            "max": 0.0668
+          }
+        }
+      },
+      "note": "Every occurrence of the single substring returned by detect(), the same locate() rule as 02-score.mjs.",
+      "meta": {
+        "commit": "ae99fb5a3de3bb149542a0f61c55140661ef7600"
+      },
+      "matchesPriorDocumentEmail": true
+    },
+    {
+      "tool": "presidio",
+      "measured": true,
+      "datasets": {
+        "ai4privacy": {
+          "document": {
+            "email": {
+              "tp": 1532,
+              "fp": 41,
+              "fn": 1,
+              "goldDocs": 1533,
+              "precision": 0.9739351557533376,
+              "recall": 0.9993476842791911,
+              "f1": 0.9864777849323889
+            },
+            "us-ssn": {
+              "tp": 767,
+              "fp": 1528,
+              "fn": 761,
+              "goldDocs": 1528,
+              "precision": 0.33420479302832246,
+              "recall": 0.5019633507853403,
+              "f1": 0.40125555846194083
+            },
+            "us-phone": {
+              "tp": 633,
+              "fp": 1512,
+              "fn": 623,
+              "goldDocs": 1256,
+              "precision": 0.2951048951048951,
+              "recall": 0.5039808917197452,
+              "f1": 0.3722434578065275
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 18,
+              "fn": 0,
+              "goldDocs": 0,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 2610,
+              "fp": 88,
+              "fn": 2,
+              "goldSpans": 2612,
+              "predSpans": 2698,
+              "precision": 0.9673832468495182,
+              "recall": 0.9992343032159265,
+              "f1": 0.9830508474576272
+            },
+            "us-ssn": {
+              "tp": 1165,
+              "fp": 2860,
+              "fn": 1389,
+              "goldSpans": 2554,
+              "predSpans": 4025,
+              "precision": 0.2894409937888199,
+              "recall": 0.4561472200469851,
+              "f1": 0.354157166742666
+            },
+            "us-phone": {
+              "tp": 823,
+              "fp": 2451,
+              "fn": 1176,
+              "goldSpans": 1997,
+              "predSpans": 3274,
+              "precision": 0.25137446548564446,
+              "recall": 0.4117058529264632,
+              "f1": 0.3121562677792528
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 18,
+              "fn": 0,
+              "goldSpans": 0,
+              "predSpans": 18,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 7946,
+            "mean": 9.77379691026102,
+            "p50": 9.412786999746459,
+            "p95": 13.576477000242448,
+            "min": 2.6091339996128227,
+            "max": 248.2800749994567
+          }
+        },
+        "gretel": {
+          "document": {
+            "email": {
+              "tp": 214,
+              "fp": 193,
+              "fn": 15,
+              "goldDocs": 229,
+              "precision": 0.5257985257985258,
+              "recall": 0.9344978165938864,
+              "f1": 0.6729559748427674
+            },
+            "us-ssn": {
+              "tp": 51,
+              "fp": 158,
+              "fn": 19,
+              "goldDocs": 70,
+              "precision": 0.24401913875598086,
+              "recall": 0.7285714285714285,
+              "f1": 0.36559139784946243
+            },
+            "us-phone": {
+              "tp": 309,
+              "fp": 366,
+              "fn": 84,
+              "goldDocs": 393,
+              "precision": 0.4577777777777778,
+              "recall": 0.7862595419847328,
+              "f1": 0.5786516853932585
+            },
+            "credit-card": {
+              "tp": 30,
+              "fp": 6,
+              "fn": 44,
+              "goldDocs": 74,
+              "precision": 0.8333333333333334,
+              "recall": 0.40540540540540543,
+              "f1": 0.5454545454545455
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 300,
+              "fp": 503,
+              "fn": 20,
+              "goldSpans": 330,
+              "predSpans": 803,
+              "precision": 0.37359900373599003,
+              "recall": 0.9375,
+              "f1": 0.5342831700801425
+            },
+            "us-ssn": {
+              "tp": 62,
+              "fp": 237,
+              "fn": 23,
+              "goldSpans": 85,
+              "predSpans": 299,
+              "precision": 0.20735785953177258,
+              "recall": 0.7294117647058823,
+              "f1": 0.3229166666666667
+            },
+            "us-phone": {
+              "tp": 371,
+              "fp": 1089,
+              "fn": 107,
+              "goldSpans": 480,
+              "predSpans": 1460,
+              "precision": 0.2541095890410959,
+              "recall": 0.7761506276150628,
+              "f1": 0.38286893704850355
+            },
+            "credit-card": {
+              "tp": 33,
+              "fp": 11,
+              "fn": 50,
+              "goldSpans": 83,
+              "predSpans": 44,
+              "precision": 0.75,
+              "recall": 0.39759036144578314,
+              "f1": 0.5196850393700787
+            }
+          },
+          "latencyMs": {
+            "n": 2891,
+            "mean": 24.22543286509662,
+            "p50": 25.626610000472283,
+            "p95": 33.211983000001055,
+            "min": 3.009871999893221,
+            "max": 51.756625000052736
+          }
+        }
+      },
+      "meta": {
+        "version": null,
+        "spacy": "3.8.16",
+        "spacyModel": "en_core_web_sm",
+        "entitiesRequested": [
+          "EMAIL_ADDRESS",
+          "PHONE_NUMBER",
+          "US_SSN",
+          "CREDIT_CARD"
+        ],
+        "note": "Pattern and spaCy recognizers for the four in-scope Presidio entities."
+      }
+    },
+    {
+      "tool": "spacy-en_core_web_sm",
+      "measured": true,
+      "datasets": {
+        "ai4privacy": {
+          "document": {
+            "email": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1533,
+              "goldDocs": 1533,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-ssn": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1528,
+              "goldDocs": 1528,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-phone": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1256,
+              "goldDocs": 1256,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "goldDocs": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 2612,
+              "goldSpans": 2612,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-ssn": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 2554,
+              "goldSpans": 2554,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-phone": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1997,
+              "goldSpans": 1997,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "goldSpans": 0,
+              "predSpans": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 7946,
+            "mean": 8.464337016605821,
+            "p50": 8.198852000532497,
+            "p95": 11.422142999435891,
+            "min": 2.44777699936094,
+            "max": 32.993482000165386
+          }
+        },
+        "gretel": {
+          "document": {
+            "email": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 229,
+              "goldDocs": 229,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-ssn": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 70,
+              "goldDocs": 70,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-phone": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 393,
+              "goldDocs": 393,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 74,
+              "goldDocs": 74,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 330,
+              "goldSpans": 330,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-ssn": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 85,
+              "goldSpans": 85,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "us-phone": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 480,
+              "goldSpans": 480,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 83,
+              "goldSpans": 83,
+              "predSpans": 0,
+              "precision": null,
+              "recall": 0.0,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 2891,
+            "mean": 20.935044903826228,
+            "p50": 21.62251899972034,
+            "p95": 31.161565999354934,
+            "min": 2.486301000317326,
+            "max": 45.88625599990337
+          }
+        }
+      },
+      "meta": {
+        "version": "3.8.16",
+        "model": "en_core_web_sm",
+        "modelVersion": "3.8.0",
+        "labelCounts": {
+          "GPE": 6977,
+          "CARDINAL": 31201,
+          "ORG": 18467,
+          "PERSON": 10325,
+          "LOC": 516,
+          "DATE": 13414,
+          "PRODUCT": 1294,
+          "FAC": 900,
+          "WORK_OF_ART": 5881,
+          "NORP": 589,
+          "TIME": 2171,
+          "ORDINAL": 988,
+          "QUANTITY": 425,
+          "EVENT": 246,
+          "LAW": 580,
+          "MONEY": 5693,
+          "LANGUAGE": 52,
+          "PERCENT": 1074
+        },
+        "note": "Default NER labels. None of PERSON, ORG, GPE, DATE, or CARDINAL are mapped onto email, US SSN, US phone, or credit card."
+      }
+    },
+    {
+      "tool": "gliner-small",
+      "measured": true,
+      "datasets": {
+        "ai4privacy": {
+          "document": {
+            "email": {
+              "tp": 958,
+              "fp": 421,
+              "fn": 575,
+              "goldDocs": 1533,
+              "precision": 0.6947063089195069,
+              "recall": 0.6249184605348989,
+              "f1": 0.6579670329670331
+            },
+            "us-ssn": {
+              "tp": 700,
+              "fp": 1770,
+              "fn": 828,
+              "goldDocs": 1528,
+              "precision": 0.2834008097165992,
+              "recall": 0.4581151832460733,
+              "f1": 0.3501750875437719
+            },
+            "us-phone": {
+              "tp": 202,
+              "fp": 685,
+              "fn": 1054,
+              "goldDocs": 1256,
+              "precision": 0.2277339346110485,
+              "recall": 0.160828025477707,
+              "f1": 0.1885207652823145
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 550,
+              "fn": 0,
+              "goldDocs": 0,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 1090,
+              "fp": 592,
+              "fn": 1524,
+              "goldSpans": 2612,
+              "predSpans": 1682,
+              "precision": 0.6480380499405469,
+              "recall": 0.41698546289211935,
+              "f1": 0.5074487895716946
+            },
+            "us-ssn": {
+              "tp": 901,
+              "fp": 3525,
+              "fn": 1653,
+              "goldSpans": 2554,
+              "predSpans": 4426,
+              "precision": 0.2035698147311342,
+              "recall": 0.35277995301487863,
+              "f1": 0.2581661891117478
+            },
+            "us-phone": {
+              "tp": 233,
+              "fp": 916,
+              "fn": 1764,
+              "goldSpans": 1997,
+              "predSpans": 1149,
+              "precision": 0.20278503046127067,
+              "recall": 0.11667501251877817,
+              "f1": 0.14812460267005723
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 724,
+              "fn": 0,
+              "goldSpans": 0,
+              "predSpans": 724,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 7946,
+            "mean": 73.13498381915578,
+            "p50": 52.86246499963454,
+            "p95": 75.30039499943086,
+            "min": 37.041122000118776,
+            "max": 7622.996406000311
+          }
+        },
+        "gretel": {
+          "document": {
+            "email": {
+              "tp": 117,
+              "fp": 376,
+              "fn": 112,
+              "goldDocs": 229,
+              "precision": 0.23732251521298176,
+              "recall": 0.5109170305676856,
+              "f1": 0.32409972299168976
+            },
+            "us-ssn": {
+              "tp": 39,
+              "fp": 395,
+              "fn": 31,
+              "goldDocs": 70,
+              "precision": 0.08986175115207373,
+              "recall": 0.5571428571428572,
+              "f1": 0.15476190476190477
+            },
+            "us-phone": {
+              "tp": 92,
+              "fp": 180,
+              "fn": 301,
+              "goldDocs": 393,
+              "precision": 0.3382352941176471,
+              "recall": 0.2340966921119593,
+              "f1": 0.2766917293233083
+            },
+            "credit-card": {
+              "tp": 37,
+              "fp": 187,
+              "fn": 37,
+              "goldDocs": 74,
+              "precision": 0.16517857142857142,
+              "recall": 0.5,
+              "f1": 0.2483221476510067
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 140,
+              "fp": 585,
+              "fn": 186,
+              "goldSpans": 330,
+              "predSpans": 725,
+              "precision": 0.19310344827586207,
+              "recall": 0.4294478527607362,
+              "f1": 0.2664129400570885
+            },
+            "us-ssn": {
+              "tp": 44,
+              "fp": 673,
+              "fn": 41,
+              "goldSpans": 85,
+              "predSpans": 717,
+              "precision": 0.061366806136680614,
+              "recall": 0.5176470588235295,
+              "f1": 0.10972568578553615
+            },
+            "us-phone": {
+              "tp": 99,
+              "fp": 233,
+              "fn": 380,
+              "goldSpans": 480,
+              "predSpans": 332,
+              "precision": 0.29819277108433734,
+              "recall": 0.20668058455114824,
+              "f1": 0.2441430332922318
+            },
+            "credit-card": {
+              "tp": 40,
+              "fp": 255,
+              "fn": 43,
+              "goldSpans": 83,
+              "predSpans": 295,
+              "precision": 0.13559322033898305,
+              "recall": 0.4819277108433735,
+              "f1": 0.21164021164021166
+            }
+          },
+          "latencyMs": {
+            "n": 2891,
+            "mean": 334.81852097266767,
+            "p50": 156.48993800004973,
+            "p95": 259.29149099920323,
+            "min": 27.94469900072727,
+            "max": 22186.612163000063
+          }
+        }
+      },
+      "meta": {
+        "model": "urchade/gliner_small-v2.1",
+        "threshold": 0.5,
+        "labels": [
+          "email",
+          "social security number",
+          "phone number",
+          "credit card number"
+        ]
+      }
+    },
+    {
+      "tool": "llm-guard-anonymize",
+      "measured": true,
+      "meta": {
+        "recognizer": "Isotonic/deberta-v3-base_finetuned_ai4privacy_v2",
+        "revision": "9ea992753ab2686be4a8f64605ccc7be197ad794",
+        "threshold": 0.5,
+        "batch": 250,
+        "errors": 0,
+        "windowChars": 1500,
+        "overlapChars": 200,
+        "note": "Default Anonymize scanner with a fresh Vault in each batch process. The DeBERTa checkpoint is finetuned on ai4privacy, so the English validation score can be optimistic. A single process was OOM-killed on long inputs, so each document is analyzed in 1500-character windows with 200 characters of overlap and the scanner process exits every 250 documents. Raw SSN labels are mapped when the NER map returns them unchanged."
+      },
+      "datasets": {
+        "ai4privacy": {
+          "document": {
+            "email": {
+              "tp": 1532,
+              "fp": 56,
+              "fn": 1,
+              "goldDocs": 1533,
+              "precision": 0.964735516372796,
+              "recall": 0.9993476842791911,
+              "f1": 0.9817366228772829
+            },
+            "us-ssn": {
+              "tp": 688,
+              "fp": 6,
+              "fn": 840,
+              "goldDocs": 1528,
+              "precision": 0.9913544668587896,
+              "recall": 0.450261780104712,
+              "f1": 0.6192619261926192
+            },
+            "us-phone": {
+              "tp": 1208,
+              "fp": 651,
+              "fn": 48,
+              "goldDocs": 1256,
+              "precision": 0.6498117267348037,
+              "recall": 0.9617834394904459,
+              "f1": 0.775601926163724
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 40,
+              "fn": 0,
+              "goldDocs": 0,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 5717,
+              "fp": 555,
+              "fn": 1,
+              "goldSpans": 2612,
+              "predSpans": 6272,
+              "precision": 0.9115114795918368,
+              "recall": 0.9998251136761105,
+              "f1": 0.9536280233527941
+            },
+            "us-ssn": {
+              "tp": 1808,
+              "fp": 19,
+              "fn": 1539,
+              "goldSpans": 2554,
+              "predSpans": 1827,
+              "precision": 0.9896004378762999,
+              "recall": 0.540185240513893,
+              "f1": 0.6988790104367995
+            },
+            "us-phone": {
+              "tp": 3436,
+              "fp": 1483,
+              "fn": 153,
+              "goldSpans": 1997,
+              "predSpans": 4919,
+              "precision": 0.6985159585281562,
+              "recall": 0.9573697408748956,
+              "f1": 0.8077103902209686
+            },
+            "credit-card": {
+              "tp": 0,
+              "fp": 51,
+              "fn": 0,
+              "goldSpans": 0,
+              "predSpans": 51,
+              "precision": 0.0,
+              "recall": null,
+              "f1": null
+            }
+          },
+          "latencyMs": {
+            "n": 7946,
+            "mean": 148.18456657437707,
+            "p50": 142.115,
+            "p95": 194.83,
+            "min": 100.42,
+            "max": 1506.597
+          }
+        },
+        "gretel": {
+          "document": {
+            "email": {
+              "tp": 218,
+              "fp": 195,
+              "fn": 11,
+              "goldDocs": 229,
+              "precision": 0.5278450363196125,
+              "recall": 0.9519650655021834,
+              "f1": 0.6791277258566978
+            },
+            "us-ssn": {
+              "tp": 60,
+              "fp": 1,
+              "fn": 10,
+              "goldDocs": 70,
+              "precision": 0.9836065573770492,
+              "recall": 0.8571428571428571,
+              "f1": 0.916030534351145
+            },
+            "us-phone": {
+              "tp": 374,
+              "fp": 120,
+              "fn": 19,
+              "goldDocs": 393,
+              "precision": 0.757085020242915,
+              "recall": 0.9516539440203562,
+              "f1": 0.8432919954904171
+            },
+            "credit-card": {
+              "tp": 43,
+              "fp": 76,
+              "fn": 31,
+              "goldDocs": 74,
+              "precision": 0.36134453781512604,
+              "recall": 0.581081081081081,
+              "f1": 0.4455958549222798
+            }
+          },
+          "span": {
+            "email": {
+              "tp": 399,
+              "fp": 802,
+              "fn": 15,
+              "goldSpans": 330,
+              "predSpans": 1201,
+              "precision": 0.33222314737718567,
+              "recall": 0.9637681159420289,
+              "f1": 0.49411764705882355
+            },
+            "us-ssn": {
+              "tp": 74,
+              "fp": 5,
+              "fn": 11,
+              "goldSpans": 85,
+              "predSpans": 79,
+              "precision": 0.9367088607594937,
+              "recall": 0.8705882352941177,
+              "f1": 0.9024390243902438
+            },
+            "us-phone": {
+              "tp": 984,
+              "fp": 257,
+              "fn": 22,
+              "goldSpans": 480,
+              "predSpans": 1241,
+              "precision": 0.7929089443996776,
+              "recall": 0.9781312127236581,
+              "f1": 0.8758344459279038
+            },
+            "credit-card": {
+              "tp": 58,
+              "fp": 248,
+              "fn": 36,
+              "goldSpans": 83,
+              "predSpans": 306,
+              "precision": 0.1895424836601307,
+              "recall": 0.6170212765957447,
+              "f1": 0.29
+            }
+          },
+          "latencyMs": {
+            "n": 2891,
+            "mean": 417.43900553441716,
+            "p50": 426.513,
+            "p95": 697.843,
+            "min": 83.413,
+            "max": 29019.292
+          }
+        }
+      }
+    }
+  ],
+  "not_measured": [
+    {
+      "measured": false,
+      "status": "from docs, not measured",
+      "reason": "ImportError: cannot import name 'DetectPII' from 'guardrails.hub'",
+      "docs": "Guardrails AI validators can reject a string that contains PII. The hub package guardrails/detect_pii was not installed in this environment.",
+      "tool": "guardrails-detect-pii"
+    },
+    {
+      "tool": "nemo-guardrails",
+      "measured": false,
+      "status": "from docs, not measured",
+      "reason": "nemoguardrails is not installed, and en_core_web_lg is not downloaded. The built-in sensitive-data rails call Presidio, which is scored on its own. The library also documents a separate GLiNER rail.",
+      "docs": "https://docs.nvidia.com/nemo/guardrails/configure-guardrails/guardrail-catalog/pii-detection"
+    }
+  ]
+}

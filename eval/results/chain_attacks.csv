@@ -1,0 +1,7 @@
+mutation,n,perReceiptRejectRate,chainVerifierRejectRate,chainVerifierReason
+swap-adjacent-links,50,0,0,tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent
+drop-middle-link,50,0,1,orphan-link
+splice-foreign-link,50,0,1,orphan-link
+truncate-tail,50,0,0,tail-truncation-unchecked|audience-absent|nonce-absent|expiry-absent
+truncate-tail-expectedCount,50,0,1,count-mismatch
+replace-root,50,0,1,orphan-link

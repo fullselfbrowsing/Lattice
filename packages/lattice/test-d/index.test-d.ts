@@ -13,6 +13,7 @@ import {
   createPhoenixOtlpConfig,
   createRateLimitGroup,
   defineAgent,
+  inv,
   latticeVersion,
   receiptCid,
   withRateLimit,
@@ -25,6 +26,8 @@ import type {
   GatewayPolicy,
   LiteLLMProviderOptions,
   LiteLLMQuirks,
+  MustCiteInvariant,
+  MustCiteOptions,
   OpenRouterProviderOptions,
   OtelHttpTraceConfig,
   OtelTracerLike,
@@ -37,6 +40,7 @@ import type {
   RateLimitGroup,
   ReceiptEnvelope,
   RunEventSink,
+  UnsupportedArtifactTransportError,
 } from "..";
 
 // Phase 40 public-surface guard:
@@ -126,3 +130,14 @@ expectType<OtelHttpTraceConfig>(createPhoenixOtlpConfig({
   baseUrl: "http://localhost:6006",
   projectName: "lattice",
 }));
+
+const mustCiteOptions: MustCiteOptions = { inline: true, rejectUncited: true, textPath: "answer" };
+const mustCite = inv.mustCite("policy-refund", mustCiteOptions);
+expectType<MustCiteInvariant>(mustCite);
+expectType<boolean | undefined>(mustCite.inline);
+expectType<boolean | undefined>(mustCite.rejectUncited);
+expectType<string | undefined>(mustCite.textPath);
+
+declare const transportError: UnsupportedArtifactTransportError;
+expectType<string | undefined>(transportError.reason);
+expectType<string | undefined>(transportError.path);

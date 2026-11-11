@@ -1,3 +1,4 @@
+export { hashCanonicalForReceipt } from "./receipts/bindings.js";
 export { artifact } from "./artifacts/artifact.js";
 export { BAND, createHookPipeline, type HookPipeline, type HookLifecycleEvent } from "./contract/bands.js";
 export {
@@ -30,7 +31,7 @@ export {
   generateEd25519KeyPairJwk,
 } from "./receipts/sign.js";
 export { createNobleEd25519Signer } from "./receipts/noble-signer.js";
-export { verifyReceipt } from "./receipts/verify.js";
+export { receiptVerifyAdvisories, verifyReceipt } from "./receipts/verify.js";
 export { verifyChain } from "./receipts/chain.js";
 export { RECEIPT_VERSIONS } from "./receipts/schema-version.js";
 export { createReceipt, type CreateReceiptInput } from "./receipts/receipt.js";
@@ -45,6 +46,7 @@ export type {
 } from "./audit/external-execution.js";
 export { ReceiptSigningError, isTerminal } from "./results/errors.js";
 export { NoPublicUrlEgressError } from "./providers/no-public-url.js";
+export { UnsupportedArtifactTransportError } from "./providers/multimodal.js";
 export {
   createAISdkProvider,
   createOpenAICompatibleProvider,
@@ -234,6 +236,7 @@ export type {
   MaterializeReplayEnvelopeOptions,
   MustCiteInvariant,
   NoPiiInvariant,
+  NoPiiOptions,
   NormalizedLatticeConfig,
   NormalizedReceiptsConfig,
   LangfuseOtlpConfigOptions,
@@ -251,11 +254,15 @@ export type {
   PhoenixOtlpConfigOptions,
   PiiDetector,
   PiiDetectorResult,
+  PiiMatch,
+  PiiDetectionContext,
   PolicySpec,
   ProviderAdapter,
   ProviderGatewayMetadata,
   ProviderRef,
   ProviderRunRequest,
+  ProviderGenerationOptions,
+  ProviderRequestMetadata,
   ProviderRunResponse,
   ProviderStream,
   ProviderStreamChunk,
@@ -313,6 +320,9 @@ export type {
   ReceiptSignerErrorMode,
   ReceiptVersion,
   ReceiptsConfig,
+  VerifyAdvisory,
+  VerifyAdvisoryCode,
+  VerifyAdvisorySeverity,
   VerifyChainError,
   VerifyChainErrorKind,
   VerifyChainFail,

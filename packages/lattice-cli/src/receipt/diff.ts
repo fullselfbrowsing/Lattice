@@ -48,6 +48,8 @@ interface ReceiptProjection {
     readonly audience: unknown;
     readonly nonce: unknown;
     readonly expiresAt: unknown;
+    readonly chainClosure: unknown;
+    readonly chainMemberCids: unknown;
   };
   readonly model: {
     readonly requested: unknown;
@@ -67,6 +69,9 @@ interface ReceiptProjection {
   readonly hashes: {
     readonly inputHashes: unknown;
     readonly outputHash: unknown;
+    readonly taskHash: unknown;
+    readonly policyHash: unknown;
+    readonly providerRequestHashes: unknown;
   };
   readonly signatures: {
     readonly count: unknown;
@@ -297,6 +302,8 @@ function projectReceipt(
       audience: b.audience ?? null,
       nonce: b.nonce ?? null,
       expiresAt: b.expiresAt ?? null,
+      chainClosure: b.chainClosure ?? null,
+      chainMemberCids: b.chainMemberCids ?? null,
     },
     model: {
       requested: body.model?.requested ?? null,
@@ -316,6 +323,9 @@ function projectReceipt(
     hashes: {
       inputHashes: body.inputHashes ?? [],
       outputHash: body.outputHash ?? null,
+      taskHash: body.taskHash ?? null,
+      policyHash: body.policyHash ?? null,
+      providerRequestHashes: body.providerRequestHashes ?? null,
     },
     signatures: {
       count: envelope.signatures.length,
@@ -382,6 +392,18 @@ function compareProjection(
   pushDifference(differences, "receipt.audience", left.receipt.audience, right.receipt.audience);
   pushDifference(differences, "receipt.nonce", left.receipt.nonce, right.receipt.nonce);
   pushDifference(differences, "receipt.expiresAt", left.receipt.expiresAt, right.receipt.expiresAt);
+  pushDifference(
+    differences,
+    "receipt.chainClosure",
+    left.receipt.chainClosure,
+    right.receipt.chainClosure,
+  );
+  pushDifference(
+    differences,
+    "receipt.chainMemberCids",
+    left.receipt.chainMemberCids,
+    right.receipt.chainMemberCids,
+  );
   pushDifference(differences, "model.requested", left.model.requested, right.model.requested);
   pushDifference(differences, "model.observed", left.model.observed, right.model.observed);
   pushDifference(differences, "route.providerId", left.route.providerId, right.route.providerId);
@@ -412,6 +434,9 @@ function compareProjection(
   pushDifference(differences, "usage.costUsd", left.usage.costUsd, right.usage.costUsd);
   pushDifference(differences, "hashes.inputHashes", left.hashes.inputHashes, right.hashes.inputHashes);
   pushDifference(differences, "hashes.outputHash", left.hashes.outputHash, right.hashes.outputHash);
+  for (const field of ["taskHash", "policyHash", "providerRequestHashes"] as const) {
+    pushDifference(differences, `hashes.${field}`, left.hashes[field], right.hashes[field]);
+  }
   pushDifference(differences, "signatures.count", left.signatures.count, right.signatures.count);
   pushDifference(differences, "signatures.keyids", left.signatures.keyids, right.signatures.keyids);
   pushDifference(differences, "signatures.values", left.signatures.values, right.signatures.values);
