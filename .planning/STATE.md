@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
 Status: Submission preparation is the highest priority; C1 awaits review, C2/C3 technically reviewed, C4 evidence/presentation complete, C5 editorial/table work complete with author narrative/review pending; A1/P5 open; A6 written confirmation/scope documented, final package checks under P4/P6; C6 editorial/source work complete with author reading/synthesis/review pending; C7 relocation complete with author review/A7 pending; C8 working title aligned with coauthor approval/venue checks pending
-Last activity: 2026-11-09 - Completed quick task 261109-bo3: A7 public requirements verified; P2 identifier audit complete; 77-page PDF and 622 protected files verified. Concurrent funding task preserved.
+Last activity: 2026-11-11 - Completed quick task 261111-f94: OpenAI base URL joining fixed, transport errors explain themselves, 1.7.0 release notes corrected; validated (plan check, verifier, differential fuzz, full CI gates, 1.6.0 and FSB compatibility) before release.
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-11 | [261111-f94](quick/261111-f94-fix-openai-base-url-joining-explain-arti/261111-f94-SUMMARY.md) pre-release fixes for 1.7.0 | Bare-origin OpenAI base URLs get /v1 and path-prefixed gateways are used as given. `UnsupportedArtifactTransportError` now carries a reason and JSON path, with identical accept/reject behavior (differential fuzz, 5,526 values, 0 mismatches). Changeset, README and onSignerError JSDoc corrected. Verified: plan check and verifier passed; 16/16 CI gates (1,834 core, 196 CLI, 2,038 type tests); receipts and contract hashes compatible with 1.6.0; FSB bundle, 17 tests and stored-data replay pass. Implementation `08465ed`, `898f5f3`, `4057e19`, `ad43506`. |
 | 2026-11-09 | [261109-bo3](quick/261109-bo3-verify-a7-jitcar-requirements-and-audit-/261109-bo3-SUMMARY.md) verify requirements and references | Official author rules/call read through Safari; portal selector needs author login. All 85 entries audited, 58 existing DOI records checked, three DOI additions and five corrected entries; 82 cited keys, no missing/duplicate identifiers. 77-page PDF inspected, 622 protected files unchanged, funding update preserved. Implementation `47a1497`. |
 | 2026-11-09 | [261109-boa](quick/261109-boa-apply-funding-statement-and-record-jitca/261109-boa-SUMMARY.md) apply final funding statement | Used Prof. Neouchi's wording and dropped the publication-cost sentence; recorded JITCAR's fee terms and the color-online-only step. 77-page PDF verified. |
 | 2026-11-06 | [261106-2fh](quick/261106-2fh-set-up-author-rewrite-branch-and-records/261106-2fh-SUMMARY.md) set up author rewrite | Withdrew the editor-agreement advice; added the rewrite guide and checklist notes. Local `author-rewrite` branch has 18 stubs for the Section 3, 4, 5 and 7.7 narrative; working branch stays complete for the Nov 6 gate. Nothing pushed. |
