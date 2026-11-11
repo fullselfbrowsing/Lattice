@@ -1184,6 +1184,18 @@ function mergeOpenAIModelsWithRegistry(
   };
 }
 
+/** Appends /v1 to a bare origin; a base URL that already has a path is used as given. */
+function resolveOpenAIBaseUrl(baseUrl: string | undefined): string {
+  const stripped = (baseUrl ?? "https://api.openai.com").replace(/\/+$/u, "");
+  if (stripped.endsWith("/v1")) return stripped;
+  try {
+    const { pathname } = new URL(stripped);
+    return pathname === "/" || pathname === "" ? `${stripped}/v1` : stripped;
+  } catch {
+    return stripped;
+  }
+}
+
 /**
  * Phase 34 — QUIRK-02 / NEG-01 / NEG-02 — OpenAI provider factory.
  *
@@ -1205,17 +1217,6 @@ function mergeOpenAIModelsWithRegistry(
  * SECURITY (T-34-03-07): inflight Map MUST use .finally cleanup to prevent
  * leak on rejection. Verifiable: grep `.finally` in this file.
  */
-function resolveOpenAIBaseUrl(baseUrl: string | undefined): string {
-  const stripped = (baseUrl ?? "https://api.openai.com").replace(/\/+$/u, "");
-  if (stripped.endsWith("/v1")) return stripped;
-  try {
-    const { pathname } = new URL(stripped);
-    return pathname === "/" || pathname === "" ? `${stripped}/v1` : stripped;
-  } catch {
-    return stripped;
-  }
-}
-
 export function createOpenAIProvider(
   options: OpenAIProviderOptions,
 ): ProviderAdapter & {

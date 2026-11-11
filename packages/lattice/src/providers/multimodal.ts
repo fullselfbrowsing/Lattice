@@ -40,6 +40,9 @@ export function artifactText(request: ProviderRunRequest, artifact: ArtifactInpu
   let value: unknown = artifact.value;
   if (transport === "url") {
     value = artifactHttpUrl(artifact);
+    if (value === undefined) {
+      throw new UnsupportedArtifactTransportError(artifact.id, transport, "the artifact has no http(s) URL");
+    }
   } else if (!["inline", "json", "extracted-text", "transcript"].includes(transport)) {
     throw new UnsupportedArtifactTransportError(
       artifact.id, transport, `transport ${transport} cannot carry text content`);
@@ -52,9 +55,10 @@ export function artifactText(request: ProviderRunRequest, artifact: ArtifactInpu
   let problem: JsonProblem | undefined;
   try {
     problem = findJsonProblem(value);
-  } catch {
-    throw new UnsupportedArtifactTransportError(
-      artifact.id, transport, "the value is nested too deeply to inspect");
+  } catch (error) {
+    throw new UnsupportedArtifactTransportError(artifact.id, transport, error instanceof RangeError
+      ? "the value is nested too deeply to inspect"
+      : "the value could not be inspected");
   }
   if (problem !== undefined) {
     throw new UnsupportedArtifactTransportError(artifact.id, transport,

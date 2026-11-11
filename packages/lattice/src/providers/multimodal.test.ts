@@ -86,6 +86,35 @@ describe("artifactText rejections", () => {
     expect(error.path).toBeUndefined();
   });
 
+  it("explains a url transport that has no http(s) URL to send", () => {
+    const input = artifact.url("not a url", { id: "a1" });
+    const planned: ProviderRunRequest = {
+      ...request([input]),
+      providerPackaging: {
+        providerId: "p", modelId: "m", warnings: [],
+        artifacts: [{ artifactId: "a1", transport: "url", lineageTransform: "provider-packaging", warnings: [] }],
+      },
+    };
+    expect(() => artifactText(planned, input)).toThrow(UnsupportedArtifactTransportError);
+    try {
+      artifactText(planned, input);
+    } catch (error) {
+      expect((error as UnsupportedArtifactTransportError).reason).toBe("the artifact has no http(s) URL");
+      expect((error as UnsupportedArtifactTransportError).path).toBeUndefined();
+    }
+  });
+
+  it("reports nesting too deep to scan without overflowing the caller", () => {
+    let deep: unknown = 1;
+    for (let depth = 0; depth < 100_000; depth += 1) deep = { d: deep };
+    expect(failure(jsonArtifact(deep)).reason).toBe("the value is nested too deeply to inspect");
+  });
+
+  it("reports a value whose keys cannot be listed", () => {
+    const hostile = new Proxy({}, { ownKeys() { throw new Error("no keys"); } });
+    expect(failure(jsonArtifact({ h: hostile })).reason).toBe("the value could not be inspected");
+  });
+
   it("rejects URL artifacts without the url transport", () => {
     const error = failure(artifact.url("not a url", { id: "a1" }), "inline");
     expect(error.reason).toBe("URL artifacts can only be sent with the url transport");
