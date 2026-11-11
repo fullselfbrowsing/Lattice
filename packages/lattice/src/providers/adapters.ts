@@ -118,7 +118,11 @@ export interface SdkLikeProviderOptions {
 }
 
 export interface OpenAIProviderOptions extends Omit<OpenAICompatibleProviderOptions, "baseUrl"> {
-  /** API origin or /v1 base URL. Defaults to https://api.openai.com/v1. */
+  /**
+   * A bare origin gets /v1 appended; a base URL with a path (for example
+   * https://api.openai.com/v1 or a gateway prefix) is used as given.
+   * Defaults to https://api.openai.com/v1.
+   */
   readonly baseUrl?: string;
 }
 
@@ -1191,6 +1195,17 @@ function mergeOpenAIModelsWithRegistry(
  * SECURITY (T-34-03-07): inflight Map MUST use .finally cleanup to prevent
  * leak on rejection. Verifiable: grep `.finally` in this file.
  */
+function resolveOpenAIBaseUrl(baseUrl: string | undefined): string {
+  const stripped = (baseUrl ?? "https://api.openai.com").replace(/\/+$/u, "");
+  if (stripped.endsWith("/v1")) return stripped;
+  try {
+    const { pathname } = new URL(stripped);
+    return pathname === "/" || pathname === "" ? `${stripped}/v1` : stripped;
+  } catch {
+    return stripped;
+  }
+}
+
 export function createOpenAIProvider(
   options: OpenAIProviderOptions,
 ): ProviderAdapter & {
@@ -1199,8 +1214,7 @@ export function createOpenAIProvider(
 } {
   const id = options.id ?? "openai";
   const fetchImpl = options.fetch ?? fetch;
-  const rootUrl = (options.baseUrl ?? "https://api.openai.com").replace(/\/+$/u, "");
-  const baseUrl = rootUrl.endsWith("/v1") ? rootUrl : `${rootUrl}/v1`;
+  const baseUrl = resolveOpenAIBaseUrl(options.baseUrl);
   const ttlMs = options.modelsCacheTtlMs ?? 300_000;
   const retryCount = options.modelsRetryCount ?? 2;
 

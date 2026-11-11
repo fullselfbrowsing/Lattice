@@ -261,13 +261,37 @@ describe("runtime generation forwarding", () => {
     expect(seen).toHaveLength(2);
   });
 
-  it.each([undefined, "https://proxy.test", "https://proxy.test/v1", "https://proxy.test/v1/"])("normalizes OpenAI endpoint for %s", async (baseUrl) => {
+  it.each([
+    [undefined, "https://api.openai.com/v1"],
+    ["https://proxy.test", "https://proxy.test/v1"],
+    ["https://proxy.test/", "https://proxy.test/v1"],
+    ["https://proxy.test/v1", "https://proxy.test/v1"],
+    ["https://proxy.test/v1/", "https://proxy.test/v1"],
+    ["https://gateway.ai.cloudflare.com/v1/acct/gw/openai", "https://gateway.ai.cloudflare.com/v1/acct/gw/openai"],
+    ["https://proxy.test/openai/", "https://proxy.test/openai"],
+    ["https://proxy.test/openai/v1", "https://proxy.test/openai/v1"],
+  ] as const)("resolves OpenAI endpoint for %s", async (baseUrl, base) => {
     const urls: string[] = [];
     const fetch = (async (url: unknown) => { urls.push(String(url)); return response(false); }) as typeof globalThis.fetch;
     const provider = createOpenAIProvider({ model: "test", apiKey: "secret", fetch, ...(baseUrl ? { baseUrl } : {}) });
     await provider.execute!({ task: "hello", artifacts: [], outputs: ["answer"] });
     await provider.negotiateCapabilities("test");
-    const origin = baseUrl === undefined ? "https://api.openai.com" : "https://proxy.test";
-    expect(urls).toEqual([`${origin}/v1/chat/completions`, `${origin}/v1/models`]);
+    expect(urls).toEqual([`${base}/chat/completions`, `${base}/models`]);
+  });
+
+  it("streams to a path-prefixed OpenAI base as given", async () => {
+    const urls: string[] = [];
+    const fetch = (async (url: unknown) => { urls.push(String(url)); return response(true); }) as typeof globalThis.fetch;
+    const provider = createOpenAIProvider({ model: "test", apiKey: "secret", fetch, baseUrl: "https://proxy.test/openai/" });
+    await collectStream(await provider.executeStream!({ task: "hello", artifacts: [], outputs: ["answer"] }));
+    expect(urls).toEqual(["https://proxy.test/openai/chat/completions"]);
+  });
+
+  it("keeps OpenAI-compatible path-prefixed base URLs as given", async () => {
+    const urls: string[] = [];
+    const fetch = (async (url: unknown) => { urls.push(String(url)); return response(false); }) as typeof globalThis.fetch;
+    const provider = createOpenAICompatibleProvider({ model: "test", baseUrl: "https://proxy.test/openai/", fetch });
+    await provider.execute!({ task: "hello", artifacts: [], outputs: ["answer"] });
+    expect(urls).toEqual(["https://proxy.test/openai/chat/completions"]);
   });
 });
