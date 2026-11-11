@@ -25,19 +25,21 @@ export type ReceiptSignerErrorMode = "flag" | "throw";
 
 export interface ReceiptsConfig {
   /**
-   * Applies to `ai.run` and to the receipts `runAgentCrew` returns: each
-   * child agent's completion receipt, the root agent's completion receipt,
-   * and the crew-close receipt. Every failed mint emits a tracer
-   * `step.transition` event carrying `mintError`. Under "flag" the crew
-   * keeps going and returns `CrewResult.receiptError`, which names every
-   * failed mint in mint order; crew-close then lists only the receipts that
-   * exist, so the chain still verifies without a missing completion
-   * receipt. Under "throw" the crew rejects with `ReceiptSigningError` at
-   * the first failed mint, and a child failure ends the crew before the
-   * root agent's next turn. A failure minting the crew-start receipt throws
-   * `ReceiptSigningError` in both modes, since no agent has run yet.
-   * Per-iteration checkpoint receipts go to the tracer only and stay
-   * best-effort. `runAgent` does not read this setting.
+   * Applies to `ai.run`, to the terminal receipt `ai.runAgent` returns, and
+   * to the receipts `runAgentCrew` returns: each child agent's completion
+   * receipt, the root agent's completion receipt, and the crew-close
+   * receipt. Every failed mint emits a tracer `step.transition` event
+   * carrying `mintError`. Under "flag" the crew keeps going and returns
+   * `CrewResult.receiptError`, which names every failed mint in mint order;
+   * crew-close then lists only the receipts that exist, so the chain still
+   * verifies without a missing completion receipt. Under "throw" the crew
+   * rejects with `ReceiptSigningError` at the first failed mint, and a
+   * child failure ends the crew before the root agent's next turn. A
+   * failure minting the crew-start receipt throws `ReceiptSigningError` in
+   * both modes, since no agent has run yet. Per-iteration checkpoint
+   * receipts go to the tracer only and stay best-effort. For
+   * `ai.runAgent`, "flag" returns `receiptError` on the result and "throw"
+   * rejects with `ReceiptSigningError`.
    */
   readonly onSignerError?: ReceiptSignerErrorMode;
 }

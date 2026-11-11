@@ -37,9 +37,9 @@ The full runtime targets Node 24 and newer. Several modular facades are validate
 
 ### Execution evidence and transport
 
-With a signer, `ai.run` and `ai.runAgent` return terminal receipts, including signed failure verdicts. Single-agent execution uses the intent signer or the runtime signer. Per-iteration checkpoint receipts remain available through tracer events; crew receipt counts and closure behavior are unchanged.
+With a signer, `ai.run` and `ai.runAgent` return terminal receipts, including signed failure verdicts. Single-agent execution uses the intent signer or the runtime signer. Per-iteration checkpoint receipts remain available through tracer events. `runAgentCrew` returns its own receipts, ending with a crew-close receipt, as described under [Audit](#audit).
 
-OpenAI-shaped adapters send supported images as native image parts and preserve JSON values. Unsupported media transports fail explicitly. `createOpenAIProvider()` uses the `/v1/chat/completions` endpoint. Set `generation: { temperature: 0, maxOutputTokens: 256 }` on run, agent, or crew intents to control provider-native sampling and output limits.
+Built-in adapters send supported images as native image parts and preserve JSON values. An artifact a provider cannot receive faithfully fails the run with `UnsupportedArtifactTransportError`, whose message names the problem, such as `$.createdAt is a Date`. `createOpenAIProvider()` appends `/v1` to a bare origin and uses a `baseUrl` that has a path as given, so its default endpoint is `https://api.openai.com/v1/chat/completions`. Set `generation: { temperature: 0, maxOutputTokens: 256 }` on run, agent, or crew intents to control provider-native sampling and output limits.
 
 Receipts bind the original task, normalized policy, and serialized provider request bodies when the adapter reports them. These are issuer-side commitments, not proof that a provider consumed the bytes. Custom adapters without request reporting remain visibly unbound. Unsalted hashes can reveal guesses of low-entropy values.
 
