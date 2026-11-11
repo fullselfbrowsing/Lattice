@@ -1218,6 +1218,8 @@ optional verifier expectations, and incomplete external evidence remain explicit
 The benchmark in \code{paper/bench/results.json} was produced by \code{scripts/bench-receipts.mjs} on Node v24.22.1 (linux 6.12.94+ x64), processor Intel(R) Xeon(R) Processor, Lattice 1.6.0, commit \code{4549334}. Provider: mocked (createFakeProvider), no network.
 % bench-platform:end
 
+Commit \code{4549334} precedes the 1.7.0 release; its package manifests still read 1.6.0, and its library code is not the published 1.6.0 package. The code, harness and result files are archived as Lattice 1.7.0 (tag \code{v1.7.0}, commit \code{87f7bb9}), \url{https://doi.org/10.5281/zenodo.24145363} \cite{lattice}.
+
 The packages \code{@full-self-browsing/lattice} and \code{@full-self-browsing/lattice-cli} are published on the public npm registry with an OpenID Connect trusted publisher and with supply-chain provenance attestations in the spirit of SLSA \cite{slsa}. A tagged GitHub release accompanies each publish. The runtime targets Node 24 or newer. Modular subpaths for audit, context, artifacts, routing, tools, eval, and core are also exercised as Node-20-style consumers in the test suite.
 
 The command-line tool returns exit status 0 for success, 1 for a verification or test failure, and 2 for a load or configuration failure. A successful \code{verify} or \code{receipt verify-chain} prints advisory lines on standard error, each with an advisory code: \code{WARN} lines always and \code{INFO} lines unless \code{--quiet} is set. The process still exits 0, so a caller gates on the codes. \code{receipt verify-chain} also accepts \code{--require-closure} and \code{--partial}, and a malformed closing receipt fails with a typed \code{FAIL kind=} line.
