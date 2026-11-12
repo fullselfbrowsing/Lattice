@@ -5,15 +5,11 @@
 ## Correspondence and provenance
 
 - **Requester:** Lakshman Turlapati, October 22, 11:44 AM, to Ai4Privacy licensing.
-- **Respondent:** Michael Anthony, October 22, 12:48 PM, replying to Lakshman and licensing. No job title or additional authority is inferred.
+- **Respondent:** an Ai4Privacy representative, October 22, 12:48 PM, replying to Lakshman and licensing. The respondent's name is kept with the private transcript; no job title or additional authority is inferred.
 - **Date convention:** recorded as October 22, 2026 from the study/session context; the pasted headers show Thursday, October 22 and times, but omit the year and time zone. No time zone is assumed.
 - **Evidence:** author-supplied transcript, retained privately at `.context/jitcar-a6-email/correspondence.md`; the original email account/export has not been independently inspected. Private addresses and the full correspondence are excluded from tracked publication files. Preserve the original email with the authors' submission records.
 
-The operative reply is:
-
-> Yes, that sounds great, and your evaluation usage falls within our academic terms.
-
-This confirms the described use under academic terms. It does not replace the dataset's public license or grant unrestricted redistribution/commercial rights.
+The operative reply, kept with the private transcript, confirms that the described evaluation use falls within Ai4Privacy's academic terms. It does not replace the dataset's public license or grant unrestricted redistribution/commercial rights.
 
 ## Scope of the request that received confirmation
 

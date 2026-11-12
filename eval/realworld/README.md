@@ -56,7 +56,7 @@ See [STUDY-PROTOCOL.md](STUDY-PROTOCOL.md) for prepared study materials. No part
   non-commercial use when Ai4Privacy is acknowledged. Redistribution and
   commercial use need a written licence or a prior discussion with
   licensing@ai4privacy.com. In an October 22 reply supplied by the author,
-  Michael Anthony confirmed that the described English-validation detector
+  Ai4Privacy confirmed that the described English-validation detector
   evaluation falls within academic terms: aggregate metrics only, no
   redistributed records or derived annotations, and acknowledgment of
   Ai4Privacy. See the [permission record](../../paper/research/AI4PRIVACY-PERMISSION.md)
