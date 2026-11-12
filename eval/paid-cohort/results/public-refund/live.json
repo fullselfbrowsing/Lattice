@@ -1,0 +1,2446 @@
+{
+  "version": "paid-public-refund/v1",
+  "protocolHash": "f97718e16711e2c5460c8c65b4df8d3f6806a40b8f9810794ba491e9e91db60d",
+  "trustAnchorHash": "307431f7a4311bc0bc5f21a2b35ae7abf28f0a60bdefaf958de9462f088d8ee9",
+  "rows": [
+    {
+      "id": "moffatt:anthropic/claude-sonnet-5.5:0",
+      "caseId": "moffatt",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:22.144Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7",
+              "moffatt-p4",
+              "moffatt-p8"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "a89afaef6fc386e20983b8abe210a5ab23c2f10c4c9178ad85ff86651e8329ae",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 4254.236083,
+          "costUsd": 0.022602,
+          "promptTokens": 9106,
+          "completionTokens": 439,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794506962-fBpikYNZUQho4J7XdsuZ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.14705625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26396,
+          "standardCostUsd": 0.029870499999999998
+        }
+      ],
+      "wallMs": 4264.956292,
+      "httpMs": 4254.236083,
+      "bundle": "bundles/moffatt-0-0.json",
+      "bundleHash": "86fda30035e6294eec4be056c38721b2c3e04dd6c31e6d3e5786d37594efbd9f",
+      "publicBundleHash": "41ee95e181bf32e48d77ea6e6e22af926bcbd96781fba83c819eeb63032d3ffa"
+    },
+    {
+      "id": "moffatt:openai/gpt-6.1-sol:0",
+      "caseId": "moffatt",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:26.413Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7",
+              "moffatt-p8"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "f0f34c5b75fa2952fb928029780d9dbb0d3e7436137c04a6453e8e171648bea7",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 6483.622209,
+          "costUsd": 0.0174935,
+          "promptTokens": 5730,
+          "completionTokens": 317,
+          "reasoningTokens": 67,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794506966-TZSGZIC16Z0o1MFcRA6r",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.80195625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26387,
+          "standardCostUsd": 0.0192445
+        }
+      ],
+      "wallMs": 6487.966374999999,
+      "httpMs": 6483.622209,
+      "bundle": "bundles/moffatt-1-0.json",
+      "bundleHash": "4195aad4505ce9e06af1c5081f5aa231139c484945e3bcd923bedb2b0a65030e",
+      "publicBundleHash": "61f7064cf040d8e5a6f4765e7fcd9b6bb8dd151130d6691436a22f3818ecdb77"
+    },
+    {
+      "id": "moffatt:google/gemini-4-carbon:0",
+      "caseId": "moffatt",
+      "model": "google/gemini-4-carbon",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:32.904Z",
+      "runtimeOkay": false,
+      "error": "provider_execution",
+      "grade": {
+        "format": false,
+        "facts": false,
+        "citations": false,
+        "strict": false,
+        "answers": [],
+        "reason": "invalid-json"
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": false,
+        "evidenceOkay": false,
+        "problems": [
+          "no-successful-output"
+        ]
+      },
+      "calls": [
+        {
+          "bodyHash": "6e47027ff400fc19f6361201ad8076bb09d4b501e346761a8007b116de824a25",
+          "model": "google/gemini-4-carbon",
+          "status": 504,
+          "httpMs": 16322.625417,
+          "costUsd": null,
+          "promptTokens": null,
+          "completionTokens": null,
+          "reasoningTokens": null,
+          "provider": null,
+          "observedModel": null,
+          "generationId": null,
+          "finishReason": null,
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.21091949999999998,
+          "errorCode": 504,
+          "errorMessage": "The operation was aborted",
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26391,
+          "standardCostUsd": null
+        }
+      ],
+      "wallMs": 16324.293041,
+      "httpMs": 16322.625417,
+      "bundle": "bundles/moffatt-2-0.json",
+      "bundleHash": "16063ec6cf828766eca37bbcf23f33e89f8aeded5bfe8d18df01e2b30a049b67",
+      "publicBundleHash": "2437325cebd11a7b652f4a79679d1adfb894eafe9139b173ffea75bacf9c8838"
+    },
+    {
+      "id": "drn-4377241:anthropic/claude-sonnet-5.5:0",
+      "caseId": "drn-4377241",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:49.233Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4",
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "23d18e6a9c90700cbe9bb630c8e3bb80f3d9e4ed67043585fe354a9bc799bbbf",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 3207.1331249999967,
+          "costUsd": 0.01578,
+          "promptTokens": 5745,
+          "completionTokens": 429,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794506989-IQl6tipLgD9vku7uY68Y",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.1157165625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17279,
+          "standardCostUsd": 0.02051775
+        }
+      ],
+      "wallMs": 3209.3226670000004,
+      "httpMs": 3207.1331249999967,
+      "bundle": "bundles/drn-4377241-0-0.json",
+      "bundleHash": "dbe51bc9f5513cd896aee6867ef6340c67ab8b1575024266dad2690b5a859021",
+      "publicBundleHash": "1eca132df5f72a1156b73c572c46d3de6c6262af03b38ae9b8b994e99306e79c"
+    },
+    {
+      "id": "drn-4377241:openai/gpt-6.1-sol:0",
+      "caseId": "drn-4377241",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:52.444Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "edc851e25986b58ba7e591d0611c6fb747242910b71d11213de5bba9ef8e53e4",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 3834.595000000001,
+          "costUsd": 0.0117785,
+          "promptTokens": 3664,
+          "completionTokens": 262,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794506992-YAnWXfHvZJOwdcsB3EGS",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.6310125,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17270,
+          "standardCostUsd": 0.012958
+        }
+      ],
+      "wallMs": 3836.9944589999977,
+      "httpMs": 3834.595000000001,
+      "bundle": "bundles/drn-4377241-1-0.json",
+      "bundleHash": "44990cfcc9962fb69bbd26ceac4ca93eaeb22920821c0ce31627f84d319254b7",
+      "publicBundleHash": "85a8bf7ad740649c8658c77422aab48c1e5a587be33a75ba8d318e4d6e5fcb10"
+    },
+    {
+      "id": "drn-4377241:google/gemini-4-carbon:0",
+      "caseId": "drn-4377241",
+      "model": "google/gemini-4-carbon",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:09:56.284Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p3",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p3",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "e7b83fb3a5f15e45df64ea93176c3ff757fd375e9731c3d8160ed12909a6b553",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 13547.176790999998,
+          "costUsd": 0.01725,
+          "promptTokens": 4115,
+          "completionTokens": 902,
+          "reasoningTokens": 606,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794506996-C5jVXtn4wk8jIHkYDdbo",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.169893,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17274,
+          "standardCostUsd": 0.018975
+        }
+      ],
+      "wallMs": 13549.359541999998,
+      "httpMs": 13547.176790999998,
+      "bundle": "bundles/drn-4377241-2-0.json",
+      "bundleHash": "ea4c71bb520279e9bf3bbdba72ebaa51693fad599a69e40f290adf0a1db012de",
+      "publicBundleHash": "20e48ba875ee57eef36d392283e26ec7615a8b51ce3339b418626a14072b6637"
+    },
+    {
+      "id": "drn-4148727:anthropic/claude-sonnet-5.5:0",
+      "caseId": "drn-4148727",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:09.836Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2",
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "3af835f5c19b5e2f20eb65d43ecd6624b9d611c3bdd6de50026dc3d319d3d379",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 4168.161125000006,
+          "costUsd": 0.01144,
+          "promptTokens": 2860,
+          "completionTokens": 572,
+          "reasoningTokens": 128,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507009-yMxRHcnxcnuRgJsjtEJ5",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.08716468749999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8973,
+          "standardCostUsd": 0.014157
+        }
+      ],
+      "wallMs": 4170.120125000001,
+      "httpMs": 4168.161125000006,
+      "bundle": "bundles/drn-4148727-0-0.json",
+      "bundleHash": "d57a4063ede4feb796e5d4ae20d0bd86d86951373639fbc3edfb519bb6cfcd1e",
+      "publicBundleHash": "3781c0a35d1ba3faea5de7510dae274b08e007be0cd9860190ff49e8e0806125"
+    },
+    {
+      "id": "drn-4148727:openai/gpt-6.1-sol:0",
+      "caseId": "drn-4148727",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:14.008Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "3b408dcd63cefe63fda5033c420470400d37ab7cd4a0ecd7e6b3cdbb66c73b72",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 3953.329749999997,
+          "costUsd": 0.0073735,
+          "promptTokens": 1838,
+          "completionTokens": 278,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507014-zujSVvpnGYMz8JwxPsIi",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.475275,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8964,
+          "standardCostUsd": 0.0081125
+        }
+      ],
+      "wallMs": 3962.0575000000026,
+      "httpMs": 3953.329749999997,
+      "bundle": "bundles/drn-4148727-1-0.json",
+      "bundleHash": "860407d896bcbcdb7f4a33f3a354c4a7f669951c98719c106598c0e566f55c0b",
+      "publicBundleHash": "39210f89db77b9626c7a4bb42db7936a087ba0e27ef68db530b3d69d739382d5"
+    },
+    {
+      "id": "drn-4148727:google/gemini-4-carbon:0",
+      "caseId": "drn-4148727",
+      "model": "google/gemini-4-carbon",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:17.972Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "9b61812796cc24f94ccb6de7cb2162d985dc91ca083e33a21c6869e6616a07db",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 12089.413790999999,
+          "costUsd": 0.01163,
+          "promptTokens": 2075,
+          "completionTokens": 748,
+          "reasoningTokens": 438,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507018-0cJhuGCL30GmI5zVmnhb",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.132516,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8968,
+          "standardCostUsd": 0.012792999999999999
+        }
+      ],
+      "wallMs": 12091.343375000004,
+      "httpMs": 12089.413790999999,
+      "bundle": "bundles/drn-4148727-2-0.json",
+      "bundleHash": "d52b6f1478cb72637cc4d8b9ecd052afa4adfb05ec5d12dcee00def477868da4",
+      "publicBundleHash": "076aef2804f3618025a97e369dc862bc0cb5a1796e7aa0a35e9854940830d654"
+    },
+    {
+      "id": "drn-3785437:anthropic/claude-sonnet-5.5:0",
+      "caseId": "drn-3785437",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:30.066Z",
+      "runtimeOkay": false,
+      "error": "tripwire-violated",
+      "grade": {
+        "format": false,
+        "facts": false,
+        "citations": false,
+        "strict": false,
+        "answers": [],
+        "reason": "invalid-json"
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": false,
+        "evidenceOkay": false,
+        "problems": [
+          "no-successful-output"
+        ]
+      },
+      "calls": [
+        {
+          "bodyHash": "0e2837dc34d31c953b4abb3599647e084e1c00dd850f461c7b78a0dba7b9b0d7",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 3626.5794160000078,
+          "costUsd": 0.013368,
+          "promptTokens": 4529,
+          "completionTokens": 431,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507030-lEFvwaY0APv9qahU55Ns",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.10288093749999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13545,
+          "standardCostUsd": 0.01719575
+        }
+      ],
+      "wallMs": 3628.610916999998,
+      "httpMs": 3626.5794160000078,
+      "bundle": "bundles/drn-3785437-0-0.json",
+      "bundleHash": "f5b24696ed6a38804cff7a14db8639d46e6d3afbc6dde66310043809e4175b3c",
+      "publicBundleHash": "8f9550209b180a6f90fefeb84db718f2867c0bdc98a9b38a53715595e060e5dc"
+    },
+    {
+      "id": "drn-3785437:openai/gpt-6.1-sol:0",
+      "caseId": "drn-3785437",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:33.697Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "20504a0f86a03599e10a6bd94d39ddce3bc94d10c28a5338897ba82d7e7735d3",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 4235.600417000009,
+          "costUsd": 0.009756,
+          "promptTokens": 2843,
+          "completionTokens": 265,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507033-1eHAgV9cOmYbQ1ux6VmL",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.5609999999999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13536,
+          "standardCostUsd": 0.01073325
+        }
+      ],
+      "wallMs": 4237.680041999993,
+      "httpMs": 4235.600417000009,
+      "bundle": "bundles/drn-3785437-1-0.json",
+      "bundleHash": "9415dac4181321c7cd0bb0b7293afa1059b93b519393cd27611dacaa0039f523",
+      "publicBundleHash": "eac291f265dceacc389052bd42ad218cd5de7e6b4fc0debd453449d13ea8095a"
+    },
+    {
+      "id": "drn-3785437:google/gemini-4-carbon:0",
+      "caseId": "drn-3785437",
+      "model": "google/gemini-4-carbon",
+      "repetition": 0,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:37.937Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1",
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "bdaf9fbe5b730a8991e876074daa895d191c15e4c8f1e6a4438aa5414681f3fa",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 9384.722249999992,
+          "costUsd": 0.011598,
+          "promptTokens": 3244,
+          "completionTokens": 511,
+          "reasoningTokens": 241,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507038-3JgLiW2XU9xL8va8Rnbi",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.15309,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13540,
+          "standardCostUsd": 0.0127578
+        }
+      ],
+      "wallMs": 9386.599709000002,
+      "httpMs": 9384.722249999992,
+      "bundle": "bundles/drn-3785437-2-0.json",
+      "bundleHash": "50619a730bc607260390e189226f973e846c4633bf151601e23546cb41f230ac",
+      "publicBundleHash": "6c4d0dd5ec05e3463a3e8407fe7f0dc566a878fe166d48c0887aecb0a7511ebb"
+    },
+    {
+      "id": "moffatt:google/gemini-4-carbon:1",
+      "caseId": "moffatt",
+      "model": "google/gemini-4-carbon",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:10:47.326Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7",
+              "moffatt-p8"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4",
+              "moffatt-p5"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "6e47027ff400fc19f6361201ad8076bb09d4b501e346761a8007b116de824a25",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 43349.950375,
+          "costUsd": 0.044202,
+          "promptTokens": 6616,
+          "completionTokens": 3097,
+          "reasoningTokens": 2849,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507047-AZwC4Q922wPNk0dKYVri",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.21091949999999998,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26391,
+          "standardCostUsd": 0.048622200000000004
+        }
+      ],
+      "wallMs": 43352.783708999996,
+      "httpMs": 43349.950375,
+      "bundle": "bundles/moffatt-2-1.json",
+      "bundleHash": "1e31ae8cbb08de3f9c1eb57090d30364f311a8c995793b0bd61ce6fae966bb6e",
+      "publicBundleHash": "42a4612d33f8326478c5e0039951340c5d57128c7c89aac1b913be4a2d0295f6"
+    },
+    {
+      "id": "moffatt:openai/gpt-6.1-sol:1",
+      "caseId": "moffatt",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:11:30.682Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7",
+              "moffatt-p8"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "f0f34c5b75fa2952fb928029780d9dbb0d3e7436137c04a6453e8e171648bea7",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 5568.425667000003,
+          "costUsd": 0.0031187,
+          "promptTokens": 5730,
+          "completionTokens": 254,
+          "reasoningTokens": 70,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507090-pWCoi2u7Ywtv75N8eyNt",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.80195625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26387,
+          "standardCostUsd": 0.018551500000000002
+        }
+      ],
+      "wallMs": 5570.966541999995,
+      "httpMs": 5568.425667000003,
+      "bundle": "bundles/moffatt-1-1.json",
+      "bundleHash": "55ad1bd4dc8f08903a50836c4f8b3d90305b6bd80f0be48b28727ced0807467a",
+      "publicBundleHash": "3082f57130f27ce51b36bef44c786fe86aa11180081a67544f58ec092eaee1ec"
+    },
+    {
+      "id": "moffatt:anthropic/claude-sonnet-5.5:1",
+      "caseId": "moffatt",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:11:36.257Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "paid_total_minor",
+            "value": 163036,
+            "sources": [
+              "moffatt-p7",
+              "moffatt-p8"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "chatbot_window_days",
+            "value": 90,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "web_policy_allows_after_travel",
+            "value": false,
+            "sources": [
+              "moffatt-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "ordered_total_minor",
+            "value": 81202,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "moffatt-p9"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "a89afaef6fc386e20983b8abe210a5ab23c2f10c4c9178ad85ff86651e8329ae",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 2848.8947500000068,
+          "costUsd": 0.021802,
+          "promptTokens": 9106,
+          "completionTokens": 359,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507096-ydxqw5Qb9wOJVUONf5s0",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.14705625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 26396,
+          "standardCostUsd": 0.0289905
+        }
+      ],
+      "wallMs": 2851.437750000012,
+      "httpMs": 2848.8947500000068,
+      "bundle": "bundles/moffatt-0-1.json",
+      "bundleHash": "8f3634d37f093ee6958e4fe0a41fe2614d0315cd521c27f17a7a0eddc0559530",
+      "publicBundleHash": "789628b0a6c869f26658397aff20067e3638d8ad05f19dbcac0f45a4a47175c1"
+    },
+    {
+      "id": "drn-4377241:google/gemini-4-carbon:1",
+      "caseId": "drn-4377241",
+      "model": "google/gemini-4-carbon",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:11:39.112Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p3",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p3",
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "e7b83fb3a5f15e45df64ea93176c3ff757fd375e9731c3d8160ed12909a6b553",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 13564.853708999988,
+          "costUsd": 0.0139841,
+          "promptTokens": 4115,
+          "completionTokens": 967,
+          "reasoningTokens": 675,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507099-vHvBdY0ZEMB0jl6WF6yJ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.169893,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17274,
+          "standardCostUsd": 0.01969
+        }
+      ],
+      "wallMs": 13567.220708999987,
+      "httpMs": 13564.853708999988,
+      "bundle": "bundles/drn-4377241-2-1.json",
+      "bundleHash": "1b32560c38de390e4a09d755e35aa3b5eb6710b0b4edc76e4b82ec77f8e181d3",
+      "publicBundleHash": "efe14b3dacc8bdebccace38108911e6ce7e4d1cfa037c806c45d330667541340"
+    },
+    {
+      "id": "drn-4377241:openai/gpt-6.1-sol:1",
+      "caseId": "drn-4377241",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:11:52.682Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "edc851e25986b58ba7e591d0611c6fb747242910b71d11213de5bba9ef8e53e4",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 4175.224208,
+          "costUsd": 0.0030121,
+          "promptTokens": 3664,
+          "completionTokens": 264,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507112-IUfyYL0XBXTnGZ0dQnyT",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.6310125,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17270,
+          "standardCostUsd": 0.01298
+        }
+      ],
+      "wallMs": 4177.475833000004,
+      "httpMs": 4175.224208,
+      "bundle": "bundles/drn-4377241-1-1.json",
+      "bundleHash": "114ab529f8d2747548663c98dc7e0cf441719df3bbcfb07725fc01c21292dce8",
+      "publicBundleHash": "4f8fae0180c8e2bae982bcba052bcba6bb75f9dfa1aa3487222154436f93f557"
+    },
+    {
+      "id": "drn-4377241:anthropic/claude-sonnet-5.5:1",
+      "caseId": "drn-4377241",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:11:56.863Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "cancelled_flight_refund_minor",
+            "value": 7744,
+            "sources": [
+              "drn-4377241-p4",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "verification_email_owner",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4377241-p1",
+              "drn-4377241-p3"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_fee_refund_minor",
+            "value": 1941,
+            "sources": [
+              "drn-4377241-p4",
+              "drn-4377241-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "compensation_minor",
+            "value": 10000,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "settlement_proven",
+            "value": null,
+            "sources": [
+              "drn-4377241-p4"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "23d18e6a9c90700cbe9bb630c8e3bb80f3d9e4ed67043585fe354a9bc799bbbf",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 4394.297624999977,
+          "costUsd": 0.01628,
+          "promptTokens": 5745,
+          "completionTokens": 479,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507116-eGoo0NMsh9U4Xzk3uPcK",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.1157165625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 17279,
+          "standardCostUsd": 0.02106775
+        }
+      ],
+      "wallMs": 4396.559875000006,
+      "httpMs": 4394.297624999977,
+      "bundle": "bundles/drn-4377241-0-1.json",
+      "bundleHash": "56809b8d43b5aa3cc6effe2619f7d40b4da2f3ded569d5b3b9ee52de46dbac8b",
+      "publicBundleHash": "092e0b6cb96bac0293e4122beebceff8b0e926604d52263c51117805fb2bb60f"
+    },
+    {
+      "id": "drn-4148727:google/gemini-4-carbon:1",
+      "caseId": "drn-4148727",
+      "model": "google/gemini-4-carbon",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:01.262Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "9b61812796cc24f94ccb6de7cb2162d985dc91ca083e33a21c6869e6616a07db",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 13796.450083000003,
+          "costUsd": 0.01468,
+          "promptTokens": 2075,
+          "completionTokens": 1053,
+          "reasoningTokens": 744,
+          "provider": "Google",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507121-VfHQD2729AuSpc3ZG5bE",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.132516,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8968,
+          "standardCostUsd": 0.016148
+        }
+      ],
+      "wallMs": 13798.100582999992,
+      "httpMs": 13796.450083000003,
+      "bundle": "bundles/drn-4148727-2-1.json",
+      "bundleHash": "cbe59202220226734af83d21ab40a5d8922e42d355ca7fca41d003a68c627719",
+      "publicBundleHash": "3c778ffd8f5d2575c9fa1b85708f16c26cb5e3b2f84fe078b7b8e2fad13bfd5c"
+    },
+    {
+      "id": "drn-4148727:openai/gpt-6.1-sol:1",
+      "caseId": "drn-4148727",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:15.062Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "3b408dcd63cefe63fda5033c420470400d37ab7cd4a0ecd7e6b3cdbb66c73b72",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 3813.9709169999987,
+          "costUsd": 0.0029795,
+          "promptTokens": 1838,
+          "completionTokens": 279,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507135-8rg43BE7iISD2WhdEB66",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.475275,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8964,
+          "standardCostUsd": 0.0081235
+        }
+      ],
+      "wallMs": 3815.6368749999965,
+      "httpMs": 3813.9709169999987,
+      "bundle": "bundles/drn-4148727-1-1.json",
+      "bundleHash": "1e1e7b5db2c27bbfc624721be8d234ecdc0f41d7cf355e20481a18fb90a5def1",
+      "publicBundleHash": "da42da0b6936123837b41af97ac8719f5b8e3c6fcea1ce737dd3873a7744b036"
+    },
+    {
+      "id": "drn-4148727:anthropic/claude-sonnet-5.5:1",
+      "caseId": "drn-4148727",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:18.880Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "initial_refund_approx_minor",
+            "value": 12600,
+            "sources": [
+              "drn-4148727-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_recipient",
+            "value": "travel_agent",
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "later_airline_refund_minor",
+            "value": 95800,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "bank_compensation_minor",
+            "value": 15000,
+            "sources": [
+              "drn-4148727-p1",
+              "drn-4148727-p2"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "3af835f5c19b5e2f20eb65d43ecd6624b9d611c3bdd6de50026dc3d319d3d379",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 4292.432166999992,
+          "costUsd": 0.01142,
+          "promptTokens": 2860,
+          "completionTokens": 570,
+          "reasoningTokens": 159,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507138-qCHxMbjUrr2l6h5FpVpA",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.08716468749999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8973,
+          "standardCostUsd": 0.014135
+        }
+      ],
+      "wallMs": 4294.129790999985,
+      "httpMs": 4292.432166999992,
+      "bundle": "bundles/drn-4148727-0-1.json",
+      "bundleHash": "a02900549ce3e0238adafa5ab70d3cf2d6e1a3696d9b4616ec39b3e8b06f824a",
+      "publicBundleHash": "00f404e714ee680e7e5d0f0839c6dc97597dc69b2498a0754370d93cda5d084a"
+    },
+    {
+      "id": "drn-3785437:google/gemini-4-carbon:1",
+      "caseId": "drn-3785437",
+      "model": "google/gemini-4-carbon",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:23.176Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1",
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "bdaf9fbe5b730a8991e876074daa895d191c15e4c8f1e6a4438aa5414681f3fa",
+          "model": "google/gemini-4-carbon",
+          "status": 200,
+          "httpMs": 28998.937042000005,
+          "costUsd": 0.012688,
+          "promptTokens": 3244,
+          "completionTokens": 620,
+          "reasoningTokens": 364,
+          "provider": "Google AI Studio",
+          "observedModel": "google/gemini-4-carbon",
+          "generationId": "gen-1794507143-ff0MexeruwRSM8FiZtOE",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.15309,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13540,
+          "standardCostUsd": 0.0139568
+        }
+      ],
+      "wallMs": 29000.437209000025,
+      "httpMs": 28998.937042000005,
+      "bundle": "bundles/drn-3785437-2-1.json",
+      "bundleHash": "992173ca0ec63ba950ffebddc7c207066a2a130d2364d0f5ea384296a460ae82",
+      "publicBundleHash": "d3bb73941bdaff7d15eb2102b3b10e371f495146bbc9622887d1e89e529295db"
+    },
+    {
+      "id": "drn-3785437:openai/gpt-6.1-sol:1",
+      "caseId": "drn-3785437",
+      "model": "openai/gpt-6.1-sol",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:52.179Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "20504a0f86a03599e10a6bd94d39ddce3bc94d10c28a5338897ba82d7e7735d3",
+          "model": "openai/gpt-6.1-sol",
+          "status": 200,
+          "httpMs": 4235.675125000009,
+          "costUsd": 0.00298,
+          "promptTokens": 2843,
+          "completionTokens": 269,
+          "reasoningTokens": 0,
+          "provider": "OpenAI",
+          "observedModel": "openai/gpt-6.1-sol",
+          "generationId": "gen-1794507172-Z3pdp19o17eBrDfKsJ1G",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.5609999999999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13536,
+          "standardCostUsd": 0.01077725
+        }
+      ],
+      "wallMs": 4237.274916999973,
+      "httpMs": 4235.675125000009,
+      "bundle": "bundles/drn-3785437-1-1.json",
+      "bundleHash": "2e699905c54e181f5ac6cafe0c26eb1d2611aee458d947963afd8fb46bcf5989",
+      "publicBundleHash": "49752514b841d52c32071596e4884b9c2cd57b799f9ffafbcf11b50efc7a4c5e"
+    },
+    {
+      "id": "drn-3785437:anthropic/claude-sonnet-5.5:1",
+      "caseId": "drn-3785437",
+      "model": "anthropic/claude-sonnet-5.5",
+      "repetition": 1,
+      "status": "finished",
+      "startedAt": "2026-11-12T18:12:56.418Z",
+      "runtimeOkay": true,
+      "error": null,
+      "grade": {
+        "format": true,
+        "facts": true,
+        "citations": true,
+        "strict": true,
+        "answers": [
+          {
+            "id": "ticket_price_minor",
+            "value": 7462,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "tax_refund_requested_minor",
+            "value": 1300,
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "temporary_credit_status",
+            "value": "reversed",
+            "sources": [
+              "drn-3785437-p1"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "fee_per_person_per_flight_minor",
+            "value": 7300,
+            "sources": [
+              "drn-3785437-p2"
+            ],
+            "fact": true,
+            "citation": true
+          },
+          {
+            "id": "complaint_upheld",
+            "value": false,
+            "sources": [
+              "drn-3785437-p3"
+            ],
+            "fact": true,
+            "citation": true
+          }
+        ],
+        "reason": null
+      },
+      "verification": {
+        "signature": true,
+        "taskBound": true,
+        "policyBound": true,
+        "requestBound": true,
+        "outputBound": true,
+        "evidenceOkay": true,
+        "problems": []
+      },
+      "calls": [
+        {
+          "bodyHash": "0e2837dc34d31c953b4abb3599647e084e1c00dd850f461c7b78a0dba7b9b0d7",
+          "model": "anthropic/claude-sonnet-5.5",
+          "status": 200,
+          "httpMs": 3130.698083000025,
+          "costUsd": 0.012708,
+          "promptTokens": 4529,
+          "completionTokens": 365,
+          "reasoningTokens": 0,
+          "provider": "Claude Platform on AWS",
+          "observedModel": "anthropic/claude-sonnet-5.5",
+          "generationId": "gen-1794507176-ch02CogOQlgV0oyUlrVd",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 4096,
+          "reservedUsd": 0.10288093749999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 13545,
+          "standardCostUsd": 0.01646975
+        }
+      ],
+      "wallMs": 3132.7219159999804,
+      "httpMs": 3130.698083000025,
+      "bundle": "bundles/drn-3785437-0-1.json",
+      "bundleHash": "a81b95d9ebce816a7bd250024cdef9d75f495ba68f93502e7ce6cc39f68ad432",
+      "publicBundleHash": "e349a3f715260b2c8645171630bf66176b67dfd88991b8236e6af5b888e29989"
+    }
+  ],
+  "resumes": [],
+  "stopped": null,
+  "ledgerAfter": {
+    "limitUsd": 17,
+    "confirmedUsd": 0.3650942,
+    "chargedOrReservedUsd": 0.5760137,
+    "requests": 38,
+    "unresolvedRequests": 1,
+    "halted": null
+  },
+  "accountAfter": {
+    "at": "2026-11-12T18:12:59.602Z",
+    "keyUsage": 0.38218253,
+    "keyLimit": null,
+    "totalCredits": 40,
+    "totalUsage": 20.463340704,
+    "balanceUsd": 19.536659296
+  },
+  "addedAccountUsageUsd": 0.28154789999999963
+}

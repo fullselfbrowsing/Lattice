@@ -1,0 +1,460 @@
+{
+  "generatedAt": "2026-11-12T20:25:18.392Z",
+  "verdict": "VALID",
+  "validity": {
+    "valid": true,
+    "reasons": [],
+    "responseRate": 0.9829842931937173,
+    "planned": 764,
+    "responded": 751
+  },
+  "completion": {
+    "perStage": {
+      "smoke-citations": {
+        "admitted": true,
+        "complete": true,
+        "planned": 3,
+        "attempted": 3,
+        "responded": 3,
+        "stopped": null
+      },
+      "smoke-judge": {
+        "admitted": true,
+        "complete": true,
+        "planned": 4,
+        "attempted": 4,
+        "responded": 4,
+        "stopped": null
+      },
+      "A": {
+        "admitted": true,
+        "complete": true,
+        "planned": 24,
+        "attempted": 24,
+        "responded": 23,
+        "stopped": null
+      },
+      "B": {
+        "admitted": true,
+        "complete": true,
+        "planned": 180,
+        "attempted": 180,
+        "responded": 179,
+        "stopped": null
+      },
+      "J": {
+        "admitted": true,
+        "complete": true,
+        "planned": 152,
+        "attempted": 152,
+        "responded": 152,
+        "stopped": null
+      },
+      "C": {
+        "admitted": true,
+        "complete": true,
+        "planned": 408,
+        "attempted": 408,
+        "responded": 397,
+        "stopped": null
+      }
+    },
+    "perModel": {
+      "A": {
+        "anthropic/claude-sonnet-5.5": {
+          "attempted": 8,
+          "responded": 7
+        },
+        "openai/gpt-6.1-sol": {
+          "attempted": 8,
+          "responded": 8
+        },
+        "google/gemini-4-carbon": {
+          "attempted": 8,
+          "responded": 7
+        }
+      },
+      "B": {
+        "anthropic/claude-sonnet-5.5": {
+          "attempted": 60,
+          "responded": 60
+        },
+        "openai/gpt-6.1-sol": {
+          "attempted": 60,
+          "responded": 60
+        },
+        "google/gemini-4-carbon": {
+          "attempted": 60,
+          "responded": 59
+        }
+      },
+      "J": {
+        "x-ai/grok-4.7": {
+          "attempted": 5,
+          "responded": 3
+        },
+        "qwen/qwen3.8-max-0902": {
+          "attempted": 152,
+          "responded": 152
+        }
+      },
+      "C": {
+        "anthropic/claude-sonnet-5.5": {
+          "attempted": 136,
+          "responded": 136
+        },
+        "openai/gpt-6.1-sol": {
+          "attempted": 136,
+          "responded": 136
+        },
+        "google/gemini-4-carbon": {
+          "attempted": 136,
+          "responded": 125
+        }
+      }
+    }
+  },
+  "publicRecord": {
+    "planned": 24,
+    "attempted": 24,
+    "models": [
+      {
+        "model": "anthropic/claude-sonnet-5.5",
+        "planned": 8,
+        "attempted": 8,
+        "runtimeSuccess": 7,
+        "factualRuns": 7,
+        "citationRuns": 7,
+        "strictPassFrozen": 7,
+        "strictPassAudited": 7,
+        "factualAnswers": 35,
+        "citedAnswers": 35,
+        "plannedAnswers": 40,
+        "signatures": 8,
+        "evidenceComplete": 7
+      },
+      {
+        "model": "openai/gpt-6.1-sol",
+        "planned": 8,
+        "attempted": 8,
+        "runtimeSuccess": 8,
+        "factualRuns": 8,
+        "citationRuns": 8,
+        "strictPassFrozen": 8,
+        "strictPassAudited": 8,
+        "factualAnswers": 40,
+        "citedAnswers": 40,
+        "plannedAnswers": 40,
+        "signatures": 8,
+        "evidenceComplete": 8
+      },
+      {
+        "model": "google/gemini-4-carbon",
+        "planned": 8,
+        "attempted": 8,
+        "runtimeSuccess": 7,
+        "factualRuns": 7,
+        "citationRuns": 7,
+        "strictPassFrozen": 7,
+        "strictPassAudited": 7,
+        "factualAnswers": 35,
+        "citedAnswers": 35,
+        "plannedAnswers": 40,
+        "signatures": 8,
+        "evidenceComplete": 7
+      }
+    ],
+    "strictPassFrozen": 22,
+    "strictPassAudited": 22,
+    "evidenceComplete": 22,
+    "successfulRuns": 22,
+    "successfulRunsVerified": 22,
+    "controlsPassed": 10,
+    "controlsTotal": 10,
+    "requestCount": 24,
+    "nonzeroCost": 23,
+    "unknownCost": 1,
+    "spentUsd": 0.3099239,
+    "addedAccountUsageUsd": 0.28154789999999963,
+    "stopped": null,
+    "scope": "Actual public records; retrospective source-grounded extraction with three paid models. Complete decisions (including outcomes) provided. Not outcome prediction, adjudication, a production deployment or a representative benchmark. Not pooled with the free cohort."
+  },
+  "citations": {
+    "perJudge": [
+      {
+        "judge": "qwen/qwen3.8-max-0902",
+        "models": [
+          {
+            "model": "anthropic/claude-sonnet-5.5",
+            "planned": 60,
+            "formatValidContract": 60,
+            "formatValidPromptOnly": 60,
+            "judged": 60,
+            "strictLiveContract": 31,
+            "strictDerivedPromptOnly": 31
+          },
+          {
+            "model": "openai/gpt-6.1-sol",
+            "planned": 60,
+            "formatValidContract": 56,
+            "formatValidPromptOnly": 56,
+            "judged": 56,
+            "strictLiveContract": 41,
+            "strictDerivedPromptOnly": 41
+          },
+          {
+            "model": "google/gemini-4-carbon",
+            "planned": 60,
+            "formatValidContract": 36,
+            "formatValidPromptOnly": 36,
+            "judged": 36,
+            "strictLiveContract": 26,
+            "strictDerivedPromptOnly": 26
+          }
+        ]
+      }
+    ],
+    "excluded": [
+      {
+        "judge": "x-ai/grok-4.7",
+        "rows": 5,
+        "valid": 3,
+        "note": "excluded by a disclosed amendment or its probes; partial rows not used"
+      }
+    ],
+    "kappa": {
+      "items": 0,
+      "strictLabel": null,
+      "answerCorrect": null,
+      "note": "Not available: one active judge."
+    }
+  },
+  "receipts": {
+    "successful": 384,
+    "verified": 384,
+    "byStage": {
+      "A": {
+        "successful": 22,
+        "verified": 22
+      },
+      "B": {
+        "successful": 152,
+        "verified": 152
+      },
+      "C": {
+        "successful": 210,
+        "verified": 210
+      }
+    },
+    "missing": []
+  },
+  "latency": [
+    {
+      "model": "anthropic/claude-sonnet-5.5",
+      "arms": {
+        "direct": {
+          "n": 20,
+          "medianWallMs": 795.378665999975,
+          "medianProcessingMs": 1.7660624999552965
+        },
+        "unsigned": {
+          "n": 20,
+          "medianWallMs": 849.2695004999405,
+          "medianProcessingMs": 2.145186999812722
+        },
+        "signed": {
+          "n": 20,
+          "medianWallMs": 837.3074375001015,
+          "medianProcessingMs": 2.584833500091918
+        }
+      },
+      "signedMinusDirectWallMs": 41.92877150012646
+    },
+    {
+      "model": "openai/gpt-6.1-sol",
+      "arms": {
+        "direct": {
+          "n": 20,
+          "medianWallMs": 1567.1348955000285,
+          "medianProcessingMs": 1.6519170000683516
+        },
+        "unsigned": {
+          "n": 20,
+          "medianWallMs": 1578.1193539999658,
+          "medianProcessingMs": 2.191229499876499
+        },
+        "signed": {
+          "n": 20,
+          "medianWallMs": 1585.412437500083,
+          "medianProcessingMs": 2.4941045000450686
+        }
+      },
+      "signedMinusDirectWallMs": 18.277542000054382
+    },
+    {
+      "model": "google/gemini-4-carbon",
+      "arms": {
+        "direct": {
+          "n": 17,
+          "medianWallMs": 6795.045999999857,
+          "medianProcessingMs": 1.7747079997789115
+        },
+        "unsigned": {
+          "n": 18,
+          "medianWallMs": 6459.715916500078,
+          "medianProcessingMs": 2.2752295000245795
+        },
+        "signed": {
+          "n": 18,
+          "medianWallMs": 6766.072271000128,
+          "medianProcessingMs": 2.5252709998749197
+        }
+      },
+      "signedMinusDirectWallMs": -28.973728999728337
+    }
+  ],
+  "spend": {
+    "smoke-citations": {
+      "ledgerConfirmedUsd": 0.013664900000000004,
+      "ledgerChargedUsd": 0.013664900000000004,
+      "accountDeltaUsd": 0,
+      "discrepancyUsd": -0.013664900000000004
+    },
+    "smoke-judge": {
+      "ledgerConfirmedUsd": 0.011678000000000001,
+      "ledgerChargedUsd": 0.011678000000000001,
+      "accountDeltaUsd": 0,
+      "discrepancyUsd": -0.011678000000000001
+    },
+    "A": {
+      "ledgerConfirmedUsd": 0.3099239,
+      "ledgerChargedUsd": 0.5208434,
+      "accountDeltaUsd": 0.28154789999999963,
+      "discrepancyUsd": -0.028376000000000345
+    },
+    "B": {
+      "ledgerConfirmedUsd": 1.0608110000000004,
+      "ledgerChargedUsd": 1.1795749999999998,
+      "accountDeltaUsd": 1.0152179999999973,
+      "discrepancyUsd": -0.0455930000000031
+    },
+    "J": {
+      "ledgerConfirmedUsd": 1.1360180000000004,
+      "ledgerChargedUsd": 1.2808479999999982,
+      "accountDeltaUsd": 1.1052600000000012,
+      "discrepancyUsd": -0.030757999999999175
+    },
+    "C": {
+      "ledgerConfirmedUsd": 0.41006999999998106,
+      "ledgerChargedUsd": 0.8011334999999811,
+      "accountDeltaUsd": 0.4036359999999988,
+      "discrepancyUsd": -0.006433999999982287
+    }
+  },
+  "priceChecks": {
+    "smoke-citations": [
+      {
+        "at": "2026-11-12T18:08:18.959Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "smoke-judge": [
+      {
+        "at": "2026-11-12T18:08:37.199Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "A": [
+      {
+        "at": "2026-11-12T18:09:21.613Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "B": [
+      {
+        "at": "2026-11-12T18:14:01.366Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "J": [
+      {
+        "at": "2026-11-12T18:31:05.406Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:34:58.260Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:39:49.257Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:41:21.932Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:41:23.300Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:41:24.071Z",
+        "increases": 0,
+        "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:58:35.779Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "C": [
+      {
+        "at": "2026-11-12T19:41:36.872Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ]
+  },
+  "amendments": [
+    {
+      "id": "A1",
+      "decidedAt": "2026-11-12T18:58:07.943Z",
+      "decidedBy": "Lakshman Turlapati (author), 2026-11-12",
+      "reason": "x-ai/grok-4.7 broke its infrastructure limits during stage J: 2 of its first 5 calls timed out at 180 s, and one returned 5,101 completion tokens against a 2,048-token cap because its reasoning ignored the 1,024-token budget. It is excluded for infrastructure reasons, decided before any further judging; no judging outcome informed the decision.",
+      "changes": {
+        "excludedJudges": [
+          "x-ai/grok-4.7"
+        ],
+        "activeJudges": [
+          "qwen/qwen3.8-max-0902"
+        ],
+        "stageJDenominator": "format-valid stage B answers x active judges",
+        "interJudgeAgreement": "not available",
+        "excludedJudgeRows": "kept in judge.json and reported as a partial; not used in any table",
+        "ledger": "the halt caused by the cap violation is recorded under resolvedHalts in the private ledger; every charge kept; limit unchanged at 17 USD"
+      }
+    },
+    {
+      "id": "A2",
+      "decidedAt": "2026-11-12T20:25:01.678Z",
+      "decidedBy": "Claude Code (orchestrator), 2026-11-12: correction to the definition the approved plan specified; reported to the author for review",
+      "reason": "Reporting correction after the run: eval/paid-cohort/report.mjs counted strict citation quality when each claim had at least one relevant citation, but the free cohort (eval/realworld/scripts/16-validated-report.py, citation_summary) requires every listed citation to be relevant. The report now uses the free cohort rule, which the plan specified. No inference was rerun and validity uses no scores.",
+      "changes": {
+        "excludedJudges": [],
+        "strictCitationRule": "every claim supported and cited, citationCount > 0 and relevantCitations === citationCount",
+        "verdict": "unaffected"
+      }
+    }
+  ],
+  "note": "Paid cohort, separate from and never pooled with the free cohorts. Judges are not human validated. Validity depends on completion and receipts only."
+}

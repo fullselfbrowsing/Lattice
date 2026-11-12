@@ -1,0 +1,10 @@
+% Hand-written fragment. Include it only after the main text uses the paid tables
+% (\PaidPublicRefundTable, \PaidQualityTable, \PaidCostTable). It re-emits the free-cohort
+% tables, whose labels (tab:public-refund-results, tab:c4-quality, tab:c4-cost) must then
+% appear exactly once in the document: remove their main-text uses first.
+\subsection{Earlier free-model cohort}\label{app:free-cohort}
+\todo{Author text: introduce the earlier free-model cohort, state that the paid cohort ran after it, that the two are never pooled, and disclose amendment A1.}
+
+\input{public-refund-results.tex}
+\CfourQualityTable
+\CfourCostTable

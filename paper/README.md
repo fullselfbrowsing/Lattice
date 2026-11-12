@@ -21,6 +21,7 @@ Do not type numbers into the narrative by hand, and do not edit these files. Rer
 | `c4-evidence.tex`, `c4-evidence.json` | `paper/scripts/c4-tables.mjs`, from saved timing, quality and integrity results; `--check` is read-only |
 | `numbers.tex`, `eval-tables.tex`, `Fig2.png`, `Fig3.png`, `Fig4.png` | `eval/scripts/06-report.py`, from `eval/results/*.json` |
 | `validated.tex`, `validated-pii.pdf`, `validated-latency.pdf` | `eval/realworld/scripts/16-validated-report.py`, from the versioned validated result files; missing measurements are explicit |
+| `paid-cohort-evidence.tex` | `paper/scripts/paid-cohort-tables.mjs`, from the tracked files in `eval/paid-cohort/results` only; defines the `\Paid*` macros and `\PaidPublicRefundTable`, `\PaidQualityTable`, `\PaidCostTable`; `--check` is read-only |
 | `public-refund-results.tex` | `paper/scripts/public-refund-tables.mjs`, from frozen `eval/public-refund/results` plus its separately disclosed rubric audit |
 | `refund-results.tex` | `paper/scripts/refund-tables.mjs`, from frozen `eval/refund/results`; read-only verification before rendering |
 | `bench/results.json` | `scripts/bench-receipts.mjs` (run by `pnpm bench:receipts`) |
@@ -50,6 +51,23 @@ The script reads the frozen summary and verification results. It validates both 
 The historical synthetic presentation remains reproducible with `node paper/scripts/refund-tables.mjs --check`. That script checks the frozen code/build/fixture/protocol/bundle hashes, public key and original scores without inference. Do not restore or overwrite frozen hashes if the current build differs; reproduce the measured revision in an isolated checkout. Its 18 scoped checks and separate offline wrong-answer control differ from the current cohort's 10 checks on one live bundle.
 
 Human usefulness and real approval/payment execution remain untested. Source/rubric validation, drafting-tool model/version confirmation and final declarations remain open under A1/P5.
+
+## Paid cohort tables
+
+The paid-model cohort (Claude Sonnet 5.5, GPT-6.1 Sol, Gemini 4 Carbon, judged by Qwen 3.8 Max) is presented by a generator that is not yet wired into `main.tex`. From the repository root:
+
+```sh
+node paper/scripts/paid-cohort-tables.mjs
+node paper/scripts/paid-cohort-tables.mjs --check
+```
+
+Inputs are the tracked files in `eval/paid-cohort/results` (plus the public-refund source manifest page counts). Output is `paper/paid-cohort-evidence.tex`, which defines only macros, with no visible output on input. The script asserts every field it needs, recomputes the strict citation counts from the judge rows against the saved summary, runs no inference or network call, and is deterministic (the timing bootstrap uses a fixed seed). `--check` exits non-zero naming the file when it is stale.
+
+Review copy (Nov 12): `main.tex` already inputs `paid-cohort-evidence.tex`. It shows the three paid tables in their own appendix (`app:paid-cohort`), with a red author-text TODO; the main-text results still describe the free cohort. To switch the main results to the paid cohort, the author should:
+
+1. Move `\PaidPublicRefundTable`, `\PaidQualityTable` and `\PaidCostTable` from `app:paid-cohort` into the main text, in place of the free tables (`\input{public-refund-results.tex}`, `\CfourQualityTable`, `\CfourCostTable`). Update the prose references to `tab:public-refund-results`, `tab:c4-quality` and `tab:c4-cost`.
+2. Include `free-cohort-appendix.tex` in the hosted-cohorts appendix (`app:hosted-details`), after step 1 so the free-table labels appear exactly once. Remove the `app:paid-cohort` section once it is empty.
+3. Write the narrative, including the disclosure of amendments A1 and A2 and that the cohorts are never pooled, and update the AI-use declaration.
 
 ## C3 requirements and source mapping
 

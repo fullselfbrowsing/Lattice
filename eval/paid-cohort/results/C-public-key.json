@@ -1,0 +1,14 @@
+{
+  "kid": "paid-C",
+  "publicKeyJwk": {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "ZGwJsgQbsB3sDg20Kxn-wr1HA7mSTHCuGdOSjftickw",
+    "kty": "OKP"
+  },
+  "state": "active"
+}
