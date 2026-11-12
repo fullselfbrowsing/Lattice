@@ -45,7 +45,19 @@ Stage B runs only the contract arm. The prompt-only arm sends an identical reque
 8. Report: `node eval/paid-cohort/report.mjs` writes `results/summary.json` and `results/summary.md` and prints VALID or INVALID.
 9. Reconcile: the report lists, per stage, the ledger spend against the change in the OpenRouter account balance. Confirm the two agree to within a few cents.
 
+The stage B and smoke receipts are re-verified in a fresh process with `node eval/paid-cohort/verify-validated.mjs smoke|B|C`, which writes `results/verification-<stage>.json`. Run it after each of smoke, B and C. Each stage signs with its own key (`.context/paid-cohort/<stage>-signing-key.json`, public anchor in `results/<stage>-public-key.json`), reused on resume. The report takes receipt counts for the validity rule from these files only; an admitted stage without its verification file makes the verdict INVALID.
+
 A stage that stops can be re-run with the same command; finished rows are kept and never retried, and an interrupted row is marked interrupted.
+
+## Request timeouts, anomalies, rows and judges
+
+- Per-request timeouts are frozen in the protocol: smoke, A and B 300 s; J 180 s; C 120 s.
+- A response whose usage cannot be legitimate halts the cohort permanently, with the request already recorded: completion tokens above 1.25 x `max_tokens` + 32, or prompt tokens above the request's token bound used for the reservation.
+- Every row is written as `started` before its call and replaced when it finishes. After a crash a `started` row becomes `interrupted`, stays in the denominator and is never retried. Every egress request body is kept for verification. Array message content is converted to text the same way the SDK does.
+- Smoke is infrastructure only: HTTP 200, cost present, completion within the cap, cost within the reservation, receipt verified, smoke complete. Answer format is a measured outcome and never gates a run.
+- Preregistered judge rule: a judge that fails its probes (infrastructure, unparseable answer or failed sanity check) is excluded from stage J and recorded in `smoke-judge.json`. The judge gate passes if at least one judge passes. With one judge excluded there is no inter-judge kappa.
+- The derived prompt-only arm comes from the same answers as the contract arm, so it is not an independent sample. Arm differences must not be compared across cohorts.
+- `parity.test.mjs` checks, read-only against the private caches (skipped with a reason when absent), that every stage A, stage B and smoke request, with the model id swapped, is byte-identical to the request the free cohorts sent.
 
 ## Reporting rule (fixed before the run)
 

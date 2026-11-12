@@ -61,6 +61,11 @@ export class PaidBudget {
     }
     this.persist();
   }
+  /** Permanent halt (anomalous provider usage); survives restarts. */
+  halt(reason) {
+    this.state.haltedReason ??= reason;
+    this.persist();
+  }
   /** Pure admission rule against this ledger; see admit(). */
   admit(ceilingUsd, balanceUsd) { return !this.halted && admit(ceilingUsd, balanceUsd, this.remainingUsd); }
   persist() {

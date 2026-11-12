@@ -29,26 +29,24 @@ export function validity({ stages: status, receipts }) {
   const planned = admitted.reduce((n, [, s]) => n + (s.planned ?? 0), 0);
   const got = admitted.reduce((n, [, s]) => n + (s.responded ?? 0), 0);
   if (planned === 0 || got / planned < 0.95) reasons.push(`only ${got}/${planned} planned calls returned a model response (need 95%)`);
-  if (receipts.missing.length) reasons.push(`results for admitted stage(s) ${receipts.missing.join(", ")} are missing, so receipts cannot be checked`);
+  if (receipts.missing.length) reasons.push(`admitted stage(s) ${receipts.missing.join(", ")} lack a fresh-process verification file`);
   if (receipts.verified < receipts.successful) reasons.push(`${receipts.successful - receipts.verified} successful runs have unverified receipts`);
   return { valid: reasons.length === 0, reasons, responseRate: planned ? got / planned : 0, planned, responded: got };
 }
 
 // ---- receipts of successful runs ----------------------------------------------------------
-const receiptOk = (r) => r.receipt?.verified === true && r.receipt?.expectedBindingsVerified !== false;
+// Counts come from the fresh-process verification files, never from in-run receipt fields.
 function receiptCounts() {
   const counts = { successful: 0, verified: 0, byStage: {}, missing: [] };
-  for (const [name, data] of [["A", A], ["B", B], ["C", C]]) if (stages[name]?.admitted && !data) counts.missing.push(name);
   const add = (stage, successful, verified) => {
     counts.successful += successful; counts.verified += verified;
     counts.byStage[stage] = { successful, verified };
   };
-  if (A) add("A", A.successfulRuns, A.successfulRunsVerified);
-  const applicable = (r) => r.ok && r.arm !== "direct" && !(r.suite === "latency" && r.arm === "unsigned") && r.suite !== "latency-warmup";
-  if (B) { const rows = B.rows.filter(applicable); add("B", rows.length, rows.filter(receiptOk).length); }
-  if (C) {
-    const rows = C.rows.filter(applicable);
-    add("C", rows.length, rows.filter((r) => r.suite === "crew" ? r.chainClosed === true : receiptOk(r)).length);
+  if (stages.A?.admitted) { if (A) add("A", A.successfulRuns, A.successfulRunsVerified); else counts.missing.push("A"); }
+  for (const name of ["B", "C"]) {
+    if (!stages[name]?.admitted) continue;
+    const v = maybe(`verification-${name}.json`);
+    if (v) add(name, v.successful, v.verified); else counts.missing.push(name);
   }
   return counts;
 }

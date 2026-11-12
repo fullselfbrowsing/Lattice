@@ -82,10 +82,12 @@ function answerFor(body) {
     const question = /Question: (.*)$/s.exec(text)?.[1] ?? "";
     const ids = art.filter((a) => a.kind === "text").map((a) => a.artifactId);
     // One model fails the format on a fraction of non-development questions; failures stay in denominators.
+    if (env("PAID_MOCK_BAD_FORMAT") === "1") return { content: "I cannot cite the sources.", reasoning: 50 };
     if (model === "openai/gpt-6.1-sol" && hashNum(question) % 11 === 0 && !question.startsWith("DEV")) return { content: "I cannot cite the sources.", reasoning: 50 };
     return { content: JSON.stringify({ answer: "The passages state the answer [" + ids[0] + "].", citations: [{ source: ids[0] }] }), reasoning: 100 };
   }
   if (text.includes("Evaluate the answer using only the supplied sources")) {
+    if (env("PAID_MOCK_JUDGE_BAD") === model) return { content: "not json at all", reasoning: 10 };
     const payload = JSON.parse(text.slice(text.indexOf('{"question"')));
     const answer = payload.candidate.answer ?? "";
     const contradicted = answer.includes("90 days");
@@ -130,8 +132,11 @@ export async function mockFetch(url, init = {}) {
   const promptTokens = Math.ceil(Buffer.byteLength(init.body) / 4);
   const completionTokens = Math.min(body.max_tokens, Math.ceil(content.length / 4) + reasoning);
   const cost = promptTokens * inputPrice + completionTokens * outputPrice;
+  // Anomalous usage (reported tokens the request could not produce) while the charge stays small.
+  const reportedCompletion = env("PAID_MOCK_OVERUSE") === "1" ? body.max_tokens * 2 + 100 : completionTokens;
+  const message = { role: "assistant", content: env("PAID_MOCK_ARRAY_CONTENT") === "1" ? [{ type: "text", text: content }] : content };
   addUsage(cost);
   return json({ id: "gen-mock-" + chatCalls, model: body.model, provider: "MockProvider",
-    choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }],
-    usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens, completion_tokens_details: { reasoning_tokens: reasoning }, cost } });
+    choices: [{ index: 0, message, finish_reason: "stop" }],
+    usage: { prompt_tokens: promptTokens, completion_tokens: reportedCompletion, completion_tokens_details: { reasoning_tokens: reasoning }, cost } });
 }

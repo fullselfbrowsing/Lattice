@@ -9,6 +9,23 @@ export const ALLOWED_MODELS = [...TESTED_MODELS, ...JUDGE_MODELS];
 export const MAX_OUTPUT_TOKENS = 4096;
 export const FORBIDDEN_KEYS = ["models", "route", "provider", "plugins", "preset", "service_tier", "web_search_options"];
 
+/** Same extraction as the SDK's openAIMessageText: strings as is, arrays of parts joined by their text. */
+export function messageText(message) {
+  const content = message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.flatMap((part) => part && typeof part === "object" && typeof part.text === "string" ? [part.text] : []).join("");
+  return "";
+}
+
+/** Usage the request could not legitimately produce: halt the whole cohort. */
+export function usageAnomaly(call, maxTokens, promptTokenBound) {
+  if (typeof call.completionTokens === "number" && call.completionTokens > 1.25 * maxTokens + 32)
+    return `Anomaly: completion_tokens ${call.completionTokens} exceeds 1.25 x max_tokens ${maxTokens} + 32; cohort halted.`;
+  if (typeof call.promptTokens === "number" && call.promptTokens > promptTokenBound)
+    return `Anomaly: prompt_tokens ${call.promptTokens} exceeds the request token bound ${promptTokenBound}; cohort halted.`;
+  return null;
+}
+
 /**
  * Observe exact submissions and reserve cost before network egress. Exactly one HTTP
  * attempt is made per request: 429 and 5xx are measured outcomes, never retried.
@@ -21,6 +38,7 @@ export function createPaidObserver({ BASE, MODELS = ALLOWED_MODELS, endpointCata
     const active = getActive();
     if (String(url) !== BASE + "/chat/completions") throw new Error("Unexpected inference endpoint.");
     if (active.expectedBody && init.body !== active.expectedBody) throw new Error("Matched request bodies differ before egress.");
+    active.requestBodies?.push(init.body);
     const bodyHash = sha(init.body);
     const duplicate = active.preparedBodies.includes(bodyHash);
     active.preparedBodies.push(bodyHash);
@@ -34,6 +52,9 @@ export function createPaidObserver({ BASE, MODELS = ALLOWED_MODELS, endpointCata
     if (body.tools?.some((tool) => tool.type !== "function")) throw new Error("Server-side tools are forbidden.");
     const endpoints = endpointCatalog[body.model];
     const bound = requestBound(init.body, endpoints, maximum);
+    const imageParts = (body.messages ?? []).flatMap((m) => Array.isArray(m.content) ? m.content : []).filter((p) => p.type === "image_url").length;
+    // Same input-token ceiling the reservation uses: a byte is never fewer than one token.
+    const promptTokenBound = Buffer.byteLength(init.body) + 1000 * imageParts;
     let reservation;
     try { reservation = budget.reserve(body.model, bound); }
     catch (error) { setStopped(error.message); throw error; }
@@ -64,12 +85,14 @@ export function createPaidObserver({ BASE, MODELS = ALLOWED_MODELS, endpointCata
       maxTokens: maximum, reservedUsd: bound,
       errorCode: parsed?.error?.code ?? null, errorMessage: parsed?.error?.message ? scrub(parsed.error.message).slice(0, 200) : null,
       retryAfter: response.headers.get("retry-after"),
-      imageParts: (body.messages ?? []).flatMap((m) => Array.isArray(m.content) ? m.content : []).filter((p) => p.type === "image_url").length,
+      imageParts, promptTokenBound,
     };
     active.calls.push(call);
-    active.lastOutput = parsed?.choices?.[0]?.message?.content ?? "";
+    active.lastOutput = messageText(parsed?.choices?.[0]?.message);
     try { budget.settle(reservation, call.costUsd); }
     catch (error) { setStopped(error.message); throw error; }
+    const anomaly = usageAnomaly(call, maximum, promptTokenBound);
+    if (anomaly) { budget.halt?.(anomaly); setStopped(anomaly); }
     if ([401, 402, 403].includes(response.status)) setStopped("Provider refused the request with HTTP " + response.status);
     if (breaker?.record(call.costUsd)) setStopped(breaker.reason);
     return new Response(bytes, { status: response.status, statusText: response.statusText, headers: response.headers });

@@ -24,8 +24,8 @@ function run(box, script, args = [], extra = {}) {
   const result = spawnSync(process.execPath, [here(script), ...args], { env, encoding: "utf8", input: "", maxBuffer: 1 << 28 });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
-const STEPS = [["validated-live.mjs", ["smoke"]], ["judge.mjs", ["probe"]], ["public-refund.mjs"], ["public-refund-report.mjs"],
-  ["validated-live.mjs", ["B"]], ["judge.mjs", ["full"]], ["validated-live.mjs", ["C"]], ["report.mjs"]];
+const STEPS = [["validated-live.mjs", ["smoke"]], ["verify-validated.mjs", ["smoke"]], ["judge.mjs", ["probe"]], ["public-refund.mjs"], ["public-refund-report.mjs"],
+  ["validated-live.mjs", ["B"]], ["verify-validated.mjs", ["B"]], ["judge.mjs", ["full"]], ["validated-live.mjs", ["C"]], ["verify-validated.mjs", ["C"]], ["report.mjs"]];
 function runAll(box, extra) {
   return STEPS.map(([script, args]) => ({ script, args, ...run(box, script, args, extra) }));
 }
@@ -93,6 +93,23 @@ test("a full dry run completes every stage offline and reports VALID", { timeout
     assert.equal(execFileSync("git", ["status", "--porcelain", "--", "eval/public-refund", "eval/realworld", "packages"], { cwd: ROOT, encoding: "utf8" }), "");
     assert.equal(existsSync(join(ROOT, "eval/paid-cohort/results")), false);
 
+    // Fresh-process verification files drive the receipt counts; per-stage keys and richer private rows.
+    assert.ok(protocol.timeoutsMs && protocol.timeoutsMs.A === 300000 && protocol.timeoutsMs.J === 180000 && protocol.timeoutsMs.C === 120000 && protocol.timeoutsMs.smoke === 300000 && protocol.timeoutsMs.B === 300000);
+    let counted = a.successfulRuns;
+    for (const name of ["B", "C"]) {
+      const v = readJSON(join(box.out, `verification-${name}.json`));
+      assert.ok(v.successful > 0 && v.verified === v.successful, name);
+      counted += v.successful;
+      assert.equal(statSync(join(box.priv, `${name}-signing-key.json`)).mode & 0o777, 0o600);
+      assert.equal(readJSON(join(box.out, `${name}-public-key.json`)).kid, "paid-" + name);
+      assert.equal(readJSON(join(box.out, name === "B" ? "citations-live.json" : "runtime.json")).trustAnchorHash.length, 64);
+    }
+    assert.equal(summary.receipts.successful, counted);
+    assert.ok(existsSync(join(box.out, "verification-smoke-citations.json")));
+    const signedRow = readJSON(join(box.priv, "runtime-private.json")).find((r) => r.suite === "transport" && r.arm === "signed");
+    assert.ok(signedRow.receipt && signedRow.requestBodies.length === 1 && signedRow.outputs && signedRow.expectedTaskHash && signedRow.expectedPolicyHash);
+    assert.ok(readJSON(join(box.out, "runtime.json")).rows.every((r) => r.status === "finished"));
+
     // The verdict takes no score as input: wipe every score and the verdict must not move.
     const live = join(box.out, "public-refund/summary.json");
     writeFileSync(live, JSON.stringify({ ...a, strictPassFrozen: 0, strictPassAudited: 0, models: a.models.map((m) => ({ ...m, strictPassFrozen: 0, strictPassAudited: 0, factualRuns: 0 })) }));
@@ -104,6 +121,11 @@ test("a full dry run completes every stage offline and reports VALID", { timeout
     assert.match(rerun.stdout, /^VALID$/m);
     const rescored = readJSON(join(box.out, "summary.json"));
     assert.equal(rescored.citations.perJudge[0].models[0].strictLiveContract, 0, "scores did change; the verdict did not");
+    // An admitted stage without its verification file makes the verdict INVALID.
+    rmSync(join(box.out, "verification-C.json"));
+    const missing = run(box, "report.mjs");
+    assert.match(missing.stdout, /^INVALID$/m);
+    assert.match(readJSON(join(box.out, "summary.json")).validity.reasons.join(" "), /lack a fresh-process verification file/);
   } finally { box.dispose(); }
 });
 
@@ -222,4 +244,96 @@ test("the validity function is not given any score", () => {
   const body = source.slice(source.indexOf("export function validity"), source.indexOf("// ---- receipts of successful runs"));
   assert.ok(body.length > 200);
   assert.doesNotMatch(body, /strict|answerCorrect|factual|correct\b|kappa|grade|score|quality/i);
+});
+
+const FEW = { PAID_DRY_COUNTS: JSON.stringify({ questions: 2 }) };
+
+test("answer format is measured, never gated; array content is extracted as text", { timeout: 120000 }, () => {
+  const box = sandbox();
+  try {
+    const bad = run(box, "validated-live.mjs", ["smoke"], { PAID_MOCK_BAD_FORMAT: "1", PAID_MOCK_ARRAY_CONTENT: "1" });
+    assert.equal(bad.status, 0, bad.stderr);
+    const gate = readJSON(join(box.out, "smoke-citations.json"));
+    assert.equal(gate.pass, true);
+    assert.ok(gate.rows.every((r) => r.formatValid === false));
+    const kept = readJSON(join(box.priv, "smoke-citations-private.json"));
+    assert.ok(kept.every((r) => r.rawAnswer === "I cannot cite the sources." && !r.rawAnswer.includes("[object Object]")));
+  } finally { box.dispose(); }
+});
+
+test("anomalous usage halts the cohort permanently", { timeout: 120000 }, () => {
+  const box = sandbox();
+  try {
+    const result = run(box, "validated-live.mjs", ["smoke"], { PAID_MOCK_OVERUSE: "1" });
+    assert.notEqual(result.status, 0);
+    const ledger = readJSON(join(box.priv, "budget.json"));
+    assert.match(ledger.haltedReason, /Anomaly: completion_tokens/);
+    assert.equal(ledger.entries.length, 1, "later requests never left the process");
+    assert.match(readJSON(join(box.out, "stages.json"))["smoke-citations"].stopped, /Anomaly/);
+    const again = run(box, "judge.mjs", ["probe"]);
+    assert.notEqual(again.status, 0);
+  } finally { box.dispose(); }
+});
+
+test("a failed judge is excluded; started rows become interrupted and are never retried", { timeout: 300000 }, () => {
+  const box = sandbox();
+  try {
+    assert.equal(run(box, "validated-live.mjs", ["smoke"], FEW).status, 0);
+    assert.equal(run(box, "judge.mjs", ["probe"], { ...FEW, PAID_MOCK_JUDGE_BAD: "qwen/qwen3.8-max-0902" }).status, 0);
+    const probe = readJSON(join(box.out, "smoke-judge.json"));
+    assert.deepEqual(probe.passedJudges, ["x-ai/grok-4.7"]);
+    assert.deepEqual(probe.excludedJudges, ["qwen/qwen3.8-max-0902"]);
+    assert.equal(probe.pass, true);
+    assert.equal(run(box, "validated-live.mjs", ["B"], FEW).status, 0);
+    // Simulate a crash: the first row was started and never finished.
+    const file = join(box.out, "citations-live.json");
+    const live = readJSON(file);
+    const { id, model, suite, arm } = live.rows[0];
+    live.rows[0] = { id, model, suite, arm, status: "started" };
+    writeFileSync(file, JSON.stringify(live));
+    const entries = readJSON(join(box.priv, "budget.json")).entries.length;
+    assert.equal(run(box, "validated-live.mjs", ["B"], FEW).status, 0);
+    assert.equal(readJSON(join(box.priv, "budget.json")).entries.length, entries, "no request was repeated");
+    const after = readJSON(file);
+    assert.equal(after.rows[0].status, "interrupted");
+    assert.equal(after.rows.length, 6);
+    const verify = run(box, "verify-validated.mjs", ["B"], FEW);
+    assert.equal(verify.status, 0, verify.stderr);
+    assert.ok(readJSON(join(box.out, "verification-B.json")).rows[0].status === "interrupted");
+    // Stage J uses only the judge that passed.
+    const judged = run(box, "judge.mjs", ["full"], FEW);
+    assert.equal(judged.status, 0, judged.stderr);
+    const judge = readJSON(join(box.out, "judge.json"));
+    assert.ok(judge.rows.length > 0 && judge.rows.every((r) => r.judge === "x-ai/grok-4.7" && r.status === "finished"));
+    assert.equal(readJSON(join(box.out, "stages.json")).J.planned, judge.rows.length);
+  } finally { box.dispose(); }
+});
+
+test("one failed judge leaves the judge gate passing", { timeout: 120000 }, () => {
+  const box = sandbox();
+  try {
+    assert.equal(run(box, "validated-live.mjs", ["smoke"]).status, 0);
+    const none = run(box, "judge.mjs", ["probe"], { PAID_MOCK_JUDGE_BAD: "x-ai/grok-4.7" });
+    assert.equal(none.status, 0, "one judge still passes");
+    assert.deepEqual(readJSON(join(box.out, "smoke-judge.json")).excludedJudges, ["x-ai/grok-4.7"]);
+  } finally { box.dispose(); }
+});
+
+test("tampered stored request bodies fail fresh-process verification", { timeout: 120000 }, () => {
+  const box = sandbox();
+  try {
+    assert.equal(run(box, "validated-live.mjs", ["smoke"], FEW).status, 0);
+    assert.equal(run(box, "judge.mjs", ["probe"], FEW).status, 0);
+    assert.equal(run(box, "validated-live.mjs", ["B"], FEW).status, 0);
+    assert.equal(run(box, "verify-validated.mjs", ["B"], FEW).status, 0);
+    const clean = readJSON(join(box.out, "verification-B.json"));
+    assert.equal(clean.verified, clean.successful);
+    const path = join(box.priv, "citations-live-private.json");
+    const kept = readJSON(path);
+    kept[0].requestBodies[0] += " ";
+    writeFileSync(path, JSON.stringify(kept));
+    assert.equal(run(box, "verify-validated.mjs", ["B"], FEW).status, 0);
+    const tampered = readJSON(join(box.out, "verification-B.json"));
+    assert.equal(tampered.verified, tampered.successful - 1);
+  } finally { box.dispose(); }
 });

@@ -5,9 +5,10 @@ import { join, resolve } from "node:path";
 import { deflateSync } from "node:zlib";
 import * as L from "../../packages/lattice/dist/index.js";
 import { fingerprintArtifactValue } from "../../packages/lattice/dist/storage.js";
+import { generation, intent, parseCited, captureBody, citationRequest } from "./requests.mjs";
 import {
   BASE, CAPS, COUNTS, EXPECTED_PER_CALL_USD, TESTED_MODELS, CACHE, bootstrap, admitStage, finishStage, requireGates, ceilingFor, estimateTokens,
-  newActive, readJSON, writeJSON, scrub, responded, smokeVerdict, directCall, NotAdmitted,
+  newActive, readJSON, writeJSON, jsonHash, scrub, responded, smokeVerdict, directCall, NotAdmitted,
 } from "./common.mjs";
 
 const MODE = process.argv[2];
@@ -77,6 +78,10 @@ async function runCase(id, model, suite, arm, work, grade = () => ({})) {
   if (control.stopped) return null;
   control.active = newActive();
   const active = control.active;
+  // Recorded before the call so a crash leaves an interrupted row in the denominator, never a silent gap.
+  const placeholder = { id, model, suite, arm, status: "started", startedAt: new Date().toISOString() };
+  out.rows.push(placeholder);
+  save();
   const started = performance.now();
   let result, error = null;
   try { result = await work(); } catch (caught) { error = scrub(caught.message).slice(0, 250); }
@@ -85,20 +90,20 @@ async function runCase(id, model, suite, arm, work, grade = () => ({})) {
   const ok = result?.ok === true || result?.kind === "success" || result?.result?.kind === "success";
   const answer = String(result?.outputs?.answer ?? result?.output?.answer ?? result?.result?.output?.answer ?? result?.text ?? "");
   const row = {
-    id, model, suite, arm, ok, errorKind: error ? "threw" : result?.error?.kind ?? (ok ? null : result?.kind ?? result?.result?.kind ?? "failed"),
+    id, model, suite, arm, status: "finished", ok, errorKind: error ? "threw" : result?.error?.kind ?? (ok ? null : result?.kind ?? result?.result?.kind ?? "failed"),
     error, wallMs, providerMs: httpMs, backoffMs: active.backoffMs, processingMs: Math.max(0, wallMs - httpMs - active.backoffMs),
     calls: active.calls, receipt: await receiptChecks(result, answer),
     ...await grade({ result, answer, rawAnswer: String(active.lastOutput ?? ""), ok }),
   };
-  out.rows.push(row);
-  privateRows.push({ id, model, suite, arm, answer, rawAnswer: active.lastOutput, lastBody: active.lastBody });
+  out.rows[out.rows.indexOf(placeholder)] = row;
+  // Everything a fresh process needs to re-verify this row (verify-validated.mjs).
+  privateRows.push({ id, model, suite, arm, answer, rawAnswer: active.lastOutput, lastBody: active.lastBody,
+    requestBodies: active.requestBodies, receipt: result?.receipt ?? null, receipts: result?.receipts ?? null,
+    outputs: result?.outputs ?? result?.output ?? null, expectedTaskHash: active.expectedTaskHash ?? null, expectedPolicyHash: active.expectedPolicyHash ?? null });
   save();
   console.log(JSON.stringify({ suite, model, arm, id, ok, spentUsd: +ctx.budget.confirmedUsd.toFixed(4) }));
   return row;
 }
-
-const generation = (cap) => ({ temperature: 0, maxOutputTokens: cap });
-const intent = (task, artifacts, cap) => ({ task, artifacts, outputs: { answer: "text" }, generation: generation(cap) });
 
 function png(rgb) {
   const crc = (data) => {
@@ -115,27 +120,6 @@ function png(rgb) {
   const header = Buffer.alloc(13); header.writeUInt32BE(16, 0); header.writeUInt32BE(16, 4); header[8] = 8; header[9] = 2;
   const pixels = Buffer.concat(Array.from({ length: 16 }, () => Buffer.from([0, ...Array.from({ length: 16 }, () => rgb).flat()])));
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", header), chunk("IDAT", deflateSync(pixels)), chunk("IEND", Buffer.alloc(0))]);
-}
-
-function parseCited(text, ids) {
-  let value;
-  try { value = JSON.parse(text); } catch { return { valid: false, reason: "invalid-json" }; }
-  const valid = typeof value?.answer === "string" && Array.isArray(value.citations) && value.citations.length > 0
-    && value.citations.every((item) => typeof item?.source === "string" && ids.includes(item.source))
-    && value.citations.every((item) => value.answer.includes("[" + item.source + "]"));
-  return { valid, value, reason: valid ? null : "unresolved-or-unused-citation" };
-}
-
-/** Prepare the exact body a request would send, without any network. */
-async function captureBody(model, request) {
-  let captured;
-  const provider = L.createOpenAICompatibleProvider({ model, baseUrl: BASE, fetch: async (_url, init) => {
-    captured = init.body;
-    return new Response(JSON.stringify({ choices: [{ message: { content: "pong" } }] }), { headers: { "content-type": "application/json" } });
-  } });
-  await L.createAI({ providers: [provider] }).run(request);
-  if (!captured) throw new Error("Could not prepare direct comparison request.");
-  return captured;
 }
 
 // ---- stage C items -------------------------------------------------------------------------
@@ -215,13 +199,6 @@ async function latencyItem(model, i) {
 function citationRows(file, count) {
   return readFileSync(resolve(CACHE, "citation-split", file), "utf8").trim().split("\n").map(JSON.parse).slice(0, count);
 }
-function citationRequest(row) {
-  const ids = row.docs.map((doc) => doc.id);
-  const task = "Answer using only the supplied passages. Return exactly one JSON object, with no markdown fences or surrounding text. Use this shape: {\"answer\":\"A concise answer with [sN] citations after each factual statement.\",\"citations\":[{\"source\":\"sN\"}]}. Use the key source, never id. Escape quotes only once as required by JSON. If the passages cannot answer, state that explicitly; never invent evidence. Question: " + row.question;
-  const request = intent(task, row.docs.map((doc) => L.artifact.text(doc.title + "\n" + doc.text, { id: doc.id, label: doc.id })), CAPS.B);
-  const validator = schema((value) => parseCited(String(value), ids).valid ? { value } : { issues: [{ message: "Return valid JSON with resolvable, used citation IDs." }] });
-  return { ids, request: { ...request, contract: L.contract({ invariants: [L.inv.matches("answer", validator)] }) } };
-}
 // Only the contract arm runs live. The prompt-only arm sends an identical request, so its
 // outcome is derived offline from the same retained raw answer (promptOnlyFormatValid).
 async function citationItem(model, row, idPrefix = "") {
@@ -236,9 +213,17 @@ async function citationItem(model, row, idPrefix = "") {
 try {
   if (MODE !== "smoke") requireGates(ctx, ["smoke-citations", "smoke-judge"]);
   if (MODE === "C") requireGates(ctx, ["smoke-citations"]);
-  const pair = await L.generateEd25519KeyPairJwk();
-  keys = { signer: L.createInMemorySigner(pair.privateKeyJwk, { kid: "paid-validated-eval", publicKeyJwk: pair.publicKeyJwk }),
-    keySet: L.createMemoryKeySet([{ kid: "paid-validated-eval", publicKeyJwk: pair.publicKeyJwk, state: "active" }]) };
+  // One signing key per stage, reused on resume; the public trust anchor is published with the results.
+  const keyPath = join(dirs.priv, STAGE + "-signing-key.json"), trustPath = join(dirs.out, STAGE + "-public-key.json");
+  if (!existsSync(keyPath) || !existsSync(trustPath)) {
+    const pair = await L.generateEd25519KeyPairJwk();
+    writeJSON(keyPath, { kid: "paid-" + STAGE, ...pair });
+    writeJSON(trustPath, { kid: "paid-" + STAGE, publicKeyJwk: pair.publicKeyJwk, state: "active" });
+  }
+  const signing = readJSON(keyPath), trust = readJSON(trustPath);
+  if (jsonHash(trust.publicKeyJwk) !== jsonHash(signing.publicKeyJwk)) throw new Error("Trust anchor differs from the signing key.");
+  keys = { signer: L.createInMemorySigner(signing.privateKeyJwk, { kid: signing.kid, publicKeyJwk: signing.publicKeyJwk }),
+    keySet: L.createMemoryKeySet([trust]) };
 
   // Plan the stage: row counts and the worst-case ceiling.
   let planned, items;
@@ -261,8 +246,9 @@ try {
   await admitStage(ctx, ceilingFor(ctx.snapshot, items), { planned });
   admittedOk = true;
 
-  out = existsSync(OUT) ? readJSON(OUT) : { version: "paid-validated/v1", stage: STAGE, protocolHash: ctx.protocolHash, rows: [] };
-  if (out.protocolHash !== ctx.protocolHash) throw new Error("Protocol hash mismatch; archive the old results first.");
+  out = existsSync(OUT) ? readJSON(OUT) : { version: "paid-validated/v1", stage: STAGE, protocolHash: ctx.protocolHash, trustAnchorHash: jsonHash(trust), rows: [] };
+  if (out.protocolHash !== ctx.protocolHash || out.trustAnchorHash !== jsonHash(trust)) throw new Error("Protocol or trust anchor mismatch; archive the old results first.");
+  for (const row of out.rows) if (row.status === "started") Object.assign(row, { status: "interrupted", error: "Interrupted after start; retained without retry." });
   if (existsSync(PRIVATE)) privateRows = readJSON(PRIVATE);
   save();
 

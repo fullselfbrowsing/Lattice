@@ -71,11 +71,10 @@ try {
     const row = { id, caseId: example.id, model, repetition, status: "started", startedAt: new Date().toISOString() };
     state.rows.push(row);
     save();
-    const capturing = async (url, init) => { active.requestBodies.push(init.body); return ctx.observed(url, init); };
     const intent = makeIntent(example), start = performance.now();
     let result, error = null;
     try {
-      const ai = L.createAI({ signer, providers: [L.createOpenAICompatibleProvider({ id: "openrouter", model, baseUrl: BASE, apiKey: ctx.key ?? undefined, fetch: capturing })] });
+      const ai = L.createAI({ signer, providers: [L.createOpenAICompatibleProvider({ id: "openrouter", model, baseUrl: BASE, apiKey: ctx.key ?? undefined, fetch: ctx.observed })] });
       result = await ai.run(intent);
     } catch (e) { error = scrub(e.message).slice(0, 400); }
     const wallMs = performance.now() - start;

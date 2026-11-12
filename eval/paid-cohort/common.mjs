@@ -15,7 +15,9 @@ export const LEDGER_LIMIT_USD = 17;
 export const PROTOCOL_VERSION = "paid-cohort/v1";
 export const KID = "paid-public-refund-20261112";
 export const CAPS = { A: 4096, B: 4096, J: 2048, judgeReasoning: 1024, transport: 1024, privacy: 1024, latency: 1024, agent: 2048, crew: 2048 };
-export const EXPECTED_PER_CALL_USD = { smoke: 0.02, A: 0.027, B: 0.0141, J: 0.0085, C: 0.0017 };
+export const EXPECTED_PER_CALL_USD = { smoke: 0.02, A: 0.027, B: 0.0141, J: 0.0085, C: 0.004 };
+/** Per-stage request timeouts (ms); frozen in the protocol. */
+export const TIMEOUTS_MS = { smoke: 300000, A: 300000, B: 300000, J: 180000, C: 120000 };
 const FULL_COUNTS = { repetitions: 2, questions: 60, transport: 40, privacy: 20, agents: 5, latency: 20, warmups: 2 };
 
 export const sha = (value) => createHash("sha256").update(value).digest("hex");
@@ -138,7 +140,7 @@ export function inputHashes() {
 
 export function strictFields() {
   return { version: PROTOCOL_VERSION, dryRun: DRY, dryCounts: DRY_COUNTS, kid: KID, testedModels: TESTED_MODELS, judgeModels: JUDGE_MODELS,
-    ledgerLimitUsd: LEDGER_LIMIT_USD, caps: CAPS, counts: COUNTS, inputs: inputHashes(), codeHashes: codeHashes() };
+    ledgerLimitUsd: LEDGER_LIMIT_USD, caps: CAPS, timeoutsMs: TIMEOUTS_MS, counts: COUNTS, inputs: inputHashes(), codeHashes: codeHashes() };
 }
 
 // ---- transport, catalog, account ----------------------------------------------------------
@@ -263,6 +265,7 @@ export async function bootstrap(stage, { models, expectedPerCall }) {
     const session = { startedAt: new Date().toISOString(), accountBefore: accountStart, confirmedBeforeUsd: budget.confirmedUsd, chargedBeforeUsd: budget.chargedUsd };
     const control = { stopped: null, active: null };
     const observed = createPaidObserver({ BASE, MODELS: models, endpointCatalog, budget, breaker, fetch: transport,
+      timeoutMs: TIMEOUTS_MS[stage.startsWith("smoke") ? "smoke" : stage],
       scrub: (text) => scrub(text, key), getActive: () => control.active, getStopped: () => control.stopped, setStopped: (v) => { control.stopped = v; } });
     const context = { stage, key, transport, dirs, release, snapshot, protocol, priceCheck, budget, breaker, endpointCatalog,
       session, control, observed, protocolHash: jsonHash(protocol) };
@@ -303,7 +306,7 @@ export async function finishStage(ctx, { planned, attempted, respondedCount, ext
 
 // ---- gates --------------------------------------------------------------------------------
 
-/** Smoke acceptance: no non-200, JSON parses, cost present, tokens within cap, cost within reservation. */
+/** Smoke acceptance is infrastructure only (answer format is a measured outcome, never gated): HTTP 200, cost present, tokens within cap, cost within reservation. */
 export function smokeVerdict(rows) {
   const problems = [];
   for (const row of rows) {
@@ -314,7 +317,6 @@ export function smokeVerdict(rows) {
       if (c.completionTokens != null && c.completionTokens > c.maxTokens) problems.push(row.id + ": completion tokens above cap");
       if (typeof c.costUsd === "number" && c.costUsd > c.reservedUsd) problems.push(row.id + ": cost above reservation");
     }
-    if (!row.parsed) problems.push(row.id + ": output did not parse");
   }
   return { pass: rows.length > 0 && problems.length === 0, problems };
 }

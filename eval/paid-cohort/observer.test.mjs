@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import * as L from "../../packages/lattice/dist/index.js";
 import { PaidBudget } from "./budget.mjs";
-import { createPaidObserver, ALLOWED_MODELS } from "./observer.mjs";
+import { createPaidObserver, ALLOWED_MODELS, messageText, usageAnomaly } from "./observer.mjs";
 
 const MODEL = "anthropic/claude-sonnet-5.5";
 const BASE = "https://example.test/v1";
@@ -170,5 +170,39 @@ test("the circuit breaker stops the stage when cost per call runs away", async (
     for (let i = 0; i < 10; i++) await f.fetch(url, { body: JSON.stringify(make({ max_tokens: 4096 - i })) });
     assert.match(f.control.stopped, /Circuit breaker/);
     await assert.rejects(f.fetch(url, { body: JSON.stringify(make({ max_tokens: 99 })) }), /Circuit breaker/);
+  } finally { f.dispose(); }
+});
+
+test("message text matches the SDK extraction and never yields [object Object]", () => {
+  assert.equal(messageText({ content: "plain" }), "plain");
+  assert.equal(messageText({ content: [{ type: "text", text: "a" }, { type: "reasoning" }, { type: "text", text: "b" }, "x", null] }), "ab");
+  assert.equal(messageText({ content: { text: "no" } }), "");
+  assert.equal(messageText(undefined), "");
+});
+
+test("every egress body is kept and array content is stored as text", async () => {
+  const f = fixture(10, () => reply({ choices: [{ message: { content: [{ type: "text", text: "po" }, { type: "text", text: "ng" }] }, finish_reason: "stop" }] }));
+  try {
+    f.active.requestBodies = [];
+    const body = JSON.stringify(make());
+    await f.fetch(url, { body });
+    assert.deepEqual(f.active.requestBodies, [body]);
+    assert.equal(f.active.lastOutput, "pong");
+  } finally { f.dispose(); }
+});
+
+test("usage the request cannot have produced halts the ledger permanently", async () => {
+  assert.equal(usageAnomaly({ completionTokens: 100, promptTokens: 10 }, 64, 500), null);
+  assert.equal(usageAnomaly({ completionTokens: 112, promptTokens: 10 }, 64, 500), null);
+  assert.match(usageAnomaly({ completionTokens: 113, promptTokens: 10 }, 64, 500), /completion_tokens/);
+  assert.match(usageAnomaly({ completionTokens: 1, promptTokens: 501 }, 64, 500), /prompt_tokens/);
+  const f = fixture(10, () => reply({ usage: { prompt_tokens: 10, completion_tokens: 500, cost: 0.0001 } }));
+  try {
+    f.active.requestBodies = [];
+    await f.fetch(url, { body: JSON.stringify(make()) });
+    assert.match(f.control.stopped, /Anomaly/);
+    assert.match(f.budget.halted, /Anomaly/);
+    assert.equal(f.active.calls.length, 1, "the request itself was recorded");
+    await assert.rejects(f.fetch(url, { body: JSON.stringify(make({ max_tokens: 32 })) }), /Anomaly/);
   } finally { f.dispose(); }
 });
