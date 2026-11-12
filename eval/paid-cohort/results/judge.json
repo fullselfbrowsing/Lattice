@@ -1,0 +1,619 @@
+{
+  "version": "paid-judge/v1",
+  "stage": "J",
+  "protocolHash": "f97718e16711e2c5460c8c65b4df8d3f6806a40b8f9810794ba491e9e91db60d",
+  "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+  "generation": {
+    "temperature": 0,
+    "max_tokens": 2048,
+    "reasoning": {
+      "max_tokens": 1024
+    }
+  },
+  "rows": [
+    {
+      "id": "anthropic/claude-sonnet-5.5:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "anthropic/claude-sonnet-5.5",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": false,
+      "error": "Provider transport failed; evaluation halted and reservation retained: The operation was aborted due to timeout",
+      "wallMs": 180005.885583,
+      "calls": [
+        {
+          "bodyHash": "5fa9347ff1796973d40f3b847dd93ca44966cbb9f16582471721cce1d42b9a4f",
+          "model": "x-ai/grok-4.7",
+          "status": null,
+          "httpMs": 180004.63370799998,
+          "costUsd": null,
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.075055,
+          "transportError": "The operation was aborted due to timeout"
+        }
+      ],
+      "judgeValid": false,
+      "judgeWrappedJson": false,
+      "parsed": false
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "anthropic/claude-sonnet-5.5",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 26580.874958,
+      "calls": [
+        {
+          "bodyHash": "126dd105b67f69cea4d9a403dc4f0bdaeeb75ee8f1f4cfc98c889398e3f77335",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 26578.296708,
+          "costUsd": 0.01163,
+          "promptTokens": 1483,
+          "completionTokens": 1444,
+          "reasoningTokens": 959,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794508498-tuz4XqKe7GQUlakh5kvV",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.043094375000000004,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8875,
+          "standardCostUsd": 0.0123715
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "claim": "The wettest part of Texas is the east and southeast",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Average annual precipitation ranges from the lowest in the west up to the highest in the southeast",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The Piney Woods in eastern Texas receives the most rainfall",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The far east of the Piney Woods gets the most rainfall",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Gulf currents carry humid air to the region causing the rainfall",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Southeast Texas receives more rain than other parts of the state",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The Golden Triangle averages 60 inches (1,500 mm) per year",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Other parts of Southeast Texas still exceed 40 inches (1,000 mm) per year",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Some parts of southeast Texas average the most per year in the state, in contrast with El Paso in the west",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "Alvin recorded 42 inches (1,067 mm) in 24 hours during Tropical Storm Claudette in 1979",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The passages do not name a single definitive wettest location",
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        },
+        {
+          "claim": "Some exact figures for the Piney Woods are missing from the text",
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "openai/gpt-6.1-sol:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "openai/gpt-6.1-sol",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 29418.457125,
+      "calls": [
+        {
+          "bodyHash": "d0571bb2520c8a6c04c926ab6182d6a7b224e465cf590003fd439b11df5332ef",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 29417.191125,
+          "costUsd": 0.016918,
+          "promptTokens": 2513,
+          "completionTokens": 2270,
+          "reasoningTokens": 2176,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794508525-mQyCWGN1ULDUUy0PVA6C",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.071645,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8185,
+          "standardCostUsd": 0.0205106
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "openai/gpt-6.1-sol:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "openai/gpt-6.1-sol",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 18815.736042000004,
+      "calls": [
+        {
+          "bodyHash": "9921e89cd617936e0994bfd25ef6fcc92ac709f8caccf78c6e65d75019b251c1",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 18814.531458999998,
+          "costUsd": 0.006722,
+          "promptTokens": 1317,
+          "completionTokens": 980,
+          "reasoningTokens": 815,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794508554-BG3MfN1Q3w8Q9fnInVTy",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.040963125,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8193,
+          "standardCostUsd": 0.0091725
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "claim": "Eastern and southeastern Texas receive the most rain",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The Piney Woods is identified as the wettest region",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The far eastern areas of the Piney Woods receive the most rainfall",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The Golden Triangle in Southeast Texas averages about 60 inches (1,500 mm) of rain annually",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "google/gemini-4-carbon:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "google/gemini-4-carbon",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 20013.175875,
+      "calls": [
+        {
+          "bodyHash": "1cef0a7cfe3e08f3ce84cb91bcc9c7ca8cfe5c5c63a9fc3a74adca67e230df5f",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 20011.78154200001,
+          "costUsd": 0.013814,
+          "promptTokens": 2530,
+          "completionTokens": 1747,
+          "reasoningTokens": 1613,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794508573-hXHtrWyzJR6S9drBQ17I",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.07211999999999999,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8280,
+          "standardCostUsd": 0.017096200000000002
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "google/gemini-4-carbon:db7afb6d8bb7b11b102ea541ffc043e6a75bc60ca598893b1f74784ed0ae4690",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "google/gemini-4-carbon",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 14791.999750000003,
+      "calls": [
+        {
+          "bodyHash": "f16fb6b64d34b8f25a3598f69831f87ff2b962fbfc5d29409b446f123407958c",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 14790.765333999996,
+          "costUsd": 0.005324,
+          "promptTokens": 1335,
+          "completionTokens": 741,
+          "reasoningTokens": 623,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794508593-JmBtKfzsP29yaEMMmYws",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.041260000000000005,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 8288,
+          "standardCostUsd": 0.0077835000000000005
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "anthropic/claude-sonnet-5.5",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": false,
+      "error": "Provider transport failed; evaluation halted and reservation retained: The operation was aborted due to timeout",
+      "wallMs": 180003.098084,
+      "calls": [
+        {
+          "bodyHash": "9356d3c6d929c0d8dfd5644ad5774e6bd394a0570179463d46caef2e00938039",
+          "model": "x-ai/grok-4.7",
+          "status": null,
+          "httpMs": 180002.70395800003,
+          "costUsd": null,
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.06977499999999999,
+          "transportError": "The operation was aborted due to timeout"
+        }
+      ],
+      "judgeValid": false,
+      "judgeWrappedJson": false,
+      "parsed": false
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "anthropic/claude-sonnet-5.5",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 25680.867584,
+      "calls": [
+        {
+          "bodyHash": "a7925baf613eab1fd6675736fe05803af4ab96d27bc27335f55f1eb20fd4a260",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 25678.719125,
+          "costUsd": 0.010532,
+          "promptTokens": 1420,
+          "completionTokens": 1282,
+          "reasoningTokens": 1062,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794508790-3SgmeZRI0Bisampqjhqd",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.03979437500000001,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 7819,
+          "standardCostUsd": 0.011242
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "claim": "There are more than 2,800 Jimmy John's locations after 35 years in business",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "There are no Jimmy John's locations in Alaska, Connecticut, Hawaii, Maine, New Hampshire, Rhode Island and Vermont",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "As of March 2017 there were almost 3,000 Jimmy John's stores",
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "claim": "The passages give no single definitive worldwide count of Jimmy John's locations",
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        },
+        {
+          "claim": "The passages do not give a current worldwide total",
+          "supported": true,
+          "cited": false,
+          "citationCount": 0,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    },
+    {
+      "id": "openai/gpt-6.1-sol:cde9271b4dc8628960da581ca4426b1668525a06f6e037d5ca10e053fd05ff1d",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "openai/gpt-6.1-sol",
+      "status": "finished",
+      "suite": "citation-judge",
+      "ok": true,
+      "error": null,
+      "wallMs": 65516.729083,
+      "calls": [
+        {
+          "bodyHash": "6bffe232b51eac18b450990dc4ef247c3596531557505227f6352198327dd559",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 65514.50675,
+          "costUsd": 0.033886,
+          "promptTokens": 2504,
+          "completionTokens": 5101,
+          "reasoningTokens": 5047,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794508815-6mAjT6aqdv9vZu5WGCKp",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.068355,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 7527,
+          "standardCostUsd": 0.039175400000000006
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        },
+        {
+          "supported": false,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true
+    }
+  ],
+  "budget": {
+    "limitUsd": 17,
+    "confirmedUsd": 1.5247312000000004,
+    "chargedOrReservedUsd": 1.9992447,
+    "requests": 227,
+    "unresolvedRequests": 4,
+    "halted": "Anomaly: completion_tokens 5101 exceeds 1.25 x max_tokens 2048 + 32; cohort halted."
+  },
+  "stopped": "Anomaly: completion_tokens 5101 exceeds 1.25 x max_tokens 2048 + 32; cohort halted."
+}

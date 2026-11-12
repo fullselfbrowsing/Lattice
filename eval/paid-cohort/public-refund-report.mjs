@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import * as L from "../../packages/lattice/dist/index.js";
 import { CASES } from "../public-refund/cases.mjs";
 import { gradeReview, verifyBundle, integrityControls } from "../public-refund/workflow.mjs";
-import { ROOT, COUNTS, TESTED_MODELS, REFUND_INPUTS, paths, readJSON, writeJSON, atomicWrite, jsonHash, sha, codeHashes } from "./common.mjs";
+import { ROOT, COUNTS, TESTED_MODELS, REFUND_INPUTS, paths, readJSON, writeJSON, atomicWrite, jsonHash, sha, codeHashes, frozenCodeHashes } from "./common.mjs";
 
 const dirs = paths();
 const OUT = join(dirs.out, "public-refund"), PRIVATE = join(dirs.priv, "public-refund");
@@ -14,7 +14,7 @@ const inputs = readJSON(REFUND_INPUTS);
 assert.equal(jsonHash(protocol), live.protocolHash);
 assert.equal(jsonHash(trust), live.trustAnchorHash);
 assert.equal(jsonHash(inputs), protocol.inputs.refundInputHash);
-assert.deepEqual(codeHashes(), protocol.codeHashes, "frozen code changed");
+assert.deepEqual(codeHashes(), frozenCodeHashes(paths().out, protocol), "frozen code changed");
 const keys = L.createMemoryKeySet([trust]);
 const checked = [];
 let controlSource;

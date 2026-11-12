@@ -1,0 +1,14 @@
+{
+  "kid": "paid-public-refund-20261112",
+  "publicKeyJwk": {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "MM3rJAgT5TcUXmF06sBOBdYEsruUihzHeFFKdTr94BU",
+    "kty": "OKP"
+  },
+  "state": "active"
+}

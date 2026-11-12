@@ -75,6 +75,13 @@ A stage that stops can be re-run with the same command; finished rows are kept a
 - Every row is written as `started` before its call and replaced when it finishes. After a crash a `started` row becomes `interrupted`, stays in the denominator and is never retried. Every egress request body is kept for verification. Array message content is converted to text the same way the SDK does.
 - Smoke is infrastructure only: HTTP 200, cost present, completion within the cap, cost within the reservation, receipt verified, smoke complete. Answer format is a measured outcome and never gates a run.
 - Preregistered judge rule: a judge that fails its probes (infrastructure, unparseable answer or failed sanity check) is excluded from stage J and recorded in `smoke-judge.json`. The judge gate passes if at least one judge passes. With one judge excluded there is no inter-judge kappa.
+- **Amendment A1** (Nov 12, decided by Lakshman Turlapati): `x-ai/grok-4.7` was excluded from stage J for infrastructure reasons, after 5 of its calls.
+  - Two calls timed out at 180 s.
+  - One returned 5,101 completion tokens against a 2,048-token cap. Its reasoning ignored the 1,024-token budget, using 2,176, 1,613 and 5,047 tokens.
+  - The decision was made before any further judging.
+  - Grok's 5 rows are kept and reported, but not used in any table.
+  - The remaining answers are judged by `qwen/qwen3.8-max-0902` alone, so there is no agreement between judges.
+  - The amendment is recorded in `results/amendments.json` with the code hashes in force; `protocol.json` is unchanged.
 - The derived prompt-only arm comes from the same answers as the contract arm, so it is not an independent sample. Arm differences must not be compared across cohorts.
 - `parity.test.mjs` checks, read-only against the private caches (skipped with a reason when absent), that every stage A, stage B and smoke request, with the model id swapped, is byte-identical to the request the free cohorts sent.
 

@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { parseJudge } from "../realworld/scripts/free-judge-utils.mjs";
 import {
   BASE, CAPS, EXPECTED_PER_CALL_USD, JUDGE_MODELS, CACHE, bootstrap, admitStage, finishStage, requireGates, ceilingFor, estimateTokens,
-  newActive, readStages, readJSON, writeJSON, scrub, sha, responded, smokeVerdict, directCall, NotAdmitted,
+  newActive, readStages, readJSON, writeJSON, scrub, sha, responded, smokeVerdict, directCall, NotAdmitted, activeJudges, readAmendments,
 } from "./common.mjs";
 
 // Copied verbatim from the free-cohort judge (dry-run.test.mjs checks it against the source).
@@ -22,7 +22,7 @@ async function main() {
   const { dirs, control } = ctx;
   const FILE = MODE === "probe" ? "smoke-judge" : "judge";
   const OUT = join(dirs.out, FILE + ".json"), PRIVATE = join(dirs.priv, FILE + "-private.json");
-  let out, privateRows = [], admittedOk = false;
+  let out, privateRows = [], admittedOk = false, judges = JUDGE_MODELS;
   const save = () => { if (out) { out.budget = ctx.budget.summary(); out.stopped = control.stopped; writeJSON(OUT, out); writeJSON(PRIVATE, privateRows); } };
 
   async function evaluate({ id, judge, targetModel, example, candidate }) {
@@ -53,15 +53,17 @@ async function main() {
     const examples = new Map(readFileSync(resolve(CACHE, "citation-split/evaluation.jsonl"), "utf8").trim().split("\n").map(JSON.parse).map((r) => [r.id, r]));
     let pending = [];
     let probes = [];
-    let judges = JUDGE_MODELS;
     if (MODE === "probe") {
       const example = { question: "What is the refund window?", docs: [{ id: "s1", title: "Policy", text: "Refunds are accepted within 30 days." }], answers: ["30 days"], qa_pairs: [] };
       probes = [["supported", 30, true], ["contradicted", 90, false]].map(([id, days, expected]) => ({ id, expected, example,
         candidate: { answer: `The refund window is ${days} days [s1].`, citations: [{ source: "s1" }] } }));
     } else {
       requireGates(ctx, ["smoke-citations", "smoke-judge"]);
-      // Preregistered: a judge that failed its probes is excluded from stage J.
-      judges = readJSON(join(dirs.out, "smoke-judge.json")).passedJudges;
+      // Preregistered: a judge that failed its probes is excluded from stage J. A disclosed amendment
+      // (results/amendments.json) may exclude a judge later for an infrastructure reason; its earlier
+      // rows are kept and reported, but leave the stage denominator.
+      judges = activeJudges(dirs.out, readJSON(join(dirs.out, "smoke-judge.json")).passedJudges);
+      if (!judges.length) throw new Error("No active judge remains.");
       const stageB = readStages(dirs.out).B;
       if (!stageB?.complete) throw new Error("Stage B must be complete before judging.");
       const live = readJSON(join(dirs.out, "citations-live.json"));
@@ -105,8 +107,11 @@ async function main() {
   } finally {
     if (admittedOk) {
       const rows = out?.rows ?? [];
-      const stagePlanned = readStages(dirs.out)[STAGE]?.admission?.planned ?? rows.length;
-      const finished = await finishStage(ctx, { planned: stagePlanned, attempted: rows.length, respondedCount: rows.filter(responded).length });
+      const counted = MODE === "probe" ? rows : rows.filter((r) => judges.includes(r.judge));
+      const stagePlanned = readStages(dirs.out)[STAGE]?.admission?.planned ?? counted.length;
+      const amendments = MODE === "probe" ? [] : readAmendments(dirs.out).map((a) => a.id);
+      const finished = await finishStage(ctx, { planned: stagePlanned, attempted: counted.length, respondedCount: counted.filter(responded).length,
+        extra: MODE === "probe" ? {} : { activeJudges: judges, amendments, excludedJudgeRows: rows.length - counted.length } });
       if (MODE === "probe" && out) {
         // Preregistered rule: a judge failing any of its probes (infrastructure, parse or sanity) is excluded from
         // stage J and recorded here. The gate passes if the probes completed and at least one judge passes.

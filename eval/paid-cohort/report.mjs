@@ -1,7 +1,7 @@
 // Final report: summary.json and summary.md, plus the validity verdict. Writes under PAID_OUT_DIR in a dry run.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { TESTED_MODELS, JUDGE_MODELS, paths, readJSON, writeJSON, atomicWrite, readStages, responded } from "./common.mjs";
+import { TESTED_MODELS, JUDGE_MODELS, paths, readJSON, writeJSON, atomicWrite, readStages, responded, readAmendments, activeJudges } from "./common.mjs";
 
 const dirs = paths();
 const OUT = dirs.out;
@@ -65,8 +65,16 @@ const strictLabel = (j) => !!(j?.judgeValid && j.answerCorrect && !j.abstained &
 
 function citationQuality() {
   if (!B || !J) return null;
+  // Judges that passed the probes and were not excluded by an amendment. Rows from an excluded
+  // judge are kept and reported as a partial, but no table or agreement statistic uses them.
+  const smokeJudge = (() => { try { return readJSON(join(OUT, "smoke-judge.json")); } catch { return null; } })();
+  const active = activeJudges(OUT, smokeJudge?.passedJudges ?? JUDGE_MODELS);
+  const excluded = JUDGE_MODELS.filter((j) => !active.includes(j)).map((judge) => {
+    const rows = J.rows.filter((r) => r.judge === judge);
+    return { judge, rows: rows.length, valid: rows.filter((r) => r.judgeValid).length, note: "excluded by a disclosed amendment or its probes; partial rows not used" };
+  });
   const judged = (judge, model, id) => J.rows.find((r) => r.judge === judge && r.id === model + ":" + id);
-  const perJudge = JUDGE_MODELS.map((judge) => ({ judge, models: TESTED_MODELS.map((model) => {
+  const perJudge = active.map((judge) => ({ judge, models: TESTED_MODELS.map((model) => {
     const rows = B.rows.filter((r) => r.model === model && r.suite === "citations");
     const live = rows.filter((r) => r.usableAnswer && strictLabel(judged(judge, model, r.id))).length;
     const derived = rows.filter((r) => r.promptOnlyFormatValid && strictLabel(judged(judge, model, r.id))).length;
@@ -74,12 +82,13 @@ function citationQuality() {
       formatValidPromptOnly: rows.filter((r) => r.promptOnlyFormatValid).length,
       judged: rows.filter((r) => judged(judge, model, r.id)?.judgeValid).length, strictLiveContract: live, strictDerivedPromptOnly: derived };
   }) }));
+  if (active.length < 2) return { perJudge, excluded, kappa: { items: 0, strictLabel: null, answerCorrect: null, note: "Not available: one active judge." } };
   const ids = [...new Set(J.rows.map((r) => r.id))];
-  const both = ids.filter((id) => JUDGE_MODELS.every((j) => J.rows.find((r) => r.judge === j && r.id === id)?.judgeValid));
+  const both = ids.filter((id) => active.every((j) => J.rows.find((r) => r.judge === j && r.id === id)?.judgeValid));
   const labels = (j, f) => both.map((id) => f(J.rows.find((r) => r.judge === j && r.id === id)));
-  return { perJudge, kappa: { items: both.length,
-    strictLabel: cohensKappa(labels(JUDGE_MODELS[0], strictLabel), labels(JUDGE_MODELS[1], strictLabel)),
-    answerCorrect: cohensKappa(labels(JUDGE_MODELS[0], (r) => r.answerCorrect), labels(JUDGE_MODELS[1], (r) => r.answerCorrect)) } };
+  return { perJudge, excluded, kappa: { items: both.length,
+    strictLabel: cohensKappa(labels(active[0], strictLabel), labels(active[1], strictLabel)),
+    answerCorrect: cohensKappa(labels(active[0], (r) => r.answerCorrect), labels(active[1], (r) => r.answerCorrect)) } };
 }
 
 function latency() {
@@ -114,6 +123,7 @@ const verdict = validity({ stages: Object.fromEntries(Object.entries(stages).map
 const summary = { generatedAt: new Date().toISOString(), verdict: verdict.valid ? "VALID" : "INVALID", validity: verdict,
   completion: completion(), publicRecord: A, citations: citationQuality(), receipts, latency: latency(), spend: spend(),
   priceChecks: Object.fromEntries(Object.entries(stages).map(([k, s]) => [k, s.priceChecks ?? []])),
+  amendments: readAmendments(OUT).map(({ id, decidedAt, decidedBy, reason, changes }) => ({ id, decidedAt, decidedBy, reason, changes })),
   note: "Paid cohort, separate from and never pooled with the free cohorts. Judges are not human validated. Validity depends on completion and receipts only." };
 writeJSON(join(OUT, "summary.json"), summary);
 
@@ -127,8 +137,10 @@ if (summary.citations) {
   md.push("## Citation quality (strict: correct, not abstained, every claim supported and cited)", "");
   for (const j of summary.citations.perJudge) md.push(`Judge ${j.judge}`, "", "| Model | Planned | Judged | Strict, live contract | Strict, derived prompt-only |", "| --- | --- | --- | --- | --- |",
     ...j.models.map((m) => `| ${m.model} | ${m.planned} | ${m.judged} | ${m.strictLiveContract} | ${m.strictDerivedPromptOnly} |`), "");
-  md.push(`Cohen's kappa between judges over ${summary.citations.kappa.items} items: strict label ${f(summary.citations.kappa.strictLabel)}, answer correct ${f(summary.citations.kappa.answerCorrect)}.`, "");
+  md.push(summary.citations.kappa.note ? `Agreement between judges: ${summary.citations.kappa.note}` : `Cohen's kappa between judges over ${summary.citations.kappa.items} items: strict label ${f(summary.citations.kappa.strictLabel)}, answer correct ${f(summary.citations.kappa.answerCorrect)}.`, "");
+  for (const x of summary.citations.excluded) md.push(`Excluded judge ${x.judge}: ${x.rows} partial rows (${x.valid} valid), not used in any table.`, "");
 }
+if (summary.amendments.length) md.push("## Protocol amendments", "", ...summary.amendments.map((a) => `- **${a.id}** (${a.decidedAt}, decided by ${a.decidedBy}): ${a.reason}`), "");
 md.push("## Receipts", "", `Successful runs with verified receipts: ${receipts.verified}/${receipts.successful}.`, "");
 if (summary.latency) md.push("## Latency (median wall ms)", "", "| Model | Direct | Unsigned | Signed | Signed minus direct |", "| --- | --- | --- | --- | --- |",
   ...summary.latency.map((l) => `| ${l.model} | ${f(l.arms.direct.medianWallMs, 0)} | ${f(l.arms.unsigned.medianWallMs, 0)} | ${f(l.arms.signed.medianWallMs, 0)} | ${f(l.signedMinusDirectWallMs, 0)} |`), "");

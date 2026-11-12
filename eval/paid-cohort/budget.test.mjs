@@ -138,3 +138,18 @@ test("standard endpoints exclude the opt-in priority, fast and ultrafast tiers",
   assert.ok(Math.abs(cost - (1000 * 0.0000022 + 100 * 0.000011)) < 1e-12);
   assert.equal(standardUsageCost({ promptTokens: null, completionTokens: 5 }, eps), null);
 });
+
+test("amendments: code hashes in force and judge exclusions", async () => {
+  const { mkdtempSync: mk, writeFileSync: wf, rmSync: rm } = await import("node:fs");
+  const { readAmendments, frozenCodeHashes, activeJudges } = await import("./common.mjs");
+  const dir = mk(join(tmpdir(), "paid-amend-"));
+  try {
+    const protocol = { codeHashes: { "a.mjs": "1" } };
+    assert.deepEqual(readAmendments(dir), []);
+    assert.deepEqual(frozenCodeHashes(dir, protocol), { "a.mjs": "1" });
+    assert.deepEqual(activeJudges(dir, ["j1", "j2"]), ["j1", "j2"]);
+    wf(join(dir, "amendments.json"), JSON.stringify({ amendments: [{ id: "A1", changes: { excludedJudges: ["j1"] }, codeHashes: { "a.mjs": "2" } }] }));
+    assert.deepEqual(frozenCodeHashes(dir, protocol), { "a.mjs": "2" });
+    assert.deepEqual(activeJudges(dir, ["j1", "j2"]), ["j2"]);
+  } finally { rm(dir, { recursive: true }); }
+});

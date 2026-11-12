@@ -199,13 +199,37 @@ export function priceChanges(frozenMax, currentMax) {
   return { increases, decreases };
 }
 
+/**
+ * Disclosed protocol amendments (results/amendments.json), applied in order. Each records its
+ * reason, evidence, decision and the code hashes in force after it. protocol.json is never
+ * edited, so results produced before an amendment keep their protocol hash.
+ */
+export function readAmendments(outDir) {
+  const path = join(outDir, "amendments.json");
+  if (!existsSync(path)) return [];
+  const list = readJSON(path).amendments ?? [];
+  if (!Array.isArray(list)) throw new Error("Invalid amendments file.");
+  return list;
+}
+/** Code hashes in force: the latest amendment's, otherwise the frozen protocol's. */
+export function frozenCodeHashes(outDir, protocol) {
+  const withHashes = readAmendments(outDir).filter((a) => a.codeHashes);
+  return withHashes.length ? withHashes.at(-1).codeHashes : protocol.codeHashes;
+}
+/** Judges still active: passed the preregistered probes and not excluded by an amendment. */
+export function activeJudges(outDir, passedJudges) {
+  const excluded = new Set(readAmendments(outDir).flatMap((a) => a.changes?.excludedJudges ?? []));
+  return passedJudges.filter((judge) => !excluded.has(judge));
+}
+
 export function freezeProtocol(outDir, snapshot, accountBefore) {
   const fields = strictFields();
   const path = join(outDir, "protocol.json");
   if (existsSync(path)) {
     const protocol = readJSON(path);
     for (const key of Object.keys(fields)) {
-      if (jsonHash(protocol[key] ?? null) !== jsonHash(fields[key] ?? null)) throw new Error("Frozen " + key + " changed. Existing cohort will not be extended.");
+      const frozen = key === "codeHashes" ? frozenCodeHashes(outDir, protocol) : protocol[key];
+      if (jsonHash(frozen ?? null) !== jsonHash(fields[key] ?? null)) throw new Error("Frozen " + key + " changed. Existing cohort will not be extended.");
     }
     const changes = priceChanges(protocol.priceSnapshot, snapshot.max);
     const standard = priceChanges(protocol.standardPriceSnapshot ?? {}, snapshot.standardMax ?? {});
