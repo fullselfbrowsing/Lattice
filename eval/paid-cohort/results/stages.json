@@ -251,22 +251,27 @@
         "at": "2026-11-12T18:41:24.071Z",
         "increases": 0,
         "decreases": []
+      },
+      {
+        "at": "2026-11-12T18:58:35.779Z",
+        "increases": 0,
+        "decreases": []
       }
     ],
     "admission": {
-      "at": "2026-11-12T18:41:24.490Z",
-      "ceilingUsd": 9.323193600000002,
+      "at": "2026-11-12T18:58:36.456Z",
+      "ceilingUsd": 4.740576000000001,
       "remainingUsd": 15.0007553,
-      "balanceUsd": 18.351940296,
-      "admitted": false,
-      "planned": 304
+      "balanceUsd": 18.318054296,
+      "admitted": true,
+      "planned": 152
     },
-    "admitted": false,
-    "planned": 0,
-    "attempted": 0,
-    "responded": 0,
-    "stopped": "Not admitted: worst case exceeds ledger or balance.",
-    "complete": false,
+    "admitted": true,
+    "planned": 152,
+    "attempted": 152,
+    "responded": 152,
+    "stopped": null,
+    "complete": true,
     "sessions": [
       {
         "startedAt": "2026-11-12T18:31:08.192Z",
@@ -348,10 +353,143 @@
         "ledgerConfirmedDeltaUsd": 0.04441800000000007,
         "ledgerChargedDeltaUsd": 0.04441800000000007,
         "accountDeltaUsd": 0.025560000000002248
+      },
+      {
+        "startedAt": "2026-11-12T18:58:36.401Z",
+        "accountBefore": {
+          "at": "2026-11-12T18:58:36.456Z",
+          "keyUsage": 1.60078753,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 21.681945704,
+          "balanceUsd": 18.318054296
+        },
+        "confirmedBeforeUsd": 1.5247312000000004,
+        "chargedBeforeUsd": 1.9992447,
+        "endedAt": "2026-11-12T19:40:57.939Z",
+        "accountAfter": {
+          "at": "2026-11-12T19:40:57.939Z",
+          "keyUsage": 2.62607953,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 22.707237704,
+          "balanceUsd": 17.292762296
+        },
+        "confirmedAfterUsd": 2.5619232000000007,
+        "chargedAfterUsd": 3.036436699999998,
+        "ledgerConfirmedDeltaUsd": 1.0371920000000003,
+        "ledgerChargedDeltaUsd": 1.0371919999999981,
+        "accountDeltaUsd": 1.0252920000000003
       }
     ],
-    "ledgerConfirmedUsd": 0.09882600000000008,
-    "ledgerChargedUsd": 0.2436560000000001,
-    "accountDeltaUsd": 0.07996800000000093
+    "ledgerConfirmedUsd": 1.1360180000000004,
+    "ledgerChargedUsd": 1.2808479999999982,
+    "accountDeltaUsd": 1.1052600000000012,
+    "activeJudges": [
+      "qwen/qwen3.8-max-0902"
+    ],
+    "amendments": [
+      "A1"
+    ],
+    "excludedJudgeRows": 5
+  },
+  "C": {
+    "priceChecks": [
+      {
+        "at": "2026-11-12T19:41:36.872Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "admission": {
+      "at": "2026-11-12T19:41:37.538Z",
+      "ceilingUsd": 2.0722614,
+      "remainingUsd": 13.963563300000002,
+      "balanceUsd": 17.280862296,
+      "admitted": true,
+      "planned": 120,
+      "suite": "transport"
+    },
+    "admitted": true,
+    "planned": 408,
+    "attempted": 408,
+    "responded": 397,
+    "stopped": null,
+    "complete": true,
+    "sessions": [
+      {
+        "startedAt": "2026-11-12T19:41:37.487Z",
+        "accountBefore": {
+          "at": "2026-11-12T19:41:37.538Z",
+          "keyUsage": 2.63797953,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 22.719137704,
+          "balanceUsd": 17.280862296
+        },
+        "confirmedBeforeUsd": 2.5619232000000007,
+        "chargedBeforeUsd": 3.036436699999998,
+        "endedAt": "2026-11-12T20:08:10.710Z",
+        "accountAfter": {
+          "at": "2026-11-12T20:08:10.710Z",
+          "keyUsage": 3.04161553,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 23.122773704,
+          "balanceUsd": 16.877226296
+        },
+        "confirmedAfterUsd": 2.971993199999982,
+        "chargedAfterUsd": 3.837570199999979,
+        "ledgerConfirmedDeltaUsd": 0.41006999999998106,
+        "ledgerChargedDeltaUsd": 0.8011334999999811,
+        "accountDeltaUsd": 0.4036359999999988
+      }
+    ],
+    "ledgerConfirmedUsd": 0.41006999999998106,
+    "ledgerChargedUsd": 0.8011334999999811,
+    "accountDeltaUsd": 0.4036359999999988,
+    "suites": [
+      {
+        "name": "transport",
+        "planned": 120,
+        "admission": {
+          "admitted": true,
+          "admittedWithStage": true
+        }
+      },
+      {
+        "name": "privacy",
+        "planned": 60,
+        "admission": {
+          "at": "2026-11-12T19:47:56.717Z",
+          "ceilingUsd": 1.0361307,
+          "remainingUsd": 13.829388800000006,
+          "balanceUsd": 17.182088296,
+          "admitted": true
+        }
+      },
+      {
+        "name": "agents",
+        "planned": 30,
+        "admission": {
+          "at": "2026-11-12T19:51:54.905Z",
+          "ceilingUsd": 5.204561999999999,
+          "remainingUsd": 13.694087300000005,
+          "balanceUsd": 17.114860296,
+          "admitted": true
+        }
+      },
+      {
+        "name": "latency",
+        "planned": 198,
+        "admission": {
+          "at": "2026-11-12T19:57:03.326Z",
+          "ceilingUsd": 3.41923131,
+          "remainingUsd": 13.462678300000004,
+          "balanceUsd": 17.011310296,
+          "admitted": true
+        }
+      }
+    ]
   }
 }
