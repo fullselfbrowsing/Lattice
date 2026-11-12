@@ -18,7 +18,7 @@ OpenRouter ignores `temperature` for the Claude and GPT models, so these runs ar
 | A | `public-refund.mjs` | 3 models, 4 published decisions, 2 repetitions, cap 4096 | 24 |
 | B | `validated-live.mjs B` | First 60 evaluation questions, contract arm live, cap 4096 | 180 |
 | J | `judge.mjs full` | Each judge scores every format-valid stage B answer, cap 2048 | 2 per valid answer |
-| C | `validated-live.mjs C` | Per model: transport 40 (two arms), privacy 20, agent 5, crew 5, latency 20 per arm plus 2 warmups per arm. Caps 1024, agent and crew 2048. | 528 |
+| C | `validated-live.mjs C` | Per model: transport 20 per arm (direct and signed, 40 cases), privacy 20, agent 5, crew 5, latency 20 per arm plus 2 warmups per arm. Caps 1024, agent and crew 2048. Admitted suite by suite. | 408 |
 
 Stage B runs only the contract arm. The prompt-only arm sends an identical request, so its outcome is derived offline from the same retained raw answer (`promptOnlyFormatValid`). Inputs must be identical to the free cohorts': the public-record inputs hash must equal the free protocol's `inputHash`, and the citation manifest and split hashes must equal those in `validated-free-full.json`. Freezing refuses otherwise.
 
@@ -42,6 +42,9 @@ Stage B runs only the contract arm. The prompt-only arm sends an identical reque
 5. Stage A: `node eval/paid-cohort/public-refund.mjs`, then `node eval/paid-cohort/public-refund-report.mjs`.
 6. Stage B: `node eval/paid-cohort/validated-live.mjs B`; stage J: `node eval/paid-cohort/judge.mjs full`.
 7. Stage C if admitted: `node eval/paid-cohort/validated-live.mjs C`.
+   - Its suites are admitted one by one in a fixed order: transport, privacy, agents, latency.
+   - Each suite starts only if its own worst case fits what remains; once one is not admitted, no later suite runs.
+   - An admitted suite must complete, and stage C's denominator is the admitted suites.
 8. Report: `node eval/paid-cohort/report.mjs` writes `results/summary.json` and `results/summary.md` and prints VALID or INVALID.
 9. Reconcile: the report lists, per stage, the ledger spend against the change in the OpenRouter account balance. Confirm the two agree to within a few cents.
 
@@ -56,10 +59,18 @@ A stage that stops can be re-run with the same command; finished rows are kept a
   - Per-request reservations use the most expensive listed endpoint, including the opt-in priority, fast and ultrafast tiers, so the ledger limit holds however OpenRouter routes a call.
   - Stage admission uses only standard endpoints, because no request asks for an opt-in tier (the observer forbids `service_tier` and `provider`).
   - A call billed above 1.5 times its reported usage at standard prices pauses the stage for inspection.
+- Provider-added prompts: requests allow 512 extra prompt tokens for the tested models and 2,048 for the judges.
+  - Smoke showed no hidden prompt for the tested models; xAI added about 1,000 tokens to a judge request.
+  - Reservations, admission and the prompt-token anomaly bound all include this allowance.
 - Attempt 1 is archived in `results-archive/attempt-1-smoke/`.
   - Its smoke run passed, but admission then priced GPT-6.1 Sol at its ultrafast tier ($12/$60 per million tokens), which would have refused stage B.
   - The tier rule above was added and the protocol re-frozen before any cohort stage ran.
   - The ledger keeps the attempt's $0.0129.
+- Attempt 2 is archived in `results-archive/attempt-2-judge-probe/`.
+  - Its smoke run passed again.
+  - The first judge probe then halted the ledger: Grok reported 1,469 prompt tokens for a 1,194-byte request, because xAI adds a hidden system prompt. The call cost $0.0027 against a reservation of about $0.03.
+  - The prompt allowance above was added and the protocol re-frozen.
+  - The halt is kept under `resolvedHalts` in the ledger, which still holds every charge.
 - A response whose usage cannot be legitimate halts the cohort permanently, with the request already recorded: completion tokens above 1.25 x `max_tokens` + 32, or prompt tokens above the request's token bound used for the reservation.
 - Every row is written as `started` before its call and replaced when it finishes. After a crash a `started` row becomes `interrupted`, stays in the denominator and is never retried. Every egress request body is kept for verification. Array message content is converted to text the same way the SDK does.
 - Smoke is infrastructure only: HTTP 200, cost present, completion within the cap, cost within the reservation, receipt verified, smoke complete. Answer format is a measured outcome and never gates a run.

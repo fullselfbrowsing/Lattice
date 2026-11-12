@@ -11,6 +11,15 @@ export const ADMIT_RESERVE_USD = 0.5;
 /** Safety factor on every per-request and per-stage worst case. */
 export const BOUND_MARGIN = 1.25;
 export const INPUT_MARGIN = 1.35;
+/**
+ * Prompt tokens a provider may add on its side (a hidden system prompt; xAI added about 1,000 in
+ * smoke). They are billed, so reservations, admission and the anomaly bound all allow for them.
+ */
+export const PROVIDER_PROMPT_OVERHEAD_TOKENS = 2048;
+/** The tested models showed no provider-added prompt in smoke (prompt tokens matched the text). */
+const LOW_OVERHEAD_MODELS = new Set(["anthropic/claude-sonnet-5.5", "openai/gpt-6.1-sol", "google/gemini-4-carbon"]);
+export const TESTED_PROMPT_OVERHEAD_TOKENS = 512;
+export const promptOverheadTokens = (model) => LOW_OVERHEAD_MODELS.has(model) ? TESTED_PROMPT_OVERHEAD_TOKENS : PROVIDER_PROMPT_OVERHEAD_TOKENS;
 
 /**
  * Persist reservations before egress. A crash, an unknown charge or a charge above
@@ -114,7 +123,7 @@ export function maxPrices(endpoints) {
 }
 
 /**
- * ((request bytes + 1000 per image part) x max input price
+ * ((request bytes + 1000 per image part + provider prompt overhead) x max input price
  *   + maxTokens x max(completion, internal_reasoning) + request fee) x 1.25.
  * A byte is never fewer tokens than the text it came from, so this cannot undercut a
  * response that stays within max_tokens.
@@ -123,12 +132,13 @@ export function requestBound(body, endpoints, maxTokens) {
   if (!Number.isSafeInteger(maxTokens) || maxTokens < 1) throw new TypeError("Invalid request limits.");
   const max = maxPrices(endpoints);
   const text = typeof body === "string" ? body : JSON.stringify(body);
-  let images = 0;
+  let images = 0, model = null;
   try {
     const parsed = typeof body === "string" ? JSON.parse(body) : body;
+    model = parsed?.model ?? null;
     images = (parsed?.messages ?? []).flatMap((m) => Array.isArray(m?.content) ? m.content : []).filter((p) => p?.type === "image_url").length;
   } catch { /* the byte length alone is then used */ }
-  const input = (Buffer.byteLength(text) + 1000 * images) * Math.max(max.prompt, max.input_cache_write);
+  const input = (Buffer.byteLength(text) + 1000 * images + promptOverheadTokens(model)) * Math.max(max.prompt, max.input_cache_write);
   const output = maxTokens * Math.max(max.completion, max.internal_reasoning);
   const bound = (input + output + max.request + images * max.image) * BOUND_MARGIN;
   return Math.max(0.000001, bound);

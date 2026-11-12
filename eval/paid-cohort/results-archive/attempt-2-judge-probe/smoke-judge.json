@@ -1,0 +1,97 @@
+{
+  "version": "paid-judge/v1",
+  "stage": "smoke-judge",
+  "protocolHash": "1bc32966ef55740c80eb93f919cf10c91ae2e4158e80779b0ad0b27f60a48758",
+  "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+  "generation": {
+    "temperature": 0,
+    "max_tokens": 2048,
+    "reasoning": {
+      "max_tokens": 1024
+    }
+  },
+  "rows": [
+    {
+      "id": "supported",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "synthetic",
+      "status": "finished",
+      "suite": "judge-probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 2927.627917,
+      "calls": [
+        {
+          "bodyHash": "88da800a70941fc8f1e3ceec262970ec9f123d68d3a76f08d2b05ea887830719",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 2924.7698749999995,
+          "costUsd": 0.002662,
+          "promptTokens": 1469,
+          "completionTokens": 242,
+          "reasoningTokens": 208,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794506546-Wl7qdeDHDd4hTYTyKUjJ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.03669,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 1194,
+          "standardCostUsd": 0.004829
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true,
+      "sane": true
+    }
+  ],
+  "budget": {
+    "limitUsd": 17,
+    "confirmedUsd": 0.0298274,
+    "chargedOrReservedUsd": 0.0298274,
+    "requests": 7,
+    "unresolvedRequests": 0,
+    "halted": "Anomaly: prompt_tokens 1469 exceeds the request token bound 1194; cohort halted."
+  },
+  "stopped": "Anomaly: prompt_tokens 1469 exceeds the request token bound 1194; cohort halted.",
+  "perJudge": {
+    "x-ai/grok-4.7": {
+      "pass": false,
+      "problems": [
+        "probes incomplete"
+      ]
+    },
+    "qwen/qwen3.8-max-0902": {
+      "pass": false,
+      "problems": [
+        "probes incomplete"
+      ]
+    }
+  },
+  "passedJudges": [],
+  "excludedJudges": [
+    "x-ai/grok-4.7",
+    "qwen/qwen3.8-max-0902"
+  ],
+  "pass": false,
+  "problems": [
+    "probe did not complete",
+    "no judge passed its probes"
+  ]
+}

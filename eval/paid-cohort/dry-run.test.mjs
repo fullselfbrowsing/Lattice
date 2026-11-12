@@ -51,7 +51,7 @@ test("a full dry run completes every stage offline and reports VALID", { timeout
 
     // Stage completion and counts.
     const stages = readJSON(join(box.out, "stages.json"));
-    for (const [name, planned] of [["smoke-citations", 3], ["smoke-judge", 4], ["A", 24], ["B", 180], ["C", 528]]) {
+    for (const [name, planned] of [["smoke-citations", 3], ["smoke-judge", 4], ["A", 24], ["B", 180], ["C", 408]]) {
       assert.equal(stages[name].complete, true, name);
       assert.equal(stages[name].planned, planned, name);
       assert.equal(stages[name].responded, planned, name);

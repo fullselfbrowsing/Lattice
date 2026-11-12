@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, readdir
 import { resolve, dirname, relative, join, isAbsolute } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { PaidBudget, CircuitBreaker, HARD_CAP_USD, maxPrices, stageCeiling, standardEndpoints } from "./budget.mjs";
+import { PaidBudget, CircuitBreaker, HARD_CAP_USD, maxPrices, stageCeiling, standardEndpoints, promptOverheadTokens } from "./budget.mjs";
 import { TESTED_MODELS, JUDGE_MODELS, ALLOWED_MODELS, createPaidObserver } from "./observer.mjs";
 
 export { TESTED_MODELS, JUDGE_MODELS, ALLOWED_MODELS };
@@ -18,7 +18,8 @@ export const CAPS = { A: 4096, B: 4096, J: 2048, judgeReasoning: 1024, transport
 export const EXPECTED_PER_CALL_USD = { smoke: 0.02, A: 0.027, B: 0.0141, J: 0.0085, C: 0.004 };
 /** Per-stage request timeouts (ms); frozen in the protocol. */
 export const TIMEOUTS_MS = { smoke: 300000, A: 300000, B: 300000, J: 180000, C: 120000 };
-const FULL_COUNTS = { repetitions: 2, questions: 60, transport: 40, privacy: 20, agents: 5, latency: 20, warmups: 2 };
+// transport is per arm (direct and signed): 20 x 2 = 40 cases per model, as in the original paid design.
+const FULL_COUNTS = { repetitions: 2, questions: 60, transport: 20, privacy: 20, agents: 5, latency: 20, warmups: 2 };
 
 export const sha = (value) => createHash("sha256").update(value).digest("hex");
 export const jsonHash = (value) => sha(JSON.stringify(value));
@@ -246,7 +247,7 @@ export function ceilingFor(snapshot, items) {
   return items.reduce((total, { model, calls, inputTokens, cap }) => {
     const max = snapshot.standardMax?.[model] ?? snapshot.max[model];
     if (!max) throw new Error("No price snapshot for " + model);
-    return total + stageCeiling(calls, inputTokens, Math.max(max.prompt, max.input_cache_write), cap, Math.max(max.completion, max.internal_reasoning))
+    return total + stageCeiling(calls, inputTokens + promptOverheadTokens(model), Math.max(max.prompt, max.input_cache_write), cap, Math.max(max.completion, max.internal_reasoning))
       + calls * max.request;
   }, 0);
 }

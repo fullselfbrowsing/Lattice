@@ -1,0 +1,52 @@
+{
+  "stage": "smoke-citations",
+  "checkedAt": "2026-11-12T18:02:14.296Z",
+  "trustAnchorHash": "54280effd5763a9ecec890fa551f731a9886cab5f84925a353c8926ca57b8f48",
+  "protocolHash": "1bc32966ef55740c80eb93f919cf10c91ae2e4158e80779b0ad0b27f60a48758",
+  "successful": 3,
+  "verified": 3,
+  "rows": [
+    {
+      "id": "dev-a8b0557f3df3d462145fd51d9986c118305dcdf9e1ffd32eb9285eaa1daa636e",
+      "model": "anthropic/claude-sonnet-5.5",
+      "suite": "citations",
+      "arm": "contract",
+      "status": "finished",
+      "runOk": true,
+      "applicable": true,
+      "present": true,
+      "verified": true,
+      "boundToExpectations": true,
+      "outputMatches": true,
+      "verdict": "success"
+    },
+    {
+      "id": "dev-a8b0557f3df3d462145fd51d9986c118305dcdf9e1ffd32eb9285eaa1daa636e",
+      "model": "openai/gpt-6.1-sol",
+      "suite": "citations",
+      "arm": "contract",
+      "status": "finished",
+      "runOk": true,
+      "applicable": true,
+      "present": true,
+      "verified": true,
+      "boundToExpectations": true,
+      "outputMatches": true,
+      "verdict": "success"
+    },
+    {
+      "id": "dev-a8b0557f3df3d462145fd51d9986c118305dcdf9e1ffd32eb9285eaa1daa636e",
+      "model": "google/gemini-4-carbon",
+      "suite": "citations",
+      "arm": "contract",
+      "status": "finished",
+      "runOk": true,
+      "applicable": true,
+      "present": true,
+      "verified": true,
+      "boundToExpectations": true,
+      "outputMatches": true,
+      "verdict": "success"
+    }
+  ]
+}

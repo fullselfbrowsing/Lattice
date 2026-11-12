@@ -7,7 +7,7 @@ import * as L from "../../packages/lattice/dist/index.js";
 import { fingerprintArtifactValue } from "../../packages/lattice/dist/storage.js";
 import { generation, intent, parseCited, captureBody, citationRequest } from "./requests.mjs";
 import {
-  BASE, CAPS, COUNTS, EXPECTED_PER_CALL_USD, TESTED_MODELS, CACHE, bootstrap, admitStage, finishStage, requireGates, ceilingFor, estimateTokens,
+  BASE, CAPS, COUNTS, EXPECTED_PER_CALL_USD, TESTED_MODELS, CACHE, bootstrap, admitStage, finishStage, requireGates, ceilingFor, estimateTokens, accountSnapshot,
   newActive, readJSON, writeJSON, jsonHash, scrub, responded, smokeVerdict, directCall, NotAdmitted,
 } from "./common.mjs";
 
@@ -20,7 +20,7 @@ const { dirs, control, key } = ctx;
 const OUT = join(dirs.out, FILE + ".json"), PRIVATE = join(dirs.priv, FILE + "-private.json");
 const schema = (validate) => ({ "~standard": { version: 1, vendor: "lattice-eval", validate } });
 const accept = schema((value) => ({ value }));
-let out, privateRows = [], keys, admittedOk = false;
+let out, privateRows = [], keys, admittedOk = false, cSuites = null, cPlanned = 0;
 
 function save() {
   if (!out) return;
@@ -229,21 +229,30 @@ try {
   let planned, items;
   if (MODE === "C") {
     const T = COUNTS.transport, P = COUNTS.privacy, A = COUNTS.agents, Lt = COUNTS.latency + COUNTS.warmups;
-    planned = TESTED_MODELS.length * (2 * T + P + 2 * A + 3 * Lt);
     const imageBody = await captureBody(TESTED_MODELS[0], intent("Name the solid color in the attached image.", [L.artifact.image("data:image/png;base64," + png([255, 0, 0]).toString("base64"), { id: "fixture", mediaType: "image/png" })], CAPS.transport));
     const small = estimateTokens(Buffer.byteLength(imageBody)) + 1000;
-    items = TESTED_MODELS.flatMap((model) => [
-      { model, calls: 2 * T + P + 3 * Lt, inputTokens: small, cap: CAPS.transport },
-      { model, calls: 4 * A, inputTokens: 3000, cap: CAPS.agent },
-      { model, calls: 6 * A, inputTokens: 3000, cap: CAPS.crew },
-    ]);
+    const per = (calls, inputTokens, cap) => TESTED_MODELS.map((model) => ({ model, calls, inputTokens, cap }));
+    // Suites run in a fixed order. Each starts only if its own worst case fits what remains; once
+    // one is not admitted, no later suite runs. An admitted suite must complete.
+    cSuites = [
+      { name: "transport", planned: TESTED_MODELS.length * 2 * T, items: per(2 * T, small, CAPS.transport),
+        run: async () => { for (let i = 0; i < T; i++) for (const model of TESTED_MODELS) if (!control.stopped) await transportItem(model, i); } },
+      { name: "privacy", planned: TESTED_MODELS.length * P, items: per(P, small, CAPS.privacy),
+        run: async () => { for (let i = 0; i < P; i++) for (const model of TESTED_MODELS) if (!control.stopped) await privacyItem(model, i); } },
+      { name: "agents", planned: TESTED_MODELS.length * 2 * A, items: [...per(4 * A, 3000, CAPS.agent), ...per(6 * A, 3000, CAPS.crew)],
+        run: async () => { for (let i = 0; i < A; i++) for (const model of TESTED_MODELS) if (!control.stopped) { await agentItem(model, i); await crewItem(model, i); } } },
+      { name: "latency", planned: TESTED_MODELS.length * 3 * Lt, items: per(3 * Lt, small, CAPS.latency),
+        run: async () => { for (let i = -COUNTS.warmups; i < COUNTS.latency; i++) for (const model of TESTED_MODELS) if (!control.stopped) await latencyItem(model, i); } },
+    ];
+    planned = cSuites[0].planned;
+    items = cSuites[0].items;
   } else {
     const rows = MODE === "smoke" ? citationRows("dev.jsonl", 1) : citationRows("evaluation.jsonl", COUNTS.questions);
     planned = rows.length * TESTED_MODELS.length;
     const bytes = Math.max(...await Promise.all(rows.map(async (row) => Buffer.byteLength(await captureBody(TESTED_MODELS[0], citationRequest(row).request)))));
     items = TESTED_MODELS.map((model) => ({ model, calls: rows.length, inputTokens: estimateTokens(bytes), cap: CAPS.B }));
   }
-  await admitStage(ctx, ceilingFor(ctx.snapshot, items), { planned });
+  await admitStage(ctx, ceilingFor(ctx.snapshot, items), { planned, ...(cSuites ? { suite: cSuites[0].name } : {}) });
   admittedOk = true;
 
   out = existsSync(OUT) ? readJSON(OUT) : { version: "paid-validated/v1", stage: STAGE, protocolHash: ctx.protocolHash, trustAnchorHash: jsonHash(trust), rows: [] };
@@ -257,10 +266,17 @@ try {
   } else if (MODE === "B") {
     for (const row of citationRows("evaluation.jsonl", COUNTS.questions)) for (const model of TESTED_MODELS) if (!control.stopped) await citationItem(model, row);
   } else {
-    for (let i = 0; i < COUNTS.transport; i++) for (const model of TESTED_MODELS) if (!control.stopped) await transportItem(model, i);
-    for (let i = 0; i < COUNTS.privacy; i++) for (const model of TESTED_MODELS) if (!control.stopped) await privacyItem(model, i);
-    for (let i = 0; i < COUNTS.agents; i++) for (const model of TESTED_MODELS) if (!control.stopped) { await agentItem(model, i); await crewItem(model, i); }
-    for (let i = -COUNTS.warmups; i < COUNTS.latency; i++) for (const model of TESTED_MODELS) if (!control.stopped) await latencyItem(model, i);
+    for (const [index, suite] of cSuites.entries()) {
+      if (control.stopped) break;
+      if (index > 0) {
+        const ceilingUsd = ceilingFor(ctx.snapshot, suite.items);
+        const account = await accountSnapshot(ctx.transport, ctx.key);
+        suite.admission = { at: account.at, ceilingUsd, remainingUsd: ctx.budget.remainingUsd, balanceUsd: account.balanceUsd, admitted: ctx.budget.admit(ceilingUsd, account.balanceUsd) };
+        if (!suite.admission.admitted) break;
+      } else suite.admission = { admitted: true, admittedWithStage: true };
+      cPlanned += suite.planned;
+      await suite.run();
+    }
   }
   save();
 } catch (error) {
@@ -271,10 +287,11 @@ try {
 } finally {
   if (admittedOk) {
     const rows = out?.rows ?? [];
-    const planned = MODE === "C"
-      ? TESTED_MODELS.length * (2 * COUNTS.transport + COUNTS.privacy + 2 * COUNTS.agents + 3 * (COUNTS.latency + COUNTS.warmups))
+    // Stage C's denominator is the admitted suites; suites never admitted are recorded, not failed.
+    const planned = MODE === "C" ? Math.max(cPlanned, cSuites[0].planned)
       : (MODE === "smoke" ? 1 : COUNTS.questions) * TESTED_MODELS.length;
-    const finished = await finishStage(ctx, { planned, attempted: rows.length, respondedCount: rows.filter(responded).length });
+    const extra = MODE === "C" ? { suites: cSuites.map(({ name, planned: p, admission }) => ({ name, planned: p, admission: admission ?? { admitted: false, reason: "an earlier suite was not admitted or the stage stopped" } })) } : {};
+    const finished = await finishStage(ctx, { planned, attempted: rows.length, respondedCount: rows.filter(responded).length, extra });
     if (MODE === "smoke" && out) {
       const verdict = smokeVerdict(out.rows);
       const receiptProblems = out.rows.filter((r) => !r.receipt?.verified).map((r) => r.id + ": receipt did not verify");

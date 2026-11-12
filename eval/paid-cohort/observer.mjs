@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { BudgetExceeded, requestBound, standardUsageCost } from "./budget.mjs";
+import { BudgetExceeded, requestBound, standardUsageCost, promptOverheadTokens } from "./budget.mjs";
 
 /** A call billed above this multiple of its usage at standard prices was served by an opt-in tier. */
 export const TIER_TOLERANCE = 1.5;
@@ -57,7 +57,7 @@ export function createPaidObserver({ BASE, MODELS = ALLOWED_MODELS, endpointCata
     const bound = requestBound(init.body, endpoints, maximum);
     const imageParts = (body.messages ?? []).flatMap((m) => Array.isArray(m.content) ? m.content : []).filter((p) => p.type === "image_url").length;
     // Same input-token ceiling the reservation uses: a byte is never fewer than one token.
-    const promptTokenBound = Buffer.byteLength(init.body) + 1000 * imageParts;
+    const promptTokenBound = Buffer.byteLength(init.body) + 1000 * imageParts + promptOverheadTokens(body.model);
     let reservation;
     try { reservation = budget.reserve(body.model, bound); }
     catch (error) { setStopped(error.message); throw error; }

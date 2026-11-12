@@ -70,7 +70,7 @@ const endpoints = [
 test("requestBound uses component-wise maxima, images, fee and the 1.25 margin", () => {
   const body = JSON.stringify({ model: "m", max_tokens: 100, messages: [{ role: "user", content: [{ type: "text", text: "hi" }, { type: "image_url", image_url: { url: "x" } }] }] });
   const bytes = Buffer.byteLength(body);
-  const expected = ((bytes + 1000) * 0.000003 + 100 * 0.000012 + 0.001) * 1.25;
+  const expected = ((bytes + 1000 + 2048) * 0.000003 + 100 * 0.000012 + 0.001) * 1.25;
   assert.ok(Math.abs(requestBound(body, endpoints, 100) - expected) < 1e-12);
   assert.deepEqual(maxPrices(endpoints).completion, 0.00001);
   assert.throws(() => requestBound(body, [], 100));

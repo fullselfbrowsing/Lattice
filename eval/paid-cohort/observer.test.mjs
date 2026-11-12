@@ -231,7 +231,28 @@ test("reservations price the most expensive endpoint, including opt-in tiers", a
     await f.fetch(url, { body: JSON.stringify(make()) });
     const call = f.active.calls[0];
     const body = JSON.stringify(make());
-    const expected = (Buffer.byteLength(body) * 0.00003 + 64 * 0.00012) * 1.25;
+    const expected = ((Buffer.byteLength(body) + 512) * 0.00003 + 64 * 0.00012) * 1.25; // tested model: 512-token allowance
     assert.ok(Math.abs(call.reservedUsd - expected) < 1e-12, "the ultrafast endpoint sets the reservation");
   } finally { f.dispose(); }
+});
+
+test("provider-added prompt tokens: 512 for tested models, 2048 for judges, halt beyond", async () => {
+  const body = JSON.stringify(make());
+  const within = fixture(10, () => reply({ usage: { prompt_tokens: Buffer.byteLength(body) + 400, completion_tokens: 3, cost: 0.0001 } }));
+  try {
+    await within.fetch(url, { body });
+    assert.equal(within.budget.halted, null, "a tested model's small provider prompt is allowed");
+  } finally { within.dispose(); }
+  const beyond = fixture(10, () => reply({ usage: { prompt_tokens: Buffer.byteLength(body) + 513, completion_tokens: 3, cost: 0.0001 } }));
+  try {
+    await beyond.fetch(url, { body });
+    assert.match(String(beyond.control.stopped), /prompt_tokens/);
+  } finally { beyond.dispose(); }
+  const judgeBody = JSON.stringify(make({ model: "x-ai/grok-4.7" }));
+  const judge = fixture(10, () => reply({ model: "x-ai/grok-4.7", usage: { prompt_tokens: Buffer.byteLength(judgeBody) + 1500, completion_tokens: 3, cost: 0.0001 } }));
+  try {
+    await judge.fetch(url, { body: judgeBody });
+    assert.equal(judge.budget.halted, null, "a judge's hidden system prompt of ~1,500 tokens is allowed");
+    assert.doesNotMatch(String(judge.control.stopped), /prompt_tokens/);
+  } finally { judge.dispose(); }
 });
