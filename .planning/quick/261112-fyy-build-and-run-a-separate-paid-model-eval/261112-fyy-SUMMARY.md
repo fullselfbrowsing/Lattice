@@ -121,3 +121,7 @@ Orchestrator fixes during the run, each committed before inference continued:
 - **`a33df6f`:** the final results.
 
 Paper integration is a separate step. Under the fixed reporting rule the paid cohort becomes the main result, with the free cohort in an appendix. The authors write the text and disclose amendment A1; tables are generated afterwards.
+
+## Correction (261112-jtz)
+
+The stage J strict counts above (Sonnet 34/60, Sol 46/60, Carbon 26/60) used the cohort report's original rule, which needed one relevant citation per claim. Under the free cohort's rule, where every listed citation must be relevant, they are 31/60, 41/60 and 26/60: 98/180 in total. The correction is amendment A2, and the verdict is unaffected.
