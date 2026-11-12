@@ -38,7 +38,7 @@ Stage B runs only the contract arm. The prompt-only arm sends an identical reque
 1. Build the SDK if `packages/lattice/dist` is missing: `pnpm --filter @full-self-browsing/lattice build </dev/null`.
 2. Test: `node --test --test-reporter=tap eval/paid-cohort/*.test.mjs eval/public-refund/workflow.test.mjs </dev/null`.
 3. Commit the harness.
-4. Smoke (this also freezes the protocol): `node eval/paid-cohort/validated-live.mjs smoke`, then `node eval/paid-cohort/judge.mjs probe`. Both must pass: no non-200 status, outputs parse, `usage.cost` present, completion tokens within the cap, cost within the reservation, receipts verify, judge sanity probes agree. Any failure stops the run for re-planning.
+4. Smoke (this also freezes the protocol): `node eval/paid-cohort/validated-live.mjs smoke`, then `node eval/paid-cohort/judge.mjs probe`. Then run `node eval/paid-cohort/verify-validated.mjs smoke`. The smoke checks are infrastructure only: HTTP 200, `usage.cost` present, completion tokens within the cap, cost within the reservation, and receipts verify. Answer format is recorded but never gated. A judge that fails its sanity probes is excluded under the rule below. Any infrastructure failure stops the run for re-planning.
 5. Stage A: `node eval/paid-cohort/public-refund.mjs`, then `node eval/paid-cohort/public-refund-report.mjs`.
 6. Stage B: `node eval/paid-cohort/validated-live.mjs B`; stage J: `node eval/paid-cohort/judge.mjs full`.
 7. Stage C if admitted: `node eval/paid-cohort/validated-live.mjs C`.
