@@ -27,8 +27,8 @@ Judge qwen/qwen3.8-max-0902
 
 | Model | Planned | Judged | Strict, live contract | Strict, derived prompt-only |
 | --- | --- | --- | --- | --- |
-| anthropic/claude-sonnet-5.5 | 60 | 60 | 34 | 34 |
-| openai/gpt-6.1-sol | 60 | 56 | 46 | 46 |
+| anthropic/claude-sonnet-5.5 | 60 | 60 | 31 | 31 |
+| openai/gpt-6.1-sol | 60 | 56 | 41 | 41 |
 | google/gemini-4-carbon | 60 | 36 | 26 | 26 |
 
 Agreement between judges: Not available: one active judge.
@@ -38,6 +38,7 @@ Excluded judge x-ai/grok-4.7: 5 partial rows (3 valid), not used in any table.
 ## Protocol amendments
 
 - **A1** (2026-11-12T18:58:07.943Z, decided by Lakshman Turlapati (author), 2026-11-12): x-ai/grok-4.7 broke its infrastructure limits during stage J: 2 of its first 5 calls timed out at 180 s, and one returned 5,101 completion tokens against a 2,048-token cap because its reasoning ignored the 1,024-token budget. It is excluded for infrastructure reasons, decided before any further judging; no judging outcome informed the decision.
+- **A2** (2026-11-12T20:25:01.678Z, decided by Claude Code (orchestrator), 2026-11-12: correction to the definition the approved plan specified; reported to the author for review): Reporting correction after the run: eval/paid-cohort/report.mjs counted strict citation quality when each claim had at least one relevant citation, but the free cohort (eval/realworld/scripts/16-validated-report.py, citation_summary) requires every listed citation to be relevant. The report now uses the free cohort rule, which the plan specified. No inference was rerun and validity uses no scores.
 
 ## Receipts
 

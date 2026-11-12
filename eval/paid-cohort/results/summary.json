@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-12T20:08:46.158Z",
+  "generatedAt": "2026-11-12T20:25:18.392Z",
   "verdict": "VALID",
   "validity": {
     "valid": true,
@@ -190,8 +190,8 @@
             "formatValidContract": 60,
             "formatValidPromptOnly": 60,
             "judged": 60,
-            "strictLiveContract": 34,
-            "strictDerivedPromptOnly": 34
+            "strictLiveContract": 31,
+            "strictDerivedPromptOnly": 31
           },
           {
             "model": "openai/gpt-6.1-sol",
@@ -199,8 +199,8 @@
             "formatValidContract": 56,
             "formatValidPromptOnly": 56,
             "judged": 56,
-            "strictLiveContract": 46,
-            "strictDerivedPromptOnly": 46
+            "strictLiveContract": 41,
+            "strictDerivedPromptOnly": 41
           },
           {
             "model": "google/gemini-4-carbon",
@@ -442,6 +442,17 @@
         "interJudgeAgreement": "not available",
         "excludedJudgeRows": "kept in judge.json and reported as a partial; not used in any table",
         "ledger": "the halt caused by the cap violation is recorded under resolvedHalts in the private ledger; every charge kept; limit unchanged at 17 USD"
+      }
+    },
+    {
+      "id": "A2",
+      "decidedAt": "2026-11-12T20:25:01.678Z",
+      "decidedBy": "Claude Code (orchestrator), 2026-11-12: correction to the definition the approved plan specified; reported to the author for review",
+      "reason": "Reporting correction after the run: eval/paid-cohort/report.mjs counted strict citation quality when each claim had at least one relevant citation, but the free cohort (eval/realworld/scripts/16-validated-report.py, citation_summary) requires every listed citation to be relevant. The report now uses the free cohort rule, which the plan specified. No inference was rerun and validity uses no scores.",
+      "changes": {
+        "excludedJudges": [],
+        "strictCitationRule": "every claim supported and cited, citationCount > 0 and relevantCitations === citationCount",
+        "verdict": "unaffected"
       }
     }
   ],

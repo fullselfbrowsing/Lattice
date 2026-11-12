@@ -82,6 +82,10 @@ A stage that stops can be re-run with the same command; finished rows are kept a
   - Grok's 5 rows are kept and reported, but not used in any table.
   - The remaining answers are judged by `qwen/qwen3.8-max-0902` alone, so there is no agreement between judges.
   - The amendment is recorded in `results/amendments.json` with the code hashes in force; `protocol.json` is unchanged.
+- **Amendment A2** (Nov 12, a reporting correction after the run): `report.mjs` had counted strict citation quality when each claim had at least one relevant citation.
+  - The free cohort's `citation_summary` requires every listed citation to be relevant, and the plan specified that rule.
+  - The report now uses it. Strict counts fall from 106 to 98: Sonnet 31, Sol 41, Carbon 26.
+  - No inference was rerun, and the verdict is unaffected because validity uses no scores.
 - The derived prompt-only arm comes from the same answers as the contract arm, so it is not an independent sample. Arm differences must not be compared across cohorts.
 - `parity.test.mjs` checks, read-only against the private caches (skipped with a reason when absent), that every stage A, stage B and smoke request, with the model id swapped, is byte-identical to the request the free cohorts sent.
 

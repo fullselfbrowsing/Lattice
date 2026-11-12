@@ -90,6 +90,85 @@
         "packages/lattice/dist/tools.js": "dc093f503681ffbd92b72061799cb9eb41fd0cdad5014468f9f47bf7e69ebb8f",
         "packages/lattice/dist/validate-D641TVah.js": "105e14bd74f0135fd7fc8f2947657adf1cf35e06593117336b2ca50f7d50e2a6"
       }
+    },
+    {
+      "id": "A2",
+      "decidedAt": "2026-11-12T20:25:01.678Z",
+      "decidedBy": "Claude Code (orchestrator), 2026-11-12: correction to the definition the approved plan specified; reported to the author for review",
+      "reason": "Reporting correction after the run: eval/paid-cohort/report.mjs counted strict citation quality when each claim had at least one relevant citation, but the free cohort (eval/realworld/scripts/16-validated-report.py, citation_summary) requires every listed citation to be relevant. The report now uses the free cohort rule, which the plan specified. No inference was rerun and validity uses no scores.",
+      "evidence": {
+        "strictUnderEarlierRule": {
+          "anthropic/claude-sonnet-5.5": 34,
+          "openai/gpt-6.1-sol": 46,
+          "google/gemini-4-carbon": 26,
+          "total": 106
+        },
+        "strictUnderFreeCohortRule": {
+          "anthropic/claude-sonnet-5.5": 31,
+          "openai/gpt-6.1-sol": 41,
+          "google/gemini-4-carbon": 26,
+          "total": 98
+        }
+      },
+      "changes": {
+        "excludedJudges": [],
+        "strictCitationRule": "every claim supported and cited, citationCount > 0 and relevantCitations === citationCount",
+        "verdict": "unaffected"
+      },
+      "codeRevision": "ee1041981b9396c4036d831b48ffd21542a1ccd7",
+      "codeHashes": {
+        "eval/paid-cohort/budget.mjs": "b7589b0b18994368bfb1ed558ba3d64b4098c4593ef876e17004e697fe209323",
+        "eval/paid-cohort/common.mjs": "716d08aa73fa26aafb128e7ac3537a3dd8f847a826c9bbd9cc514500671a477d",
+        "eval/paid-cohort/judge.mjs": "6800db7adf42eaf844f1b97f52f03a316fbae5a84a2146620da62be6c8ec3e0d",
+        "eval/paid-cohort/mock.mjs": "4e58336e49c7103e16377048761d57b4e5f53ccd7a4541a569fe441c016578c1",
+        "eval/paid-cohort/observer.mjs": "23a1699f45a580ada13f178a58815186414817238815a86fbf563f95515822ec",
+        "eval/paid-cohort/public-refund-report.mjs": "07eda2a4a2a37ef654cf5b264af55fb1e091df32a3a0f7641b381a15c7a86dc1",
+        "eval/paid-cohort/public-refund.mjs": "b1c9cfce406b4160be58296813133116d52ea0c9bcf39fcc378b1a5ce2733f8a",
+        "eval/paid-cohort/report.mjs": "3beb31a86e1ac77531186abe5a70baf74646324f836ef45463a3e1ff5c4c9d5f",
+        "eval/paid-cohort/requests.mjs": "5a1aa0700f06447561e7db3f2020149cd6157c47c95fe7845d50df64608cad20",
+        "eval/paid-cohort/validated-live.mjs": "99507feaea993807a630bdc65be55a4593350842fb301706d2dbba15c00626c6",
+        "eval/paid-cohort/verify-validated.mjs": "9c3ba4dead6ca133537a260887c56cdc841da12eed2541ddcee152503d3641e3",
+        "eval/public-refund/cases.mjs": "95bcaa66322ba5e2ad5ea1025b8cc1a604393547e55f8e20b308028d52c0e0b2",
+        "eval/public-refund/source-manifest.json": "546e60b654871d115bfbb20ff2d72f4b75d78e45d5e0f6f0df891d83bf776115",
+        "eval/public-refund/workflow.mjs": "da4c868f5c833faf7cb1274b7b2f1d339976735f452d56c1b15802477361828a",
+        "eval/realworld/scripts/free-judge-utils.mjs": "588b2002f2f8a4abf482a358ec90609234fb0245df478b59362e2b4e587852d4",
+        "packages/lattice/dist/agent-run-CB4Sm3KM.js": "a54c2d5bdf369bc2d8d5759d754a40ab4900af27a6d3ffb33ec18ba7657ea249",
+        "packages/lattice/dist/agents.js": "41840a2b76f4bb3e596c4a48a6d25f686e7319acf540e138c10f6ec32b457903",
+        "packages/lattice/dist/artifact-BH5NkaAw.js": "77990a2a873aa1851346ce159e8982f52f899548b1bb8265bc67811cf2945c3e",
+        "packages/lattice/dist/artifacts.js": "aa454fb5a6dd6531fdd259d3c1830eb2531a938ffea877fac3c7d35aa57d3bde",
+        "packages/lattice/dist/audit.js": "f3495405b8f5f284d92f16755d884c99cf5461489de9870d6a32352062718f36",
+        "packages/lattice/dist/catalog-CAfYwB_-.js": "2f045fcac9fabfcc9129802128cc0d38469c5d6551a74f7182c96d82c526d9a0",
+        "packages/lattice/dist/context-pack-BBX7V13u.js": "1667d6c1b6a2b318a51246ef55a6431a1beb3db8a60dec6009c36a1c5d214bbf",
+        "packages/lattice/dist/context.js": "74cf80409ed0cf95c5de151886098925dbb8ee385cf8425890d4388240e76e38",
+        "packages/lattice/dist/contracts-CzIBpYey.js": "54ca0b8683c7cc80bf780c48a7baa5d248f23c161b19dcb368d83afb49b77b6e",
+        "packages/lattice/dist/core.js": "10ebbe5aef4eaf646eb0beec17878a83304df4be9e313551e812e5e172ed7cf2",
+        "packages/lattice/dist/errors-BJNFnUT4.js": "e820b722e516bb8d96972a26ac891516e9775257be97435fb7b9817236ab1f18",
+        "packages/lattice/dist/eval.js": "81300f766d61a3b29d4eef6c1891ce3d252005ea3372e309c27867b9b90c6d2f",
+        "packages/lattice/dist/fingerprint-DodDbQKN.js": "dbc1f92abd68dca02ea0c2b73b0dcd2e0048bde7deaaec8960e04f9c96642391",
+        "packages/lattice/dist/index.js": "ad7065b5aee1c7c0480532cd09090b3f429f10d35067ca07b4b9d01d12db2343",
+        "packages/lattice/dist/lineage-B0-uISV-.js": "dd3833ef0fd2fe6c4d1e680f518826ad8d2cc3702d9c85134cb56ca752e51002",
+        "packages/lattice/dist/local-Q8Pln2LE.js": "2843258cbe36627abe7fe9695ebe175b9fe9dd5d0178a4db645535738c131963",
+        "packages/lattice/dist/memory-Dqoz3ka4.js": "dffd210460fd0845b57233a1907197ee4615af65e41863ab61b6b1eaa19d8e77",
+        "packages/lattice/dist/negotiate-l-grnAVR.js": "359aa256aba27f1983d136f2469ddaafe75b7ed990b6c276363f00e3696b9754",
+        "packages/lattice/dist/permission-context-BTWYZ_rR.js": "122335a40db2021d11c4bcffa47db9847d880dff6e538e0c4f59e6aaa2874c7b",
+        "packages/lattice/dist/plan-DFm8Llep.js": "f853130d42c95d26278b6c52b25180d27f55206983d6f9e585351e866aa9aec1",
+        "packages/lattice/dist/policy-DqKmUglf.js": "9c3a69dcd367bee98c1fd6b6a9ee6fe3a14262a97fa19f61e569e13464c42343",
+        "packages/lattice/dist/providers.js": "d1e8f00165ffed2171741e40e6d43c2dbe2e91946e95361aee528827b67137c3",
+        "packages/lattice/dist/receipt-Ch4ZBYqz.js": "c1bd60b417b2f71291beb4c39c0065b7379afe83107d8d9e05fce6bc171539fc",
+        "packages/lattice/dist/replay-B8oHEAM8.js": "4ac2b128cb01c78f0bee923cbd29da1ecbe590f1c23c2020f9f4b2b5bd7dd620",
+        "packages/lattice/dist/request-CKAyp_Ab.js": "6501ec87ba8029dcbe2ae7d6d685213349b7c4542dcd0bf06b2e175c56b1fb23",
+        "packages/lattice/dist/rolldown-runtime-CiIaOW0V.js": "16a983b80655888fa521be8504570aef2fc3713d1a723ff439beddac3a2428c3",
+        "packages/lattice/dist/router--tFwfKMr.js": "6bc1068796dc6e63c3bbeefdf55d6ed82f37216969f838aa73712fb56b010e1e",
+        "packages/lattice/dist/routing.js": "589fc3b07aa40035ba4e1270e1a269514d52cc646d2e67e86c7bb6fc812a66bb",
+        "packages/lattice/dist/run-crew-2HoLHpcZ.js": "30b272e434368bc5171d0c17f87f683331b7b09fbc99d16b6d21e51215cd6706",
+        "packages/lattice/dist/runtime-D-uwb0cP.js": "dc52dce6d1da28d4fc85045c392c54170653ecf58de43958d7f48bd4409b1a2b",
+        "packages/lattice/dist/scaffolds-V07OPvXT.js": "039caec7046e4f572be36ad807fa6642cf838e34a85484f1ff92914b728ede3d",
+        "packages/lattice/dist/storage.js": "ec08d162dcc61fb7807b62bc66dd88e029bef4cf4e9ec6d6695047b7fd15b6c9",
+        "packages/lattice/dist/tool-call-validation-5hvqcz7j.js": "ec6178190f891ed3ceb425dfa6c5344f8d85475c4a6912fdd39d2762bbfb5d66",
+        "packages/lattice/dist/tools-Ca3TIB9Y.js": "a0679d408f18325ba69e2b1476440b6ddbdc4cda173531793ca45288d8eb0df1",
+        "packages/lattice/dist/tools.js": "dc093f503681ffbd92b72061799cb9eb41fd0cdad5014468f9f47bf7e69ebb8f",
+        "packages/lattice/dist/validate-D641TVah.js": "105e14bd74f0135fd7fc8f2947657adf1cf35e06593117336b2ca50f7d50e2a6"
+      }
     }
   ]
 }
