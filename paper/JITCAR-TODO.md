@@ -330,7 +330,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 
 - [ ] Decide whether any proposed practitioner activity, identifiable operational data, or quotations require institutional review; obtain the relevant determination before recruitment or collection.
 - [ ] If no participant study is conducted, accurately state the scope of the reported work and label the practitioner study as future work. Do not invent an IRB approval or exemption number.
-- [ ] Resolve every visible TODO: practitioner-study approval/IRB, ethics, contribution statement (P5), and archive DOI (P4). Update: the archive-DOI TODO is resolved (10.5281/zenodo.24145363); three remain.
+- [ ] Resolve every visible TODO: practitioner-study approval/IRB, ethics, contribution statement (P5), and archive DOI (P4). Update: the archive-DOI TODO is resolved (10.5281/zenodo.24145363); three remain. Nov 12: the paid-cohort appendix adds a fourth, for the authors' introduction to that cohort.
 - [ ] Search manuscript, generated fragments, appendices, declarations, and compiled PDF for TODO/TBD/placeholder markers and unresolved references.
 
 **Done when:** ethics statements describe the actual study and the submission contains no unresolved red TODOs or placeholder assertions.

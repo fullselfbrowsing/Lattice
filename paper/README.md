@@ -63,12 +63,11 @@ node paper/scripts/paid-cohort-tables.mjs --check
 
 Inputs are the tracked files in `eval/paid-cohort/results` (plus the public-refund source manifest page counts). Output is `paper/paid-cohort-evidence.tex`, which defines only macros, with no visible output on input. The script asserts every field it needs, recomputes the strict citation counts from the judge rows against the saved summary, runs no inference or network call, and is deterministic (the timing bootstrap uses a fixed seed). `--check` exits non-zero naming the file when it is stale.
 
-`main.tex` is unchanged. To switch the main results to the paid cohort, the author should:
+Review copy (Nov 12): `main.tex` already inputs `paid-cohort-evidence.tex`. It shows the three paid tables in their own appendix (`app:paid-cohort`), with a red author-text TODO; the main-text results still describe the free cohort. To switch the main results to the paid cohort, the author should:
 
-1. Add `\input{paid-cohort-evidence.tex}` after `\input{c4-evidence.tex}`.
-2. Replace the main-text free tables (`\input{public-refund-results.tex}`, `\CfourQualityTable`, `\CfourCostTable`) with `\PaidPublicRefundTable`, `\PaidQualityTable` and `\PaidCostTable`, and update the prose references to `tab:public-refund-results`, `tab:c4-quality` and `tab:c4-cost`.
-3. Include `free-cohort-appendix.tex` in the hosted-cohorts appendix (`app:hosted-details`), after step 2 so the free-table labels appear exactly once.
-4. Write the narrative, including the disclosure of amendment A1 and that the cohorts are never pooled, and update the AI-use declaration.
+1. Move `\PaidPublicRefundTable`, `\PaidQualityTable` and `\PaidCostTable` from `app:paid-cohort` into the main text, in place of the free tables (`\input{public-refund-results.tex}`, `\CfourQualityTable`, `\CfourCostTable`). Update the prose references to `tab:public-refund-results`, `tab:c4-quality` and `tab:c4-cost`.
+2. Include `free-cohort-appendix.tex` in the hosted-cohorts appendix (`app:hosted-details`), after step 1 so the free-table labels appear exactly once. Remove the `app:paid-cohort` section once it is empty.
+3. Write the narrative, including the disclosure of amendments A1 and A2 and that the cohorts are never pooled, and update the AI-use declaration.
 
 ## C3 requirements and source mapping
 
