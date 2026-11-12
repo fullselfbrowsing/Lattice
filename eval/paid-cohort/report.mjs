@@ -60,8 +60,11 @@ export function cohensKappa(a, b) {
   const chance = pa * pb + (1 - pa) * (1 - pb);
   return chance === 1 ? null : (agree - chance) / (1 - chance);
 }
+// Same rule as the free cohort (eval/realworld/scripts/16-validated-report.py, citation_summary): every
+// claim supported and cited, and every listed citation relevant. Amendment A2 corrected an earlier
+// port that required only one relevant citation per claim.
 const strictLabel = (j) => !!(j?.judgeValid && j.answerCorrect && !j.abstained && j.claims.length > 0
-  && j.claims.every((c) => c.supported && c.cited && c.citationCount > 0 && c.relevantCitations > 0));
+  && j.claims.every((c) => c.supported && c.cited && c.citationCount > 0 && c.relevantCitations === c.citationCount));
 
 function citationQuality() {
   if (!B || !J) return null;
