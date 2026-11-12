@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { BudgetExceeded, requestBound } from "./budget.mjs";
+import { BudgetExceeded, requestBound, standardUsageCost } from "./budget.mjs";
+
+/** A call billed above this multiple of its usage at standard prices was served by an opt-in tier. */
+export const TIER_TOLERANCE = 1.5;
 
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -93,6 +96,12 @@ export function createPaidObserver({ BASE, MODELS = ALLOWED_MODELS, endpointCata
     catch (error) { setStopped(error.message); throw error; }
     const anomaly = usageAnomaly(call, maximum, promptTokenBound);
     if (anomaly) { budget.halt?.(anomaly); setStopped(anomaly); }
+    // Admission assumed standard-tier prices; a call billed well above them pauses the stage.
+    const standardCost = standardUsageCost(call, endpoints);
+    call.standardCostUsd = standardCost;
+    if (standardCost !== null && call.costUsd !== null && call.costUsd > TIER_TOLERANCE * standardCost + 0.000001) {
+      setStopped("Billed $" + call.costUsd + " against $" + standardCost.toFixed(6) + " at standard prices; an opt-in service tier may have served it. Stage paused for inspection.");
+    }
     if ([401, 402, 403].includes(response.status)) setStopped("Provider refused the request with HTTP " + response.status);
     if (breaker?.record(call.costUsd)) setStopped(breaker.reason);
     return new Response(bytes, { status: response.status, statusText: response.statusText, headers: response.headers });

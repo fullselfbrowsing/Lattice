@@ -30,6 +30,9 @@ function runAll(box, extra) {
   return STEPS.map(([script, args]) => ({ script, args, ...run(box, script, args, extra) }));
 }
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
+// Listing of a directory (path, size, mtime) so a test can prove a run left it untouched; empty if absent.
+const treeState = (dir) => existsSync(dir) ? walk(dir).sort().map((f) => [f, statSync(f).size, statSync(f).mtimeMs]) : [];
+const REAL_RESULTS = join(ROOT, "eval/paid-cohort/results");
 const allCosts = (box) => {
   let total = 0;
   const add = (rows) => { for (const row of rows) for (const call of row.calls ?? []) total += call.costUsd ?? 0; };
@@ -40,6 +43,7 @@ const allCosts = (box) => {
 
 test("a full dry run completes every stage offline and reports VALID", { timeout: 600000 }, () => {
   const box = sandbox();
+  const realBefore = treeState(REAL_RESULTS);
   try {
     const results = runAll(box);
     for (const r of results) assert.equal(r.status, 0, r.script + " " + (r.args ?? []).join(" ") + "\n" + r.stderr + r.stdout.slice(-400));
@@ -91,7 +95,7 @@ test("a full dry run completes every stage offline and reports VALID", { timeout
     }
     for (const r of results) assert.equal(/sk-or-|SENTINEL/.test(r.stdout + r.stderr), false);
     assert.equal(execFileSync("git", ["status", "--porcelain", "--", "eval/public-refund", "eval/realworld", "packages"], { cwd: ROOT, encoding: "utf8" }), "");
-    assert.equal(existsSync(join(ROOT, "eval/paid-cohort/results")), false);
+    assert.deepEqual(treeState(REAL_RESULTS), realBefore, "the dry run must not write the real results directory");
 
     // Fresh-process verification files drive the receipt counts; per-stage keys and richer private rows.
     assert.ok(protocol.timeoutsMs && protocol.timeoutsMs.A === 300000 && protocol.timeoutsMs.J === 180000 && protocol.timeoutsMs.C === 120000 && protocol.timeoutsMs.smoke === 300000 && protocol.timeoutsMs.B === 300000);

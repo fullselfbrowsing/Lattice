@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, readdir
 import { resolve, dirname, relative, join, isAbsolute } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { PaidBudget, CircuitBreaker, HARD_CAP_USD, maxPrices, stageCeiling } from "./budget.mjs";
+import { PaidBudget, CircuitBreaker, HARD_CAP_USD, maxPrices, stageCeiling, standardEndpoints } from "./budget.mjs";
 import { TESTED_MODELS, JUDGE_MODELS, ALLOWED_MODELS, createPaidObserver } from "./observer.mjs";
 
 export { TESTED_MODELS, JUDGE_MODELS, ALLOWED_MODELS };
@@ -170,7 +170,7 @@ export async function accountSnapshot(transport, key) {
 
 export async function snapshotPrices(transport, key, models = ALLOWED_MODELS) {
   const catalog = new Map((await apiGet(transport, "/models", key)).map((m) => [m.id, m]));
-  const snapshot = { at: new Date().toISOString(), catalogPricing: {}, endpoints: {}, max: {} };
+  const snapshot = { at: new Date().toISOString(), catalogPricing: {}, endpoints: {}, max: {}, standardMax: {} };
   for (const id of models) {
     if (!catalog.has(id)) throw new Error("Required model is unavailable: " + id);
     const endpoints = (await apiGet(transport, "/models/" + id + "/endpoints", key)).endpoints;
@@ -178,6 +178,7 @@ export async function snapshotPrices(transport, key, models = ALLOWED_MODELS) {
     snapshot.endpoints[id] = endpoints.map(({ name, provider_name, tag, pricing, context_length, max_completion_tokens }) =>
       ({ name, provider_name, tag, pricing, context_length, max_completion_tokens }));
     snapshot.max[id] = maxPrices(endpoints);
+    snapshot.standardMax[id] = maxPrices(standardEndpoints(endpoints));
   }
   return snapshot;
 }
@@ -206,14 +207,17 @@ export function freezeProtocol(outDir, snapshot, accountBefore) {
       if (jsonHash(protocol[key] ?? null) !== jsonHash(fields[key] ?? null)) throw new Error("Frozen " + key + " changed. Existing cohort will not be extended.");
     }
     const changes = priceChanges(protocol.priceSnapshot, snapshot.max);
+    const standard = priceChanges(protocol.standardPriceSnapshot ?? {}, snapshot.standardMax ?? {});
+    changes.increases.push(...standard.increases.map((c) => ({ ...c, tier: "standard" })));
     if (changes.increases.length) throw new Error("Price increased since the freeze; refusing: " + JSON.stringify(changes.increases));
     return { protocol, created: false, priceCheck: { at: snapshot.at, increases: 0, decreases: changes.decreases } };
   }
   const protocol = { ...fields, frozenAt: new Date().toISOString(), revision: git("rev-parse", "HEAD"), node: process.version,
-    priceSnapshot: snapshot.max, endpointSnapshot: snapshot.endpoints, catalogPricing: snapshot.catalogPricing, accountBefore,
+    priceSnapshot: snapshot.max, standardPriceSnapshot: snapshot.standardMax, endpointSnapshot: snapshot.endpoints, catalogPricing: snapshot.catalogPricing, accountBefore,
     rules: {
       requests: "One attempt per request; no retries, fallbacks, routing fields, plugins or server-side tools. Reservation before send, settled to usage.cost; an unknown cost keeps the reservation; a charge above it halts the cohort.",
       prices: "Re-snapshotted at each stage start. A price increase on a frozen model refuses the stage; equal or lower prices are recorded and allowed.",
+      tiers: "Per-request reservations use the most expensive listed endpoint. Stage admission uses the most expensive standard endpoint, excluding the opt-in priority, fast and ultrafast service tiers, which no request asks for. A call billed above 1.5 times its usage at standard prices pauses the stage for inspection.",
       pooling: "Never pooled with the free cohorts. Failed rows stay in denominators.",
       determinism: "OpenRouter ignores temperature for the Claude and GPT models, so these runs are not deterministic. Reasoning uses each provider's default; max_tokens is the hard cap.",
       validity: "Valid iff every admitted stage completes, at least 95% of planned calls return a model response, and every successful run's receipt verifies. No score is an input.",
@@ -240,7 +244,7 @@ export const estimateTokens = (bytes) => Math.ceil(bytes / 3);
 /** Sum of per-model worst cases from the current price snapshot. */
 export function ceilingFor(snapshot, items) {
   return items.reduce((total, { model, calls, inputTokens, cap }) => {
-    const max = snapshot.max[model];
+    const max = snapshot.standardMax?.[model] ?? snapshot.max[model];
     if (!max) throw new Error("No price snapshot for " + model);
     return total + stageCeiling(calls, inputTokens, Math.max(max.prompt, max.input_cache_write), cap, Math.max(max.completion, max.internal_reasoning))
       + calls * max.request;

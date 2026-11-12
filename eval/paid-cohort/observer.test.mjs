@@ -11,7 +11,9 @@ import { createPaidObserver, ALLOWED_MODELS, messageText, usageAnomaly } from ".
 const MODEL = "anthropic/claude-sonnet-5.5";
 const BASE = "https://example.test/v1";
 const url = BASE + "/chat/completions";
-const prices = { [MODEL]: [{ pricing: { prompt: "0.000002", completion: "0.00001" } }],
+// Default reply usage (10 prompt, 3 completion tokens) at these prices is $0.00011, so its $0.0001 bill is standard-tier.
+const prices = { [MODEL]: [{ tag: "primary", pricing: { prompt: "0.000005", completion: "0.00002" } },
+  { tag: "primary/ultrafast", pricing: { prompt: "0.00003", completion: "0.00012" } }],
   "x-ai/grok-4.7": [{ pricing: { prompt: "0.000002", completion: "0.000006" } }] };
 const make = (overrides = {}) => ({ model: MODEL, max_tokens: 64, messages: [{ role: "user", content: "pong" }], ...overrides });
 const reply = (extra = {}, status = 200, headers = {}) => new Response(JSON.stringify({ id: "gen-1", model: MODEL, provider: "P",
@@ -204,5 +206,32 @@ test("usage the request cannot have produced halts the ledger permanently", asyn
     assert.match(f.budget.halted, /Anomaly/);
     assert.equal(f.active.calls.length, 1, "the request itself was recorded");
     await assert.rejects(f.fetch(url, { body: JSON.stringify(make({ max_tokens: 32 })) }), /Anomaly/);
+  } finally { f.dispose(); }
+});
+
+test("a call billed above 1.5 times its standard-tier usage cost pauses the stage", async () => {
+  // Standard usage cost for 10 prompt + 3 completion tokens is 10 x 5e-6 + 3 x 2e-5 = 0.00011.
+  const ok = fixture(10, () => reply({ usage: { prompt_tokens: 10, completion_tokens: 3, cost: 0.00016 } }));
+  try {
+    await ok.fetch(url, { body: JSON.stringify(make()) });
+    assert.equal(ok.control.stopped, null, "a bill within 1.5x of standard prices does not pause");
+    assert.ok(Math.abs(ok.active.calls[0].standardCostUsd - 0.00011) < 1e-12);
+  } finally { ok.dispose(); }
+  const tier = fixture(10, () => reply({ usage: { prompt_tokens: 10, completion_tokens: 3, cost: 0.00066 } }));
+  try {
+    await tier.fetch(url, { body: JSON.stringify(make()) });
+    assert.match(tier.control.stopped, /opt-in service tier/);
+    assert.equal(tier.budget.confirmedUsd, 0.00066, "the call is still settled at its billed cost");
+  } finally { tier.dispose(); }
+});
+
+test("reservations price the most expensive endpoint, including opt-in tiers", async () => {
+  const f = fixture(10, () => reply());
+  try {
+    await f.fetch(url, { body: JSON.stringify(make()) });
+    const call = f.active.calls[0];
+    const body = JSON.stringify(make());
+    const expected = (Buffer.byteLength(body) * 0.00003 + 64 * 0.00012) * 1.25;
+    assert.ok(Math.abs(call.reservedUsd - expected) < 1e-12, "the ultrafast endpoint sets the reservation");
   } finally { f.dispose(); }
 });

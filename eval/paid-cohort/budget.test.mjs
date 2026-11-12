@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PaidBudget, BudgetExceeded, requestBound, admit, stageCeiling, CircuitBreaker, maxPrices } from "./budget.mjs";
+import { PaidBudget, BudgetExceeded, requestBound, admit, stageCeiling, CircuitBreaker, maxPrices, standardEndpoints, standardUsageCost } from "./budget.mjs";
 
 const withDir = (fn) => {
   const dir = mkdtempSync(join(tmpdir(), "paid-budget-"));
@@ -119,4 +119,22 @@ test("the circuit breaker trips after ten calls above twice the expected mean", 
   assert.match(bad.reason, /Circuit breaker/);
   assert.equal(bad.record(null), true);
   assert.throws(() => new CircuitBreaker({ expectedPerCall: 0 }));
+});
+
+test("standard endpoints exclude the opt-in priority, fast and ultrafast tiers", () => {
+  const eps = [
+    { tag: "openai", pricing: { prompt: "0.000002", completion: "0.00001" } },
+    { tag: "openai/flex", pricing: { prompt: "0.000001", completion: "0.000005" } },
+    { tag: "azure/us", pricing: { prompt: "0.0000022", completion: "0.000011" } },
+    { tag: "openai/fast", pricing: { prompt: "0.000004", completion: "0.00002" } },
+    { tag: "openai/ultrafast", pricing: { prompt: "0.000012", completion: "0.00006" } },
+    { tag: "google-vertex/global/priority", pricing: { prompt: "0.0000036", completion: "0.000018" } },
+  ];
+  assert.deepEqual(standardEndpoints(eps).map((e) => e.tag), ["openai", "openai/flex", "azure/us"]);
+  assert.equal(maxPrices(standardEndpoints(eps)).completion, 0.000011);
+  assert.equal(maxPrices(eps).completion, 0.00006, "reservations still see the ultrafast price");
+  assert.deepEqual(standardEndpoints([eps[4]]), [eps[4]], "an endpoint list of only opt-in tiers is kept whole (fail safe)");
+  const cost = standardUsageCost({ promptTokens: 1000, completionTokens: 100 }, eps);
+  assert.ok(Math.abs(cost - (1000 * 0.0000022 + 100 * 0.000011)) < 1e-12);
+  assert.equal(standardUsageCost({ promptTokens: null, completionTokens: 5 }, eps), null);
 });

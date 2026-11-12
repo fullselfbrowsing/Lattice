@@ -52,6 +52,14 @@ A stage that stops can be re-run with the same command; finished rows are kept a
 ## Request timeouts, anomalies, rows and judges
 
 - Per-request timeouts are frozen in the protocol: smoke, A and B 300 s; J 180 s; C 120 s.
+- Service tiers:
+  - Per-request reservations use the most expensive listed endpoint, including the opt-in priority, fast and ultrafast tiers, so the ledger limit holds however OpenRouter routes a call.
+  - Stage admission uses only standard endpoints, because no request asks for an opt-in tier (the observer forbids `service_tier` and `provider`).
+  - A call billed above 1.5 times its reported usage at standard prices pauses the stage for inspection.
+- Attempt 1 is archived in `results-archive/attempt-1-smoke/`.
+  - Its smoke run passed, but admission then priced GPT-6.1 Sol at its ultrafast tier ($12/$60 per million tokens), which would have refused stage B.
+  - The tier rule above was added and the protocol re-frozen before any cohort stage ran.
+  - The ledger keeps the attempt's $0.0129.
 - A response whose usage cannot be legitimate halts the cohort permanently, with the request already recorded: completion tokens above 1.25 x `max_tokens` + 32, or prompt tokens above the request's token bound used for the reservation.
 - Every row is written as `started` before its call and replaced when it finishes. After a crash a `started` row becomes `interrupted`, stays in the denominator and is never retried. Every egress request body is kept for verification. Array message content is converted to text the same way the SDK does.
 - Smoke is infrastructure only: HTTP 200, cost present, completion within the cap, cost within the reservation, receipt verified, smoke complete. Answer format is a measured outcome and never gates a run.

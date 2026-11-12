@@ -87,6 +87,20 @@ const price = (value, label) => {
   return n;
 };
 
+/** Opt-in service tiers. They are used only when a request asks for them, which the observer forbids. */
+const OPT_IN_TIERS = new Set(["priority", "fast", "ultrafast"]);
+
+/**
+ * Endpoints the default router serves without an opt-in, excluding the priority, fast and
+ * ultrafast service tiers. Stage admission prices against these; per-request reservations
+ * still use every listed endpoint, so the ledger limit holds whatever the routing. If the
+ * filter would leave nothing, every endpoint is returned (fail safe).
+ */
+export function standardEndpoints(endpoints) {
+  const kept = (endpoints ?? []).filter((e) => !String(e?.tag ?? "").split("/").some((part) => OPT_IN_TIERS.has(part)));
+  return kept.length ? kept : endpoints;
+}
+
 /** Component-wise maxima over every listed endpoint (the router may pick any of them). */
 export function maxPrices(endpoints) {
   if (!Array.isArray(endpoints) || !endpoints.length) throw new TypeError("Endpoint prices are required before inference.");
@@ -127,6 +141,18 @@ export function admit(ceilingUsd, balanceUsd, remainingUsd) {
 }
 
 /** Worst case: every call writes its full allowance with inputs 35% above the largest measured. */
+/**
+ * Cost of a response's reported usage at the highest standard-tier prices. A billed cost far
+ * above this means the request was served by an opt-in tier, which invalidates admission.
+ */
+export function standardUsageCost(call, endpoints) {
+  if (!Number.isFinite(call?.promptTokens) || !Number.isFinite(call?.completionTokens)) return null;
+  const max = maxPrices(standardEndpoints(endpoints));
+  return call.promptTokens * Math.max(max.prompt, max.input_cache_write)
+    + call.completionTokens * Math.max(max.completion, max.internal_reasoning)
+    + max.request + (call.imageParts ?? 0) * max.image;
+}
+
 export function stageCeiling(calls, maxInputTokens, inPrice, cap, maxOutPrice) {
   return calls * (maxInputTokens * INPUT_MARGIN * inPrice + cap * maxOutPrice);
 }
