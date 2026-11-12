@@ -47,11 +47,11 @@ assert.equal(respondedCount, summary.validity.responded);
 
 const judgeRows = judge.rows.filter((r) => r.judge === JUDGE);
 assert.equal(judgeRows.length, need(stages.J.planned, "stages.J.planned"));
-assert.deepEqual(summary.amendments.map((a) => a.changes.activeJudges), [[JUDGE]]);
+assert.deepEqual(summary.amendments.find((a) => a.id === "A1")?.changes.activeJudges, [JUDGE]);
 const judged = judgeRows.filter((r) => r.parsed && r.judgeValid);
 const strictRow = (cite, j) => cite.usableAnswer === true && j && j.judgeValid && j.answerCorrect === true && j.abstained === false
   && Array.isArray(j.claims) && j.claims.length > 0
-  && j.claims.every((c) => c.supported === true && c.cited === true && c.citationCount > 0 && c.relevantCitations > 0);
+  && j.claims.every((c) => c.supported === true && c.cited === true && c.citationCount > 0 && c.relevantCitations === c.citationCount);
 
 const perModel = models.map((model) => {
   const rows = citations.rows.filter((r) => r.model === model);
@@ -163,7 +163,7 @@ const qualityTable = table(
   "@{}>{\\raggedright\\arraybackslash}p{30mm}*{7}{>{\\raggedright\\arraybackslash}X}@{}",
   ["Model", "Questions", "Format-valid", "Usable", "Judged", "Judged correct", "Abstained", "Strict"],
   perModel.map((m) => texRow([tex(name(m.model)), m.questions, ...["formatValid", "usable", "judged", "correct", "abstained", "strict"].map((f) => `${m[f]}/${m.questions}`)])),
-  String.raw`Every column keeps all planned questions in its denominator. Strict requires a usable answer that the judge marked correct and not abstained, with at least one claim, every claim supported and cited with at least one relevant citation (the saved report definition), as in the free cohort. The judge is ${JUDGE_NAME} alone: disclosed amendment ${tex(amendments.amendments[0].id)} excluded Grok 4.7 for infrastructure reasons (${amendments.amendments[0].evidence.grokTimeouts} of its first ${amendments.amendments[0].evidence.grokCalls} calls timed out at 180 s, and one returned ${amendments.amendments[0].evidence.capViolation.completionTokens.toLocaleString("en-US")} completion tokens against a ${amendments.amendments[0].evidence.capViolation.maxTokens.toLocaleString("en-US")}-token cap), and its partial rows are unused. There is no inter-judge agreement, and the judges are not human-validated. The prompt-only arm is derived from the same answers, so it equals the contract arm by construction and arm differences are not reported. The free cohort used a different judge, so strict rates are not comparable across cohorts.`);
+  String.raw`Every column keeps all planned questions in its denominator. Strict requires a usable answer that the judge marked correct and not abstained, with at least one claim, every claim supported and cited, and every listed citation relevant. This is the free cohort's definition; amendment A2 corrected the cohort report, which had required only one relevant citation per claim. The judge is ${JUDGE_NAME} alone: disclosed amendment ${tex(amendments.amendments[0].id)} excluded Grok 4.7 for infrastructure reasons (${amendments.amendments[0].evidence.grokTimeouts} of its first ${amendments.amendments[0].evidence.grokCalls} calls timed out at 180 s, and one returned ${amendments.amendments[0].evidence.capViolation.completionTokens.toLocaleString("en-US")} completion tokens against a ${amendments.amendments[0].evidence.capViolation.maxTokens.toLocaleString("en-US")}-token cap), and its partial rows are unused. There is no inter-judge agreement, and the judges are not human-validated. The prompt-only arm is derived from the same answers, so it equals the contract arm by construction and arm differences are not reported. The free cohort used a different judge, so strict rates are not comparable across cohorts.`);
 
 const costTable = table(
   "Hosted timing distributions from the paid cohort (milliseconds)", "tab:paid-cost",
