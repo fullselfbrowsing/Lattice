@@ -77,7 +77,7 @@ Sections 3 and 4 of `main.tex` now carry Claude's rewritten narrative, with the 
 
 ## C4 evaluation consolidation
 
-The main evaluation now separates requirements, integrity, retained evidence, answer quality, disclosure and cost, with three generated summary tables. Detailed technical explanations/plots are in `evaluation-details.tex`; unchanged local, hosted, paid and free report fragments are included in the historical-cohort appendix. The unapproved practitioner protocol is in `practitioner-proposal.tex` and remains future work.
+The main evaluation now separates requirements, integrity, retained evidence, answer quality, disclosure and cost, with three generated summary tables. Detailed technical explanations/plots are in `evaluation-details.tex`; unchanged local, hosted, paid and free report fragments are included in the historical-cohort appendix. The practitioner protocol in `practitioner-proposal.tex` is no longer included in `main.tex`; it was removed at Prof. Neouchi's request on November 15, 2026, and Section 7.8 states practitioner evaluation as future work in one sentence.
 
 Use `node paper/scripts/c4-tables.mjs` to regenerate presentation only and `node paper/scripts/c4-tables.mjs --check` to verify it without writes. This generator validates saved percentile/count aggregates against retained rows and records source hashes in `c4-evidence.json`; it performs no inference, benchmark or bootstrap rerun. Do not run `eval/run-all.sh` or the benchmark commands to update the presentation, because they replace measurements.
 
