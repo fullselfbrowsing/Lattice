@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5.0
 milestone_name: Modular Adoption + Execution Parity
 status: submission_preparation
-stopped_at: A7 public requirements verified and P2 identifier audit complete; author rewrite, declarations, archive and authenticated portal selection pending
-last_updated: "2026-11-09T16:41:16.396486+00:00"
-last_activity: 2026-11-09 - Verified JITCAR public instructions and audited all 85 bibliography entries; three DOI additions, 77-page PDF checked
+stopped_at: Nov 15 coauthor review applied (quick 261115-6oh); author rewrite of Sections 3-5 and 7.7, a shortened AI declaration, L.T. bio check, CRediT confirmation and portal submission pending
+last_updated: "2026-11-15T11:00:09+00:00"
+last_activity: 2026-11-15 - Applied Prof. Neouchi's review edits; 80-page PDF with no TODO or drafting markers
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.5.0 complete
 Plan: JITCAR submission checklist (paper/JITCAR-TODO.md)
 Status: Submission preparation is the highest priority; C1 awaits review, C2/C3 technically reviewed, C4 evidence/presentation complete, C5 editorial/table work complete with author narrative/review pending; A1/P5 open; A6 written confirmation/scope documented, final package checks under P4/P6; C6 editorial/source work complete with author reading/synthesis/review pending; C7 relocation complete with author review/A7 pending; C8 working title aligned with coauthor approval/venue checks pending
-Last activity: 2026-11-12 - Completed quick task 261112-jtz: paid-cohort paper tables, evidence macros and a free-cohort appendix fragment are generated (not yet in main.tex); amendment A2 corrected the strict citation rule to the free cohort's (98/180).
+Last activity: 2026-11-15 - Completed quick task 261115-6oh: applied Prof. Neouchi's Nov 15 review edits (drafting notes and all four TODOs cleared, Appendix F removed, Independent Researcher affiliation, competing interests, CRediT, Notes on contributors, results-first abstract and introduction with limits moved to Section 8.2, Claude-drafted and disclosed paid-cohort introduction). His item 4, the author rewrite of Sections 3-5 and 7.7 plus a shortened declaration, remains with the authors.
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ The Phase-25 partial human-UAT and one verification gap moved into `milestones/v
 
 | Date | Task | Outcome |
 | --- | --- | --- |
+| 2026-11-15 | [261115-6oh](quick/261115-6oh-jitcar-rn-review-edits/261115-6oh-SUMMARY.md) apply Prof. Neouchi's Nov 15 JITCAR review edits | Drafting notes removed (Tables 1, 10, 11, 34-36; Figure 1; Appendix E diagram), CRediT/ethics/paid-cohort TODOs resolved, Appendix F dropped and 7.8 cut to one sentence, L.T. listed as Independent Researcher, Dallas; R.N. as Information Systems, JSOM; FSB kept only in competing interests; Notes on contributors added; abstract (174 words) and introduction lead with results, limits moved to 8.2; paid-cohort introduction drafted by Claude Code at the author's instruction and disclosed. 80-page PDF, make check passes. Author rewrite (item 4) not started. |
 | 2026-11-12 | fast: add the paid-cohort appendix to the draft | `main.tex` inputs `paid-cohort-evidence.tex` and shows the three paid tables in a new appendix (`app:paid-cohort`) with an author-text TODO. The main-text results still describe the free cohort. The PDF is rebuilt (79 pages, clean) and the professor review copy on the Desktop is refreshed. |
 | 2026-11-12 | [261112-jtz](quick/261112-jtz-generate-paid-cohort-paper-tables-eviden/261112-jtz-SUMMARY.md) generate paid-cohort paper tables | `paper/scripts/paid-cohort-tables.mjs` writes `paper/paid-cohort-evidence.tex`: number macros plus three table macros mirroring the free public-record, answer-quality and timing tables, with `--check`. Added `paper/free-cohort-appendix.tex` and the author's switch-over steps in `paper/README.md`; `main.tex` is unchanged. Found that the cohort report counted strict citation quality more loosely than the free cohort; amendment A2 corrected it (Sonnet 31, Sol 41, Carbon 26 of 60; verdict still VALID). Accounting snapshot: OpenRouter billed $3.00. |
 | 2026-11-12 | [261112-fyy](quick/261112-fyy-build-and-run-a-separate-paid-model-eval/261112-fyy-SUMMARY.md) build and run the paid-model cohort | Author topped up $20 and authorized paid models (C4 changed). New `eval/paid-cohort/` harness: per-request reservations at the most expensive endpoint, a $17 ledger limit, stage admission at standard-tier prices, one attempt per request, fresh-process receipt checks. Report verdict VALID: 98.3% of planned calls answered, 384/384 receipts verified. Public-record review strict 22/24 (Sonnet 7/8, Sol 8/8, Carbon 7/8); citations judged by Qwen 3.8 Max after disclosed amendment A1 excluded Grok 4.7 (cap overrun, timeouts). OpenRouter billed $3.00; balance $16.87. Paper integration is a separate author step. |
