@@ -1,0 +1,112 @@
+{
+  "smoke-citations": {
+    "priceChecks": [
+      {
+        "at": "2026-11-12T18:01:58.835Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "admission": {
+      "at": "2026-11-12T18:01:59.502Z",
+      "ceilingUsd": 0.154118085,
+      "remainingUsd": 16.9870595,
+      "balanceUsd": 19.860436996,
+      "admitted": true,
+      "planned": 3
+    },
+    "admitted": true,
+    "planned": 3,
+    "attempted": 3,
+    "responded": 3,
+    "stopped": null,
+    "complete": true,
+    "sessions": [
+      {
+        "startedAt": "2026-11-12T18:01:59.448Z",
+        "accountBefore": {
+          "at": "2026-11-12T18:01:59.502Z",
+          "keyUsage": 0.05840483,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.139563004,
+          "balanceUsd": 19.860436996
+        },
+        "confirmedBeforeUsd": 0.012940499999999999,
+        "chargedBeforeUsd": 0.012940499999999999,
+        "endedAt": "2026-11-12T18:02:14.211Z",
+        "accountAfter": {
+          "at": "2026-11-12T18:02:14.211Z",
+          "keyUsage": 0.05840483,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.139563004,
+          "balanceUsd": 19.860436996
+        },
+        "confirmedAfterUsd": 0.0271654,
+        "chargedAfterUsd": 0.0271654,
+        "ledgerConfirmedDeltaUsd": 0.0142249,
+        "ledgerChargedDeltaUsd": 0.0142249,
+        "accountDeltaUsd": 0
+      }
+    ],
+    "ledgerConfirmedUsd": 0.0142249,
+    "ledgerChargedUsd": 0.0142249,
+    "accountDeltaUsd": 0
+  },
+  "smoke-judge": {
+    "priceChecks": [
+      {
+        "at": "2026-11-12T18:02:25.730Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "admission": {
+      "at": "2026-11-12T18:02:26.296Z",
+      "ceilingUsd": 0.05715513,
+      "remainingUsd": 16.9728346,
+      "balanceUsd": 19.846212096,
+      "admitted": true,
+      "planned": 4
+    },
+    "admitted": true,
+    "planned": 4,
+    "attempted": 1,
+    "responded": 1,
+    "stopped": "Anomaly: prompt_tokens 1469 exceeds the request token bound 1194; cohort halted.",
+    "complete": false,
+    "sessions": [
+      {
+        "startedAt": "2026-11-12T18:02:26.256Z",
+        "accountBefore": {
+          "at": "2026-11-12T18:02:26.296Z",
+          "keyUsage": 0.07262973,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.153787904,
+          "balanceUsd": 19.846212096
+        },
+        "confirmedBeforeUsd": 0.0271654,
+        "chargedBeforeUsd": 0.0271654,
+        "endedAt": "2026-11-12T18:02:29.280Z",
+        "accountAfter": {
+          "at": "2026-11-12T18:02:29.280Z",
+          "keyUsage": 0.07262973,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.153787904,
+          "balanceUsd": 19.846212096
+        },
+        "confirmedAfterUsd": 0.0298274,
+        "chargedAfterUsd": 0.0298274,
+        "ledgerConfirmedDeltaUsd": 0.002662000000000001,
+        "ledgerChargedDeltaUsd": 0.002662000000000001,
+        "accountDeltaUsd": 0
+      }
+    ],
+    "ledgerConfirmedUsd": 0.002662000000000001,
+    "ledgerChargedUsd": 0.002662000000000001,
+    "accountDeltaUsd": 0
+  }
+}

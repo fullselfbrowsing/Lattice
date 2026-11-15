@@ -1,0 +1,57 @@
+{
+  "smoke-citations": {
+    "priceChecks": [
+      {
+        "at": "2026-11-12T17:54:34.243Z",
+        "increases": 0,
+        "decreases": []
+      }
+    ],
+    "admission": {
+      "at": "2026-11-12T17:54:34.793Z",
+      "ceilingUsd": 0.4170874175,
+      "remainingUsd": 17,
+      "balanceUsd": 19.873377496,
+      "admitted": true,
+      "planned": 3
+    },
+    "admitted": true,
+    "planned": 3,
+    "attempted": 3,
+    "responded": 3,
+    "stopped": null,
+    "complete": true,
+    "sessions": [
+      {
+        "startedAt": "2026-11-12T17:54:34.647Z",
+        "accountBefore": {
+          "at": "2026-11-12T17:54:34.793Z",
+          "keyUsage": 0.04546433,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.126622504,
+          "balanceUsd": 19.873377496
+        },
+        "confirmedBeforeUsd": 0,
+        "chargedBeforeUsd": 0,
+        "endedAt": "2026-11-12T17:54:43.394Z",
+        "accountAfter": {
+          "at": "2026-11-12T17:54:43.394Z",
+          "keyUsage": 0.04546433,
+          "keyLimit": null,
+          "totalCredits": 40,
+          "totalUsage": 20.126622504,
+          "balanceUsd": 19.873377496
+        },
+        "confirmedAfterUsd": 0.012940499999999999,
+        "chargedAfterUsd": 0.012940499999999999,
+        "ledgerConfirmedDeltaUsd": 0.012940499999999999,
+        "ledgerChargedDeltaUsd": 0.012940499999999999,
+        "accountDeltaUsd": 0
+      }
+    ],
+    "ledgerConfirmedUsd": 0.012940499999999999,
+    "ledgerChargedUsd": 0.012940499999999999,
+    "accountDeltaUsd": 0
+  }
+}

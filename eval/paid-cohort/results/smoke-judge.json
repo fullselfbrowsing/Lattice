@@ -1,0 +1,237 @@
+{
+  "version": "paid-judge/v1",
+  "stage": "smoke-judge",
+  "protocolHash": "f97718e16711e2c5460c8c65b4df8d3f6806a40b8f9810794ba491e9e91db60d",
+  "rubricHash": "8086c8e9be37d074cc7eeeae2fc3042b1af6ac6a9d67f0ee5e1072ec7c707811",
+  "generation": {
+    "temperature": 0,
+    "max_tokens": 2048,
+    "reasoning": {
+      "max_tokens": 1024
+    }
+  },
+  "rows": [
+    {
+      "id": "supported",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "synthetic",
+      "status": "finished",
+      "suite": "judge-probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 3384.8121249999995,
+      "calls": [
+        {
+          "bodyHash": "88da800a70941fc8f1e3ceec262970ec9f123d68d3a76f08d2b05ea887830719",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 3382.6045000000004,
+          "costUsd": 0.002986,
+          "promptTokens": 1469,
+          "completionTokens": 296,
+          "reasoningTokens": 262,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794506918-uM3Y5ZBC9cA0RDbC6wl4",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.04693,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 3242,
+          "standardCostUsd": 0.0051854
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true,
+      "sane": true
+    },
+    {
+      "id": "supported",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "synthetic",
+      "status": "finished",
+      "suite": "judge-probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 6481.631625,
+      "calls": [
+        {
+          "bodyHash": "62fa89fc8cbe26cde64bb5f282a66098e961deb8a9fa5fb0163390f2ffef689d",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 6480.733333000001,
+          "costUsd": 0.002262,
+          "promptTokens": 270,
+          "completionTokens": 287,
+          "reasoningTokens": 249,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794506921-blEbehphC2xQp7cffFnm",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.02551625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 3250,
+          "standardCostUsd": 0.002397
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": true,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 1
+        }
+      ],
+      "answerCorrect": true,
+      "abstained": false,
+      "parsed": true,
+      "sane": true
+    },
+    {
+      "id": "contradicted",
+      "judge": "x-ai/grok-4.7",
+      "targetModel": "synthetic",
+      "status": "finished",
+      "suite": "judge-probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 5241.978959,
+      "calls": [
+        {
+          "bodyHash": "49694748e212253cae9a2e544aa835d6f9534905a40928891cad2e79efb5ca3f",
+          "model": "x-ai/grok-4.7",
+          "status": 200,
+          "httpMs": 5241.002917,
+          "costUsd": 0.003994,
+          "promptTokens": 1469,
+          "completionTokens": 464,
+          "reasoningTokens": 430,
+          "provider": "xAI",
+          "observedModel": "x-ai/grok-4.7",
+          "generationId": "gen-1794506927-THYwWO0o2VOI6F02LwqU",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.04693,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 3242,
+          "standardCostUsd": 0.0062942
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": false,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": false,
+      "abstained": false,
+      "parsed": true,
+      "sane": true
+    },
+    {
+      "id": "contradicted",
+      "judge": "qwen/qwen3.8-max-0902",
+      "targetModel": "synthetic",
+      "status": "finished",
+      "suite": "judge-probe",
+      "ok": true,
+      "error": null,
+      "wallMs": 7752.10225,
+      "calls": [
+        {
+          "bodyHash": "f635da1f725d9edbcaa464c0cb5622a5213dff83ff7fd3cef08df6f7714e0c6d",
+          "model": "qwen/qwen3.8-max-0902",
+          "status": 200,
+          "httpMs": 7751.221999999998,
+          "costUsd": 0.002436,
+          "promptTokens": 270,
+          "completionTokens": 316,
+          "reasoningTokens": 278,
+          "provider": "Alibaba",
+          "observedModel": "qwen/qwen3.8-max-0902",
+          "generationId": "gen-1794506933-sockY3sbmPLdfLnCuxTQ",
+          "finishReason": "stop",
+          "attempt": 0,
+          "maxTokens": 2048,
+          "reservedUsd": 0.02551625,
+          "errorCode": null,
+          "errorMessage": null,
+          "retryAfter": null,
+          "imageParts": 0,
+          "promptTokenBound": 3250,
+          "standardCostUsd": 0.0025710000000000004
+        }
+      ],
+      "judgeValid": true,
+      "judgeWrappedJson": false,
+      "claims": [
+        {
+          "supported": false,
+          "cited": true,
+          "citationCount": 1,
+          "relevantCitations": 0
+        }
+      ],
+      "answerCorrect": false,
+      "abstained": false,
+      "parsed": true,
+      "sane": true
+    }
+  ],
+  "budget": {
+    "limitUsd": 17,
+    "confirmedUsd": 0.055170300000000005,
+    "chargedOrReservedUsd": 0.055170300000000005,
+    "requests": 14,
+    "unresolvedRequests": 0,
+    "halted": null
+  },
+  "stopped": null,
+  "perJudge": {
+    "x-ai/grok-4.7": {
+      "pass": true,
+      "problems": []
+    },
+    "qwen/qwen3.8-max-0902": {
+      "pass": true,
+      "problems": []
+    }
+  },
+  "passedJudges": [
+    "x-ai/grok-4.7",
+    "qwen/qwen3.8-max-0902"
+  ],
+  "excludedJudges": [],
+  "pass": true,
+  "problems": []
+}

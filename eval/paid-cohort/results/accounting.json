@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-12T20:17:02.497Z",
+  "method": "Read-only GET /api/v1/credits and /api/v1/key after the last paid call, compared with the readings taken after the top-up and before the first paid call; ledger sums from the private cohort ledger, which covers every attempt including archived smoke attempts 1 and 2.",
+  "openRouter": {
+    "balanceAfterTopUpUsd": 19.873377496,
+    "balanceNowUsd": 16.870792,
+    "billedSinceTopUpUsd": 3.002585,
+    "keyUsageAtTopUpUsd": 0.04546433,
+    "keyUsageNowUsd": 3.04804953,
+    "keyBilledSinceTopUpUsd": 3.002585,
+    "billedMinusLedgerConfirmedUsd": 0.030592
+  },
+  "ledger": {
+    "limitUsd": 17,
+    "entries": 832,
+    "confirmedUsd": 2.971993,
+    "unknownCostCalls": 16,
+    "heldForUnknownCostsUsd": 0.865577,
+    "resolvedHalts": 2
+  },
+  "note": "Calls that reported no cost keep their full reservation in the ledger, so ledger confirmed plus held is an upper bound; the OpenRouter figures are what was billed.",
+  "protocolRevision": "08e15df9bc0e9dbda4195edf9bfacfb00b1bbf8b"
+}

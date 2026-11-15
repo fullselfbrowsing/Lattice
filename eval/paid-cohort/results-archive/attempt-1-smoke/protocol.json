@@ -1,0 +1,900 @@
+{
+  "version": "paid-cohort/v1",
+  "dryRun": false,
+  "dryCounts": null,
+  "kid": "paid-public-refund-20261112",
+  "testedModels": [
+    "anthropic/claude-sonnet-5.5",
+    "openai/gpt-6.1-sol",
+    "google/gemini-4-carbon"
+  ],
+  "judgeModels": [
+    "x-ai/grok-4.7",
+    "qwen/qwen3.8-max-0902"
+  ],
+  "ledgerLimitUsd": 17,
+  "caps": {
+    "A": 4096,
+    "B": 4096,
+    "J": 2048,
+    "judgeReasoning": 1024,
+    "transport": 1024,
+    "privacy": 1024,
+    "latency": 1024,
+    "agent": 2048,
+    "crew": 2048
+  },
+  "timeoutsMs": {
+    "smoke": 300000,
+    "A": 300000,
+    "B": 300000,
+    "J": 180000,
+    "C": 120000
+  },
+  "counts": {
+    "repetitions": 2,
+    "questions": 60,
+    "transport": 40,
+    "privacy": 20,
+    "agents": 5,
+    "latency": 20,
+    "warmups": 2
+  },
+  "inputs": {
+    "refundInputHash": "424adb97a395d1424168626334c07ef4037179c3bc0f31934fd9127f896b7fde",
+    "citationManifestHash": "ad843ec6bbd64c3570f10578f1f038874a93f866cd5e06f71119253699e22d89",
+    "evaluationSha256": "5d3fda004b9f73ec3b33f18c1f6e04807f9f1c1137b5a1b1e0812cc7914e6357",
+    "devSha256": "43b948036e182c988e08ad4076733f6fa1e66c0f92b71fab6616bb4763350087"
+  },
+  "codeHashes": {
+    "eval/paid-cohort/budget.mjs": "b856213ecd0970ff639d5461557c68c3d076f815a4d00b49c8658ce67d96b0d3",
+    "eval/paid-cohort/common.mjs": "3666e9c3929139b2e6a2f376afe730b7f4fcd49767dc8cb7cf80e3ecc8032141",
+    "eval/paid-cohort/judge.mjs": "de20d2c2d2ad5f434a0155828a5a965e5b0db17f1111cdd53b295a4c93e0560a",
+    "eval/paid-cohort/mock.mjs": "4e58336e49c7103e16377048761d57b4e5f53ccd7a4541a569fe441c016578c1",
+    "eval/paid-cohort/observer.mjs": "6751bf75feb984a173827d9bc479980d4ce58ed8fe1896bea2c3b909a76be73c",
+    "eval/paid-cohort/public-refund-report.mjs": "bffd2da2b8282212e4650902900ceab776e7eae828461656d72fcfbe6603afc9",
+    "eval/paid-cohort/public-refund.mjs": "b1c9cfce406b4160be58296813133116d52ea0c9bcf39fcc378b1a5ce2733f8a",
+    "eval/paid-cohort/report.mjs": "c0039f013ada79de33271f13fdc717a0db7fc1cc5eebb9f80009704b8fa89ba2",
+    "eval/paid-cohort/requests.mjs": "5a1aa0700f06447561e7db3f2020149cd6157c47c95fe7845d50df64608cad20",
+    "eval/paid-cohort/validated-live.mjs": "25d209d5dde6f510435eba9d05dd9a5514e0d088ee8ccc94a2336ef2e4dfe072",
+    "eval/paid-cohort/verify-validated.mjs": "9c3ba4dead6ca133537a260887c56cdc841da12eed2541ddcee152503d3641e3",
+    "eval/public-refund/cases.mjs": "95bcaa66322ba5e2ad5ea1025b8cc1a604393547e55f8e20b308028d52c0e0b2",
+    "eval/public-refund/source-manifest.json": "546e60b654871d115bfbb20ff2d72f4b75d78e45d5e0f6f0df891d83bf776115",
+    "eval/public-refund/workflow.mjs": "da4c868f5c833faf7cb1274b7b2f1d339976735f452d56c1b15802477361828a",
+    "eval/realworld/scripts/free-judge-utils.mjs": "588b2002f2f8a4abf482a358ec90609234fb0245df478b59362e2b4e587852d4",
+    "packages/lattice/dist/agent-run-CB4Sm3KM.js": "a54c2d5bdf369bc2d8d5759d754a40ab4900af27a6d3ffb33ec18ba7657ea249",
+    "packages/lattice/dist/agents.js": "41840a2b76f4bb3e596c4a48a6d25f686e7319acf540e138c10f6ec32b457903",
+    "packages/lattice/dist/artifact-BH5NkaAw.js": "77990a2a873aa1851346ce159e8982f52f899548b1bb8265bc67811cf2945c3e",
+    "packages/lattice/dist/artifacts.js": "aa454fb5a6dd6531fdd259d3c1830eb2531a938ffea877fac3c7d35aa57d3bde",
+    "packages/lattice/dist/audit.js": "f3495405b8f5f284d92f16755d884c99cf5461489de9870d6a32352062718f36",
+    "packages/lattice/dist/catalog-CAfYwB_-.js": "2f045fcac9fabfcc9129802128cc0d38469c5d6551a74f7182c96d82c526d9a0",
+    "packages/lattice/dist/context-pack-BBX7V13u.js": "1667d6c1b6a2b318a51246ef55a6431a1beb3db8a60dec6009c36a1c5d214bbf",
+    "packages/lattice/dist/context.js": "74cf80409ed0cf95c5de151886098925dbb8ee385cf8425890d4388240e76e38",
+    "packages/lattice/dist/contracts-CzIBpYey.js": "54ca0b8683c7cc80bf780c48a7baa5d248f23c161b19dcb368d83afb49b77b6e",
+    "packages/lattice/dist/core.js": "10ebbe5aef4eaf646eb0beec17878a83304df4be9e313551e812e5e172ed7cf2",
+    "packages/lattice/dist/errors-BJNFnUT4.js": "e820b722e516bb8d96972a26ac891516e9775257be97435fb7b9817236ab1f18",
+    "packages/lattice/dist/eval.js": "81300f766d61a3b29d4eef6c1891ce3d252005ea3372e309c27867b9b90c6d2f",
+    "packages/lattice/dist/fingerprint-DodDbQKN.js": "dbc1f92abd68dca02ea0c2b73b0dcd2e0048bde7deaaec8960e04f9c96642391",
+    "packages/lattice/dist/index.js": "ad7065b5aee1c7c0480532cd09090b3f429f10d35067ca07b4b9d01d12db2343",
+    "packages/lattice/dist/lineage-B0-uISV-.js": "dd3833ef0fd2fe6c4d1e680f518826ad8d2cc3702d9c85134cb56ca752e51002",
+    "packages/lattice/dist/local-Q8Pln2LE.js": "2843258cbe36627abe7fe9695ebe175b9fe9dd5d0178a4db645535738c131963",
+    "packages/lattice/dist/memory-Dqoz3ka4.js": "dffd210460fd0845b57233a1907197ee4615af65e41863ab61b6b1eaa19d8e77",
+    "packages/lattice/dist/negotiate-l-grnAVR.js": "359aa256aba27f1983d136f2469ddaafe75b7ed990b6c276363f00e3696b9754",
+    "packages/lattice/dist/permission-context-BTWYZ_rR.js": "122335a40db2021d11c4bcffa47db9847d880dff6e538e0c4f59e6aaa2874c7b",
+    "packages/lattice/dist/plan-DFm8Llep.js": "f853130d42c95d26278b6c52b25180d27f55206983d6f9e585351e866aa9aec1",
+    "packages/lattice/dist/policy-DqKmUglf.js": "9c3a69dcd367bee98c1fd6b6a9ee6fe3a14262a97fa19f61e569e13464c42343",
+    "packages/lattice/dist/providers.js": "d1e8f00165ffed2171741e40e6d43c2dbe2e91946e95361aee528827b67137c3",
+    "packages/lattice/dist/receipt-Ch4ZBYqz.js": "c1bd60b417b2f71291beb4c39c0065b7379afe83107d8d9e05fce6bc171539fc",
+    "packages/lattice/dist/replay-B8oHEAM8.js": "4ac2b128cb01c78f0bee923cbd29da1ecbe590f1c23c2020f9f4b2b5bd7dd620",
+    "packages/lattice/dist/request-CKAyp_Ab.js": "6501ec87ba8029dcbe2ae7d6d685213349b7c4542dcd0bf06b2e175c56b1fb23",
+    "packages/lattice/dist/rolldown-runtime-CiIaOW0V.js": "16a983b80655888fa521be8504570aef2fc3713d1a723ff439beddac3a2428c3",
+    "packages/lattice/dist/router--tFwfKMr.js": "6bc1068796dc6e63c3bbeefdf55d6ed82f37216969f838aa73712fb56b010e1e",
+    "packages/lattice/dist/routing.js": "589fc3b07aa40035ba4e1270e1a269514d52cc646d2e67e86c7bb6fc812a66bb",
+    "packages/lattice/dist/run-crew-2HoLHpcZ.js": "30b272e434368bc5171d0c17f87f683331b7b09fbc99d16b6d21e51215cd6706",
+    "packages/lattice/dist/runtime-D-uwb0cP.js": "dc52dce6d1da28d4fc85045c392c54170653ecf58de43958d7f48bd4409b1a2b",
+    "packages/lattice/dist/scaffolds-V07OPvXT.js": "039caec7046e4f572be36ad807fa6642cf838e34a85484f1ff92914b728ede3d",
+    "packages/lattice/dist/storage.js": "ec08d162dcc61fb7807b62bc66dd88e029bef4cf4e9ec6d6695047b7fd15b6c9",
+    "packages/lattice/dist/tool-call-validation-5hvqcz7j.js": "ec6178190f891ed3ceb425dfa6c5344f8d85475c4a6912fdd39d2762bbfb5d66",
+    "packages/lattice/dist/tools-Ca3TIB9Y.js": "a0679d408f18325ba69e2b1476440b6ddbdc4cda173531793ca45288d8eb0df1",
+    "packages/lattice/dist/tools.js": "dc093f503681ffbd92b72061799cb9eb41fd0cdad5014468f9f47bf7e69ebb8f",
+    "packages/lattice/dist/validate-D641TVah.js": "105e14bd74f0135fd7fc8f2947657adf1cf35e06593117336b2ca50f7d50e2a6"
+  },
+  "frozenAt": "2026-11-12T17:54:34.614Z",
+  "revision": "1ef302b559dc4cf67ace99cfd220ceacdedb5415",
+  "node": "v24.14.1",
+  "priceSnapshot": {
+    "anthropic/claude-sonnet-5.5": {
+      "prompt": 0.0000022,
+      "completion": 0.000011,
+      "internal_reasoning": 0,
+      "request": 0,
+      "image": 0,
+      "input_cache_write": 0.00000275
+    },
+    "openai/gpt-6.1-sol": {
+      "prompt": 0.000012,
+      "completion": 0.00006,
+      "internal_reasoning": 0,
+      "request": 0,
+      "image": 0,
+      "input_cache_write": 0.000015
+    },
+    "google/gemini-4-carbon": {
+      "prompt": 0.0000036,
+      "completion": 0.000018,
+      "internal_reasoning": 0.000018,
+      "request": 0,
+      "image": 0.0000036,
+      "input_cache_write": 3.375e-7
+    },
+    "x-ai/grok-4.7": {
+      "prompt": 0.000004,
+      "completion": 0.000012,
+      "internal_reasoning": 0,
+      "request": 0,
+      "image": 0,
+      "input_cache_write": 0
+    },
+    "qwen/qwen3.8-max-0902": {
+      "prompt": 0.000002,
+      "completion": 0.000006,
+      "internal_reasoning": 0,
+      "request": 0,
+      "image": 0,
+      "input_cache_write": 0.0000025
+    }
+  },
+  "endpointSnapshot": {
+    "anthropic/claude-sonnet-5.5": [
+      {
+        "name": "Google | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Google",
+        "tag": "google-vertex/global",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "input_cache_write_1h": "0.000004",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Amazon Bedrock | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "input_cache_write_1h": "0.000004",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Azure | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Azure",
+        "tag": "azure/global",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "input_cache_write_1h": "0.000004",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Claude Platform on AWS | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Claude Platform on AWS",
+        "tag": "claude-on-aws",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "input_cache_write_1h": "0.000004",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Anthropic | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Anthropic",
+        "tag": "anthropic",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "input_cache_write_1h": "0.000004",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Amazon Bedrock | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock/eu-west-1",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "input_cache_write_1h": "0.0000044",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Amazon Bedrock | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock/us-east-1",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "input_cache_write_1h": "0.0000044",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Google | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Google",
+        "tag": "google-vertex/us",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "input_cache_write_1h": "0.0000044",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Azure | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Azure",
+        "tag": "azure/us",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "input_cache_write_1h": "0.0000044",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Google | anthropic/claude-sonnet-5.5-20260928",
+        "provider_name": "Google",
+        "tag": "google-vertex/europe",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "input_cache_write_1h": "0.0000044",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 128000
+      }
+    ],
+    "openai/gpt-6.1-sol": [
+      {
+        "name": "OpenAI | openai/gpt-6.1-sol-20260929",
+        "provider_name": "OpenAI",
+        "tag": "openai/flex",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000005",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000005",
+          "input_cache_write": "0.00000125",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000002",
+              "completion": "0.0000075",
+              "input_cache_read": "0.0000001",
+              "input_cache_write": "0.0000025"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Amazon Bedrock | openai/gpt-6.1-sol-20260929",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock/global",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000004",
+              "completion": "0.000015",
+              "input_cache_read": "0.0000002",
+              "input_cache_write": "0.000005"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Azure | openai/gpt-6.1-sol-20260929",
+        "provider_name": "Azure",
+        "tag": "azure",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000004",
+              "completion": "0.000015",
+              "input_cache_read": "0.0000002",
+              "input_cache_write": "0.000005"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "OpenAI | openai/gpt-6.1-sol-20260929",
+        "provider_name": "OpenAI",
+        "tag": "openai",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000025",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000004",
+              "completion": "0.000015",
+              "input_cache_read": "0.0000002",
+              "input_cache_write": "0.000005"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Amazon Bedrock | openai/gpt-6.1-sol-20260929",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock/us-east-1",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.0000044",
+              "completion": "0.0000165",
+              "input_cache_read": "0.00000022",
+              "input_cache_write": "0.0000055"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Azure | openai/gpt-6.1-sol-20260929",
+        "provider_name": "Azure",
+        "tag": "azure/eu",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.0000044",
+              "completion": "0.0000165",
+              "input_cache_read": "0.00000022",
+              "input_cache_write": "0.0000055"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "Azure | openai/gpt-6.1-sol-20260929",
+        "provider_name": "Azure",
+        "tag": "azure/us",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.00000275",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.0000044",
+              "completion": "0.0000165",
+              "input_cache_read": "0.00000022",
+              "input_cache_write": "0.0000055"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "OpenAI | openai/gpt-6.1-sol-20260929",
+        "provider_name": "OpenAI",
+        "tag": "openai/fast",
+        "pricing": {
+          "prompt": "0.000004",
+          "completion": "0.00002",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000002",
+          "input_cache_write": "0.000005",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000008",
+              "completion": "0.00003",
+              "input_cache_read": "0.0000004",
+              "input_cache_write": "0.00001"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      },
+      {
+        "name": "OpenAI | openai/gpt-6.1-sol-20260929",
+        "provider_name": "OpenAI",
+        "tag": "openai/ultrafast",
+        "pricing": {
+          "prompt": "0.000012",
+          "completion": "0.00006",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000006",
+          "input_cache_write": "0.000015",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000024",
+              "completion": "0.00009",
+              "input_cache_read": "0.0000012",
+              "input_cache_write": "0.00003"
+            }
+          ]
+        },
+        "context_length": 1050000,
+        "max_completion_tokens": 128000
+      }
+    ],
+    "google/gemini-4-carbon": [
+      {
+        "name": "Google AI Studio | google/gemini-4-carbon-20261110",
+        "provider_name": "Google AI Studio",
+        "tag": "google-ai-studio/flex",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000005",
+          "image": "0.000001",
+          "audio": "0.000001",
+          "input_audio_cache": "0.00000005",
+          "web_search": "0.014",
+          "internal_reasoning": "0.000005",
+          "input_cache_read": "0.00000005",
+          "input_cache_write": "0.00000009375",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 943718
+      },
+      {
+        "name": "Google | google/gemini-4-carbon-20261110",
+        "provider_name": "Google",
+        "tag": "google-vertex/global",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "image": "0.000002",
+          "audio": "0.000002",
+          "input_audio_cache": "0.0000001",
+          "web_search": "0.014",
+          "internal_reasoning": "0.00001",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000001875",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 943718
+      },
+      {
+        "name": "Google AI Studio | google/gemini-4-carbon-20261110",
+        "provider_name": "Google AI Studio",
+        "tag": "google-ai-studio",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "image": "0.000002",
+          "audio": "0.000002",
+          "input_audio_cache": "0.0000001",
+          "web_search": "0.014",
+          "internal_reasoning": "0.00001",
+          "input_cache_read": "0.0000001",
+          "input_cache_write": "0.0000001875",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 32768
+      },
+      {
+        "name": "Google | google/gemini-4-carbon-20261110",
+        "provider_name": "Google",
+        "tag": "google-vertex/eu",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "image": "0.0000022",
+          "audio": "0.0000022",
+          "input_audio_cache": "0.00000011",
+          "web_search": "0.014",
+          "internal_reasoning": "0.000011",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.0000001875",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 65536
+      },
+      {
+        "name": "Google | google/gemini-4-carbon-20261110",
+        "provider_name": "Google",
+        "tag": "google-vertex/us",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.000011",
+          "image": "0.0000022",
+          "audio": "0.0000022",
+          "input_audio_cache": "0.00000011",
+          "web_search": "0.014",
+          "internal_reasoning": "0.000011",
+          "input_cache_read": "0.00000011",
+          "input_cache_write": "0.0000001875",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 65536
+      },
+      {
+        "name": "Google | google/gemini-4-carbon-20261110",
+        "provider_name": "Google",
+        "tag": "google-vertex/global/priority",
+        "pricing": {
+          "prompt": "0.0000036",
+          "completion": "0.000018",
+          "image": "0.0000036",
+          "audio": "0.0000036",
+          "input_audio_cache": "0.00000018",
+          "web_search": "0.014",
+          "internal_reasoning": "0.000018",
+          "input_cache_read": "0.00000018",
+          "input_cache_write": "0.0000003375",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 943718
+      },
+      {
+        "name": "Google AI Studio | google/gemini-4-carbon-20261110",
+        "provider_name": "Google AI Studio",
+        "tag": "google-ai-studio/priority",
+        "pricing": {
+          "prompt": "0.0000036",
+          "completion": "0.000018",
+          "image": "0.0000036",
+          "audio": "0.0000036",
+          "input_audio_cache": "0.00000018",
+          "web_search": "0.014",
+          "internal_reasoning": "0.000018",
+          "input_cache_read": "0.00000018",
+          "input_cache_write": "0.0000003375",
+          "discount": 0.5
+        },
+        "context_length": 1048576,
+        "max_completion_tokens": 943718
+      }
+    ],
+    "x-ai/grok-4.7": [
+      {
+        "name": "Amazon Bedrock | x-ai/grok-4.7-20260916",
+        "provider_name": "Amazon Bedrock",
+        "tag": "amazon-bedrock/global",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.000006",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000005",
+          "input_cache_write": "0",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.000004",
+              "completion": "0.000012",
+              "input_cache_read": "0.000001",
+              "input_cache_write": "0"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      },
+      {
+        "name": "xAI | x-ai/grok-4.7-20260916",
+        "provider_name": "xAI",
+        "tag": "xai/zdr",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.000006",
+          "web_search": "0.005",
+          "input_cache_read": "0.0000005",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.000004",
+              "completion": "0.000012",
+              "input_cache_read": "0.000001"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      },
+      {
+        "name": "xAI | x-ai/grok-4.7-20260916",
+        "provider_name": "xAI",
+        "tag": "xai",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.000006",
+          "web_search": "0.005",
+          "input_cache_read": "0.0000005",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.000004",
+              "completion": "0.000012",
+              "input_cache_read": "0.000001"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      },
+      {
+        "name": "xAI | x-ai/grok-4.7-20260916",
+        "provider_name": "xAI",
+        "tag": "xai/zdr/us",
+        "pricing": {
+          "prompt": "0.0000022",
+          "completion": "0.0000066",
+          "web_search": "0.005",
+          "input_cache_read": "0.00000055",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.0000044",
+              "completion": "0.0000132",
+              "input_cache_read": "0.0000011"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      },
+      {
+        "name": "xAI | x-ai/grok-4.7-20260916",
+        "provider_name": "xAI",
+        "tag": "xai/zdr/priority",
+        "pricing": {
+          "prompt": "0.000004",
+          "completion": "0.000012",
+          "web_search": "0.005",
+          "input_cache_read": "0.000001",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.000008",
+              "completion": "0.000024",
+              "input_cache_read": "0.000002"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      },
+      {
+        "name": "xAI | x-ai/grok-4.7-20260916",
+        "provider_name": "xAI",
+        "tag": "xai/priority",
+        "pricing": {
+          "prompt": "0.000004",
+          "completion": "0.000012",
+          "web_search": "0.005",
+          "input_cache_read": "0.000001",
+          "discount": 0,
+          "overrides": [
+            {
+              "min_prompt_tokens": 200000,
+              "prompt": "0.000008",
+              "completion": "0.000024",
+              "input_cache_read": "0.000002"
+            }
+          ]
+        },
+        "context_length": 500000,
+        "max_completion_tokens": 450000
+      }
+    ],
+    "qwen/qwen3.8-max-0902": [
+      {
+        "name": "Alibaba | qwen/qwen3.8-max-20260902",
+        "provider_name": "Alibaba",
+        "tag": "alibaba/us-east-1",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.000006",
+          "input_cache_read": "0.00000025",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 131072
+      },
+      {
+        "name": "Alibaba | qwen/qwen3.8-max-20260902",
+        "provider_name": "Alibaba",
+        "tag": "alibaba",
+        "pricing": {
+          "prompt": "0.000002",
+          "completion": "0.000006",
+          "input_cache_read": "0.00000025",
+          "input_cache_write": "0.0000025",
+          "discount": 0
+        },
+        "context_length": 1000000,
+        "max_completion_tokens": 131072
+      }
+    ]
+  },
+  "catalogPricing": {
+    "anthropic/claude-sonnet-5.5": {
+      "prompt": "0.000002",
+      "completion": "0.00001",
+      "web_search": "0.01",
+      "input_cache_read": "0.0000001",
+      "input_cache_write": "0.0000025",
+      "input_cache_write_1h": "0.000004"
+    },
+    "openai/gpt-6.1-sol": {
+      "prompt": "0.000002",
+      "completion": "0.00001",
+      "web_search": "0.01",
+      "input_cache_read": "0.0000001",
+      "input_cache_write": "0.0000025",
+      "overrides": [
+        {
+          "min_prompt_tokens": 272000,
+          "prompt": "0.000004",
+          "completion": "0.000015",
+          "input_cache_read": "0.0000002",
+          "input_cache_write": "0.000005"
+        }
+      ]
+    },
+    "google/gemini-4-carbon": {
+      "prompt": "0.000002",
+      "completion": "0.00001",
+      "image": "0.000002",
+      "audio": "0.000002",
+      "input_audio_cache": "0.0000001",
+      "web_search": "0.014",
+      "internal_reasoning": "0.00001",
+      "input_cache_read": "0.0000001",
+      "input_cache_write": "0.0000001875"
+    },
+    "x-ai/grok-4.7": {
+      "prompt": "0.000002",
+      "completion": "0.000006",
+      "web_search": "0.005",
+      "input_cache_read": "0.0000005",
+      "overrides": [
+        {
+          "min_prompt_tokens": 200000,
+          "prompt": "0.000004",
+          "completion": "0.000012",
+          "input_cache_read": "0.000001"
+        }
+      ]
+    },
+    "qwen/qwen3.8-max-0902": {
+      "prompt": "0.000002",
+      "completion": "0.000006",
+      "input_cache_read": "0.00000025"
+    }
+  },
+  "accountBefore": {
+    "at": "2026-11-12T17:54:34.606Z",
+    "keyUsage": 0.04546433,
+    "keyLimit": null,
+    "totalCredits": 40,
+    "totalUsage": 20.126622504,
+    "balanceUsd": 19.873377496
+  },
+  "rules": {
+    "requests": "One attempt per request; no retries, fallbacks, routing fields, plugins or server-side tools. Reservation before send, settled to usage.cost; an unknown cost keeps the reservation; a charge above it halts the cohort.",
+    "prices": "Re-snapshotted at each stage start. A price increase on a frozen model refuses the stage; equal or lower prices are recorded and allowed.",
+    "pooling": "Never pooled with the free cohorts. Failed rows stay in denominators.",
+    "determinism": "OpenRouter ignores temperature for the Claude and GPT models, so these runs are not deterministic. Reasoning uses each provider's default; max_tokens is the hard cap.",
+    "validity": "Valid iff every admitted stage completes, at least 95% of planned calls return a model response, and every successful run's receipt verifies. No score is an input."
+  }
+}

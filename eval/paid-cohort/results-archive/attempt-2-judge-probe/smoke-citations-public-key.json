@@ -1,0 +1,14 @@
+{
+  "kid": "paid-smoke-citations",
+  "publicKeyJwk": {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "aLqmP2vyA_7odQ2v1Upprn0CCoKrsLwM5nbxWszli5w",
+    "kty": "OKP"
+  },
+  "state": "active"
+}
