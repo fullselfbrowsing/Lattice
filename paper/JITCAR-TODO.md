@@ -362,7 +362,7 @@ For all eight: **authors own the argument and original manuscript drafting**; Co
 - [ ] Funding statement: Prof. Neouchi's wording applied Nov 9 (see A3); support facts still to be reconciled under A4.
 - [ ] Competing interests including relevant Voyza/FSB relationships and each author's own declaration. Nov 15: R.N.'s wording applied; Full Self Browsing removed from L.T.'s affiliation and the acknowledgements.
 - [ ] Ethics, consent, case permission, data/code availability, and acknowledgements as applicable.
-- [ ] Accurate author bios, names, affiliations, ORCIDs, corresponding-author details, and any required title page. Nov 15: L.T. listed as Independent Researcher, Dallas, TX, USA; R.N. as Information Systems, JSOM, UT Dallas. Notes on contributors added: R.N.'s supplied text and a Claude-drafted factual L.T. note awaiting his check.
+- [ ] Accurate author bios, names, affiliations, ORCIDs, corresponding-author details, and any required title page. Nov 15: L.T. listed as Independent Researcher, Dallas, TX, USA; R.N. as Information Systems, JSOM, UT Dallas. Notes on contributors added: R.N.'s supplied text and a Claude-drafted factual L.T. note awaiting his check. Nov 15 (later): L.T.'s note rebuilt from the biography he supplied (current Voyza role, degrees, prior roles, Lattice and Full Self Browsing); if Lattice was built for Voyza, revisit the affiliation and competing interests.
 
 **Done when:** both authors approve the declarations and the manuscript, title page, portal fields, and cover letter agree.
 
